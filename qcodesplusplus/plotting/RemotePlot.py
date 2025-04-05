@@ -8,7 +8,7 @@ import json
 import time
 from uuid import uuid4
 
-from qcodes.data.data_array import DataArray
+from qcodesplusplus.data.data_array import DataArray
 from qcodes.utils.helpers import NumpyJSONEncoder
 
 

@@ -1,20 +1,29 @@
 """DataSet class and factory functions."""
 
 import time
+from datetime import datetime, date
 import logging
+import glob
+import numpy as np
 from traceback import format_exc
 from copy import deepcopy
 from collections import OrderedDict
+from typing import Dict, Callable
 
-from qcodes.data.gnuplot_format import GNUPlotFormat
-from qcodes.data.io import DiskIO
-from qcodes.data.location import FormatLocation
+from .gnuplot_format import GNUPlotFormat
+from .io import DiskIO
+from .location import FormatLocation
+from .data_array import DataArray
 from qcodes.utils.helpers import DelegateAttributes, full_class, deep_update
+from qcodesplusplus.station import Station
+from qcodes import config
+import os
 
 from uuid import uuid4
+log = logging.getLogger(__name__)
 
 def new_data(location=None, loc_record=None, name=None, overwrite=False,
-             io=None, **kwargs):
+             io=None, backup_location=None, force_write=False, **kwargs):
     """
     Create a new DataSet.
 
@@ -61,13 +70,13 @@ def new_data(location=None, loc_record=None, name=None, overwrite=False,
     if io is None:
         io = DataSet.default_io
 
+    if location is None:
+        location = DataSet.location_provider
+
     if name is not None:
         if not loc_record:
             loc_record = {}
         loc_record['name'] = name
-
-    if location is None:
-        location = DataSet.location_provider
 
     if callable(location):
         location = location(io, record=loc_record)
@@ -75,10 +84,57 @@ def new_data(location=None, loc_record=None, name=None, overwrite=False,
     if location and (not overwrite) and io.list(location):
         raise FileExistsError('"' + location + '" already has data')
 
-    return DataSet(location=location, io=io, **kwargs)
+    return DataSet(location=location, io=io, backup_location=backup_location, force_write=force_write, name=name, **kwargs)
 
+def data_set_from_arrays(datasetname=None,arrays=None,arraynames=None,labels=None,units=None,station=None):
+    """
+    Create and return a new DataSet filled with data from pre-existing python arrays. 
+    Typically used for recording arrays of time-coincident measurements from an instrument buffer.
+    Data is assumed to be one dimensional and first array in arrays is assumed to be the setpoint.
+    Example: 
+    data=data_set_from_arrays(datasetname='Dev1 4pt scope measurement',
+                                arrays=[scope_time,scope_input1,scope_input2],
+                                arraynames=['time','input1','input2'],
+                                labels=['time','Voltage','Voltage']
+                                units=['s','V','V'])
 
-def load_data(location=None, formatter=None, io=None):
+    TODO: Work out multi-dimensional, in case it one day becomes relevant
+    """
+
+    if arraynames is None:
+        arraynames=[f'array{i}' for i,array in enumerate(arrays)]
+    if labels is None:
+        labels=arraynames
+    if units is None:
+        units=['' for array in arrays]
+
+    # if np.shape(arraynames)[0]!=np.shape(arrays)[0] or np.shape(labels)[0]!=np.shape(arrays)[0] or np.shape(units)[0]!=np.shape(arrays)[0]:
+    #     raise ValueError('Number of arraynames, labels and units must match number of arrays')
+    
+    data=new_data(name=datasetname)
+    
+    for i,array in enumerate(arrays):
+        if i==0:
+            xarray=DataArray(label=labels[i],unit=units[i],array_id=arraynames[i],name=arraynames[i],preset_data=arrays[i],is_setpoint=True)
+            data.add_array(xarray)
+        else:
+            data.add_array(DataArray(label=labels[i],unit=units[i],array_id=arraynames[i],name=arraynames[i],preset_data=arrays[i],set_arrays=(xarray,)))
+
+    station = station or Station.default
+    if station is not None:
+        data.add_metadata({'station': station.snapshot()})
+
+    ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    data.add_metadata({'measurement': {
+        'timestamp': ts,
+    }})
+
+    data.save_metadata()
+    data.finalize()
+
+    return data
+
+def load_data(location=None, formatter=None, io=None, include_metadata=True):
     """
     Load an existing DataSet.
 
@@ -106,10 +162,79 @@ def load_data(location=None, formatter=None, io=None):
                          'which is incompatible with load_data')
 
     data = DataSet(location=location, formatter=formatter, io=io)
-    data.read_metadata()
-    data.read()
+    if include_metadata==True:
+        data.read_metadata()
+        data.read()
+    else:
+        data.read(include_metadata=False)
     return data
 
+def load_data_num(number, datafolder="data", delimiter='_',leadingzeros=3,include_metadata=True):
+    """
+    Loads data in the datafolder using only the data's number.
+
+    Args:
+        number (str or int): the dataset's number
+        datafolder (str, optional): the folder to load from. Default is the
+            current live DataSet.
+            Note that the full path to or physical location of the data is a
+            combination of io + location. the default ``DiskIO`` sets the base
+            directory, which this location is a relative path inside.
+        delimiter (str, optional): The character after the number. Almost always
+            underscore but may be specified if necessary.
+
+    Returns:
+        A new ``DataSet`` object loaded with pre-existing data.
+    """
+    number=str(number).split('_')[0].zfill(leadingzeros) #Split included here to account for a potential fail point in backwards compatibility. 
+                                                #There were cases where the user had to explicitly include the delimiter.
+    datapaths = [glob.glob('{}/#{}{}*/'.format(datafolder,number,delimiter))]
+    if np.shape(datapaths[0])[0]>1:
+        raise ValueError('Multiple data sets found! Check numbering or delimiter.')
+    elif np.shape(datapaths[0])[0]==0:
+        raise ValueError('No dataset found!')
+    else:
+        data = load_data(datapaths[0][0],include_metadata=include_metadata)
+        return data
+
+def load_data_nums(listofnumbers, datafolder="data",delimiter='_',leadingzeros=3,include_metadata=True):
+    """
+    Loads numerous datasets from the datafolder by number alone.
+
+    Args:
+        litsofnumbers (list of strings or ints): list of desired dataset numbers.
+        datafolder (str, optional): the folder to load from. Default is the
+            current live DataSet.
+            Note that the full path to or physical location of the data is a
+            combination of io + location. the default ``DiskIO`` sets the base
+            directory, which this location is a relative path inside.
+        delimiter (str, optional): The character after the number. Almost always
+            underscore but may be specified if necessary.
+
+    Returns:
+        An array containing ``DataSet`` objects loaded with pre-existing data.
+    """
+
+    data=[]
+    for i,number in enumerate(listofnumbers):
+        number=str(number).split('_')[0].zfill(leadingzeros) #Split included here to account for a potential fail point in backwards compatibility. 
+                                                    #There were cases where the user had to explicitly include the delimiter.
+        datapaths = [glob.glob('{}/#{}{}*/'.format(datafolder,number,delimiter))]
+        if np.shape(datapaths[0])[0]>1:
+            raise ValueError('Multiple data sets with number {} found! check numbering or choice of delimiter.'.format(number))
+        elif np.shape(datapaths[0])[0]==0:
+            raise ValueError('No dataset with number {} found! check numbering. '.format(number))
+        else:
+            data.append(load_data(datapaths[0][0],include_metadata=include_metadata))
+
+    return data
+
+def set_data_format(fmt='data/#{counter}_{name}_{date}_{time}'):
+    DataSet.location_provider=FormatLocation(fmt=fmt)
+
+def set_data_folder(folder='data'):
+    fmt=folder+'/#{counter}_{name}_{date}_{time}'
+    DataSet.location_provider=FormatLocation(fmt=fmt)
 
 class DataSet(DelegateAttributes):
 
@@ -167,16 +292,67 @@ class DataSet(DelegateAttributes):
     default_formatter = GNUPlotFormat()
     location_provider = FormatLocation()
 
-    background_functions = OrderedDict()
+    background_functions: Dict[str, Callable] = OrderedDict()
 
     def __init__(self, location=None, arrays=None, formatter=None, io=None,
-                 write_period=5):
+                 write_period=5, backup_location=None,force_write=False,name=None):
         if location is False or isinstance(location, str):
             self.location = location
         else:
             raise ValueError('unrecognized location ' + repr(location))
 
+        if isinstance(backup_location,str):
+            self.backup_location=backup_location
+        elif 'backup_location' in config['core'].keys():
+            self.backup_location=config['core']['backup_location']
+            if os.access(self.backup_location, os.W_OK) is False and os.path.exists(self.backup_location) is False:
+                try:
+                    os.makedirs(self.backup_location)
+                except Exception as e:
+                    log.warning(f'Backup location specified in qcodes.config["core"]["backup_location"] '
+                        'could not be created. Try another location \n {e}')
+            if os.access(self.backup_location, os.W_OK) is False:
+                log.warning('Backup location specified in qcodes.config["core"]["backup_location"] is not writable. '
+                    'Try another location')
+        elif backup_location is None:
+            self.backup_location='C:/Users/'+os.getlogin()+'/AppData/Local/qcodes-elab/data_backup'
+            if os.access(self.backup_location, os.W_OK) is False and os.path.exists(self.backup_location) is False:
+                try:
+                    os.makedirs(self.backup_location)
+                except Exception as e:
+                    log.warning(f'Default backup location {self.backup_location} '
+                        'could not be created. \n {e} '
+                        'This usually is not a problem but you may like to specify/create one. '
+                        'Specify it globally for this session using qcodes.config["core"]["backup_location"]="*your backup location*",'
+                        'or specify it for this DataSet by specifying backup_location="*your backup location*" in e.g. new_data() or get_data_set()')
+                    
+            if os.access(self.backup_location, os.W_OK) is False:
+                log.warning(f'Default backup_location, C:/Users/'+os.getlogin()+'/AppData/Local/qcodes-elab/data_backup cannot be used. '
+                        'This usually is not a problem but you may like to specify one. '
+                        'Specify it globally for this session using qcodes.config["core"]["backup_location"]="*your backup location*",'
+                        'or specify it for this DataSet by specifying backup_location="*your backup location*" in e.g. new_data() or get_data_set()')
+        else:
+            self.backup_location=self.location
+            log.warning('No backup_location specified for saving data. This usually is not a problem but you may like to specify one. '
+                'Specify it globally for this session using qcodes.config["core"]["backup_location"]="*your backup location*",'
+                'or specify it for this DataSet by specifying backup_location="*your backup location*" in e.g. new_data() or get_data_set()')
+
+        self.backup_used=False
+        self.writing_skipped=False
+        self._backup_warning=False
+        self._skipped_warning=False
+
+        self.finalized=False
+
         self.publisher = None
+
+        self.name=name
+
+        if self.name is not None:
+            forbiddenchars=['[',']','<','>',':','\"','/','\\','|','?','*']
+            for char in forbiddenchars:
+                if char in self.name:
+                    raise ValueError(f'{char} cannot be used in a filename on Windows')
 
         # TODO: when you change formatter or io (and there's data present)
         # make it all look unsaved
@@ -186,6 +362,7 @@ class DataSet(DelegateAttributes):
         self.write_period = write_period
         self.last_write = 0
         self.last_store = -1
+        self.force_write=force_write
 
         self.metadata = {}
         self.uuid = uuid4().hex
@@ -199,6 +376,15 @@ class DataSet(DelegateAttributes):
         if self.arrays:
             for array in self.arrays.values():
                 array.init_data()
+
+        if self.name is not None and isinstance(self.formatter,GNUPlotFormat):
+            for group in self.formatter.group_arrays(self.arrays):
+                pathlength=len(self.io.base_location+'/'+self.location+'/'+group.name+self.formatter.extension)
+                if pathlength>246:
+                    loc_record={}
+                    loc_record['name'] = self.name[:-(pathlength-246)]
+                    self.location = self.location_provider(io, record=loc_record)
+                    log.warning('DataSet filename has been automatically shortened to avoid Windows maximum character limit')
 
     def sync(self):
         """
@@ -250,14 +436,14 @@ class DataSet(DelegateAttributes):
         Args:
             delay (float): seconds between iterations. Default 1.5
         """
-        logging.info(
+        log.info(
             'waiting for DataSet <{}> to complete'.format(self.location))
 
         failing = {key: False for key in self.background_functions}
 
         completed = False
         while True:
-            logging.info('DataSet: {:.0f}% complete'.format(
+            log.info('DataSet: {:.0f}% complete'.format(
                 self.fraction_complete() * 100))
 
             # first check if we're done
@@ -268,13 +454,13 @@ class DataSet(DelegateAttributes):
             # because we want things like live plotting to get the final data
             for key, fn in list(self.background_functions.items()):
                 try:
-                    logging.debug('calling {}: {}'.format(key, repr(fn)))
+                    log.debug('calling {}: {}'.format(key, repr(fn)))
                     fn()
                     failing[key] = False
                 except Exception:
-                    logging.info(format_exc())
+                    log.info(format_exc())
                     if failing[key]:
-                        logging.warning(
+                        log.warning(
                             'background function {} failed twice in a row, '
                             'removing it'.format(key))
                         del self.background_functions[key]
@@ -286,7 +472,7 @@ class DataSet(DelegateAttributes):
             # but only sleep if we're not already finished
             time.sleep(delay)
 
-        logging.info('DataSet <{}> is complete'.format(self.location))
+        log.info('DataSet <{}> is complete'.format(self.location))
 
     def get_changes(self, synced_indices):
         """
@@ -329,7 +515,6 @@ class DataSet(DelegateAttributes):
             ValueError: if there is already an array with this id here.
         """
         # TODO: mask self.arrays so you *can't* set it directly?
-
         if data_array.array_id in self.arrays:
             raise ValueError('array_id {} already exists in this '
                              'DataSet'.format(data_array.array_id))
@@ -337,6 +522,23 @@ class DataSet(DelegateAttributes):
 
         # back-reference to the DataSet
         data_array.data_set = self
+
+    def remove_array(self, array_id):
+        """ Remove an array from a dataset
+
+        Throws an exception when the array specified is refereced by other
+        arrays in the dataset.
+
+        Args:
+            array_id (str): array_id of array to be removed
+        """
+        for a in self.arrays:
+            sa = self.arrays[a].set_arrays
+            if array_id in [a.array_id for a in sa]:
+                raise Exception(
+                    'cannot remove array %s as it is referenced by a' % array_id)
+        _ = self.arrays.pop(array_id)
+        self.action_id_map = self._clean_array_ids(self.arrays.values())
 
     def _clean_array_ids(self, arrays):
         """
@@ -371,7 +573,10 @@ class DataSet(DelegateAttributes):
             else:
                 break
         for array, ai in zip(arrays, param_action_indices):
-            array.array_id = name + ''.join('_' + str(i) for i in ai)
+            try:
+                array.array_id = name + ''.join('_' + str(ai[0]))
+            except:
+                array.array_id = name + ''.join('_' + str(i) for i in ai)
 
     def store(self, loop_indices, ids_values):
         """
@@ -389,14 +594,19 @@ class DataSet(DelegateAttributes):
         for array_id, value in ids_values.items():
             self.arrays[array_id][loop_indices] = value
         self.last_store = time.time()
-        if (self.write_period is not None and
-                time.time() > self.last_write + self.write_period):
-            self.write()
-            self.last_write = time.time()
 
         if self.publisher is not None:
             self.publisher.store(loop_indices, ids_values, uuid=self.uuid)
-
+            
+        if (self.write_period is not None and
+                time.time() > self.last_write + self.write_period):
+            log.debug('Attempting to write')
+            self.write()
+            self.last_write = time.time()
+        # The below could be useful but as it writes at every single
+        # step of the loop its too verbose even at debug
+        # else:
+        #     log.debug('.store method: This is not the right time to write')
 
     def default_parameter_name(self, paramname='amplitude'):
         """ Return name of default parameter for plotting
@@ -424,6 +634,9 @@ class DataSet(DelegateAttributes):
 
         # try find something similar
         vv = [v for v in arraynames if v.endswith(paramname)]
+        if (len(vv) > 0):
+            return vv[0]
+        vv = [v for v in arraynames if v.startswith(paramname)]
         if (len(vv) > 0):
             return vv[0]
 
@@ -457,11 +670,11 @@ class DataSet(DelegateAttributes):
         paramname = self.default_parameter_name(paramname=paramname)
         return getattr(self, paramname, None)
 
-    def read(self):
+    def read(self,include_metadata=True):
         """Read the whole DataSet from storage, overwriting the local data."""
         if self.location is False:
             return
-        self.formatter.read(self)
+        self.formatter.read(self,include_metadata)
 
     def read_metadata(self):
         """Read the metadata from storage, overwriting the local data."""
@@ -469,7 +682,7 @@ class DataSet(DelegateAttributes):
             return
         self.formatter.read_metadata(self)
 
-    def write(self, write_metadata=False):
+    def write(self, write_metadata=False, only_complete=True, filename=None, force_rewrite=False):
         """
         Writes updates to the DataSet to storage.
         N.B. it is recommended to call data_set.finalize() when a DataSet is
@@ -477,14 +690,65 @@ class DataSet(DelegateAttributes):
 
         Args:
             write_metadata (bool): write the metadata to disk
+            only_complete (bool): passed on to the match_save_range inside
+                self.formatter.write. Used to ensure that all new data gets
+                saved even when some columns are strange.
+            filename (Optional[str]): The filename (minus extension) to use.
+                The file gets saved in the usual location.
         """
         if self.location is False:
             return
+        # Only the gnuplot formatter has a "filename" kwarg
+        try:
+            if force_rewrite or self._backup_warning or self._skipped_warning:
+                force_rewrite=True
+            else:
+                force_rewrite=False
+            if isinstance(self.formatter, GNUPlotFormat):
+                self.formatter.write(self,
+                                     self.io,
+                                     self.location,
+                                     write_metadata=write_metadata,
+                                     only_complete=only_complete,
+                                     filename=filename,
+                                     force_write=self.force_write,
+                                     force_rewrite=force_rewrite)
+            else:
+                self.formatter.write(self,
+                                     self.io,
+                                     self.location,
+                                     write_metadata=write_metadata,
+                                     only_complete=only_complete)
+            if self._skipped_warning==True or self._backup_warning==True:
+                log.warning(f'{datetime.now().replace(microsecond=0)}: Writing data to primary location resumed')
+                self._skipped_warning=False
+                self._backup_warning=False
+        except Exception as e:
+            log.warning(f'{datetime.now().replace(microsecond=0)}: Data could not be written to primary location: '+str(e))
+            try:
+                if isinstance(self.formatter, GNUPlotFormat):
+                    self.formatter.write(self,
+                                        self.io,
+                                        self.backup_location+f'/{date.today()} #{self.location_provider.counter}/',
+                                        write_metadata=write_metadata,
+                                        only_complete=only_complete,
+                                        filename=filename,
+                                        force_write=self.force_write)
+                else:
+                    self.formatter.write(self,
+                                        self.io,
+                                        self.backup_location+f'/{date.today()} #{self.location_provider.counter}/',
+                                        write_metadata=write_metadata,
+                                        only_complete=only_complete)
+                    
+                self.backup_used=True
+                self._backup_warning=True
+                log.warning(f'{datetime.now().replace(microsecond=0)}: Data written to backup location: {self.backup_location}')
 
-        self.formatter.write(self,
-                             self.io,
-                             self.location,
-                             write_metadata=write_metadata)
+            except Exception as e:
+                log.warning(f'{datetime.now().replace(microsecond=0)}: Data could not be written to backup location: '+str(e))
+                self.writing_skipped=True
+                self._skipped_warning=True
 
     def write_copy(self, path=None, io_manager=None, location=None):
         """
@@ -564,22 +828,33 @@ class DataSet(DelegateAttributes):
             self.snapshot()
             self.formatter.write_metadata(self, self.io, self.location)
 
-    def finalize(self):
+    def finalize(self, filename=None, write_metadata=True, force_rewrite=False):
         """
         Mark the DataSet complete and write any remaining modifications.
 
         Also closes the data file(s), if the ``Formatter`` we're using
         supports that.
+
+        Args:
+            filename (Optional[str]): The file name (minus extension) to
+                write to. The location of the file is the usual one.
+            write_metadata (bool): Whether to save a snapshot. For e.g. dumping
+                raw data inside a loop, a snapshot is not wanted.
         """
-        self.write()
+        log.debug('Finalising the DataSet. Writing.')
+        # write all new data, not only (to?) complete columns
+        self.write(only_complete=False, filename=filename, force_rewrite=force_rewrite)
 
         if hasattr(self.formatter, 'close_file'):
             self.formatter.close_file(self)
 
-        self.save_metadata()
+        if write_metadata:
+            self.save_metadata()
 
         if self.publisher is not None:
             self.publisher.finalize(uuid=self.uuid)
+
+        self.finalized=True
 
     def snapshot(self, update=False):
         """JSON state of the DataSet."""
@@ -647,12 +922,12 @@ class DataSet(DelegateAttributes):
 
         return out
 
-
 class _PrettyPrintDict(dict):
     """
     simple wrapper for a dict to repr its items on separate lines
     with a bit of indentation
     """
+
     def __repr__(self):
         body = '\n  '.join([repr(k) + ': ' + self._indent(repr(v))
                             for k, v in self.items()])

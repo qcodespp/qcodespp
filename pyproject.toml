@@ -7,6 +7,7 @@ build-backend = 'setuptools.build_meta'
 
 [project]
 name = "qcodesplusplus"
+version = '1.0.0'
 maintainers = [{name = "Damon Carrad", email = "damonc@dtu.dk"}]
 description = "Wrapper to provide additional functions for QCoDeS"
 classifiers = [
@@ -41,11 +42,9 @@ dependencies = [
     'tqdm'
 ]
 
-dynamic = ["version"]
-
 [project.readme]
 file = "README.rst"
 content-type = "text/x-rst"
 
 [project.urls]
-Homepage = "https://github.com/djcarrad/qcodes-plusplus"
+Homepage = "https://github.com/djcarrad/qcodesplusplus"

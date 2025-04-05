@@ -53,11 +53,11 @@ import numpy as np
 from tqdm.auto import tqdm
 
 from qcodes.station import Station
-from qcodes.data.data_set import new_data, load_data
-from qcodes.data.data_array import DataArray
-from qcodes.utils.helpers import wait_secs, full_class, tprint
+from qcodesplusplus.data.data_set import new_data, load_data
+from qcodesplusplus.data.data_array import DataArray
+from qcodes.utils.helpers import full_class
 from qcodes.utils.metadata import Metadatable
-from qcodes.instrument.parameter import MultiParameter
+from qcodes.parameters import MultiParameter
 
 from .actions import (_actions_snapshot, Task, Wait, _Measure, _Nest,
                       BreakIf, _QcodesBreak)
@@ -66,12 +66,24 @@ from .actions import (_actions_snapshot, Task, Wait, _Measure, _Nest,
 log = logging.getLogger(__name__)
 
 
-def param_move(param_name,end_value,steps=101,step_time=0.03):
-    start_value = param_name()
-    for i in range(0,steps):
-        param_name(start_value + (end_value - start_value)/(steps-1) * i)
-        time.sleep(step_time)
-    param_name(end_value)
+def wait_secs(finish_clock):
+    """
+    calculate the number of seconds until a given clock time
+    The clock time should be the result of time.perf_counter()
+    Does NOT wait for this time.
+    """
+    delay = finish_clock - time.perf_counter()
+    if delay < 0:
+        logging.warning('negative delay {:.6f} sec'.format(delay))
+        return 0
+    return delay
+
+def tprint(string, dt=1, tag='default'):
+    """ Print progress of a loop every dt seconds """
+    ptime = _tprint_times.get(tag, 0)
+    if (time.time() - ptime) > dt:
+        print(string)
+        _tprint_times[tag] = time.time()
 
 def active_loop():
     return ActiveLoop.active_loop
@@ -467,7 +479,7 @@ class ActiveLoop(Metadatable):
         
         else:    
             loop_array = DataArray(parameter=self.sweep_values.parameter,
-                               is_setpoint=True,data_type=self.sweep_values.parameter.data_type)
+                               is_setpoint=True,data_type=float)#,data_type=self.sweep_values.parameter.data_type)
         loop_array.nest(size=loop_size)
 
         data_arrays = [loop_array]
@@ -574,7 +586,7 @@ class ActiveLoop(Metadatable):
 
             out.append(DataArray(name=name, full_name=full_name, label=label,
                                  shape=shape, action_indices=i, unit=unit,
-                                 set_arrays=setpoints, parameter=action, data_type=action.data_type))
+                                 set_arrays=setpoints, parameter=action,data_type=float))#, data_type=action.data_type))
         return out
 
     def _fill_blank(self, inputs, blanks):

@@ -1,8 +1,8 @@
 from datetime import datetime
 
-from qcodes.instrument.parameter import Parameter
-from qcodes.loops import Loop
-from qcodes.actions import _actions_snapshot
+from qcodesplusplus.parameters import Parameter
+from qcodesplusplus.loops import Loop
+from qcodesplusplus.actions import _actions_snapshot
 from qcodes.utils.helpers import full_class
 from qcodes.utils.metadata import Metadatable
 

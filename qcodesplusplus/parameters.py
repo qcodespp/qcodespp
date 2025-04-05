@@ -140,7 +140,7 @@ class MultiParameterWrapper(MultiParameter):
             labels.append(param.label)
             units.append(param.unit)
 
-        super().__init__(name=name, names=tuple(names),shapes=tuple(shapes),unit='')
+        super().__init__(name=name, names=tuple(names),shapes=tuple(shapes))
 
         self.labels=tuple(labels)
         self.units=tuple(units)
