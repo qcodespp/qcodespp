@@ -1,0 +1,51 @@
+[build-system]
+requires = [
+    "setuptools >= 68.1.0",
+    "versioningit >= 2.2.1",
+]
+build-backend = 'setuptools.build_meta'
+
+[project]
+name = "qcodesplusplus"
+maintainers = [{name = "Damon Carrad", email = "damonc@dtu.dk"}]
+description = "Wrapper to provide additional functions for QCoDeS"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+]
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [ 
+    "qcodes",
+    'numpy>=1.10',
+    'pyqtgraph',
+    'matplotlib',
+    'PyQt5',
+    'ipykernel',
+    'jupyter',
+    'pyvisa',
+    'h5py>=2.6',
+    'websockets>=3.2',
+    'jsonschema',
+    'pyzmq',
+    'wrapt',
+    'pyserial',
+    'pandas',
+    'tqdm'
+]
+
+dynamic = ["version"]
+
+[project.readme]
+file = "README.rst"
+content-type = "text/x-rst"
+
+[project.urls]
+Homepage = "https://github.com/djcarrad/qcodes-plusplus"
