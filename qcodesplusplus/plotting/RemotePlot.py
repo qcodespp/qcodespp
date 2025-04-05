@@ -5,13 +5,10 @@ import os
 import numpy as np
 import zmq
 import json
-import time
 from uuid import uuid4
 
 from qcodesplusplus.data.data_array import DataArray
 from qcodesplusplus.utils.helpers import NumpyJSONEncoder
-
-
 
 class ControlListener(threading.Thread):
     """
@@ -284,14 +281,14 @@ class Plot():
         Both ``__init__`` (for the first trace) and the ``add`` method support multiple
         ways to specify the data in the trace:
 
-        As \*args:
+        As args:
             - ``add(y)`` or ``add(z)`` specify just the main 1D or 2D data, with the setpoint
               axis or axes implied.
             - ``add(x, y)`` or ``add(x, y, z)`` specify all axes of the data.
-        And as \*\*kwargs:
+        And as kwargs:
             - ``add(x=x, y=y, z=z)`` you specify exactly the data you want on each axis.
               Any but the last (y or z) can be omitted, which allows for all of the same
-              forms as with \*args, plus x and z or y and z, with just one axis implied from
+              forms as with args, plus x and z or y and z, with just one axis implied from
               the setpoints of the z data.
 
         This method takes any of those forms and converts them into a complete set of

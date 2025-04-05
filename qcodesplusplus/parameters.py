@@ -1,7 +1,5 @@
 import time
 
-from typing import Union, Any
-
 import numpy
 
 from qcodes.parameters import (
@@ -10,10 +8,6 @@ from qcodes.parameters import (
     Parameter,
     SweepFixedValues,
 )
-
-Number = Union[float, int]
-
-ParamRawDataType = Any
 
 def move(self,end_value,steps=101,step_time=0.03):
     start_value = self.get()
@@ -88,6 +82,18 @@ def returnsweep(self, start, stop, step=None, num=None):
     if self.get()!=start:
         print('Are you sure? Start value for {}.sweep is {} {} but {}()={} {}'.format(self.name,start,self.unit,self.name,self.get(),self.unit))
     return SweepFixedValues(self, setpoints)
+
+def set_data_type(self,data_type=float):
+    """
+    Set the data type of the parameter.
+    Args:
+        data_type : The data type of the parameter. Can be 'float' or 'str'.
+    """
+    if data_type != float:
+        if data_type != str:
+            raise ValueError('Parameter data_type must be either float or str')
+    else:
+        self.data_type=data_type
 
 Parameter.move=move
 Parameter.sweep=sweep

@@ -110,3 +110,11 @@ License
 =======
 
 See `License <https://github.com/QCoDeS/Qcodes/tree/master/LICENSE.rst>`__.
+
+Differences from qcodes-elab
+==================================================
+
+Data_type cannot be declared to parameter on init. 
+It has to be declared after by parameter.data_type=float or parameter.data_type=str
+
+

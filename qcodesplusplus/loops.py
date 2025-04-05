@@ -459,9 +459,17 @@ class ActiveLoop(Metadatable):
                 loop_array = DataArray(parameter=self.sweep_values.parameter,
                                is_setpoint=True,name=self.sweep_values.parameter.name+'_index',unit='')
         
-        else:    
+        else:
+            if hasattr(self.sweep_values.parameter, 'data_type'):
+                data_type = self.sweep_values.parameter.data_type
+                if data_type != float:
+                    if data_type != str:
+                        raise ValueError('Parameter data_type must be either float or str')
+            else:
+                data_type=float
             loop_array = DataArray(parameter=self.sweep_values.parameter,
-                               is_setpoint=True,data_type=float)#,data_type=self.sweep_values.parameter.data_type)
+                               is_setpoint=True,data_type=data_type)
+            
         loop_array.nest(size=loop_size)
 
         data_arrays = [loop_array]
@@ -563,12 +571,19 @@ class ActiveLoop(Metadatable):
                     all_setpoints[sp_def] = self._make_setpoint_array(*sp_def)
                     out.append(all_setpoints[sp_def])
                 setpoints = setpoints + (all_setpoints[sp_def],)
+            if hasattr(action,'data_type'):
+                data_type = action.data_type
+                if data_type != float:
+                    if data_type != str:
+                        raise ValueError('Parameter data_type must be either float or str')
+            else:
+                data_type=float
 
             # finally, make the output data array with these setpoints
 
             out.append(DataArray(name=name, full_name=full_name, label=label,
                                  shape=shape, action_indices=i, unit=unit,
-                                 set_arrays=setpoints, parameter=action,data_type=float))#, data_type=action.data_type))
+                                 set_arrays=setpoints, parameter=action,data_type=data_type))
         return out
 
     def _fill_blank(self, inputs, blanks):
