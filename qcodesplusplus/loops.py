@@ -52,10 +52,11 @@ import time
 import numpy as np
 from tqdm.auto import tqdm
 
-from qcodes.station import Station
+from qcodesplusplus.station import Station
 from qcodesplusplus.data.data_set import new_data, load_data
 from qcodesplusplus.data.data_array import DataArray
 from qcodes.utils.helpers import full_class
+from qcodesplusplus.utils.helpers import wait_secs, tprint
 from qcodes.utils.metadata import Metadatable
 from qcodes.parameters import MultiParameter
 
@@ -65,25 +66,6 @@ from .actions import (_actions_snapshot, Task, Wait, _Measure, _Nest,
 
 log = logging.getLogger(__name__)
 
-
-def wait_secs(finish_clock):
-    """
-    calculate the number of seconds until a given clock time
-    The clock time should be the result of time.perf_counter()
-    Does NOT wait for this time.
-    """
-    delay = finish_clock - time.perf_counter()
-    if delay < 0:
-        logging.warning('negative delay {:.6f} sec'.format(delay))
-        return 0
-    return delay
-
-def tprint(string, dt=1, tag='default'):
-    """ Print progress of a loop every dt seconds """
-    ptime = _tprint_times.get(tag, 0)
-    if (time.time() - ptime) > dt:
-        print(string)
-        _tprint_times[tag] = time.time()
 
 def active_loop():
     return ActiveLoop.active_loop

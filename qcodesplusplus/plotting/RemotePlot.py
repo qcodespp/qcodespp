@@ -9,7 +9,7 @@ import time
 from uuid import uuid4
 
 from qcodesplusplus.data.data_array import DataArray
-from qcodes.utils.helpers import NumpyJSONEncoder
+from qcodesplusplus.utils.helpers import NumpyJSONEncoder
 
 
 
