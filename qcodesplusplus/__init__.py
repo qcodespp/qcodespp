@@ -1,8 +1,8 @@
 from qcodes.configuration import Config
 config = Config() # type: Config
 
-from qcodes import *
 # import all top-level modules from qcodes. We will add new modules, and overwrite a handful.
+from qcodes import *
 from qcodes.parameters import ElapsedTimeParameter
 
 # new modules not included in qcodes
