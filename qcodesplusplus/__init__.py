@@ -2,8 +2,10 @@ from qcodes.configuration import Config
 config = Config() # type: Config
 
 from qcodes import *
+# import all top-level modules from qcodes. We will add new modules, and overwrite a handful.
 from qcodes.parameters import ElapsedTimeParameter
 
+# new modules not included in qcodes
 from .version import __version__
 
 from .loops import Loop, active_loop, active_data_set
@@ -19,9 +21,12 @@ from .data.gnuplot_format import GNUPlotFormat
 from .data.hdf5_format import HDF5Format
 from .data.io import DiskIO
 
-from .parameters import Parameter,MultiParameterWrapper, ArrayParameterWrapper
-
 from .utils.visa_helpers import listVISAinstruments
+
+from .parameters import MultiParameterWrapper, ArrayParameterWrapper
+
+# modules that will be overwritten.
+from .parameters import Parameter
 
 from .station import Station
 

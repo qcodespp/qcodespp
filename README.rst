@@ -7,13 +7,13 @@ It contains a huge range of drivers for communicating with instruments,
 and a very flexible database-based method for collecting data.
 See https://qcodes.github.io/ for more info.
 
-This package, qcodes++ (aka qcodes-plusplus or qcpp), is designed to 
+This package, qcodes++ (aka qcodesplusplus or qcpp), is designed to 
 make using qcodes as user friendly as possible. Qcodes++ rests on the
 text-based data set and easy definition of loops once used in qcodes.
-It also has truly live plotting and introduces new features to streamline
+It also has excellent live plotting and introduces new features to streamline
 data acquisition. All features of qcodes are preserved in a qcodes++ environment,
 since qcodes++ wraps around qcodes and requires the latest version of qcodes
-to function; 
+to function.
 
 QCoDeS and qcodes++ are compatible with Python 3.5+. It is primarily intended for use
 from Jupyter notebooks and jupyter lab, but can also be used from Spyder, traditional terminal-based
@@ -21,7 +21,7 @@ shells and in stand-alone scripts.
 
 Docs
 ====
-Check out the wiki https://github.com/djcarrad/qcodes-plusplus/wiki for an introduction. The 
+Check out the wiki https://github.com/djcarrad/qcodesplusplus/wiki for an introduction. The 
 accompanying jupyter notebooks are under 'tutorials'. As of yet, there is no separate, comprehensive
 documentation; this is high on the to-do list. However, all the code is quite well self-documented and 
 everything is open source. If you need to know which arguments a function takes, or which capabilities 
@@ -40,9 +40,9 @@ Git is versioning software that allows multiple developers to contribute to piec
 
 	cd C:/git
 
-	git clone https://github.com/djcarrad/qcodes-plusplus.git qcodes-plusplus
+	git clone https://github.com/djcarrad/qcodesplusplus.git
 
-'cloning' the repository effectively downloads the latest version of the software, and tells git to keep track of changes you might make to it. If you prefer to use the git gui, use Source Location: https://github.com/djcarrad/qcodes-elab.git and Target Directory: C:/git/qcodes-elab (or the directory of your choice)
+'cloning' the repository effectively downloads the latest version of the software, and tells git to keep track of changes you might make to it. If you prefer to use the git gui, use Source Location: https://github.com/djcarrad/qcodesplusplus.git and Target Directory: C:/git/qcodesplusplus (or the directory of your choice)
 
 - Now open the Anaconda prompt and type:
 
@@ -52,9 +52,9 @@ Git is versioning software that allows multiple developers to contribute to piec
 	
 	pip install –e *path to repository* qcodes
 
-	(for example: pip install -e C:/git/qcodes-plusplus qcodes-plusplus)
+	(for example: pip install -e C:/git/qcodesplusplus)
 
-This does a couple of things; it creates an 'environment' that is effectively a separate python installation. qcodes requires that some packages are not updated to the latest version. Running qcodes in its own environment means your 'base' python installation can remain completely up-to-date, and that qcodes can run smoothly. Calling 'activate qcodes' puts you in the qcodes environment. You can 'deactivate qcodes' if you want to return to the base environment. The *path to repository* is usually just 'C:/git/qcodes-elab'
+This does a couple of things; it creates an 'environment' that is effectively a separate python installation. qcodes requires that some packages are not updated to the latest version. Running qcodes in its own environment means your 'base' python installation can remain completely up-to-date, and that qcodes can run smoothly. Calling 'activate qcodes' puts you in the qcodes environment. You can 'deactivate qcodes' if you want to return to the base environment. The *path to repository* is usually just 'C:/git/qcodesplusplus'
 
 - Optionally install useful packages from the anaconda prompt:
 
@@ -84,17 +84,10 @@ https://www.ni.com/en/support/downloads/drivers/download.ni-488-2.html
 	
 Updating
 --------
-Open git bash, navigate to the install folder (usually cd C:/git/qcodes-plusplus), and use 
+Open git bash, navigate to the install folder (usually cd C:/git/qcodesplusplus), and use 
 
 	git pull
 
-Sometimes, git complains that you cannot pull due to non-committed changes. This can happen even though you have not changed anything, since some files in qcodes automatically backup/change but in totally unimportant ways. You can
-
-	git fetch --all
-
-	git reset --hard origin/master
-
-This _should_ now be fixed. If you encounter this error, please let me know.
 
 Status
 ======
