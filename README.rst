@@ -13,10 +13,8 @@ text-based data set and easy definition of loops once used in qcodes.
 It also has far superior live plotting and introduces other features to streamline
 data acquisition. qcodes++ is recommended when user friendliness is paramount.
 
-
-All features of qcodes are preserved in a qcodes++ environment,
-since qcodes++ wraps around qcodes and requires the latest version of qcodes
-to function.
+All features of qcodes are preserved in a qcodes++ installation. Even those
+features that qcodes++ does not rely on can be used seamlessly alongside.
 
 QCoDeS and qcodes++ are compatible with Python 3.5+. It is primarily intended for use
 from Jupyter notebooks and jupyter lab, but can also be used from Spyder, traditional terminal-based
