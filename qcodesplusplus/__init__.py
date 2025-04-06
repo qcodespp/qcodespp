@@ -21,6 +21,8 @@ from .data.io import DiskIO
 
 from .parameters import Parameter,MultiParameterWrapper, ArrayParameterWrapper
 
+from .utils.visa_helpers import listVISAinstruments
+
 from .station import Station
 
 # ensure to close all instruments when interpreter is closed

@@ -114,9 +114,6 @@ class ArrayParameterWrapper(ArrayParameter):
 
     def __init__(self, name=None, label=None,unit=None, instrument=None, shape=None, get_cmd=None):
 
-        self.name=name
-        self.label=label
-        self.unit=unit
         if get_cmd is not None:
             self.get_raw=get_cmd
         if shape is None and get_cmd is not None:
