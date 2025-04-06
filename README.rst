@@ -4,14 +4,17 @@ qcodes++
 QCoDeS is a Python-based data acquisition framework developed by the
 Copenhagen / Delft / Sydney / Microsoft quantum computing consortium.
 It contains a huge range of drivers for communicating with instruments,
-and a very flexible database-based method for collecting data.
+and a flexible - but complex - database-based method for collecting data.
 See https://qcodes.github.io/ for more info.
 
 This package, qcodes++ (aka qcodesplusplus or qcpp), is designed to 
-make using qcodes as user friendly as possible. Qcodes++ rests on the
+make using qcodes as user friendly as possible. Qcodes++ uses the simple
 text-based data set and easy definition of loops once used in qcodes.
-It also has excellent live plotting and introduces new features to streamline
-data acquisition. All features of qcodes are preserved in a qcodes++ environment,
+It also has far superior live plotting and introduces other features to streamline
+data acquisition. qcodes++ is recommended when user friendliness is paramount.
+
+
+All features of qcodes are preserved in a qcodes++ environment,
 since qcodes++ wraps around qcodes and requires the latest version of qcodes
 to function.
 
