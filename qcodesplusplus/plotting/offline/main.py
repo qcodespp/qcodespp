@@ -136,7 +136,7 @@ FONT_SIZES = ['8', '9', '10', '12', '14', '16', '18', '24']
 SETTINGS_MENU_OPTIONS = OrderedDict()
 SETTINGS_MENU_OPTIONS['title'] = [' ','<label>']
 SETTINGS_MENU_OPTIONS['xlabel'] = ['Gate voltage (V)', 
-                                   '$V_{\mathrm{g}}$ (V)',
+                                   '$V_g$ (V)',
                                    'Bias voltage (mV)', 
                                    '$V$ (mV)',
                                    'Magnetic Field (T)', 
@@ -145,7 +145,7 @@ SETTINGS_MENU_OPTIONS['xlabel'] = ['Gate voltage (V)',
 SETTINGS_MENU_OPTIONS['ylabel'] = ['Bias voltage (mV)', 
                                    '$V$ (mV)', 
                                    'Gate voltage (V)', 
-                                   '$V_{\mathrm{g}}$ (V)', 
+                                   '$V_g$ (V)', 
                                    'd$I$/d$V$ (μS)', 
                                    'd$I$/d$V$ $(e^{2}/h)$',
                                    '(d$I$/d$V$ $(e^{2}/h)$)$^{1/4}$',
@@ -1100,7 +1100,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if new_folder:
             self.linked_folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory")
         if self.linked_folder:
-            self.window_title = f'Inspectra Gadget - Linked to folder {self.linked_folder}'
+            self.window_title = f'InSpectra Gadget - Linked to folder {self.linked_folder}'
             self.setWindowTitle(self.window_title+self.window_title_auto_refresh)
             new_files = []
             for subdir, dirs, files in os.walk(self.linked_folder):
@@ -1127,7 +1127,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def unlink_folder(self):
         if self.linked_folder:
             self.linked_folder = None
-            self.window_title = 'Inspectra Gadget'
+            self.window_title = 'InSpectra Gadget'
             self.setWindowTitle(self.window_title+
                                 self.window_title_auto_refresh)
         
@@ -2780,3 +2780,9 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+import threading
+
+def offline_plotting():
+    plot_thread = threading.Thread(target = main)
+    plot_thread.start()

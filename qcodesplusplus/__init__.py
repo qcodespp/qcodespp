@@ -13,7 +13,7 @@ from .measure import Measure
 from .actions import Task, Wait, BreakIf
 
 from .plotting.RemotePlot import Plot
-from .plotting.offline.main import main as offline_plotting
+from .plotting.offline.main import offline_plotting
 
 from .data.data_set import DataSet, new_data, load_data, load_data_num, load_data_nums, set_data_format, set_data_folder
 from .data.location import FormatLocation
