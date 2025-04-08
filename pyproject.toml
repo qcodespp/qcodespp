@@ -39,7 +39,9 @@ dependencies = [
     'wrapt',
     'pyserial',
     'pandas',
-    'tqdm'
+    'tqdm',
+    'scipy',
+    'lmfit'
 ]
 
 [project.readme]
