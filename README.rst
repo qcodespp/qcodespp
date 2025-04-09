@@ -13,7 +13,7 @@ frontend to the solid backend of qcodes. If you have always wanted to run
 your measurements using python but found qcodes too daunting, qcodes++ is 
 the package for you. Qcodes++ features
 
-- a text-based data set (i.e. readable by notepad or excel)
+- text-based data (i.e. readable by e.g. notepad, excel, origin pro, etc)
 
 - a simple yet powerful method for taking data and running measurement loops
 
