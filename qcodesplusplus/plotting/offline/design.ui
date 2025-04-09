@@ -515,11 +515,82 @@
        <layout class="QGridLayout" name="graph_layout"/>
       </item>
       <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <item>
+         <spacer name="horizontalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>x-axis:</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
        <layout class="QGridLayout" name="view_layout" rowstretch="0">
-        <item row="0" column="3">
+        <item row="0" column="18">
+         <widget class="QPushButton" name="paste_view_button">
+          <property name="text">
+           <string>Paste</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="19">
          <widget class="QPushButton" name="reset_limits_button">
           <property name="text">
            <string>Reset</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="14">
+         <widget class="QComboBox" name="colormap_type_box">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="sizeAdjustPolicy">
+           <enum>QComboBox::AdjustToContentsOnFirstShow</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="7">
+         <widget class="QCheckBox" name="mid_checkbox">
+          <property name="text">
+           <string>Mid</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="13">
+         <widget class="QCheckBox" name="lock_checkbox">
+          <property name="text">
+           <string>Lock</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="11">
+         <widget class="QLabel" name="max_label">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>Max</string>
           </property>
          </widget>
         </item>
@@ -536,16 +607,10 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="11">
-         <widget class="QLabel" name="max_label">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
+        <item row="0" column="16">
+         <widget class="QCheckBox" name="reverse_colors_box">
           <property name="text">
-           <string>Max</string>
+           <string>Reverse</string>
           </property>
          </widget>
         </item>
@@ -606,12 +671,18 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="16">
-         <widget class="QCheckBox" name="reverse_colors_box">
-          <property name="text">
-           <string>Reverse</string>
+        <item row="0" column="0">
+         <spacer name="horizontal_spacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
           </property>
-         </widget>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
         </item>
         <item row="0" column="5" colspan="2">
          <widget class="QLineEdit" name="min_line_edit">
@@ -638,57 +709,17 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="0">
-         <spacer name="horizontal_spacer">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item row="0" column="13">
-         <widget class="QCheckBox" name="lock_checkbox">
+        <item row="0" column="17">
+         <widget class="QPushButton" name="copy_view_button">
           <property name="text">
-           <string>Lock</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="14">
-         <widget class="QComboBox" name="colormap_type_box">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="sizeAdjustPolicy">
-           <enum>QComboBox::AdjustToContentsOnFirstShow</enum>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="7">
-         <widget class="QCheckBox" name="mid_checkbox">
-          <property name="text">
-           <string>Mid</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="2">
-         <widget class="QPushButton" name="paste_view_button">
-          <property name="text">
-           <string>Paste</string>
+           <string>Copy</string>
           </property>
          </widget>
         </item>
         <item row="0" column="1">
-         <widget class="QPushButton" name="copy_view_button">
+         <widget class="QLabel" name="label">
           <property name="text">
-           <string>Copy</string>
+           <string>Colorbar:</string>
           </property>
          </widget>
         </item>
@@ -704,25 +735,17 @@
      <x>0</x>
      <y>0</y>
      <width>1400</width>
-     <height>26</height>
+     <height>18</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_save_session">
     <property name="title">
-     <string>Save Session</string>
+     <string>Export Data</string>
     </property>
     <addaction name="action_current_file"/>
     <addaction name="action_all_files"/>
     <addaction name="action_checked_files"/>
     <addaction name="action_filters"/>
-   </widget>
-   <widget class="QMenu" name="menu_open_folder">
-    <property name="title">
-     <string>Batch Actions</string>
-    </property>
-    <addaction name="action_open_files_from_folder"/>
-    <addaction name="action_save_files_as_PNG"/>
-    <addaction name="action_save_files_as_PDF"/>
    </widget>
    <widget class="QMenu" name="menu_apply_preset">
     <property name="title">
@@ -733,13 +756,6 @@
     <addaction name="action_preset_2"/>
     <addaction name="action_preset_3"/>
    </widget>
-   <widget class="QMenu" name="menuLink">
-    <property name="title">
-     <string>Link Data</string>
-    </property>
-    <addaction name="action_link_to_folder"/>
-    <addaction name="action_unlink_folder"/>
-   </widget>
    <widget class="QMenu" name="menuCombine_Plots">
     <property name="title">
      <string>Plot Actions</string>
@@ -748,11 +764,23 @@
     <addaction name="action_duplicate_file"/>
     <addaction name="action_save_data_selected_file"/>
    </widget>
-   <addaction name="menu_save_session"/>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionOpen_File_2"/>
+    <addaction name="action_open_files_from_folder"/>
+    <addaction name="separator"/>
+    <addaction name="action_link_to_folder"/>
+    <addaction name="action_unlink_folder"/>
+    <addaction name="separator"/>
+    <addaction name="action_save_files_as_PDF"/>
+    <addaction name="action_save_files_as_PNG"/>
+   </widget>
+   <addaction name="menuFile"/>
    <addaction name="menuCombine_Plots"/>
-   <addaction name="menu_open_folder"/>
+   <addaction name="menu_save_session"/>
    <addaction name="menu_apply_preset"/>
-   <addaction name="menuLink"/>
   </widget>
   <action name="actionNew">
    <property name="text">
@@ -906,7 +934,7 @@
   </action>
   <action name="action_open_files_from_folder">
    <property name="text">
-    <string>Open Files From Folder...</string>
+    <string>Open Folder</string>
    </property>
   </action>
   <action name="action_save_files_as_PNG">
@@ -972,6 +1000,11 @@
   <action name="action_save_data_selected_file">
    <property name="text">
     <string>Save Data Selected File...</string>
+   </property>
+  </action>
+  <action name="actionOpen_File_2">
+   <property name="text">
+    <string>Open File</string>
    </property>
   </action>
  </widget>

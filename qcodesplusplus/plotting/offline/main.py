@@ -46,7 +46,7 @@ except ModuleNotFoundError:
 
 from qcodes import initialise_or_create_database_at, load_last_experiment
 
-import qcodesplusplus.plotting.offline.design as design
+import qcodesplusplus.plotting.offline.designV2 as design
 import qcodesplusplus.plotting.offline.filters as filters
 import qcodesplusplus.plotting.offline.fits as fits
 
