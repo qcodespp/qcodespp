@@ -21,8 +21,7 @@ the package for you. Qcodes++ features
 
 - powerful offline plotting
 
-- Improvements to core qcodes functions (such as the Station) to streamline
-data acquisition, protect (meta)data integtrity and minimise user error
+- Improvements to core qcodes functions (such as the Station) to streamline data acquisition, protect (meta)data integtrity and minimise user error
 
 - Improved drivers for certain instruments
 
