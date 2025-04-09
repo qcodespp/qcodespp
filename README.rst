@@ -29,7 +29,7 @@ the package for you. Qcodes++ features
 
 All features of qcodes are preserved in a qcodes++ installation. Even those
 features that qcodes++ does not rely on can be used seamlessly within the same
-notebook/environment.
+notebook/environment. This means you lose nothing by installing qcodes++ ontop of qcodes.
 
 QCoDeS and qcodes++ are compatible with Python 3.5+. It is primarily intended for use
 from Jupyter notebooks and jupyter lab, but can also be used from Spyder, traditional terminal-based
