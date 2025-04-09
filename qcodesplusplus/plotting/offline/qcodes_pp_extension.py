@@ -11,15 +11,17 @@ class qcodesppData(main.BaseClassData):
     def __init__(self, filepath, canvas, metapath):
         super().__init__(filepath, canvas)
         # Open meta file and set label
+        self.filepath = filepath
         with open(metapath) as f:
             self.meta = json.load(f)
         dirname = os.path.basename(os.path.dirname(metapath))
         if '.dat' in filepath:
-            filepath=os.path.dirname(filepath)
+            self.dataset=load_data(os.path.dirname(filepath))
+        else:
+            self.dataset=load_data(filepath)
         # timestamp = self.meta['timestamp'].split(' ')[1]
 
         self.label = f'{dirname}'
-        self.dataset = load_data(filepath)
         # self.raw_data = None
         
 

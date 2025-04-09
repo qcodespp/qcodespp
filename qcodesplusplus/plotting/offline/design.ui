@@ -151,7 +151,7 @@
          </sizepolicy>
         </property>
         <property name="title">
-         <string>Settings Selected File</string>
+         <string>Settings for Selected File</string>
         </property>
         <layout class="QGridLayout" name="gridLayout_4">
          <item row="0" column="0">
