@@ -4,7 +4,7 @@ Inspectra-Gadget
 
 Author: Joeri de Bruijckere
 
-Last updated on Dec 8 2020
+Adapted for qcodes++ by: Dags Olsteins and Damon Carrad
 
 """
 
@@ -418,6 +418,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     raise
         self.show_current_all()
         self.canvas.draw()
+        self.figure.tight_layout()
         if hasattr(self, 'live_track_item') and self.live_track_item:
             if (self.live_track_item.checkState() and 
                 self.track_button.text() == 'Stop' and 
@@ -1052,17 +1053,27 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for file in files:
                 filename, file_extension = os.path.splitext(file)
                 if file_extension == '.dat':
-                    filepath = os.path.join(subdir, file)
-                    try: # on Windows
-                        st_ctime = os.path.getctime(filepath)
-                    except Exception:
-                        try: # on Mac
-                            st_ctime = os.stat(filepath).st_birthtime
-                        except Exception as e:
-                            print(e)
-                    filepaths.append((st_ctime,filepath))
-        filepaths.sort(key=lambda tup: tup[0])
+                    already_loaded=self.check_already_loaded(subdir,[file[1] for file in filepaths])
+                    if not already_loaded:
+                        filepath = os.path.join(subdir, file)
+                        try: # on Windows
+                            st_ctime = os.path.getctime(filepath)
+                        except Exception:
+                            try: # on Mac
+                                st_ctime = os.stat(filepath).st_birthtime
+                            except Exception as e:
+                                print(e)
+                        filepaths.append((st_ctime,filepath,subdir))
+        if not os.path.split(filepaths[0][2])[1].startswith('#'): #If it's qcodespp data, it's already sorted. If not, sort by time
+            filepaths.sort(key=lambda tup: tup[0])
         self.open_files([file[1] for file in filepaths])
+    
+    def check_already_loaded(self, subdir, filepaths):
+        loaded=False
+        for filepath in filepaths:
+            if subdir in filepath:
+                loaded=True
+        return loaded
         
     def save_images_as(self, extension='.png'):
         save_folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory")
@@ -1107,18 +1118,21 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 for file in files:
                     filename, file_extension = os.path.splitext(file)
                     if file_extension == '.dat':
-                        filepath = os.path.join(subdir, file)
-                        if filepath not in self.linked_files:
-                            try: # on Windows
-                                st_ctime = os.path.getctime(filepath)
-                            except Exception:
-                                try: # on Mac
-                                    st_ctime = os.stat(filepath).st_birthtime
-                                except Exception as e:
-                                    print(e)
-                            new_files.append((st_ctime,filepath))
+                        already_loaded=self.check_already_loaded(subdir,[file[1] for file in new_files])
+                        if not already_loaded:
+                            filepath = os.path.join(subdir, file)
+                            if filepath not in self.linked_files:
+                                try: # on Windows
+                                    st_ctime = os.path.getctime(filepath)
+                                except Exception:
+                                    try: # on Mac
+                                        st_ctime = os.stat(filepath).st_birthtime
+                                    except Exception as e:
+                                        print(e)
+                                new_files.append((st_ctime,filepath,subdir))
             if new_files:
-                new_files.sort(key=lambda tup: tup[0])
+                if not os.path.split(new_files[0][2])[1].startswith('#'): #If it's qcodespp data, it's already sorted. If not, sort by time
+                    new_files.sort(key=lambda tup: tup[0])
                 new_filepaths = [new_file[1] for new_file in new_files]
                 self.open_files(new_filepaths)
                 for new_filepath in new_filepaths:
