@@ -62,6 +62,7 @@ class qcodesppData(main.BaseClassData):
         #self.dataset_id = "#" + self.dataset.location.split("#", 1)[1].split("_", 1)[0]
         self.dataset_id = "#" + dirname.split("#", 1)[1].split("_", 1)[0]
         self.settings["title"] = self.dataset_id
+        self.DEFAULT_PLOT_SETTINGS['title']= self.dataset_id
     
 
 
@@ -100,7 +101,8 @@ class qcodesppData(main.BaseClassData):
 
             self.settings["xlabel"] = "{} ({})".format(self.independent_parameters[0]["label"], self.independent_parameters[0]["unit"])
             self.settings["ylabel"] = "{} ({})".format(self.dependent_parameters[self.index_dependent_parameter]["label"], self.dependent_parameters[self.index_dependent_parameter]["unit"])
-
+            self.DEFAULT_PLOT_SETTINGS["xlabel"] = self.settings["xlabel"]
+            self.DEFAULT_PLOT_SETTINGS["ylabel"] = self.settings["ylabel"]
         elif len(self.independent_parameters) > 1: # data is 3D
            
             column_data = np.column_stack((self.data_dict[self.all_parameters[self.index_x]["array_id"]].flatten(),
@@ -111,7 +113,10 @@ class qcodesppData(main.BaseClassData):
             self.settings["xlabel"] = "{} ({})".format(self.all_parameters[self.index_x]["label"], self.independent_parameters[0]["unit"])
             self.settings["ylabel"] = "{} ({})".format(self.all_parameters[self.index_y]["label"], self.independent_parameters[1]["unit"])
             self.settings["clabel"] = "{} ({})".format(self.dependent_parameters[self.index_dependent_parameter]["label"], self.dependent_parameters[self.index_dependent_parameter]["unit"])
-            
+            self.DEFAULT_PLOT_SETTINGS["xlabel"] = self.settings["xlabel"]
+            self.DEFAULT_PLOT_SETTINGS["ylabel"] = self.settings["ylabel"]
+            self.DEFAULT_PLOT_SETTINGS["clabel"] = self.settings["clabel"]
+
             # # Delete unfinished rows to enable plotting
             if not self.isFinished():
                 self.finished_dimensions()

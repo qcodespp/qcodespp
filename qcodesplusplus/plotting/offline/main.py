@@ -51,7 +51,7 @@ from qcodes import initialise_or_create_database_at, load_last_experiment
 import qcodesplusplus.plotting.offline.designV2 as design
 import qcodesplusplus.plotting.offline.filters as filters
 import qcodesplusplus.plotting.offline.fits as fits
-#from .zoom_factory import zoom_factory
+from .zoom_factory import zoom_factory
 
 # UI settings
 DARK_THEME = True
@@ -283,7 +283,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.track_button.clicked.connect(self.track_button_clicked)
         self.refresh_line_edit.editingFinished.connect(lambda: self.refresh_interval_changed(self.refresh_line_edit.text()))
         self.actionSave_plot_s_as.triggered.connect(self.save_image)
+        self.action_open_file.triggered.connect(self.open_files)
         self.action_open_files_from_folder.triggered.connect(self.open_files_from_folder)
+        self.action_copy_plot_as_image.triggered.connect(self.copy_canvas_to_clipboard)
         self.action_save_files_as_PNG.triggered.connect(lambda: self.save_images_as('.png'))
         self.action_save_files_as_PDF.triggered.connect(lambda: self.save_images_as('.pdf'))
         # self.action_preset_0.triggered.connect(lambda: self.apply_preset(0))
@@ -298,6 +300,20 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.down_file_button.clicked.connect(lambda: self.move_file('down'))
         self.file_list.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.file_list.customContextMenuRequested.connect(self.open_item_menu)
+
+        # Keyboard shortcuts
+        self.open_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+O"), self)
+        self.open_shortcut.activated.connect(self.open_files)
+        self.open_folder_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+O"), self)
+        self.open_folder_shortcut.activated.connect(self.open_files_from_folder)
+        self.link_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+L"), self)
+        self.link_shortcut.activated.connect(lambda: self.update_link_to_folder(new_folder=True))
+        self.save_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+S"), self)
+        self.save_shortcut.activated.connect(self.save_image)
+        self.copy_image_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+C"), self)
+        self.copy_image_shortcut.activated.connect(self.copy_canvas_to_clipboard)
+        self.duplicate_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+D"), self)
+        self.duplicate_shortcut.activated.connect(self.duplicate_item)
     
     def init_canvas(self):
         self.figure = Figure()
@@ -325,7 +341,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     return item
                 except Exception as e:
                     print(f'Failed to add NumPy dataset '
-                            f'{dataset["File Name"]}...', e)
+                            f'{dataset["File Name"]}:', e)
         
         elif extension == '.db': # QCoDeS files
             initialise_or_create_database_at(filepath)
@@ -336,7 +352,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     return item
                 except Exception as e:
                     print(f'Failed to add QCoDes dataset '
-                            f'#{dataset.captured_run_id}...', e)
+                            f'#{dataset.captured_run_id}:', e)
         
         elif (os.path.basename(filepath) == 'data.dat' and # Matlab qd files
                 os.path.isfile(os.path.dirname(filepath)+'/meta.json')):
@@ -351,7 +367,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 item = DataItem(qcodes_pp_extension.qcodesppData(filepath, self.canvas, metapath,load_the_data))
                 return item
             except Exception as e:
-                print(f'Failed to add qcodes++ dataset {filepath}...', e)
+                print(f'Failed to add qcodes++ dataset {filepath}:', e)
         
         else: # bare column-based data file
             item = DataItem(BaseClassData(filepath, self.canvas))
@@ -368,7 +384,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     item=self.load_data_item(filepath,load_the_data)
                     self.file_list.addItem(item)
                 except Exception as e:
-                    print(f'Failed to open {filepath}...', e)
+                    print(f'Failed to open {filepath}:', e)
 
             if self.file_list.count() > 0:
                 last_item = self.file_list.item(self.file_list.count()-1)
@@ -434,7 +450,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         if item.data.multiple_linecuts_window.isVisible():
                             item.data.multiple_linecuts_window.update()
                 except Exception as e:
-                    print(f'Could not plot {item.data.filepath}...', e)
+                    print(f'Could not plot {item.data.filepath}:', e)
                     raise
         self.show_current_all()
         self.canvas.draw()
@@ -923,9 +939,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if current_item:
             checked_items = self.get_checked_items()
             menu = QtWidgets.QMenu(self)
-            actions = ['Duplicate...','Check all...']
+            actions = ['Duplicate (Ctrl+D)','Check all']
             if len(checked_items) > 1:
-                actions.append('Combine plots...')
+                actions.append('Combine plots')
             for entry in actions:
                 action = QtWidgets.QAction(entry, self)
                 menu.addAction(action)
@@ -935,19 +951,19 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def do_item_action(self, signal):
         current_item = self.file_list.currentItem()
         if current_item:
-            if signal.text() == 'Duplicate...':
+            if signal.text() == 'Duplicate (Ctrl+D)':
                 self.duplicate_item()
-            elif signal.text() == 'Check all...':
+            elif signal.text() == 'Check all':
                 self.file_list.itemChanged.disconnect(self.file_checked)
                 for item_index in range(self.file_list.count()):                        
                     self.file_list.item(item_index).setCheckState(QtCore.Qt.Checked)
                     self.file_list.itemChanged.connect(self.file_checked)
                 self.update_plots()
-            elif signal.text() == 'Combine plots...':
+            elif signal.text() == 'Combine plots':
                 try:
                     self.combine_plots()
                 except Exception as e:
-                    print('Cannot combine these plots...', e)
+                    print('Cannot combine these plots:', e)
                     
     def duplicate_item(self):
         original_item = self.file_list.currentItem()
@@ -976,9 +992,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.multi_plot_window.draw_plot()
                     self.multi_plot_window.show()
                 else:
-                    print('Cannot combine three-dimensional data...')
+                    print('Cannot combine three-dimensional data')
             except Exception as e:
-                print('Cannot combine data...', e)
+                print('Cannot combine data:', e)
     
     def open_plot_settings_menu(self):
         row = self.settings_table.currentRow()
@@ -1163,7 +1179,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             print('Saved!')
     
     def open_files_from_folder(self): 			
-        rootdir = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory")
+        rootdir = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory to Open")
         filepaths = []
         for subdir, dirs, files in os.walk(rootdir):
             for file in files:
@@ -1218,14 +1234,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         item.data.raw_data = None
                         item.data.processed_data = None
                     except Exception as e:
-                        print(f'Could not plot {item.data.filepath}...', e)
+                        print(f'Could not plot {item.data.filepath}:', e)
             if DARK_THEME and qdarkstyle_imported:
                 rcParams_to_dark_theme()
                 self.update_plots(update_data=False)
         
     def update_link_to_folder(self, new_folder=True):
         if new_folder:
-            self.linked_folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory")
+            self.linked_folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory to Link")
         if self.linked_folder:
             self.window_title = f'InSpectra Gadget - Linked to folder {self.linked_folder}'
             self.setWindowTitle(self.window_title+self.window_title_auto_refresh)
@@ -1306,13 +1322,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         data.add_extension_actions(self, rightclick_menu)
                         actions = []
                         if len(data.get_columns()) == 3:
-                            actions.append(QtWidgets.QAction('Draw diagonal linecut...', self))
+                            actions.append(QtWidgets.QAction('Draw diagonal linecut', self))
                             #data.linecut_from = [x, y]
-                            actions.append(QtWidgets.QAction('Draw circular linecut...', self))
-                            actions.append(QtWidgets.QAction('Plot vertical linecuts...', self))
-                            actions.append(QtWidgets.QAction('Plot horizontal linecuts...', self))
-                            actions.append(QtWidgets.QAction('FFT vertical...', self))
-                            actions.append(QtWidgets.QAction('FFT horizontal...', self))
+                            actions.append(QtWidgets.QAction('Draw circular linecut', self))
+                            actions.append(QtWidgets.QAction('Plot vertical linecuts', self))
+                            actions.append(QtWidgets.QAction('Plot horizontal linecuts', self))
+                            actions.append(QtWidgets.QAction('FFT vertical', self))
+                            actions.append(QtWidgets.QAction('FFT horizontal', self))
                         for action in actions:
                             rightclick_menu.addAction(action)
                         rightclick_menu.triggered[QtWidgets.QAction].connect(self.popup_canvas)
@@ -1337,15 +1353,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     
     def popup_canvas(self, signal):
         data = self.plot_in_focus[0].data
-        if (signal.text() == 'Plot horizontal linecuts...' or
-            signal.text() == 'Plot vertical linecuts...'):
+        if (signal.text() == 'Plot horizontal linecuts' or
+            signal.text() == 'Plot vertical linecuts'):
             data.multi_linecuts_window = MultipleLineCutsWindow(data) 
-            if signal.text() == 'Plot horizontal linecuts...':
+            if signal.text() == 'Plot horizontal linecuts':
                 data.multi_linecuts_window.orientation = 'horizontal'
-            elif signal.text() == 'Plot vertical linecuts...':
+            elif signal.text() == 'Plot vertical linecuts':
                 data.multi_linecuts_window.orientation = 'vertical'
             data.multi_linecuts_window.update()
-        elif signal.text() == 'Draw diagonal linecut...':
+        elif signal.text() == 'Draw diagonal linecut':
             if hasattr(data, 'linecut_points'):
                 data.hide_linecuts()
             x, y = data.selected_x, data.selected_y
@@ -1362,7 +1378,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             data.linecut_window.update()
             self.canvas.draw()
             data.linecut_window.activateWindow()
-        elif signal.text() == 'Draw circular linecut...':
+        elif signal.text() == 'Draw circular linecut':
             if hasattr(data, 'linecut_points'):
                 data.hide_linecuts()
             left, right = data.axes.get_xlim() 
@@ -1380,10 +1396,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             data.linecut_window.update()
             self.canvas.draw()
             data.linecut_window.activateWindow()
-        elif signal.text() == 'FFT vertical...':
+        elif signal.text() == 'FFT vertical':
             data.fft_orientation = 'vertical'
             data.open_fft_window()
-        elif signal.text() == 'FFT horizontal...':
+        elif signal.text() == 'FFT horizontal':
             data.fft_orientation = 'horizontal'
             data.open_fft_window()
         else:
@@ -1420,7 +1436,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             suggested_filename = (current_item.data.label.replace(':','') +
                                   '_processed')
             filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
-                self, 'Save Processed Data As...', suggested_filename, '*.npy')
+                self, 'Save Processed Data As', suggested_filename, '*.npy')
             if filepath:
                 #save_data = np.column_stack(tuple(data.flatten() for data in 
                 #                                  current_item.data.processed_data))
@@ -1693,7 +1709,7 @@ class BaseClassData:
                                  color=self.settings['linecolor'], linewidth=0.5)
 
             self.apply_plot_settings()
-            #zoom_factory(self.axes)
+            zoom_factory(self.axes)
 
     def reset_view_settings(self, overrule=False):
         if not self.view_settings['Locked'] or overrule:
@@ -2087,7 +2103,7 @@ class LineCutWindow(QtWidgets.QWidget):
                                                 ydata=self.y, p0=p0)
             self.y_fit = fits.get_function(function_name)(self.x, *self.fit_parameters)
         except RuntimeError:
-            print('Curve could not be fitted...')
+            print('Curve could not be fitted')
             self.fit_parameters = [np.nan]*len(fits.get_names(function_name).split(','))
             self.y_fit = np.nan            
         self.draw_plot()
@@ -2182,14 +2198,14 @@ class LineCutWindow(QtWidgets.QWidget):
         
     def save_data(self):
         filename, extension = QtWidgets.QFileDialog.getSaveFileName(
-                self, 'Save Data As...')
+                self, 'Save Data As')
         data = np.array([self.x, self.y])
         np.savetxt(filename, data.T)
         
     def save_image(self):
         formats = 'Portable Network Graphic (*.png);;Adobe Acrobat (*.pdf)'
         filename, extension = QtWidgets.QFileDialog.getSaveFileName(
-                self, 'Save Figure As...', '', formats)
+                self, 'Save Figure As', '', formats)
         if filename:
             print('Save Figure as '+filename+' ...')
             if DARK_THEME and qdarkstyle_imported:
@@ -2360,7 +2376,7 @@ class MultiPlotWindow(LineCutWindow):
             # Fit routine for every trace
             for counter, line_index in enumerate(line_indices):
                 x, y, z = self.x[line_index], self.y[line_index], self.z[line_index]
-                print(f'Fitting peaks; index = {line_index}, value = {z}...')
+                print(f'Fitting peaks; index = {line_index}, value = {z}')
                 if counter == 0:
                     background_estimate = np.amin(y)
                     height_estimate = np.amax(y) - np.amin(y)
@@ -2390,7 +2406,7 @@ class MultiPlotWindow(LineCutWindow):
                     params.update(pars)
                 result = model.fit(y, params, x=x)
                 values = result.best_values
-                print('Fit finished...')
+                print('Fit finished')
                 
                 # Save fit values in dictionary
                 self.peak_values['background_constant'].append(values['bkg_c'])
@@ -2442,7 +2458,7 @@ class MultiPlotWindow(LineCutWindow):
 
             # Save dictionary with peak properties to file    
             filename, _ = QtWidgets.QFileDialog.getSaveFileName(
-                    self, 'Save peak-fitting data as...', 'fitdata', '*.npy')
+                    self, 'Save peak-fitting data as', 'fitdata', '*.npy')
             if filename:
                 np.save(filename, self.peak_values)
                 print('Peak fitting data saved!')
@@ -2517,7 +2533,7 @@ class MultiPlotWindow(LineCutWindow):
         
     def save_data(self):
         filename, extension = QtWidgets.QFileDialog.getSaveFileName(
-                self, 'Save Data As...')
+                self, 'Save Data As')
         z = np.hstack([np.repeat(self.z[i], len(self.x[i])) 
                        for i in range(len(self.z))])
         x = np.hstack(self.x) 
@@ -2680,16 +2696,16 @@ class ParameterWindow(QtWidgets.QWidget):
         
     def save_data(self):
         filename, extension = QtWidgets.QFileDialog.getSaveFileName(
-                self, 'Save Data As...')
+                self, 'Save Data As')
         data = np.array([self.x, self.y])
         np.savetxt(filename, data.T)
 
     def save_image(self):
         formats = 'Portable Network Graphic (*.png);;Adobe Acrobat (*.pdf)'
         filename, extension = QtWidgets.QFileDialog.getSaveFileName(
-                self, 'Save Figure As...', '', formats)
+                self, 'Save Figure As', '', formats)
         if filename:
-            print('Save Figure as '+filename+' ...')
+            print('Save Figure as '+filename+' ')
             self.figure.savefig(filename)
             print('Saved!')   
   
