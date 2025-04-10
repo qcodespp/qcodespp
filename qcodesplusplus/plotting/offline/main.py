@@ -51,6 +51,7 @@ from qcodes import initialise_or_create_database_at, load_last_experiment
 import qcodesplusplus.plotting.offline.designV2 as design
 import qcodesplusplus.plotting.offline.filters as filters
 import qcodesplusplus.plotting.offline.fits as fits
+from .zoom_factory import zoom_factory
 
 # UI settings
 DARK_THEME = True
@@ -418,6 +419,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         item.data.prepare_data_for_plot()
                     item.data.figure = self.figure
                     item.data.axes = item.data.figure.add_subplot(rows, cols, index+1)
+                    zoom_factory(item.data.axes)
                     item.data.add_plot(dim=len(item.data.get_columns()))
                     if hasattr(item.data, 'linecut_window'):
                         item.data.linecut_window.update()
@@ -1584,6 +1586,7 @@ class BaseClassData:
             self.cursor = Cursor(self.axes, useblit=True, 
                                  color=self.settings['linecolor'], linewidth=0.5)
             self.apply_plot_settings()
+            zoom_factory(self.axes)
 
     def reset_view_settings(self, overrule=False):
         if not self.view_settings['Locked'] or overrule:
@@ -1888,7 +1891,8 @@ class LineCutWindow(QtWidgets.QWidget):
         self.canvas = FigureCanvas(self.figure)
         self.scroll_event_id = self.canvas.mpl_connect('scroll_event', 
                                                        self.mouse_scroll_canvas)
-        self.navi_toolbar = NavigationToolbar(self.canvas, self)        
+        self.navi_toolbar = NavigationToolbar(self.canvas, self)
+        zoom_factory(self.axes)
     
     def init_layouts(self):
         self.top_buttons_layout = QtWidgets.QHBoxLayout()
@@ -1985,6 +1989,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.running = True
         self.figure.clear()
         self.axes = self.figure.add_subplot(111)
+        zoom_factory(self.axes)
         
         if self.orientation == 'horizontal':
             self.x = self.parent.processed_data[0][:,self.parent.selected_indices[1]]
@@ -2047,7 +2052,8 @@ class LineCutWindow(QtWidgets.QWidget):
               
     def draw_fits(self):
         self.axes.plot(self.x, self.y_fit, 'k--', 
-                       linewidth=self.parent.settings['linewidth'])            
+                       linewidth=self.parent.settings['linewidth'])     
+        zoom_factory(self.axes)       
         self.canvas.draw()
         
     def closeEvent(self, event):
@@ -2352,6 +2358,7 @@ class MultiPlotWindow(LineCutWindow):
         self.running = True
         self.figure.clear()
         self.axes = self.figure.add_subplot(111)
+        zoom_factory(self.axes)
         try:
             self.offset = float(self.offset_line_edit.text())
         except Exception as e:
@@ -2432,6 +2439,7 @@ class MultipleLineCutsWindow(MultiPlotWindow):
         self.running = True
         self.figure.clear()
         self.axes = self.figure.add_subplot(111)
+        zoom_factory(self.axes)
         try:
             self.offset = float(self.offset_line_edit.text())
         except Exception as e:
@@ -2573,6 +2581,7 @@ class FFTWindow(QtWidgets.QWidget):
         self.vertical_layout = QtWidgets.QVBoxLayout()
         self.figure = Figure()
         self.axes = self.figure.add_subplot(111)
+        zoom_factory(self.axes)
         self.canvas = FigureCanvas(self.figure)
         self.navi_toolbar = NavigationToolbar(self.canvas, self)
         self.fft = np.absolute(fftdata).transpose()
