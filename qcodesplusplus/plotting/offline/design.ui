@@ -17,6 +17,9 @@
    <layout class="QHBoxLayout" name="horizontalLayout">
     <item>
      <layout class="QVBoxLayout" name="control_layout">
+      <property name="sizeConstraint">
+       <enum>QLayout::SetDefaultConstraint</enum>
+      </property>
       <item>
        <widget class="QGroupBox" name="files_box">
         <property name="sizePolicy">
@@ -30,30 +33,7 @@
         </property>
         <layout class="QGridLayout" name="gridLayout_2">
          <item row="0" column="0">
-          <layout class="QGridLayout" name="files_layout">
-           <item row="4" column="0">
-            <widget class="QPushButton" name="up_file_button">
-             <property name="minimumSize">
-              <size>
-               <width>110</width>
-               <height>0</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>Move Up</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0" colspan="3">
-            <widget class="QListWidget" name="file_list">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-            </widget>
-           </item>
+          <layout class="QGridLayout" name="files_layout" columnminimumwidth="0,0,0">
            <item row="4" column="1">
             <widget class="QPushButton" name="down_file_button">
              <property name="minimumSize">
@@ -64,6 +44,16 @@
              </property>
              <property name="text">
               <string>Move Down</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0" colspan="3">
+            <widget class="QListWidget" name="file_list">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
              </property>
             </widget>
            </item>
@@ -82,11 +72,24 @@
               </size>
              </property>
              <property name="text">
-              <string>Open</string>
+              <string>Open File</string>
              </property>
             </widget>
            </item>
-           <item row="0" column="1">
+           <item row="4" column="0">
+            <widget class="QPushButton" name="up_file_button">
+             <property name="minimumSize">
+              <size>
+               <width>110</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Move Up</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="2">
             <widget class="QPushButton" name="delete_files_button">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -101,11 +104,24 @@
               </size>
              </property>
              <property name="text">
-              <string>Remove</string>
+              <string>Remove file</string>
              </property>
             </widget>
            </item>
-           <item row="0" column="2">
+           <item row="5" column="0">
+            <widget class="QPushButton" name="refresh_file_button">
+             <property name="minimumSize">
+              <size>
+               <width>110</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Refresh</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="1">
             <widget class="QPushButton" name="clear_files_button">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -120,20 +136,28 @@
               </size>
              </property>
              <property name="text">
-              <string>Clear</string>
+              <string>Clear list</string>
              </property>
             </widget>
            </item>
-           <item row="4" column="2">
-            <widget class="QPushButton" name="refresh_file_button">
-             <property name="minimumSize">
-              <size>
-               <width>110</width>
-               <height>0</height>
-              </size>
-             </property>
+           <item row="0" column="1">
+            <widget class="QPushButton" name="open_folder_button">
              <property name="text">
-              <string>Refresh</string>
+              <string>Open Folder</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="2">
+            <widget class="QPushButton" name="link_folder_button">
+             <property name="text">
+              <string>Link Folder</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="2">
+            <widget class="QPushButton" name="unlink_folder_button">
+             <property name="text">
+              <string>Unlink Folder</string>
              </property>
             </widget>
            </item>
@@ -151,7 +175,7 @@
          </sizepolicy>
         </property>
         <property name="title">
-         <string>Settings Selected File</string>
+         <string>Settings For Selected File</string>
         </property>
         <layout class="QGridLayout" name="gridLayout_4">
          <item row="0" column="0">
@@ -171,7 +195,45 @@
               </size>
              </property>
              <property name="text">
-              <string>Copy</string>
+              <string>Copy Settings</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QPushButton" name="paste_settings_button">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>110</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Paste Settings</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="2">
+            <widget class="QPushButton" name="reset_settings_button">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>110</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Reset Settings</string>
              </property>
             </widget>
            </item>
@@ -203,44 +265,6 @@
              </attribute>
             </widget>
            </item>
-           <item row="1" column="1">
-            <widget class="QPushButton" name="paste_settings_button">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>110</width>
-               <height>0</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>Paste</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="2">
-            <widget class="QPushButton" name="reset_settings_button">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>110</width>
-               <height>0</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>Reset</string>
-             </property>
-            </widget>
-           </item>
           </layout>
          </item>
         </layout>
@@ -255,7 +279,7 @@
          </sizepolicy>
         </property>
         <property name="title">
-         <string>Filters Selected File</string>
+         <string>Filters Applied to Selected File</string>
         </property>
         <layout class="QGridLayout" name="gridLayout_6">
          <item row="0" column="0">
@@ -304,7 +328,7 @@
               </size>
              </property>
              <property name="text">
-              <string>Clear</string>
+              <string>Clear Filters</string>
              </property>
             </widget>
            </item>
@@ -398,7 +422,7 @@
               </size>
              </property>
              <property name="text">
-              <string>Copy</string>
+              <string>Copy Filters</string>
              </property>
             </widget>
            </item>
@@ -417,7 +441,7 @@
               </size>
              </property>
              <property name="text">
-              <string>Paste</string>
+              <string>Paste Filters</string>
              </property>
             </widget>
            </item>
@@ -451,7 +475,49 @@
         <item>
          <widget class="QPushButton" name="track_button">
           <property name="text">
-           <string>Track</string>
+           <string>Track data</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="refresh_label">
+          <property name="text">
+           <string>Refresh interval:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="refresh_line_edit">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>40</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>50</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="inputMethodHints">
+           <set>Qt::ImhNone</set>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="refreshunit_label">
+          <property name="text">
+           <string>sec</string>
           </property>
          </widget>
         </item>
@@ -478,21 +544,21 @@
         <item>
          <widget class="QPushButton" name="save_image_button">
           <property name="text">
-           <string>Save</string>
+           <string>Save figure</string>
           </property>
          </widget>
         </item>
         <item>
          <widget class="QPushButton" name="copy_image_button">
           <property name="text">
-           <string>Copy</string>
+           <string>Copy image</string>
           </property>
          </widget>
         </item>
         <item>
          <widget class="QPushButton" name="previous_button">
           <property name="text">
-           <string>Previous</string>
+           <string>Previous file</string>
           </property>
          </widget>
         </item>
@@ -505,7 +571,7 @@
            </sizepolicy>
           </property>
           <property name="text">
-           <string>Next</string>
+           <string>Next file</string>
           </property>
          </widget>
         </item>
@@ -516,6 +582,169 @@
       </item>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <item>
+         <widget class="QLabel" name="xaxis_label">
+          <property name="text">
+           <string>x-axis:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="xmin_label">
+          <property name="text">
+           <string>Min</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="xmin_line_edit">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>80</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>90</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="inputMethodHints">
+           <set>Qt::ImhNone</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="xmax_label">
+          <property name="text">
+           <string>Max</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="xmax_line_edit">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>80</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>90</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="inputMethodHints">
+           <set>Qt::ImhNone</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="yaxis_label">
+          <property name="text">
+           <string>y-axis:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="ymin_label">
+          <property name="text">
+           <string>Min:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="ymin_line_edit">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>80</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>90</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="inputMethodHints">
+           <set>Qt::ImhNone</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="ymax_label">
+          <property name="text">
+           <string>Max:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="ymax_line_edit">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>80</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>90</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="inputMethodHints">
+           <set>Qt::ImhNone</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="copy_xy_button">
+          <property name="text">
+           <string>Copy limits</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="paste_xy_button">
+          <property name="text">
+           <string>Paste limits</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="reset_xy_button">
+          <property name="text">
+           <string>Reset limits</string>
+          </property>
+         </widget>
+        </item>
         <item>
          <spacer name="horizontalSpacer_2">
           <property name="orientation">
@@ -529,13 +758,6 @@
           </property>
          </spacer>
         </item>
-        <item>
-         <widget class="QLabel" name="label_2">
-          <property name="text">
-           <string>x-axis:</string>
-          </property>
-         </widget>
-        </item>
        </layout>
       </item>
       <item>
@@ -543,14 +765,14 @@
         <item row="0" column="18">
          <widget class="QPushButton" name="paste_view_button">
           <property name="text">
-           <string>Paste</string>
+           <string>Paste cbar</string>
           </property>
          </widget>
         </item>
         <item row="0" column="19">
          <widget class="QPushButton" name="reset_limits_button">
           <property name="text">
-           <string>Reset</string>
+           <string>Reset cbar</string>
           </property>
          </widget>
         </item>
@@ -647,6 +869,9 @@
             <height>16777215</height>
            </size>
           </property>
+          <property name="inputMethodHints">
+           <set>Qt::ImhNone</set>
+          </property>
          </widget>
         </item>
         <item row="0" column="12">
@@ -668,6 +893,9 @@
             <width>90</width>
             <height>16777215</height>
            </size>
+          </property>
+          <property name="inputMethodHints">
+           <set>Qt::ImhNone</set>
           </property>
          </widget>
         </item>
@@ -707,12 +935,15 @@
             <height>16777215</height>
            </size>
           </property>
+          <property name="inputMethodHints">
+           <set>Qt::ImhNone</set>
+          </property>
          </widget>
         </item>
         <item row="0" column="17">
          <widget class="QPushButton" name="copy_view_button">
           <property name="text">
-           <string>Copy</string>
+           <string>Copy cbar</string>
           </property>
          </widget>
         </item>
@@ -749,12 +980,10 @@
    </widget>
    <widget class="QMenu" name="menu_apply_preset">
     <property name="title">
-     <string>Apply Preset</string>
+     <string>Presets</string>
     </property>
-    <addaction name="action_preset_0"/>
-    <addaction name="action_preset_1"/>
-    <addaction name="action_preset_2"/>
-    <addaction name="action_preset_3"/>
+    <addaction name="action_load_preset"/>
+    <addaction name="action_export_preset"/>
    </widget>
    <widget class="QMenu" name="menuCombine_Plots">
     <property name="title">
@@ -774,6 +1003,12 @@
     <addaction name="action_link_to_folder"/>
     <addaction name="action_unlink_folder"/>
     <addaction name="separator"/>
+    <addaction name="actionSave_plot_s_as"/>
+   </widget>
+   <widget class="QMenu" name="menuBatch_Actions">
+    <property name="title">
+     <string>Batch Actions</string>
+    </property>
     <addaction name="action_save_files_as_PDF"/>
     <addaction name="action_save_files_as_PNG"/>
    </widget>
@@ -781,6 +1016,7 @@
    <addaction name="menuCombine_Plots"/>
    <addaction name="menu_save_session"/>
    <addaction name="menu_apply_preset"/>
+   <addaction name="menuBatch_Actions"/>
   </widget>
   <action name="actionNew">
    <property name="text">
@@ -939,27 +1175,27 @@
   </action>
   <action name="action_save_files_as_PNG">
    <property name="text">
-    <string>Save Opened Files as PNG...</string>
+    <string>Save all files as PNG</string>
    </property>
   </action>
   <action name="action_save_files_as_PDF">
    <property name="text">
-    <string>Save Opened Files as PDF...</string>
+    <string>Save all files as PDF</string>
    </property>
   </action>
-  <action name="action_preset_0">
+  <action name="action_load_preset">
    <property name="text">
-    <string>Preset 0...</string>
+    <string>Load Preset</string>
    </property>
   </action>
-  <action name="action_preset_1">
+  <action name="action_export_preset">
    <property name="text">
-    <string>Preset 1...</string>
+    <string>Export Preset</string>
    </property>
   </action>
   <action name="action_preset_2">
    <property name="text">
-    <string>Preset 2...</string>
+    <string>Export Filters as Preset</string>
    </property>
   </action>
   <action name="action_preset_3">
@@ -974,12 +1210,12 @@
   </action>
   <action name="action_link_to_folder">
    <property name="text">
-    <string>Link to Folder...</string>
+    <string>Link Folder</string>
    </property>
   </action>
   <action name="action_unlink_folder">
    <property name="text">
-    <string>Unlink...</string>
+    <string>Unlink Folder</string>
    </property>
   </action>
   <action name="action_live_tracking">
@@ -1005,6 +1241,11 @@
   <action name="actionOpen_File_2">
    <property name="text">
     <string>Open File</string>
+   </property>
+  </action>
+  <action name="actionSave_plot_s_as">
+   <property name="text">
+    <string>Save plot as image</string>
    </property>
   </action>
  </widget>

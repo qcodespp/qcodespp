@@ -6,6 +6,8 @@ Author: Joeri de Bruijckere
 
 Adapted for qcodes++ by: Dags Olsteins and Damon Carrad
 
+pyuic5 -x design.ui -o designV2.py
+
 """
 
 from PyQt5 import QtWidgets, QtCore, QtGui
@@ -227,8 +229,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         
     def init_connections(self):
         self.open_files_button.clicked.connect(self.open_files)
+        self.open_folder_button.clicked.connect(self.open_files_from_folder)
+        self.link_folder_button.clicked.connect(lambda: self.update_link_to_folder(new_folder=True))
         self.delete_files_button.clicked.connect(lambda: self.remove_files('current'))
         self.clear_files_button.clicked.connect(lambda: self.remove_files('all'))
+        self.unlink_folder_button.clicked.connect(self.unlink_folder)
         self.file_list.itemChanged.connect(self.file_checked)
         self.file_list.itemClicked.connect(self.file_clicked)
         self.file_list.itemDoubleClicked.connect(self.file_double_clicked)
@@ -268,13 +273,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.action_duplicate_file.triggered.connect(self.duplicate_item)
         self.action_save_data_selected_file.triggered.connect(self.save_processed_data)
         self.track_button.clicked.connect(self.track_button_clicked)
+        self.refresh_line_edit.editingFinished.connect(lambda: self.refresh_interval_changed(self.refresh_line_edit.text()))
+        self.actionSave_plot_s_as.triggered.connect(self.save_image)
         self.action_open_files_from_folder.triggered.connect(self.open_files_from_folder)
         self.action_save_files_as_PNG.triggered.connect(lambda: self.save_images_as('.png'))
         self.action_save_files_as_PDF.triggered.connect(lambda: self.save_images_as('.pdf'))
-        self.action_preset_0.triggered.connect(lambda: self.apply_preset(0))
-        self.action_preset_1.triggered.connect(lambda: self.apply_preset(1))
-        self.action_preset_2.triggered.connect(lambda: self.apply_preset(2))
-        self.action_preset_3.triggered.connect(lambda: self.apply_preset(3))
+        # self.action_preset_0.triggered.connect(lambda: self.apply_preset(0))
+        # self.action_preset_1.triggered.connect(lambda: self.apply_preset(1))
+        # self.action_preset_2.triggered.connect(lambda: self.apply_preset(2))
+        # self.action_preset_3.triggered.connect(lambda: self.apply_preset(3))
         self.action_refresh_stop.setEnabled(False)
         self.action_link_to_folder.triggered.connect(lambda: self.update_link_to_folder(new_folder=True))
         self.action_unlink_folder.triggered.connect(self.unlink_folder)
@@ -481,6 +488,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         else:
             return checked_items
         
+    def refresh_interval_changed(self, interval):
+        AUTO_REFRESH_INTERVAL_3D=float(interval)
+        if self.track_button.text() == 'Stop tracking':
+            self.track_button_clicked()
+        
     def track_button_clicked(self):
         current_item = self.file_list.currentItem()
         if (self.track_button.text() == 'Track' and 
@@ -497,11 +509,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             else:
                 self.start_auto_refresh(AUTO_REFRESH_INTERVAL_2D, 
                                         wait_for_file=True)
-        elif self.track_button.text() == 'Stop':
+        elif self.track_button.text() == 'Stop tracking':
             self.stop_auto_refresh()
         
     def start_auto_refresh(self, time_interval, wait_for_file=False):
-        self.track_button.setText('Stop')
+        self.track_button.setText('Stop tracking')
         self.auto_refresh_timer = QtCore.QTimer()
         self.auto_refresh_timer.setInterval(time_interval*1000)
         if wait_for_file:
