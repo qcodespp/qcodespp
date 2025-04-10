@@ -8,17 +8,13 @@ import qcodesplusplus.plotting.offline.main as main
 
 class qcodesppData(main.BaseClassData):
 
-    def __init__(self, filepath, canvas, metapath):
+    def __init__(self, filepath, canvas, metapath, load_the_data=True):
         super().__init__(filepath, canvas)
         # Open meta file and set label
         self.filepath = filepath
         with open(metapath) as f:
             self.meta = json.load(f)
         dirname = os.path.basename(os.path.dirname(metapath))
-        if '.dat' in filepath:
-            self.dataset=load_data(os.path.dirname(filepath))
-        else:
-            self.dataset=load_data(filepath)
         # timestamp = self.meta['timestamp'].split(' ')[1]
 
         self.label = f'{dirname}'
@@ -35,9 +31,23 @@ class qcodesppData(main.BaseClassData):
         
         
         self.channels = self.meta['arrays']
-        self.identify_independent_vars()
 
-        self.prepare_dataset()
+        if load_the_data:
+            if '.dat' in filepath:
+                self.dataset=load_data(os.path.dirname(filepath))
+            else:
+                self.dataset=load_data(filepath)
+
+            self.identify_independent_vars()
+
+            self.prepare_dataset()
+
+            self.data_loaded=True
+        
+        else:
+            self.data_loaded=False
+            self.dataset=None
+
         # Default to conductance as dependent variable if present.
         if "conductance" in self.dependent_parameter_names:
             self.index_dependent_parameter = self.dependent_parameter_names.index("conductance")
@@ -49,8 +59,8 @@ class qcodesppData(main.BaseClassData):
         self.index_x = 0
         self.index_y = 1
 
-        self.dataset_id = "#" + self.dataset.location.split("#", 1)[1].split("_", 1)[0]
-        # self.dataset_id = "test"
+        #self.dataset_id = "#" + self.dataset.location.split("#", 1)[1].split("_", 1)[0]
+        self.dataset_id = "#" + dirname.split("#", 1)[1].split("_", 1)[0]
         self.settings["title"] = self.dataset_id
     
 
@@ -119,6 +129,17 @@ class qcodesppData(main.BaseClassData):
     
 
     def load_and_reshape_data(self):
+        if not self.data_loaded:
+            if '.dat' in self.filepath:
+                self.dataset=load_data(os.path.dirname(self.filepath))
+            else:
+                self.dataset=load_data(self.filepath)
+
+            self.identify_independent_vars()
+
+            self.prepare_dataset()
+
+            self.data_loaded=True
         column_data = self.get_column_data()
         if column_data.ndim == 1: # if empty array or single-row array
             self.raw_data = None

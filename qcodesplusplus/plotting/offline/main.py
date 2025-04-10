@@ -307,7 +307,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.figure.subplots_adjust(top=0.893, bottom=0.137, 
                                     left=0.121, right=0.86)
 
-    def load_data_item(self,filepath):
+    def load_data_item(self,filepath,load_the_data=True):
         print(f'Open {filepath}...')
         filename, extension = os.path.splitext(filepath)
         if extension == '.npy': # Numpy files (saved session)
@@ -341,7 +341,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 os.path.isfile(os.path.dirname(filepath)+'/snapshot.json')):
             metapath = os.path.dirname(filepath)+'/snapshot.json'
             try:
-                item = DataItem(qcodes_pp_extension.qcodesppData(filepath, self.canvas, metapath))
+                item = DataItem(qcodes_pp_extension.qcodesppData(filepath, self.canvas, metapath,load_the_data))
                 return item
             except Exception as e:
                 print(f'Failed to add qcodes++ dataset {filepath}...', e)
@@ -358,7 +358,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if filepaths:
             for filepath in filepaths:
                 try:
-                    item=self.load_data_item(filepath)
+                    item=self.load_data_item(filepath,load_the_data)
                     self.file_list.addItem(item)
                 except Exception as e:
                     print(f'Failed to open {filepath}...', e)
@@ -489,6 +489,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             return checked_items, indices
         else:
             return checked_items
+        
+    def get_unchecked_items(self, return_indices = False):
+        indices = [index for index in range(self.file_list.count()) 
+                   if self.file_list.item(index).checkState() != 2]
+        unchecked_items = [self.file_list.item(index) for index in indices]
+        if return_indices:    
+            return unchecked_items, indices
+        else:
+            return unchecked_items
         
     def refresh_interval_changed(self, interval):
         AUTO_REFRESH_INTERVAL_3D=float(interval)
@@ -1084,7 +1093,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         filepaths.append((st_ctime,filepath,subdir))
         if not os.path.split(filepaths[0][2])[1].startswith('#'): #If it's qcodespp data, it's already sorted. If not, sort by time
             filepaths.sort(key=lambda tup: tup[0])
-        self.open_files([file[1] for file in filepaths])
+        self.open_files([file[1] for file in filepaths],load_the_data=False)
     
     def check_already_loaded(self, subdir, filepaths):
         loaded=False
@@ -1152,7 +1161,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if not os.path.split(new_files[0][2])[1].startswith('#'): #If it's qcodespp data, it's already sorted. If not, sort by time
                     new_files.sort(key=lambda tup: tup[0])
                 new_filepaths = [new_file[1] for new_file in new_files]
-                self.open_files(new_filepaths)
+                self.open_files(new_filepaths,load_the_data=False)
                 for new_filepath in new_filepaths:
                     self.linked_files.append(new_filepath)               
                     
