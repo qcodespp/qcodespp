@@ -17,7 +17,7 @@ class qcodesppData(main.BaseClassData):
         dirname = os.path.basename(os.path.dirname(metapath))
         # timestamp = self.meta['timestamp'].split(' ')[1]
 
-        self.label = f'{dirname}'
+        self.label = f'{dirname.split('#')[1]}'
         # self.raw_data = None
         
 
