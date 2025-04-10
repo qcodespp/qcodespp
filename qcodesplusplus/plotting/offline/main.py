@@ -51,7 +51,7 @@ from qcodes import initialise_or_create_database_at, load_last_experiment
 import qcodesplusplus.plotting.offline.designV2 as design
 import qcodesplusplus.plotting.offline.filters as filters
 import qcodesplusplus.plotting.offline.fits as fits
-from .zoom_factory import zoom_factory
+#from .zoom_factory import zoom_factory
 
 # UI settings
 DARK_THEME = True
@@ -257,6 +257,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.colormap_type_box.currentIndexChanged.connect(self.colormap_type_edited)
         self.colormap_box.currentIndexChanged.connect(self.colormap_edited)
         self.reverse_colors_box.clicked.connect(self.colormap_edited)
+        self.xmin_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Xmin'))
+        self.xmax_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Xmax'))
+        self.ymin_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Ymin'))
+        self.ymax_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Ymax'))
+        self.copy_xy_button.clicked.connect(self.copy_axlim_settings)
+        self.paste_xy_button.clicked.connect(lambda: self.paste_axlim_settings('copied'))
+        self.reset_xy_button.clicked.connect(self.reset_axlim_settings)
         self.min_line_edit.editingFinished.connect(lambda: self.view_setting_edited('Minimum'))
         self.max_line_edit.editingFinished.connect(lambda: self.view_setting_edited('Maximum'))
         self.mid_line_edit.editingFinished.connect(lambda: self.view_setting_edited('Midpoint'))
@@ -419,7 +426,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         item.data.prepare_data_for_plot()
                     item.data.figure = self.figure
                     item.data.axes = item.data.figure.add_subplot(rows, cols, index+1)
-                    zoom_factory(item.data.axes)
+                    #zoom_factory(item.data.axes)
                     item.data.add_plot(dim=len(item.data.get_columns()))
                     if hasattr(item.data, 'linecut_window'):
                         item.data.linecut_window.update()
@@ -646,6 +653,27 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.lock_checkbox.setCheckState(QtCore.Qt.Unchecked)
             self.mid_checkbox.setCheckState(QtCore.Qt.Unchecked)
     
+    def show_current_axlim_settings(self):
+        current_item = self.file_list.currentItem()
+        if current_item:
+            axlim_settings = current_item.data.axlim_settings
+            if axlim_settings['Xmin'] is None:
+                self.xmin_line_edit.setText('')
+            else:
+                self.xmin_line_edit.setText(f'{axlim_settings["Xmin"]:.5g}')
+            if axlim_settings['Xmax'] is None:
+                self.xmax_line_edit.setText('')
+            else:
+                self.xmax_line_edit.setText(f'{axlim_settings["Xmax"]:.5g}')
+            if axlim_settings['Ymin'] is None:
+                self.ymin_line_edit.setText('')
+            else:
+                self.ymin_line_edit.setText(f'{axlim_settings["Ymin"]:.5g}')
+            if axlim_settings['Ymax'] is None:
+                self.ymax_line_edit.setText('')
+            else:
+                self.ymax_line_edit.setText(f'{axlim_settings["Ymax"]:.5g}')
+
     def show_current_filters(self):
         self.filters_table.setRowCount(0)
         current_item = self.file_list.currentItem()
@@ -683,6 +711,49 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             except Exception as e: # if invalid value is typed: reset to previous settings
                 print('Invalid value of plot setting!', e)
                 self.paste_plot_settings(which='old')
+
+    def axlim_setting_edited(self, edited_setting):
+        current_item = self.file_list.currentItem()
+        axlim_settings = current_item.data.axlim_settings
+        current_item.data.old_axlim_settings = axlim_settings.copy()
+        if current_item:
+            try:
+                if edited_setting == 'Xmin':
+                    text_box = self.xmin_line_edit
+                elif edited_setting == 'Xmax':
+                    text_box = self.xmax_line_edit
+                elif edited_setting == 'Ymin':
+                    text_box = self.ymin_line_edit
+                else:
+                    text_box = self.ymax_line_edit
+
+                if text_box.text() == '':
+                    new_value=None
+                else:
+                    new_value = float(text_box.text())
+                axlim_settings[edited_setting] = new_value
+                if new_value is None:
+                    text_box.setText('')
+                else:
+                    text_box.setText(f'{new_value:.4g}')
+                text_box.clearFocus()
+                current_item.data.apply_axlim_settings()
+                self.canvas.draw()
+            except Exception as e:
+                print('Invalid axis limit!', e)
+                self.paste_axlim_settings(which='old')
+
+    def reset_axlim_settings(self):
+        current_item = self.file_list.currentItem()
+        if current_item:
+            current_item.data.reset_axlim_settings()
+            self.xmin_line_edit.setText('')
+            self.xmax_line_edit.setText('')
+            self.ymin_line_edit.setText('')
+            self.ymax_line_edit.setText('')
+            if current_item.checkState():
+                current_item.data.reset_axlim_settings()
+                self.canvas.draw()
     
     def view_setting_edited(self, edited_setting):
         current_item = self.file_list.currentItem()
@@ -784,6 +855,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current_item = self.file_list.currentItem()
         if current_item:
             self.copied_view_settings = current_item.data.view_settings.copy()
+
+    def copy_axlim_settings(self):
+        current_item = self.file_list.currentItem()
+        if current_item:
+            self.copied_axlim_settings = current_item.data.axlim_settings.copy()
     
     def paste_plot_settings(self, which='copied'):
         current_item = self.file_list.currentItem()
@@ -827,6 +903,19 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if current_item.checkState():
                 current_item.data.apply_view_settings()
                 current_item.data.apply_colormap()
+                self.canvas.draw()
+
+    def paste_axlim_settings(self, which='copied'):
+        current_item = self.file_list.currentItem()
+        if current_item:
+            if which == 'copied':
+                if self.copied_axlim_settings:
+                    current_item.data.axlim_settings = self.copied_axlim_settings.copy()
+            elif which == 'old':
+                current_item.data.axlim_settings = current_item.data.old_axlim_settings.copy()
+            self.show_current_axlim_settings()
+            if current_item.checkState():
+                current_item.data.apply_axlim_settings()
                 self.canvas.draw()
 
     def open_item_menu(self):
@@ -1474,7 +1563,14 @@ class BaseClassData:
     DEFAULT_VIEW_SETTINGS['Colormap Type'] = 'Uniform'
     DEFAULT_VIEW_SETTINGS['Locked'] = False
     DEFAULT_VIEW_SETTINGS['MidLock'] = False
-    DEFAULT_VIEW_SETTINGS['Reverse'] = False  
+    DEFAULT_VIEW_SETTINGS['Reverse'] = False
+
+    # Set default axlim settings
+    DEFAULT_AXLIM_SETTINGS = {}
+    DEFAULT_AXLIM_SETTINGS['Xmin'] = None
+    DEFAULT_AXLIM_SETTINGS['Xmax'] = None
+    DEFAULT_AXLIM_SETTINGS['Ymin'] = None
+    DEFAULT_AXLIM_SETTINGS['Ymax'] = None
     
     def __init__(self, filepath, canvas):
         self.filepath = filepath
@@ -1483,6 +1579,7 @@ class BaseClassData:
         
         self.settings = self.DEFAULT_PLOT_SETTINGS.copy()
         self.view_settings = self.DEFAULT_VIEW_SETTINGS.copy()
+        self.axlim_settings = self.DEFAULT_AXLIM_SETTINGS.copy()
         self.filters = []
 
         try: # on Windows
@@ -1594,8 +1691,9 @@ class BaseClassData:
                     self.cbar = self.figure.colorbar(self.image, orientation='vertical')
             self.cursor = Cursor(self.axes, useblit=True, 
                                  color=self.settings['linecolor'], linewidth=0.5)
+
             self.apply_plot_settings()
-            zoom_factory(self.axes)
+            #zoom_factory(self.axes)
 
     def reset_view_settings(self, overrule=False):
         if not self.view_settings['Locked'] or overrule:
@@ -1663,7 +1761,20 @@ class BaseClassData:
                 self.cbar.ax.set_title(self.settings['clabel'], 
                                        size=self.settings['labelsize'])
                 self.cbar.ax.tick_params(labelsize=self.settings['ticksize'], 
-                                         color=rcParams['axes.edgecolor'])          
+                                         color=rcParams['axes.edgecolor'])
+
+    def apply_axlim_settings(self):
+        self.axes.set_xlim(left=self.axlim_settings['Xmin'], 
+                             right=self.axlim_settings['Xmax'])
+        self.axes.set_ylim(bottom=self.axlim_settings['Ymin'],
+                             top=self.axlim_settings['Ymax'])
+        
+    def reset_axlim_settings(self):
+        self.axes.autoscale()
+        self.axlim_settings['Xmin'] = None
+        self.axlim_settings['Xmax'] = None
+        self.axlim_settings['Ymin'] = None
+        self.axlim_settings['Ymax'] = None
     
     def apply_colormap(self):
         cmap_str = self.view_settings['Colormap']
@@ -1901,7 +2012,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.scroll_event_id = self.canvas.mpl_connect('scroll_event', 
                                                        self.mouse_scroll_canvas)
         self.navi_toolbar = NavigationToolbar(self.canvas, self)
-        zoom_factory(self.axes)
+        #zoom_factory(self.axes)
     
     def init_layouts(self):
         self.top_buttons_layout = QtWidgets.QHBoxLayout()
@@ -1998,7 +2109,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.running = True
         self.figure.clear()
         self.axes = self.figure.add_subplot(111)
-        zoom_factory(self.axes)
+        #zoom_factory(self.axes)
         
         if self.orientation == 'horizontal':
             self.x = self.parent.processed_data[0][:,self.parent.selected_indices[1]]
@@ -2062,7 +2173,7 @@ class LineCutWindow(QtWidgets.QWidget):
     def draw_fits(self):
         self.axes.plot(self.x, self.y_fit, 'k--', 
                        linewidth=self.parent.settings['linewidth'])     
-        zoom_factory(self.axes)       
+        #zoom_factory(self.axes)       
         self.canvas.draw()
         
     def closeEvent(self, event):
@@ -2367,7 +2478,7 @@ class MultiPlotWindow(LineCutWindow):
         self.running = True
         self.figure.clear()
         self.axes = self.figure.add_subplot(111)
-        zoom_factory(self.axes)
+        #zoom_factory(self.axes)
         try:
             self.offset = float(self.offset_line_edit.text())
         except Exception as e:
@@ -2448,7 +2559,7 @@ class MultipleLineCutsWindow(MultiPlotWindow):
         self.running = True
         self.figure.clear()
         self.axes = self.figure.add_subplot(111)
-        zoom_factory(self.axes)
+        #zoom_factory(self.axes)
         try:
             self.offset = float(self.offset_line_edit.text())
         except Exception as e:
@@ -2590,7 +2701,7 @@ class FFTWindow(QtWidgets.QWidget):
         self.vertical_layout = QtWidgets.QVBoxLayout()
         self.figure = Figure()
         self.axes = self.figure.add_subplot(111)
-        zoom_factory(self.axes)
+        #zoom_factory(self.axes)
         self.canvas = FigureCanvas(self.figure)
         self.navi_toolbar = NavigationToolbar(self.canvas, self)
         self.fft = np.absolute(fftdata).transpose()
@@ -2833,4 +2944,5 @@ import threading
 
 def offline_plotting():
     plot_thread = threading.Thread(target = main)
+
     plot_thread.start()
