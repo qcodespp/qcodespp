@@ -51,7 +51,7 @@ from qcodes import initialise_or_create_database_at, load_last_experiment
 import qcodesplusplus.plotting.offline.designV2 as design
 import qcodesplusplus.plotting.offline.filters as filters
 import qcodesplusplus.plotting.offline.fits as fits
-from .zoom_factory import zoom_factory
+from .zoom_factory import zoom_factory_alt as zoom_factory
 
 # UI settings
 DARK_THEME = True
@@ -295,6 +295,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.action_refresh_stop.setEnabled(False)
         self.action_link_to_folder.triggered.connect(lambda: self.update_link_to_folder(new_folder=True))
         self.action_unlink_folder.triggered.connect(self.unlink_folder)
+        self.action_track_data.triggered.connect(self.track_button_clicked)
         self.refresh_file_button.clicked.connect(self.refresh_files)
         self.up_file_button.clicked.connect(lambda: self.move_file('up'))
         self.down_file_button.clicked.connect(lambda: self.move_file('down'))
@@ -457,7 +458,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.figure.tight_layout()
         if hasattr(self, 'live_track_item') and self.live_track_item:
             if (self.live_track_item.checkState() and 
-                self.track_button.text() == 'Stop' and 
+                self.track_button.text() == 'Stop tracking' and 
                 hasattr(self.live_track_item.data, 'remaining_time_string')):
                 self.remaining_time_label.setText(self.live_track_item.data.remaining_time_string)
             else:
@@ -529,7 +530,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         
     def track_button_clicked(self):
         current_item = self.file_list.currentItem()
-        if (self.track_button.text() == 'Track' and 
+        if (self.track_button.text() == 'Track data' and 
             current_item and current_item.checkState() and
             not current_item.data.file_finished()):
             self.live_track_item = current_item
@@ -565,7 +566,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.live_track_item.data.prepare_data_for_plot(reload_data=True)
             if self.live_track_item.data.raw_data:
                 self.auto_refresh_timer.stop()
-                self.track_button.setText('Track')
+                self.track_button.setText('Track data')
                 self.track_button_clicked()            
             
     def auto_refresh_call(self):
@@ -586,7 +587,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.setWindowTitle(self.window_title+self.window_title_auto_refresh)
         
     def stop_auto_refresh(self):
-        self.track_button.setText('Track')
+        self.track_button.setText('Track data')
         self.auto_refresh_timer.stop()
         self.action_refresh_stop.setEnabled(False)
         self.window_title_auto_refresh = ''
@@ -1268,7 +1269,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 new_filepaths = [new_file[1] for new_file in new_files]
                 self.open_files(new_filepaths,load_the_data=False)
                 for new_filepath in new_filepaths:
-                    self.linked_files.append(new_filepath)               
+                    self.linked_files.append(new_filepath)
+            print(self.linked_files)               
                     
     def unlink_folder(self):
         if self.linked_folder:

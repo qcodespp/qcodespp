@@ -590,6 +590,9 @@
          </widget>
         </item>
         <item>
+         <widget class="QComboBox" name="xaxis_combobox"/>
+        </item>
+        <item>
          <widget class="QLabel" name="xmin_label">
           <property name="text">
            <string>Min</string>
@@ -659,6 +662,9 @@
            <string>y-axis:</string>
           </property>
          </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="yaxis_combobox"/>
         </item>
         <item>
          <widget class="QLabel" name="ymin_label">
@@ -1002,6 +1008,7 @@
     <addaction name="separator"/>
     <addaction name="action_link_to_folder"/>
     <addaction name="action_unlink_folder"/>
+    <addaction name="action_track_data"/>
     <addaction name="separator"/>
     <addaction name="actionSave_plot_s_as"/>
     <addaction name="action_copy_plot_as_image"/>
@@ -1252,6 +1259,11 @@
   <action name="action_copy_plot_as_image">
    <property name="text">
     <string>Copy plot as image (Ctrl+C)</string>
+   </property>
+  </action>
+  <action name="action_track_data">
+   <property name="text">
+    <string>Start/stop tracking (Ctrl+T)</string>
    </property>
   </action>
  </widget>
