@@ -699,16 +699,18 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.ymax_line_edit.setText('')
             else:
                 self.ymax_line_edit.setText(f'{axlim_settings["Ymax"]:.5g}')
+
     def show_current_axscale_settings(self):
+        axlim_settings = current_item.data.axlim_settings
         current_item = self.file_list.currentItem()
         if current_item:
-            self.xaxis_combobox.currentIndexChanged.disconnect(self.colormap_edited)
+            self.xaxis_combobox.currentIndexChanged.disconnect(self.axis_scaling_changed)
             self.xaxis_combobox.setCurrentText(axlim_settings['Xscale'])
-            self.xaxis_combobox.currentIndexChanged.connect(self.colormap_edited)
+            self.xaxis_combobox.currentIndexChanged.connect(self.axis_scaling_changed)
 
-            self.yaxis_combobox.currentIndexChanged.disconnect(self.colormap_edited)
+            self.yaxis_combobox.currentIndexChanged.disconnect(self.axis_scaling_changed)
             self.yaxis_combobox.setCurrentText(axlim_settings['Yscale'])
-            self.yaxis_combobox.currentIndexChanged.connect(self.colormap_edited)
+            self.yaxis_combobox.currentIndexChanged.connect(self.axis_scaling_changed)
             
 
     def show_current_filters(self):
@@ -1285,23 +1287,40 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         already_loaded=self.check_already_loaded(subdir,[file[1] for file in new_files])
                         if not already_loaded:
                             filepath = os.path.join(subdir, file)
-                            if filepath not in self.linked_files:
-                                try: # on Windows
-                                    st_ctime = os.path.getctime(filepath)
-                                except Exception:
-                                    try: # on Mac
-                                        st_ctime = os.stat(filepath).st_birthtime
-                                    except Exception as e:
-                                        print(e)
-                                new_files.append((st_ctime,filepath,subdir))
+                            # Need to deal with qcodespp data differently during refresh since multiple
+                            # .dat files may belong to the same dataset
+                            if os.path.isfile(subdir+'/snapshot.json'):
+                                already_linked=False
+                                for file in self.linked_files:
+                                    if subdir in file:
+                                        already_linked=True
+                                if not already_linked:
+                                    try: # on Windows
+                                        st_ctime = os.path.getctime(filepath)
+                                    except Exception:
+                                        try: # on Mac
+                                            st_ctime = os.stat(filepath).st_birthtime
+                                        except Exception as e:
+                                            print(e)
+                                    new_files.append((st_ctime,filepath,subdir))
+
+                            else:
+                                if filepath not in self.linked_files:
+                                    try: # on Windows
+                                        st_ctime = os.path.getctime(filepath)
+                                    except Exception:
+                                        try: # on Mac
+                                            st_ctime = os.stat(filepath).st_birthtime
+                                        except Exception as e:
+                                            print(e)
+                                    new_files.append((st_ctime,filepath,subdir))
             if new_files:
                 if not os.path.split(new_files[0][2])[1].startswith('#'): #If it's qcodespp data, it's already sorted. If not, sort by time
                     new_files.sort(key=lambda tup: tup[0])
                 new_filepaths = [new_file[1] for new_file in new_files]
                 self.open_files(new_filepaths,load_the_data=False)
                 for new_filepath in new_filepaths:
-                    self.linked_files.append(new_filepath)
-            print(self.linked_files)               
+                    self.linked_files.append(new_filepath)              
                     
     def unlink_folder(self):
         if self.linked_folder:
@@ -1366,6 +1385,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             rightclick_menu.addAction(action)
                         rightclick_menu.triggered[QtWidgets.QAction].connect(self.popup_canvas)
                         rightclick_menu.popup(QtGui.QCursor.pos())
+                    
+                    elif event.button == 1 and len(data.get_columns()) == 2:
+                        # Opening linecut/fitting window for 1D data
+                        if not hasattr(data, 'linecut_window'):
+                            data.linecut_window = LineCutWindow(data)
+                        data.linecut_window.running = True
+                        data.linecut_window.update()
+                        self.canvas.draw()
+                        data.linecut_window.activateWindow()
                 
                 else: # if colorbar in focus
                     self.cbar_in_focus = [checked_item for checked_item in checked_items
@@ -1652,7 +1680,7 @@ class BaseClassData:
     def get_columns(self):
         return [int(col) for col in self.settings['columns'].split(',')]
     
-    def load_and_reshape_data(self):
+    def load_and_reshape_data(self,reload=False):
         column_data = self.get_column_data()
         if column_data.ndim == 1: # if empty array or single-row array
             self.raw_data = None
@@ -1714,7 +1742,7 @@ class BaseClassData:
 
     def prepare_data_for_plot(self, reload_data=False, refresh_filters=False):
         if not hasattr(self, 'raw_data') or reload_data:
-            self.load_and_reshape_data()
+            self.load_and_reshape_data(reload_data)
         if self.raw_data:
             self.copy_raw_to_processed_data()
             self.apply_all_filters()
@@ -2039,7 +2067,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.set_main_layout()
         
     def init_widgets(self):
-        self.setWindowTitle('Inspectra Gadget - Linecut Window')
+        self.setWindowTitle('Inspectra Gadget - Linecut and Fitting Window')
         self.resize(600, 600)
         self.save_button = QtWidgets.QPushButton('Save Data')
         self.save_image_button = QtWidgets.QPushButton('Save Image')
@@ -2116,7 +2144,10 @@ class LineCutWindow(QtWidgets.QWidget):
                 del self.parent.linecut
             except:
                 pass
-            self.ylabel = self.parent.settings['clabel']
+            if len(self.parent.get_columns()) == 3:
+                self.ylabel = self.parent.settings['clabel']
+            else: 
+                self.orientation = '1D'
             self.draw_plot()
             self.parent.canvas.draw()
             self.show()
@@ -2168,6 +2199,13 @@ class LineCutWindow(QtWidgets.QWidget):
         self.figure.clear()
         self.axes = self.figure.add_subplot(111)
         #zoom_factory(self.axes)
+
+        if self.orientation == '1D':
+            self.x = self.parent.processed_data[0]
+            self.y = self.parent.processed_data[1]
+            self.xlabel = self.parent.settings['xlabel']
+            self.ylabel = self.parent.settings['ylabel']
+            self.title = self.parent.settings['title']
         
         if self.orientation == 'horizontal':
             self.x = self.parent.processed_data[0][:,self.parent.selected_indices[1]]

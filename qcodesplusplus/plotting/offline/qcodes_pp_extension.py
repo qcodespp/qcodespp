@@ -133,8 +133,8 @@ class qcodesppData(main.BaseClassData):
         return column_data
     
 
-    def load_and_reshape_data(self):
-        if not self.data_loaded:
+    def load_and_reshape_data(self, reload=False):
+        if not self.data_loaded or reload:
             if '.dat' in self.filepath:
                 self.dataset=load_data(os.path.dirname(self.filepath))
             else:
@@ -187,12 +187,13 @@ class qcodesppData(main.BaseClassData):
     def identify_independent_vars(self):
         
         for chan in self.channels.keys():
-            if self.channels[chan]["is_setpoint"] and self.channels[chan]["array_id"] in list(self.dataset.arrays.keys()):
-                self.independent_parameters.append(self.channels[chan])
-                self.independent_parameter_names.append(self.channels[chan]["array_id"])
-            elif self.channels[chan]["array_id"] in list(self.dataset.arrays.keys()):
-                self.dependent_parameters.append(self.channels[chan])
-                self.dependent_parameter_names.append(self.channels[chan]["array_id"])
+            if self.channels[chan]["array_id"] not in self.all_parameter_names:
+                if self.channels[chan]["is_setpoint"] and self.channels[chan]["array_id"] in list(self.dataset.arrays.keys()):
+                    self.independent_parameters.append(self.channels[chan])
+                    self.independent_parameter_names.append(self.channels[chan]["array_id"])
+                elif self.channels[chan]["array_id"] in list(self.dataset.arrays.keys()):
+                    self.dependent_parameters.append(self.channels[chan])
+                    self.dependent_parameter_names.append(self.channels[chan]["array_id"])
         self.all_parameters = self.independent_parameters + self.dependent_parameters
         self.all_parameter_names = self.independent_parameter_names + self.dependent_parameter_names
 
