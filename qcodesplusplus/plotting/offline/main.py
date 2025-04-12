@@ -451,7 +451,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         item.data.prepare_data_for_plot()
                     item.data.figure = self.figure
                     item.data.axes = item.data.figure.add_subplot(rows, cols, index+1)
-                    #zoom_factory(item.data.axes)
+                    zoom_factory(item.data.axes)
                     item.data.add_plot(dim=len(item.data.get_columns()))
                     if hasattr(item.data, 'linecut_window'):
                         item.data.linecut_window.update()
@@ -629,7 +629,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.show_current_plot_settings()
         self.show_current_view_settings()
         self.show_current_filters()
-        #self.show_current_axscale_settings()
+        self.show_current_axscale_settings()
+        self.show_current_axlim_settings()
     
     def show_current_plot_settings(self):
         current_item = self.file_list.currentItem()
@@ -701,9 +702,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.ymax_line_edit.setText(f'{axlim_settings["Ymax"]:.5g}')
 
     def show_current_axscale_settings(self):
-        axlim_settings = current_item.data.axlim_settings
         current_item = self.file_list.currentItem()
         if current_item:
+            axlim_settings = current_item.data.axlim_settings
+
             self.xaxis_combobox.currentIndexChanged.disconnect(self.axis_scaling_changed)
             self.xaxis_combobox.setCurrentText(axlim_settings['Xscale'])
             self.xaxis_combobox.currentIndexChanged.connect(self.axis_scaling_changed)
@@ -712,7 +714,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.yaxis_combobox.setCurrentText(axlim_settings['Yscale'])
             self.yaxis_combobox.currentIndexChanged.connect(self.axis_scaling_changed)
             
-
     def show_current_filters(self):
         self.filters_table.setRowCount(0)
         current_item = self.file_list.currentItem()
@@ -790,20 +791,19 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.xmax_line_edit.setText('')
             self.ymin_line_edit.setText('')
             self.ymax_line_edit.setText('')
-            if current_item.checkState():
-                current_item.data.reset_axlim_settings()
-                self.canvas.draw()
+            #if current_item.checkState():
+            current_item.data.reset_axlim_settings()
+            self.canvas.draw()
 
     def axis_scaling_changed(self):
         current_item = self.file_list.currentItem()
-        print(current_item)
         if current_item:
             settings = current_item.data.axlim_settings
             settings['Xscale'] = self.xaxis_combobox.currentText()
             settings['Yscale'] = self.yaxis_combobox.currentText()
-            if current_item.checkState():
-                current_item.data.apply_axscale_settings()
-                self.canvas.draw()
+            #if current_item.checkState():
+            current_item.data.apply_axscale_settings()
+            self.canvas.draw()
     
     def view_setting_edited(self, edited_setting):
         current_item = self.file_list.currentItem()
@@ -1775,7 +1775,8 @@ class BaseClassData:
                                  color=self.settings['linecolor'], linewidth=0.5)
 
             self.apply_plot_settings()
-            zoom_factory(self.axes)
+            self.apply_axlim_settings()
+            self.apply_axscale_settings()
 
     def reset_view_settings(self, overrule=False):
         if not self.view_settings['Locked'] or overrule:
