@@ -181,6 +181,7 @@ SETTINGS_MENU_OPTIONS['dpi'] = ['figure','300']
 SETTINGS_MENU_OPTIONS['transparent'] = ['True', 'False']
 SETTINGS_MENU_OPTIONS['shading'] = ['auto', 'flat', 'gouraud', 'nearest']
 
+AXIS_SCALING_OPTIONS = ['linear', 'log', 'symlog', 'logit']
 
 class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def __init__(self):
@@ -191,6 +192,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.setupUi(self)
         self.init_plot_settings()
         self.init_view_settings()
+        self.init_axis_scaling()
         self.init_filters()
         self.init_connections()
         self.init_canvas()
@@ -217,6 +219,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                         QtCore.Qt.AlignVCenter)
         self.mid_line_edit.setAlignment(QtCore.Qt.AlignRight | 
                                         QtCore.Qt.AlignVCenter)
+        
+    def init_axis_scaling(self):
+        self.xaxis_combobox.addItems(AXIS_SCALING_OPTIONS)
+        self.yaxis_combobox.addItems(AXIS_SCALING_OPTIONS)
     
     def init_filters(self):                
         self.filters_combobox.addItem('<Add Filter>')
@@ -244,6 +250,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.paste_settings_button.clicked.connect(lambda: self.paste_plot_settings('copied'))
         self.reset_settings_button.clicked.connect(lambda: self.paste_plot_settings('default'))
         self.filters_combobox.currentIndexChanged.connect(self.filters_box_changed)
+        self.xaxis_combobox.currentIndexChanged.connect(self.axis_scaling_changed)
+        self.yaxis_combobox.currentIndexChanged.connect(self.axis_scaling_changed)
         self.delete_filters_button.clicked.connect(lambda: self.remove_filters('current'))
         self.clear_filters_button.clicked.connect(lambda: self.remove_filters('all'))
         self.copy_filters_button.clicked.connect(self.copy_filters)
@@ -771,6 +779,17 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if current_item.checkState():
                 current_item.data.reset_axlim_settings()
                 self.canvas.draw()
+
+    def axis_scaling_changed(self):
+        current_item = self.file_list.currentItem()
+        print(current_item)
+        if current_item:
+            settings = current_item.data.axlim_settings
+            settings['Xscale'] = self.xaxis_combobox.currentText()
+            settings['Yscale'] = self.yaxis_combobox.currentText()
+            if current_item.checkState():
+                current_item.data.apply_axscale_settings()
+                self.canvas.draw()
     
     def view_setting_edited(self, edited_setting):
         current_item = self.file_list.currentItem()
@@ -1026,7 +1045,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if current_item.checkState():
                 current_item.data.apply_view_settings()
                 self.canvas.draw()
-    
+   
     def filters_box_changed(self):
         current_item = self.file_list.currentItem()
         if current_item:
@@ -1589,6 +1608,8 @@ class BaseClassData:
     DEFAULT_AXLIM_SETTINGS['Xmax'] = None
     DEFAULT_AXLIM_SETTINGS['Ymin'] = None
     DEFAULT_AXLIM_SETTINGS['Ymax'] = None
+    DEFAULT_AXLIM_SETTINGS['Xscale'] = 'linear'
+    DEFAULT_AXLIM_SETTINGS['Yscale'] = 'linear'
     
     def __init__(self, filepath, canvas):
         self.filepath = filepath
@@ -1786,6 +1807,10 @@ class BaseClassData:
                              right=self.axlim_settings['Xmax'])
         self.axes.set_ylim(bottom=self.axlim_settings['Ymin'],
                              top=self.axlim_settings['Ymax'])
+
+    def apply_axscale_settings(self):
+        self.axes.set_xscale(self.axlim_settings['Xscale'])
+        self.axes.set_yscale(self.axlim_settings['Yscale'])
         
     def reset_axlim_settings(self):
         self.axes.autoscale()
