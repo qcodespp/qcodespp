@@ -629,6 +629,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.show_current_plot_settings()
         self.show_current_view_settings()
         self.show_current_filters()
+        #self.show_current_axscale_settings()
     
     def show_current_plot_settings(self):
         current_item = self.file_list.currentItem()
@@ -698,6 +699,17 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.ymax_line_edit.setText('')
             else:
                 self.ymax_line_edit.setText(f'{axlim_settings["Ymax"]:.5g}')
+    def show_current_axscale_settings(self):
+        current_item = self.file_list.currentItem()
+        if current_item:
+            self.xaxis_combobox.currentIndexChanged.disconnect(self.colormap_edited)
+            self.xaxis_combobox.setCurrentText(axlim_settings['Xscale'])
+            self.xaxis_combobox.currentIndexChanged.connect(self.colormap_edited)
+
+            self.yaxis_combobox.currentIndexChanged.disconnect(self.colormap_edited)
+            self.yaxis_combobox.setCurrentText(axlim_settings['Yscale'])
+            self.yaxis_combobox.currentIndexChanged.connect(self.colormap_edited)
+            
 
     def show_current_filters(self):
         self.filters_table.setRowCount(0)
@@ -1472,39 +1484,42 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             checked_items = self.get_checked_items()
             self.plot_in_focus = [checked_item for checked_item in checked_items 
                                   if checked_item.data.axes == event.inaxes]
-            if self.plot_in_focus:
-                data = self.plot_in_focus[0].data
-                if len(data.get_columns()) == 3:
-                    if hasattr(data, 'linecut_window'):
-                        data_shape = data.processed_data[0].shape
-                        if data.linecut_window.orientation == 'horizontal':
-                            new_index = data.selected_indices[1]+int(event.step)
-                            if new_index >= 0 and new_index < data_shape[1]:
-                                data.selected_indices[1] = new_index
-                        elif data.linecut_window.orientation == 'vertical':
-                            new_index = data.selected_indices[0]+int(event.step)
-                            if new_index >= 0 and new_index < data_shape[0]:
-                                data.selected_indices[0] = new_index
-                        data.linecut_window.update()
-                        self.canvas.draw()
-            else:
-                self.cbar_in_focus = [checked_item for checked_item in checked_items
-                                      if checked_item.data.cbar.ax == event.inaxes]
-                if self.cbar_in_focus:
-                    data = self.cbar_in_focus[0].data
-                    min_map = data.view_settings['Minimum']
-                    max_map = data.view_settings['Maximum']
-                    range_map = max_map-min_map
-                    if y > min_map+0.5*range_map:    
-                        new_max = max_map + event.step*range_map*0.02
-                        data.view_settings['Maximum'] = new_max
-                    else:
-                        new_min = min_map + event.step*range_map*0.02
-                        data.view_settings['Minimum'] = new_min
-                    data.reset_midpoint()
-                    data.apply_view_settings()
-                    self.canvas.draw()
-                    self.show_current_view_settings()
+            
+            # The below has been replaces by zooming. The mousewheel still steps through the 
+            # linecuts if the linecut window is in focus.
+            # if self.plot_in_focus:
+            #     data = self.plot_in_focus[0].data
+            #     if len(data.get_columns()) == 3:
+            #         if hasattr(data, 'linecut_window'):
+            #             data_shape = data.processed_data[0].shape
+            #             if data.linecut_window.orientation == 'horizontal':
+            #                 new_index = data.selected_indices[1]+int(event.step)
+            #                 if new_index >= 0 and new_index < data_shape[1]:
+            #                     data.selected_indices[1] = new_index
+            #             elif data.linecut_window.orientation == 'vertical':
+            #                 new_index = data.selected_indices[0]+int(event.step)
+            #                 if new_index >= 0 and new_index < data_shape[0]:
+            #                     data.selected_indices[0] = new_index
+            #             data.linecut_window.update()
+            #             self.canvas.draw()
+            # else:
+            self.cbar_in_focus = [checked_item for checked_item in checked_items
+                                    if checked_item.data.cbar.ax == event.inaxes]
+            if self.cbar_in_focus:
+                data = self.cbar_in_focus[0].data
+                min_map = data.view_settings['Minimum']
+                max_map = data.view_settings['Maximum']
+                range_map = max_map-min_map
+                if y > min_map+0.5*range_map:    
+                    new_max = max_map + event.step*range_map*0.02
+                    data.view_settings['Maximum'] = new_max
+                else:
+                    new_min = min_map + event.step*range_map*0.02
+                    data.view_settings['Minimum'] = new_min
+                data.reset_midpoint()
+                data.apply_view_settings()
+                self.canvas.draw()
+                self.show_current_view_settings()
         else:
             width, height = self.canvas.get_width_height()
             speed = 0.03

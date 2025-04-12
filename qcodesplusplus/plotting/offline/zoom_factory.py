@@ -1,4 +1,5 @@
 import numpy as np
+from PyQt5 import QtGui, QtCore
 
 def zoom_factory(ax, base_scale=1.1):
     """
@@ -93,7 +94,32 @@ def zoom_factory_alt(axis, scale_factor=1.2):
 
     def zoom_fun(event, ax, scale):
         """zoom when scrolling"""
-        if event.inaxes == axis:
+        if event.inaxes == axis and QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
+            scale_factor = np.power(scale, -event.step)
+            xdata = event.xdata
+            ydata = event.ydata
+            x_left = xdata - ax.get_xlim()[0]
+            x_right = ax.get_xlim()[1] - xdata
+
+            ax.set_xlim([xdata - x_left * scale_factor, xdata + x_right * scale_factor])
+            ax.figure.canvas.draw()
+            # Update toolbar so back/forward buttons work
+            fig.canvas.toolbar.push_current()
+
+
+        elif event.inaxes == axis and QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
+            scale_factor = np.power(scale, -event.step)
+            xdata = event.xdata
+            ydata = event.ydata
+            y_top = ydata - ax.get_ylim()[0]
+            y_bottom = ax.get_ylim()[1] - ydata
+
+            ax.set_ylim([ydata - y_top * scale_factor, ydata + y_bottom * scale_factor])
+            ax.figure.canvas.draw()
+            # Update toolbar so back/forward buttons work
+            fig.canvas.toolbar.push_current()
+
+        elif event.inaxes == axis:
             scale_factor = np.power(scale, -event.step)
             xdata = event.xdata
             ydata = event.ydata
