@@ -6,7 +6,7 @@ Author: Joeri de Bruijckere
 
 Adapted for qcodes++ by: Dags Olsteins and Damon Carrad
 
-pyuic5 -x design.ui -o designV2.py
+pyuic5 -x design.ui -o design.py
 
 """
 
@@ -48,7 +48,7 @@ except ModuleNotFoundError:
 
 from qcodes import initialise_or_create_database_at, load_last_experiment
 
-import qcodesplusplus.plotting.offline.designV2 as design
+import qcodesplusplus.plotting.offline.design as design
 import qcodesplusplus.plotting.offline.filters as filters
 import qcodesplusplus.plotting.offline.fits as fits
 from .zoom_factory import zoom_factory_alt as zoom_factory
