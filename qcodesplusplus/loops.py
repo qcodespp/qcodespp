@@ -59,6 +59,7 @@ from qcodes.utils.helpers import full_class
 from qcodesplusplus.utils.helpers import wait_secs, tprint
 from qcodes.utils.metadata import Metadatable
 from qcodes.parameters import MultiParameter
+from qcodesplusplus.plotting.RemotePlot import Plot
 
 from .actions import (_actions_snapshot, Task, Wait, _Measure, _Nest,
                       BreakIf, _QcodesBreak)
@@ -721,6 +722,25 @@ class ActiveLoop(Metadatable):
 
 
         #return estimate
+    
+    def plot(self, *dataitems, run=False):
+        """
+        Shortcut to live plotting for this loop.
+        Args:
+            dataitems (list): List of items within the dataset to be plotted.
+                Should be data.item, where item is a DataArray in the DataSet.
+                Note: NOT a parameter (anymore!)
+
+        Returns:
+            The plot object. The user can add subplots, etc before running the loop,
+            or specify run=True to run the loop immediately.
+        """
+        plot = Plot(title=self.data_set.name, name=self.data_set.name)
+        self.data_set.publisher=plot
+        plot.add_multiple(*dataitems)
+        if run:
+            self.run()
+        return plot
 
     def run_temp(self, **kwargs):
         """
