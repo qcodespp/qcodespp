@@ -1651,7 +1651,7 @@ class BaseClassData:
     DEFAULT_PLOT_SETTINGS['labelsize'] = '14' 
     DEFAULT_PLOT_SETTINGS['ticksize'] = '14'
     DEFAULT_PLOT_SETTINGS['linewidth'] = '1.5'
-    DEFAULT_PLOT_SETTINGS['spinewidth'] = '0.8'
+    DEFAULT_PLOT_SETTINGS['spinewidth'] = '1'
     DEFAULT_PLOT_SETTINGS['columns'] = '0,1,2'
     DEFAULT_PLOT_SETTINGS['colorbar'] = 'True'
     DEFAULT_PLOT_SETTINGS['minorticks'] = 'False'
@@ -2130,7 +2130,6 @@ class LineCutWindow(QtWidgets.QWidget):
         self.fit_box.addItems(fits.get_names(fitclass=self.fit_class_box.currentText()))
         self.fit_box.setCurrentIndex(0)
         self.fit_box.SizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
-        #self.pars_label = QtWidgets.QLabel(fits.get_names(parameters=self.fit_box.currentText(),fitclass=self.fit_class_box.currentText()))
         self.output_window = QtWidgets.QTextEdit()
         self.output_window.setReadOnly(True)
         self.output_window.setMaximumHeight(200)
@@ -2139,9 +2138,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.xmax_label = QtWidgets.QLabel('Xmax:')
         self.xmax_label.setStyleSheet("QLabel { color : red; }")
         self.xmin_box = QtWidgets.QLineEdit()
-        # self.xmin_box.setMaximumWidth(150)
         self.xmax_box = QtWidgets.QLineEdit()
-        # self.xmax_box.setMaximumWidth(150)
         if self.dimension=='2D':
             self.up_button = QtWidgets.QPushButton('Up/Right')
             self.down_button = QtWidgets.QPushButton('Down/Left')
@@ -2169,7 +2166,6 @@ class LineCutWindow(QtWidgets.QWidget):
                                                        self.mouse_scroll_canvas)
         self.canvas.mpl_connect('button_press_event', self.mouse_click_canvas)
         self.navi_toolbar = NavigationToolbar(self.canvas, self)
-        #zoom_factory(self.axes)
     
     def init_layouts(self):
         self.top_buttons_layout = QtWidgets.QHBoxLayout()
@@ -2199,7 +2195,6 @@ class LineCutWindow(QtWidgets.QWidget):
         self.fit_layout.addWidget(self.fit_box)
         self.fit_layout.addWidget(self.guess_checkbox)
         self.fit_layout.addWidget(self.guess_edit)
-        #self.fit_layout.addWidget(self.pars_label)
 
         self.output_layout = QtWidgets.QVBoxLayout()
         self.output_layout.addWidget(self.output_window)
@@ -2304,36 +2299,51 @@ class LineCutWindow(QtWidgets.QWidget):
             pars=fits.get_parameters(self.fit_class_box.currentText(),self.fit_box.currentText())
             self.guess_checkbox.setEnabled(True)
             self.guess_checkbox.setText(f'Initial guess: {pars}')
+        self.output_window.setText('Information about selected fit type:\n'+
+                                   fits.get_description(self.fit_class_box.currentText(),
+                                                         self.fit_box.currentText()))
     
     def start_fitting(self):
-        if self.xmin_box.text() != '':
-            xmin = float(self.xmin_box.text())
-            min_ind=(np.abs(self.x - xmin)).argmin()
+        # If diagonal or circular, setting limits doesn't work; however, one can easily change the range during linecut definition anyway
+        if self.orientation in ['horizontal','vertical','1D']:
+            if self.xmin_box.text() != '':
+                xmin = float(self.xmin_box.text())
+                min_ind=(np.abs(self.x - xmin)).argmin()
+            else:
+                min_ind = self.x.argmin()
+            if self.xmax_box.text() != '':
+                xmax = float(self.xmax_box.text())
+                max_ind=(np.abs(self.x - xmax)).argmin()
+            else:
+                max_ind = self.x.argmax()
+            if min_ind > max_ind:
+                self.output_window.setText('Xmin must be smaller than Xmax')
+            
+            self.x_forfit=self.x[min_ind:max_ind]
+            self.y_forfit=self.y[min_ind:max_ind]
         else:
-            min_ind = self.x.argmin()
-        if self.xmax_box.text() != '':
-            xmax = float(self.xmax_box.text())
-            max_ind=(np.abs(self.x - xmax)).argmin()
-        else:
-            max_ind = self.x.argmax()
-        if min_ind > max_ind:
-            self.output_window.setText('Xmin must be smaller than Xmax')
-        self.x_forfit=self.x[min_ind:max_ind]
-        self.y_forfit=self.y[min_ind:max_ind]
+            self.x_forfit = self.x
+            self.y_forfit = self.y
 
+        # Find which function to use
         function_class = self.fit_class_box.currentText()
         function_name = self.fit_box.currentText()
         self.y_fit = np.copy(self.y)
+
+        # Collect parameters/initial guess
         if self.guess_checkbox.checkState():
             try:
                 p0 = [float(par) for par in self.guess_edit.text().split()]
             except Exception as e:
-                self.output_window.setText(f'Could not parse initial guess: {e}\n'
+                self.output_window.setText(f'Could not parse input: {e}\n'
                                            'Please provide a space-separated list of numbers.')
                 p0 = None
         else:
             p0 = None
+
+        # Try to do the fit.
         try:
+            # Insist on getting the number of peaks for MultiPeak but this _should_ never come up; taken care of earlier.
             if function_class in ['MultiPeak', 'MultiPeak w/background']:
                 errormessages={'MultiPeak':'Initial guess is required for MultiPeak fit.\n'
                                'If you only want to provide the number of peaks, write '
@@ -2344,9 +2354,11 @@ class LineCutWindow(QtWidgets.QWidget):
                 if p0 is None:
                     self.output_window.setText(errormessages[function_class])
                 else:
+                    # For lmfit fitting, return the result and components
                     self.fit_result,self.fit_components = fits.fit_data(function_class=function_class,
                                                     function_name=function_name, xdata=self.x_forfit,
                                                     ydata=self.y_forfit, p0=p0)
+            # For all other fits, only the fit parameters and best fit data are returned.
             else:
                 self.fit_parameters = fits.fit_data(function_class=function_class,
                                                     function_name=function_name, xdata=self.x_forfit, 
@@ -2356,13 +2368,14 @@ class LineCutWindow(QtWidgets.QWidget):
             self.output_window.setText(f'Curve could not be fitted: {e}')
             self.fit_parameters = [np.nan]*len(fits.get_names(function_name).split(','))
             self.y_fit = np.nan
+        # Plot the data again
         self.draw_plot(parent_linecut=False)
+        # Plotting for lmfit MultiPeak
         if function_class in ['MultiPeak','MultiPeak w/background']:
             self.draw_multipeak_fit()
-        else:
+        else: # All other plots
             self.draw_fits()
         self.plot_parameters()
-        self.limits_edited()
            
     def plot_parameters(self):
         self.output_window.clear()
@@ -2465,6 +2478,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.axes.set_ylabel(self.ylabel, size='xx-large')
         self.axes.tick_params(labelsize='x-large', color=rcParams['axes.edgecolor'])
         self.axes.set_title(self.title, size='x-large')
+        self.limits_edited()
         self.canvas.draw()
         self.parent.canvas.draw()
               
