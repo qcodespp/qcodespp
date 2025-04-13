@@ -2293,7 +2293,7 @@ class LineCutWindow(QtWidgets.QWidget):
             self.guess_checkbox.setText('No data to supply')
             self.guess_checkbox.setEnabled(False)
             self.guess_edit.setEnabled(False)
-        elif self.fit_box.currentText()=='General':
+        elif self.fit_box.currentText()=='Polynomial':
             self.guess_checkbox.setEnabled(True)
             self.guess_checkbox.setCheckState(2)
             self.guess_checkbox.setText('Polynomial order')
@@ -2356,7 +2356,7 @@ class LineCutWindow(QtWidgets.QWidget):
             self.output_window.setText(f'Curve could not be fitted: {e}')
             self.fit_parameters = [np.nan]*len(fits.get_names(function_name).split(','))
             self.y_fit = np.nan
-        self.draw_plot()
+        self.draw_plot(parent_linecut=False)
         if function_class in ['MultiPeak','MultiPeak w/background']:
             self.draw_multipeak_fit()
         else:
@@ -2368,72 +2368,31 @@ class LineCutWindow(QtWidgets.QWidget):
         self.output_window.clear()
         try:
             if self.fit_box.currentText()=='Linear':
-                self.output_window.setText(f'Slope: {self.fit_parameters[0]:.4g}\nOffset: {self.fit_parameters[1]:.4g}')
-            elif self.fit_box.currentText()=='General':
-                text=f'Polynomial fit parameters:\n'
-                for i,parameter in enumerate(self.fit_parameters):
-                    text+=f'a_{i}: {parameter:.4g}\n'
+                self.output_window.setText(f'Linear fit result:'
+                                           f'y = {self.fit_parameters[0]:.4g} * x + {self.fit_parameters[1]:.4g}')
+            
+            elif self.fit_box.currentText()=='Polynomial':
+                text=f'Polynomial fit result:\n y = '
+                for i,parameter in enumerate(self.fit_parameters[::-1]):
+                    if i==0:
+                        text+=f'{parameter:.4g}'
+                    else:
+                        text+=f' + {parameter:.4g}*x^{i}'
                 self.output_window.setText(text)
+
             elif self.fit_class_box.currentText() in ['MultiPeak', 'MultiPeak w/background']:
                 self.output_window.setText(self.fit_result.fit_report())
-            elif '_bg' in self.fit_box.currentText():
-                text=f'Peak fit parameters:\n'
-                for i,parameter in enumerate(self.fit_parameters):
-                    if i==0:
-                        text+=f'Width: {parameter:.4g}\n'
-                    elif i==1:
-                        text+=f'Height: {parameter:.4g}\n'
-                    elif i==2:
-                        text+=f'Position: {parameter:.4g}\n'
-                    else:
-                        text+=f'Background: {parameter:.4g}\n'
-                self.output_window.setText(text)
+
             else:
-                text=f'Peak fit parameters:\n'
+                text=f'Fit parameters:\n'
+                parameter_names=fits.get_parameters(self.fit_class_box.currentText(),self.fit_box.currentText()).split(', ')
                 for i,parameter in enumerate(self.fit_parameters):
-                    if i==0:
-                        text+=f'Width: {parameter:.4g}\n'
-                    elif i==1:
-                        text+=f'Height: {parameter:.4g}\n'
-                    elif i==2:
-                        text+=f'Position: {parameter:.4g}\n'
+                    text+=f'{parameter_names[i]}: {parameter:.4g}\n'
                 self.output_window.setText(text)
         except Exception as e:
             self.output_window.setText('Could not print fit parameters:', e)
-        # x_0=0.02
-        # y_0=0.95
-        # y_inc=0.05
-        # try:
-        #     if self.fit_box.currentText() == 'Linear':
-        #         self.axes.text(0.02,0.95,f'Slope: {self.fit_parameters[0]:.4g}', 
-        #                     transform=self.axes.transAxes)
-        #         self.axes.text(0.02,0.9,f'Offset: {self.fit_parameters[1]:.4g}', 
-        #                     transform=self.axes.transAxes)
-        #     elif self.fit_box.currentText() == 'General':
-        #         for i,parameter in enumerate(self.fit_parameters):
-        #             self.axes.text(x_0,y_0-i*y_inc,f'a_{i}: {parameter:.4g}', 
-        #                     transform=self.axes.transAxes)
-        #     elif '_bg' in self.fit_box.currentText():
-        #         self.axes.text(0.02,0.95,f'Position: {self.fit_parameters[2]:.4g}', 
-        #                     transform=self.axes.transAxes)
-        #         self.axes.text(0.02,0.9,f'Height: {self.fit_parameters[1]:.4g}', 
-        #                     transform=self.axes.transAxes)
-        #         self.axes.text(0.02,0.85,f'Width: {self.fit_parameters[0]:.4g}', 
-        #                     transform=self.axes.transAxes)
-        #         self.axes.text(0.02,0.8,f'Background: {self.fit_parameters[3]:.4g}', 
-        #                     transform=self.axes.transAxes)
-        #     else:
-        #         self.axes.text(0.02,0.95,f'Position: {self.fit_parameters[2]:.4g}', 
-        #                     transform=self.axes.transAxes)
-        #         self.axes.text(0.02,0.9,f'Height: {self.fit_parameters[1]:.4g}', 
-        #                     transform=self.axes.transAxes)
-        #         self.axes.text(0.02,0.85,f'Width: {self.fit_parameters[0]:.4g}', 
-        #                     transform=self.axes.transAxes)
-        # except Exception as e:
-        #     print('Could not plot fit parameters:', e)
-        # self.canvas.draw()
          
-    def draw_plot(self):
+    def draw_plot(self,parent_linecut=True):
         self.running = True
         self.figure.clear()
         self.axes = self.figure.add_subplot(111)
@@ -2452,7 +2411,8 @@ class LineCutWindow(QtWidgets.QWidget):
             self.z = self.parent.processed_data[1][0,self.parent.selected_indices[1]]
             self.xlabel = self.parent.settings['xlabel']
             self.title = f'{self.parent.settings["ylabel"]} = {self.z}'
-            self.parent.linecut = self.parent.axes.axhline(y=self.z, linestyle='dashed', linewidth=1, 
+            if parent_linecut:
+                self.parent.linecut = self.parent.axes.axhline(y=self.z, linestyle='dashed', linewidth=1, 
                                                            color=self.parent.settings['linecolor'])
             self.ylabel = self.parent.settings['clabel']
         elif self.orientation == 'vertical':
@@ -2461,7 +2421,8 @@ class LineCutWindow(QtWidgets.QWidget):
             self.z = self.parent.processed_data[0][self.parent.selected_indices[0],0]
             self.xlabel = self.parent.settings['ylabel']
             self.title = f'{self.parent.settings["xlabel"]} = {self.z}'
-            self.parent.linecut = self.parent.axes.axvline(x=self.z, linestyle='dashed', linewidth=1, 
+            if parent_linecut:
+                self.parent.linecut = self.parent.axes.axvline(x=self.z, linestyle='dashed', linewidth=1, 
                                                            color=self.parent.settings['linecolor'])
             self.ylabel = self.parent.settings['clabel']
         elif self.orientation == 'diagonal' or self.orientation == 'circular':

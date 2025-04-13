@@ -7,11 +7,12 @@ Created on Wed Nov 29 21:56:57 2017
 
 import numpy as np
 from scipy.optimize import curve_fit
-from lmfit.models import LorentzianModel, GaussianModel, ConstantModel
+from lmfit.models import LorentzianModel, GaussianModel, ConstantModel, PowerLawModel
 
 functions = {}
-functions['Polyfit'] = {'Linear': {'parameters':'no inputs'},
-                        'General': {'parameters':'polynomial order'}}
+functions['Polynomials and powers'] = {'Linear': {'parameters':'no inputs'},
+                        'Polynomial': {'parameters':'polynomial order'},
+                        'Power law': {'parameters':'list of powers'}}
 functions['Single peak'] = {'Lorentzian': {'parameters':'fwhm, height, middle'},
                 'Gaussian': {'parameters':'fwhm, height, middle'},
                 'Fano': {'parameters':'fwhm, height, middle, q'},
@@ -34,7 +35,7 @@ def get_class_names():
 def get_function(function_class,function_name):
     return functions[function_class][function_name]['function']
 
-def get_names(fitclass='Polyfit'):
+def get_names(fitclass='Polynomials and powers'):
     return functions[fitclass].keys()
     
 def get_parameters(function_class,function_name):
@@ -74,24 +75,40 @@ def fit_data(function_class,function_name, xdata, ydata, p0=None):
         m,b = np.polyfit(xdata, ydata, 1)
         return m,b
     
-    elif function_name == 'General':
+    elif function_name == 'Polynomial':
         if not p0:
             order=2
         else:
             order = int(p0[0])
         coeffs = np.polyfit(xdata, ydata, order)
         return coeffs
+    
+    elif function_name == 'Power law':
+        popt, _ = curve_fit(f=f(p0), xdata=xdata, ydata=ydata)
 
+
+# Polynomials and powers
 def linear(x, m, b):
     return m*x + b
-functions['Polyfit']['Linear']['function'] = linear
+functions['Polynomials and powers']['Linear']['function'] = linear
 
-def general_polyfit(x, *coeffs):
+def polynomial(x, *coeffs):
     y = 0
     for i, coeff in enumerate(coeffs[::-1]):
         y += coeff*x**i
     return y
-functions['Polyfit']['General']['function'] = general_polyfit
+functions['Polynomials and powers']['Polynomial']['function'] = polynomial
+
+# def fit_powerlaw(xdata,ydata, *powers):
+#     power0=powers[0]
+#     powers=powers[1:]
+#     model=PowerLawModel(prefix='power0_')
+#     params = model.make_params()
+#     for i, power in enumerate(powers):
+#         newmodel = PowerLawModel(prefix=f'power{i+1}_')
+#         pars = newmodel.make_params()
+#         model = model + newmodel
+#         params.update(pars)
 
 def lorentzian(x, fwhm, height, middle):
     y = height*(fwhm/2)**2/((x-middle)**2+(fwhm/2)**2)
