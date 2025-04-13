@@ -639,10 +639,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.settings_table.setRowCount(0)
             old_settings = current_item.data.settings
             preferred_order= ['X data', 'Y data', 'Z data',
-                              'title', 'xlabel', 'ylabel', 'clabel', 
-                              'titlesize','labelsize','ticksize',
-                              'linewidth', 'spinewidth', 'columns',
-                              'colorbar','minorticks','delimiter']
+                              'title', 'xlabel', 'ylabel', 'clabel']
             settings = OrderedDict()
             for key in preferred_order:
                 if key in old_settings:
@@ -1412,7 +1409,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     elif event.button == 1 and len(data.get_columns()) == 2:
                         # Opening linecut/fitting window for 1D data
                         if not hasattr(data, 'linecut_window'):
-                            data.linecut_window = LineCutWindow(data)
+                            data.linecut_window = LineCutWindow(data,dimension='1D')
                         data.linecut_window.running = True
                         data.linecut_window.update()
                         self.canvas.draw()
@@ -2102,44 +2099,67 @@ class Filter:
         
 
 class LineCutWindow(QtWidgets.QWidget):
-    def __init__(self, parent):
+    def __init__(self, parent, dimension='2D'):
         super().__init__()
         self.parent = parent
         self.running = True
+        self.dimension = dimension
         self.init_widgets()
         self.init_canvas()
         self.init_connections()
         self.init_layouts()
         self.set_main_layout()
+        self.fit_type_changed()
         
     def init_widgets(self):
         self.setWindowTitle('Inspectra Gadget - Linecut and Fitting Window')
-        self.resize(600, 600)
+        self.resize(800, 800)
         self.save_button = QtWidgets.QPushButton('Save Data')
         self.save_image_button = QtWidgets.QPushButton('Save Image')
         self.copy_image_button = QtWidgets.QPushButton('Copy Image')
         self.orientation_button = QtWidgets.QPushButton('Hor./Vert.')
-        self.up_button = QtWidgets.QPushButton('Up/Right')
-        self.down_button = QtWidgets.QPushButton('Down/Left')
         self.clear_button = QtWidgets.QPushButton('Clear')
         self.fit_button = QtWidgets.QPushButton('Fit')
         self.guess_checkbox = QtWidgets.QCheckBox('Initial guess')
         self.guess_edit = QtWidgets.QLineEdit()
+        self.fit_class_box = QtWidgets.QComboBox()
+        self.fit_class_box.addItems(fits.get_class_names())
+        self.fit_class_box.setCurrentIndex(0)
+        self.fit_class_box.SizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
         self.fit_box = QtWidgets.QComboBox()
-        self.fit_box.addItems(fits.get_names())
-        self.fit_box.setCurrentIndex(0)        
-        self.pars_label = QtWidgets.QLabel(fits.get_names(parameters=self.fit_box.currentText()))
-        
+        self.fit_box.addItems(fits.get_names(fitclass=self.fit_class_box.currentText()))
+        self.fit_box.setCurrentIndex(0)
+        self.fit_box.SizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
+        #self.pars_label = QtWidgets.QLabel(fits.get_names(parameters=self.fit_box.currentText(),fitclass=self.fit_class_box.currentText()))
+        self.output_window = QtWidgets.QTextEdit()
+        self.output_window.setReadOnly(True)
+        self.output_window.setMaximumHeight(200)
+        self.xmin_label = QtWidgets.QLabel('Xmin:')
+        self.xmin_label.setStyleSheet("QLabel { color : blue; }")
+        self.xmax_label = QtWidgets.QLabel('Xmax:')
+        self.xmax_label.setStyleSheet("QLabel { color : red; }")
+        self.xmin_box = QtWidgets.QLineEdit()
+        # self.xmin_box.setMaximumWidth(150)
+        self.xmax_box = QtWidgets.QLineEdit()
+        # self.xmax_box.setMaximumWidth(150)
+        if self.dimension=='2D':
+            self.up_button = QtWidgets.QPushButton('Up/Right')
+            self.down_button = QtWidgets.QPushButton('Down/Left')
+
     def init_connections(self):
         self.save_button.clicked.connect(self.save_data)
         self.save_image_button.clicked.connect(self.save_image)
         self.copy_image_button.clicked.connect(self.copy_image)
         self.orientation_button.clicked.connect(self.change_orientation)
-        self.up_button.clicked.connect(lambda: self.change_index('up'))
-        self.down_button.clicked.connect(lambda: self.change_index('down'))
         self.clear_button.clicked.connect(self.clear_lines)
+        self.fit_class_box.currentIndexChanged.connect(self.fit_class_changed)
         self.fit_box.currentIndexChanged.connect(self.fit_type_changed)
         self.fit_button.clicked.connect(self.start_fitting)
+        self.xmin_box.editingFinished.connect(self.limits_edited)
+        self.xmax_box.editingFinished.connect(self.limits_edited)
+        if self.dimension=='2D':
+            self.up_button.clicked.connect(lambda: self.change_index('up'))
+            self.down_button.clicked.connect(lambda: self.change_index('down'))
         
     def init_canvas(self):
         self.figure = Figure(tight_layout={'pad':2})
@@ -2147,6 +2167,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.canvas = FigureCanvas(self.figure)
         self.scroll_event_id = self.canvas.mpl_connect('scroll_event', 
                                                        self.mouse_scroll_canvas)
+        self.canvas.mpl_connect('button_press_event', self.mouse_click_canvas)
         self.navi_toolbar = NavigationToolbar(self.canvas, self)
         #zoom_factory(self.axes)
     
@@ -2161,18 +2182,27 @@ class LineCutWindow(QtWidgets.QWidget):
         self.top_buttons_layout.addWidget(self.copy_image_button)
         self.top_buttons_layout.addStretch()
         self.top_buttons_layout.addWidget(self.orientation_button)
-        self.top_buttons_layout.addWidget(self.down_button)
-        self.top_buttons_layout.addWidget(self.up_button)
+        if self.dimension == '2D':
+            self.top_buttons_layout.addWidget(self.down_button)
+            self.top_buttons_layout.addWidget(self.up_button)
         
+        self.bottom_buttons_layout.addWidget(self.xmin_label)
+        self.bottom_buttons_layout.addWidget(self.xmin_box)
+        self.bottom_buttons_layout.addWidget(self.xmax_label)
+        self.bottom_buttons_layout.addWidget(self.xmax_box)
         self.bottom_buttons_layout.addStretch()
         self.bottom_buttons_layout.addWidget(self.fit_button)
         self.bottom_buttons_layout.addWidget(self.clear_button)        
 
         self.fit_layout.addStretch()
+        self.fit_layout.addWidget(self.fit_class_box)
+        self.fit_layout.addWidget(self.fit_box)
         self.fit_layout.addWidget(self.guess_checkbox)
         self.fit_layout.addWidget(self.guess_edit)
-        self.fit_layout.addWidget(self.pars_label) 
-        self.fit_layout.addWidget(self.fit_box)
+        #self.fit_layout.addWidget(self.pars_label)
+
+        self.output_layout = QtWidgets.QVBoxLayout()
+        self.output_layout.addWidget(self.output_window)
 
     def set_main_layout(self):
         self.main_layout.addLayout(self.top_buttons_layout)
@@ -2180,14 +2210,38 @@ class LineCutWindow(QtWidgets.QWidget):
         self.main_layout.addWidget(self.navi_toolbar)
         self.main_layout.addLayout(self.fit_layout)
         self.main_layout.addLayout(self.bottom_buttons_layout)
-        self.setLayout(self.main_layout)        
+        self.main_layout.addLayout(self.output_layout)
+        self.setLayout(self.main_layout)
              
     def change_orientation(self):
         if self.orientation == 'horizontal':
             self.orientation = 'vertical'
         elif self.orientation == 'vertical':
             self.orientation = 'horizontal'
+        self.xmin_box.clear()
+        self.xmax_box.clear()
+        self.output_window.clear()
         self.update()
+
+    def limits_edited(self):
+        try:
+            if hasattr(self, 'minline'):
+                self.minline.remove()
+                del self.minline
+            if hasattr(self, 'maxline'):
+                self.maxline.remove()
+                del self.maxline
+        except:
+            pass
+        xmin=self.xmin_box.text()
+        xmax=self.xmax_box.text()
+        if xmin != '':
+            xmin=float(xmin)
+            self.minline=self.axes.axvline(xmin, 0,0.1, color='blue', linestyle='--')
+        if xmax != '':
+            xmax=float(xmax)
+            self.maxline=self.axes.axvline(xmax, 0,0.1, color='red', linestyle='--')
+        self.canvas.draw()
   
     def update(self):
         if self.running:
@@ -2200,6 +2254,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.ylabel = self.parent.settings['clabel']
             else: 
                 self.orientation = '1D'
+                self.ylabel = self.parent.settings['ylabel']
             self.draw_plot()
             self.parent.canvas.draw()
             self.show()
@@ -2211,40 +2266,161 @@ class LineCutWindow(QtWidgets.QWidget):
                 del line
         if hasattr(self, 'peak_estimates'):
             self.peak_estimates = []
+        self.xmin_box.clear()
+        self.xmax_box.clear()
+        self.update()
+        self.output_window.clear()
         self.canvas.draw()
     
+    def fit_class_changed(self):
+        self.fit_box.clear()
+        self.fit_box.addItems(fits.get_names(fitclass=self.fit_class_box.currentText()))
+        self.fit_box.setCurrentIndex(0)
+        if self.fit_class_box.currentText() == 'MultiPeak':
+            self.guess_checkbox.setCheckState(2)
+            self.guess_edit.setEnabled(True)
+            self.guess_edit.setText('0 0 2')
+        self.fit_type_changed()
+        #self.pars_label.setText(fits.get_names(parameters=self.fit_box.currentText()))
+    
     def fit_type_changed(self):
-        self.pars_label.setText(fits.get_names(parameters=self.fit_box.currentText()))
+        if self.fit_box.currentText()=='Linear':
+            self.guess_checkbox.setCheckState(0)
+            self.guess_checkbox.setText('No data to supply')
+            self.guess_checkbox.setEnabled(False)
+            self.guess_edit.setEnabled(False)
+        elif self.fit_box.currentText()=='General':
+            self.guess_checkbox.setEnabled(True)
+            self.guess_checkbox.setCheckState(2)
+            self.guess_checkbox.setText('Polynomial order')
+            self.guess_edit.setEnabled(True)
+            self.guess_edit.setText('2')
+        else:
+            self.guess_edit.setEnabled(True)
+            pars=fits.get_names(parameters=self.fit_box.currentText(),fitclass=self.fit_class_box.currentText())
+            self.guess_checkbox.setEnabled(True)
+            self.guess_checkbox.setText(f'Initial guess: {pars}')
     
     def start_fitting(self):
+        if self.xmin_box.text() != '':
+            xmin = float(self.xmin_box.text())
+            min_ind=(np.abs(self.x - xmin)).argmin()
+        else:
+            min_ind = self.x.argmin()
+        if self.xmax_box.text() != '':
+            xmax = float(self.xmax_box.text())
+            max_ind=(np.abs(self.x - xmax)).argmin()
+        else:
+            max_ind = self.x.argmax()
+        if min_ind > max_ind:
+            self.output_window.setText('Xmin must be smaller than Xmax')
+        self.x_forfit=self.x[min_ind:max_ind]
+        self.y_forfit=self.y[min_ind:max_ind]
+
         function_name = self.fit_box.currentText()
         self.y_fit = np.copy(self.y)
         if self.guess_checkbox.checkState():
-            p0 = None
+            try:
+                p0 = [float(par) for par in self.guess_edit.text().split()]
+            except Exception as e:
+                self.output_window.setText(f'Could not parse initial guess: {e}\n'
+                                           'Please provide a space-separated list of numbers.')
+                p0 = None
         else:
-            p0 = [float(par) for par in self.guess_edit.text().split()]
+            p0 = None
         try:
-            self.fit_parameters = fits.fit_data(function_name=function_name, xdata=self.x, 
-                                                ydata=self.y, p0=p0)
-            self.y_fit = fits.get_function(function_name)(self.x, *self.fit_parameters)
-        except RuntimeError:
-            print('Curve could not be fitted')
+            if self.fit_class_box.currentText()=='MultiPeak':
+                if p0 is None:
+                    self.output_window.setText('Initial guess is required for MultiPeak fit.\n'
+                                               'If you only want to provide the number of peaks, write' \
+                                               '0 0 # where # is the number of peaks.')
+                else:
+                    self.fit_result,self.fit_components = fits.fit_data(function_name=function_name, xdata=self.x_forfit,
+                                                    ydata=self.y_forfit, p0=p0)
+            else:
+                self.fit_parameters = fits.fit_data(function_name=function_name, xdata=self.x_forfit, 
+                                                    ydata=self.y_forfit, p0=p0)
+                self.y_fit = fits.get_function(function_name)(self.x_forfit, *self.fit_parameters)
+        except Exception as e:
+            self.output_window.setText(f'Curve could not be fitted: {e}')
             self.fit_parameters = [np.nan]*len(fits.get_names(function_name).split(','))
-            self.y_fit = np.nan            
+            self.y_fit = np.nan
         self.draw_plot()
-        self.draw_fits()
+        if self.fit_class_box.currentText()=='MultiPeak':
+            self.draw_multipeak_fit()
+        else:
+            self.draw_fits()
         self.plot_parameters()
+        self.limits_edited()
            
     def plot_parameters(self):
-        self.axes.text(0.02,0.95,f'Position: {self.fit_parameters[2]:.4g}', 
-                       transform=self.axes.transAxes)
-        self.axes.text(0.02,0.9,f'Height: {self.fit_parameters[1]:.4g}', 
-                       transform=self.axes.transAxes)
-        self.axes.text(0.02,0.85,f'Width: {self.fit_parameters[0]:.4g}', 
-                       transform=self.axes.transAxes)
-        self.axes.text(0.02,0.8,f'Background: {self.fit_parameters[3]:.4g}', 
-                       transform=self.axes.transAxes)
-        self.canvas.draw()
+        self.output_window.clear()
+        try:
+            if self.fit_box.currentText()=='Linear':
+                self.output_window.setText(f'Slope: {self.fit_parameters[0]:.4g}\nOffset: {self.fit_parameters[1]:.4g}')
+            elif self.fit_box.currentText()=='General':
+                text=f'Polyfit parameters:\n'
+                for i,parameter in enumerate(self.fit_parameters):
+                    text+=f'a_{i}: {parameter:.4g}\n'
+                self.output_window.setText(text)
+            elif self.fit_class_box.currentText()=='MultiPeak':
+                self.output_window.setText(self.fit_result.fit_report())
+            elif '_bg' in self.fit_box.currentText():
+                text=f'Peak fit parameters:\n'
+                for i,parameter in enumerate(self.fit_parameters):
+                    if i==0:
+                        text+=f'Width: {parameter:.4g}\n'
+                    elif i==1:
+                        text+=f'Height: {parameter:.4g}\n'
+                    elif i==2:
+                        text+=f'Position: {parameter:.4g}\n'
+                    else:
+                        text+=f'Background: {parameter:.4g}\n'
+                self.output_window.setText(text)
+            else:
+                text=f'Peak fit parameters:\n'
+                for i,parameter in enumerate(self.fit_parameters):
+                    if i==0:
+                        text+=f'Width: {parameter:.4g}\n'
+                    elif i==1:
+                        text+=f'Height: {parameter:.4g}\n'
+                    elif i==2:
+                        text+=f'Position: {parameter:.4g}\n'
+                self.output_window.setText(text)
+        except Exception as e:
+            self.output_window.setText('Could not print fit parameters:', e)
+        # x_0=0.02
+        # y_0=0.95
+        # y_inc=0.05
+        # try:
+        #     if self.fit_box.currentText() == 'Linear':
+        #         self.axes.text(0.02,0.95,f'Slope: {self.fit_parameters[0]:.4g}', 
+        #                     transform=self.axes.transAxes)
+        #         self.axes.text(0.02,0.9,f'Offset: {self.fit_parameters[1]:.4g}', 
+        #                     transform=self.axes.transAxes)
+        #     elif self.fit_box.currentText() == 'General':
+        #         for i,parameter in enumerate(self.fit_parameters):
+        #             self.axes.text(x_0,y_0-i*y_inc,f'a_{i}: {parameter:.4g}', 
+        #                     transform=self.axes.transAxes)
+        #     elif '_bg' in self.fit_box.currentText():
+        #         self.axes.text(0.02,0.95,f'Position: {self.fit_parameters[2]:.4g}', 
+        #                     transform=self.axes.transAxes)
+        #         self.axes.text(0.02,0.9,f'Height: {self.fit_parameters[1]:.4g}', 
+        #                     transform=self.axes.transAxes)
+        #         self.axes.text(0.02,0.85,f'Width: {self.fit_parameters[0]:.4g}', 
+        #                     transform=self.axes.transAxes)
+        #         self.axes.text(0.02,0.8,f'Background: {self.fit_parameters[3]:.4g}', 
+        #                     transform=self.axes.transAxes)
+        #     else:
+        #         self.axes.text(0.02,0.95,f'Position: {self.fit_parameters[2]:.4g}', 
+        #                     transform=self.axes.transAxes)
+        #         self.axes.text(0.02,0.9,f'Height: {self.fit_parameters[1]:.4g}', 
+        #                     transform=self.axes.transAxes)
+        #         self.axes.text(0.02,0.85,f'Width: {self.fit_parameters[0]:.4g}', 
+        #                     transform=self.axes.transAxes)
+        # except Exception as e:
+        #     print('Could not plot fit parameters:', e)
+        # self.canvas.draw()
          
     def draw_plot(self):
         self.running = True
@@ -2259,7 +2435,7 @@ class LineCutWindow(QtWidgets.QWidget):
             self.ylabel = self.parent.settings['ylabel']
             self.title = self.parent.settings['title']
         
-        if self.orientation == 'horizontal':
+        elif self.orientation == 'horizontal':
             self.x = self.parent.processed_data[0][:,self.parent.selected_indices[1]]
             self.y = self.parent.processed_data[2][:,self.parent.selected_indices[1]]
             self.z = self.parent.processed_data[1][0,self.parent.selected_indices[1]]
@@ -2267,6 +2443,7 @@ class LineCutWindow(QtWidgets.QWidget):
             self.title = f'{self.parent.settings["ylabel"]} = {self.z}'
             self.parent.linecut = self.parent.axes.axhline(y=self.z, linestyle='dashed', linewidth=1, 
                                                            color=self.parent.settings['linecolor'])
+            self.ylabel = self.parent.settings['clabel']
         elif self.orientation == 'vertical':
             self.x = self.parent.processed_data[1][self.parent.selected_indices[0],:]
             self.y = self.parent.processed_data[2][self.parent.selected_indices[0],:]
@@ -2275,6 +2452,7 @@ class LineCutWindow(QtWidgets.QWidget):
             self.title = f'{self.parent.settings["xlabel"]} = {self.z}'
             self.parent.linecut = self.parent.axes.axvline(x=self.z, linestyle='dashed', linewidth=1, 
                                                            color=self.parent.settings['linecolor'])
+            self.ylabel = self.parent.settings['clabel']
         elif self.orientation == 'diagonal' or self.orientation == 'circular':
             x0 = self.parent.linecut_points[0].x 
             y0 = self.parent.linecut_points[0].y
@@ -2308,7 +2486,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.x = theta
                 self.xlabel = 'Angle (rad)'
             self.title = ''
-        self.ylabel = self.parent.settings['clabel']
+            self.ylabel = self.parent.settings['clabel']
         self.image = self.axes.plot(self.x, self.y, linewidth=self.parent.settings['linewidth'])
         self.cursor = Cursor(self.axes, useblit=True, color='grey', linewidth=0.5)
         self.axes.set_xlabel(self.xlabel, size='xx-large')
@@ -2319,11 +2497,21 @@ class LineCutWindow(QtWidgets.QWidget):
         self.parent.canvas.draw()
               
     def draw_fits(self):
-        self.axes.plot(self.x, self.y_fit, 'k--', 
+        self.axes.plot(self.x_forfit, self.y_fit, 'k--', 
                        linewidth=self.parent.settings['linewidth'])     
         #zoom_factory(self.axes)       
         self.canvas.draw()
-        
+    
+    def draw_multipeak_fit(self):
+        try:
+            self.axes.plot(self.x_forfit, self.fit_result.best_fit, 'k--',
+                linewidth=self.parent.settings['linewidth'])
+            for key in self.fit_components.keys():
+                self.axes.plot(self.x_forfit, self.fit_components[key], '--', alpha=0.75, linewidth=self.parent.settings['linewidth'])
+        except Exception as e:
+            self.output_window.setText(f'Could not plot fit components: {e}')
+        self.canvas.draw()
+
     def closeEvent(self, event):
         self.parent.hide_linecuts()
         self.running = False
@@ -2387,6 +2575,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 if new_index >= 0:
                     self.parent.selected_indices[0] = new_index
         self.update()
+        self.output_window.clear()
         self.parent.canvas.draw()
             
     def mouse_scroll_canvas(self, event):
@@ -2402,6 +2591,24 @@ class LineCutWindow(QtWidgets.QWidget):
                     self.parent.selected_indices[0] = new_index
             self.update()
             self.parent.canvas.draw()
+
+    def mouse_click_canvas(self, event):
+        if self.navi_toolbar.mode == '': # If not using the navigation toolbar tools
+            if event.inaxes and event.button == 1:
+                # Snap to data.
+                index=(np.abs(self.x-event.xdata)).argmin()
+                x_value = self.x[index]
+                if self.xmin_box.text() == '':
+                    self.xmin_box.setText(str(x_value))
+                elif self.xmax_box.text() == '':
+                    self.xmax_box.setText(str(x_value))
+                else:
+                    if np.abs(float(self.xmin_box.text())-float(x_value)) < np.abs(float(self.xmax_box.text())-float(x_value)):
+                        self.xmin_box.setText(str(x_value))
+                    else:
+                        self.xmax_box.setText(str(x_value))
+                self.limits_edited()
+
     
     # Below doesn't work because arrow keys already function to move between items in the GUI.
     # Could try to override it one day.

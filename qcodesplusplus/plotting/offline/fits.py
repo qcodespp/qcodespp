@@ -2,60 +2,232 @@
 """
 Created on Wed Nov 29 21:56:57 2017
 
-@author: Joeri de Bruijckere
+@author: Joeri de Bruijckere, Damon Carrad
 """
 
 import numpy as np
 from scipy.optimize import curve_fit
+from lmfit.models import LorentzianModel, GaussianModel
 
-def get_names(parameters=None):
-    functions = {'Lorentzian': 'fwhm, height, middle, background', 
-                 'Gaussian': 'fwhm, height, middle, background',
-                 'Fano': 'fwhm, height, middle, background, q',
-                 'Frota': 'fwhm, height, middle, background'}
+functions = {}
+functions['Polyfit'] = {'Linear': 'no inputs', 'General': 'polynomial order'}
+functions['Single peak'] = {'Lorentzian': 'fwhm, height, middle',
+                'Gaussian': 'fwhm, height, middle',
+                'Fano': 'fwhm, height, middle, q',
+                'Frota': 'fwhm, height, middle'}
+functions['Single peak w/background']={'Lorentzian_bg': 'fwhm, height, middle, background', 
+                'Gaussian_bg': 'fwhm, height, middle, background',
+                'Fano_bg': 'fwhm, height, middle, background, q',
+                'Frota_bg': 'fwhm, height, middle, background'}
+functions['MultiPeak'] = {'LorentzianMulti': 'fwhm, height, # of peaks',
+                'GaussianMulti': 'fwhm, height, # of peaks'}
+
+def get_class_names():
+    #classes = ['Polyfit', 'Single peak','Multipeak', 'Single peak w/background', 'Multipeak w/background']
+    classes = ['Polyfit', 'Single peak', 'Single peak w/background', 'MultiPeak']
+    return classes
+
+def get_names(parameters=None,fitclass='Polyfit'):
+
     if parameters:
-        return functions[parameters]
+        return functions[fitclass][parameters]
     else:
-        return functions.keys()
+        return functions[fitclass].keys()
 
 def get_function(function_name):
-    functions = {'Lorentzian': lorentzian, 'Gaussian': gaussian,
-                 'Fano': fano, 'Frota': frota}
+    functions = {'Linear': linear, 'General': general_polyfit,
+                'Lorentzian': lorentzian, 'Gaussian': gaussian,
+                'Fano': fano, 'Frota': frota,
+                'Lorentzian_bg': lorentzian_bg, 'Gaussian_bg': gaussian_bg,
+                'Fano_bg': fano_bg, 'Frota_bg': frota_bg,
+                'LorentzianMulti': fit_lorentzians, 'GaussianMulti': fit_gaussians}
     return functions[function_name]
 
 def estimate_parameters(function_name, x, y):
     fwhm = 0.1*(np.amax(x)-np.amin(x))
     height = np.amax(y)-np.amin(y)
     middle = 0.5*(np.amax(x)+np.amin(x))
-    background = np.amin(y)
-    estimated_parameters = [fwhm, height, middle, background]
-    if function_name == 'Fano':
+    if '_bg' in function_name:
+        background = np.amin(y)
+        estimated_parameters = [fwhm, height, middle, background]
+    else:
+        estimated_parameters = [fwhm, height, middle]
+    if 'Fano' in function_name:
         q = 1
         estimated_parameters.append(q)
     return estimated_parameters
 
 def fit_data(function_name, xdata, ydata, p0=None):
-    f = get_function(function_name)
-    if not p0:
-        p0 = estimate_parameters(function_name, xdata, ydata)
-    popt, _ = curve_fit(f=f, xdata=xdata, ydata=ydata, p0=p0)
-    return popt
+    if function_name in list(functions['Single peak'].keys()) or function_name in list(functions['Single peak w/background'].keys()):
+        f = get_function(function_name)
+        if not p0:
+            p0 = estimate_parameters(function_name, xdata, ydata)
+        popt, _ = curve_fit(f=f, xdata=xdata, ydata=ydata, p0=p0)
+        return popt
     
-def lorentzian(x, fwhm, height, middle, background):
+    elif function_name == 'LorentzianMulti':
+        result, components = fit_lorentzians(xdata, ydata, numofpeaks=p0[2], amplitudes=p0[1], sigmas=p0[0])
+        return result, components
+    
+    elif function_name == 'GaussianMulti':
+        result, components = fit_gaussians(xdata, ydata, numofpeaks=p0[2], amplitudes=p0[1], sigmas=p0[0])
+        return result, components
+    
+    elif function_name == 'Linear':
+        m,b = np.polyfit(xdata, ydata, 1)
+        return m,b
+    
+    elif function_name == 'General':
+        if not p0:
+            order=2
+        else:
+            order = int(p0[0])
+        coeffs = np.polyfit(xdata, ydata, order)
+        return coeffs
+
+def linear(x, m, b):
+    return m*x + b
+
+def general_polyfit(x, *coeffs):
+    y = 0
+    for i, coeff in enumerate(coeffs[::-1]):
+        y += coeff*x**i
+    return y
+
+def lorentzian(x, fwhm, height, middle):
+    y = height*(fwhm/2)**2/((x-middle)**2+(fwhm/2)**2)
+    return y
+
+def gaussian(x, fwhm, height, middle):
+    c = fwhm/(2*np.sqrt(2*np.log(2)))
+    y = height*np.exp(-(x-middle)**2/(2*c**2))
+    return y
+
+def fano(x, fwhm, height, middle, q):
+    epsilon = 2*(x-middle)/fwhm
+    y = height*(epsilon+q)**2/(1+epsilon**2)/(1+q**2)
+    return y
+
+def frota(x, fwhm, height, middle):
+    y = height*np.real(np.sqrt(1j*(fwhm/2)/((x-middle)+1j*(fwhm/2))))
+    return y
+
+def lorentzian_bg(x, fwhm, height, middle, background):
     y = height*(fwhm/2)**2/((x-middle)**2+(fwhm/2)**2) + background
     return y
 
-def gaussian(x, fwhm, height, middle, background):
+def gaussian_bg(x, fwhm, height, middle, background):
     c = fwhm/(2*np.sqrt(2*np.log(2)))
     y = height*np.exp(-(x-middle)**2/(2*c**2)) + background
     return y
 
-def fano(x, fwhm, height, middle, background, q):
+def fano_bg(x, fwhm, height, middle, background, q):
     epsilon = 2*(x-middle)/fwhm
     y = height*(epsilon+q)**2/(1+epsilon**2)/(1+q**2) + background
     return y
 
-def frota(x, fwhm, height, middle, background):
+def frota_bg(x, fwhm, height, middle, background):
     y = height*np.real(np.sqrt(1j*(fwhm/2)/((x-middle)+1j*(fwhm/2)))) + background
     return y
+
+
+#MultiPeak fitting
+def fit_lorentzians(xdata,ydata,numofpeaks=None,
+                    amplitudes=None,sigmas=None,background=None):
+    #Fits x,y data with lorentzian functions using 'rough_peak_positions' as initial guess positions.
+    #One can instead provide the number of peaks, and the fitter will start with an initial guess of evenly spaced peaks.
+    #numofpeaks is ignored if rough_peak_positions provided
+    #If necessary, the range of the data can be limited, in units of the x data.
+    #Custom starting amplitudes (proportional to height) and sigmas (proportional to width) may also be given
+    #Returns parameters for each of the peaks fitted, 'peak0' to 'peakN' where N is the number of peaks in rough_peak_positions
+    #If savefig set to True, saves the figure with plotname, which should include the filetype.
+
+    if xdata[0]>xdata[-1]:
+        xdata=xdata[::-1]
+        ydata=ydata[::-1]
+
+    peakspacing=(xdata.max()-xdata.min())/numofpeaks
+    rough_peak_positions=[i*peakspacing+peakspacing/2+xdata.min() for i in range(int(numofpeaks))]
+        #print(rough_peak_positions)
+
+    if amplitudes==None or amplitudes==0: #Guess that the amplitudes will be close to the maximum value of the data
+        amplitudes=np.max(ydata)
+    if sigmas==None or sigmas==0: #Sigma = FWHM/2, so sigma should be roughly a fourth of the peak spacing. May be much less if peaks not overlapping
+        sigmas=np.abs(xdata[-1]-xdata[0])/(4*numofpeaks)
+        
+    peakpos0=rough_peak_positions[0]
+    peakpositions=rough_peak_positions[1:]
     
+    def add_peak(prefix, center, amplitude=amplitudes, sigma=sigmas):
+        peak = LorentzianModel(prefix=prefix)
+        pars = peak.make_params()
+        pars[prefix + 'center'].set(center)
+        pars[prefix + 'amplitude'].set(amplitude, min=0)
+        pars[prefix + 'sigma'].set(sigma, min=0)
+        return peak, pars
+
+    model = LorentzianModel(prefix='peak0_')
+    params = model.make_params()
+    params['peak0_center'].set(peakpos0)
+    params['peak0_amplitude'].set(amplitudes, min=0)
+    params['peak0_sigma'].set(sigmas, min=0)
+
+    for i, cen in enumerate(peakpositions):
+        peak, pars = add_peak('peak%d_' % (i+1), cen)
+        model = model + peak
+        params.update(pars)
+
+    init = model.eval(params, x=xdata)
+    result = model.fit(ydata, params, x=xdata)
+    components = result.eval_components()
+    return(result, components)
+
+def fit_gaussians(xdata,ydata,numofpeaks=None,
+                    amplitudes=None,sigmas=None,background=None):
+   
+    #Fits x,y data with lorentzian functions using 'rough_peak_positions' as initial guess positions.
+    #One can instead provide the number of peaks, and the fitter will start with an initial guess of evenly spaced peaks.
+    #numofpeaks is ignored if rough_peak_positions provided
+    #If necessary, the range of the data can be limited, in units of the x data.
+    #Custom starting amplitudes (proportional to height) and sigmas (proportional to width) may also be given
+    #Returns parameters for each of the peaks fitted, 'peak0' to 'peakN' where N is the number of peaks in rough_peak_positions
+    #If savefig set to True, saves the figure with plotname, which should include the filetype.
+
+    if xdata[0]>xdata[-1]:
+        xdata=xdata[::-1]
+        ydata=ydata[::-1]
+
+    peakspacing=(xdata.max()-xdata.min())/numofpeaks
+    rough_peak_positions=[i*peakspacing+peakspacing/2+xdata.min() for i in range(int(numofpeaks))]
+
+    if amplitudes==None or amplitudes==0: #Guess that the amplitudes will be close to the maximum value of the data
+        amplitudes=ydata.max()
+    if sigmas==None or sigmas==0: #Sigma = FWHM/2, so sigma should be roughly a fourth of the peak spacing. May be much less if peaks not overlapping
+        sigmas=np.abs(xdata[-1]-xdata[0])/(4*numofpeaks)
+        
+    peakpos0=rough_peak_positions[0]
+    peakpositions=rough_peak_positions[1:]
+    
+    def add_peak(prefix, center, amplitude=amplitudes, sigma=sigmas):
+        peak = GaussianModel(prefix=prefix)
+        pars = peak.make_params()
+        pars[prefix + 'center'].set(center)
+        pars[prefix + 'amplitude'].set(amplitude, min=0)
+        pars[prefix + 'sigma'].set(sigma, min=0)
+        return peak, pars
+
+    model = LorentzianModel(prefix='peak0_')
+    params = model.make_params()
+    params['peak0_center'].set(peakpos0)
+    params['peak0_amplitude'].set(amplitudes, min=0)
+    params['peak0_sigma'].set(sigmas, min=0)
+
+    for i, cen in enumerate(peakpositions):
+        peak, pars = add_peak('peak%d_' % (i+1), cen)
+        model = model + peak
+        params.update(pars)
+
+    init = model.eval(params, x=xdata)
+    result = model.fit(ydata, params, x=xdata)
+    components = result.eval_components()
+    return(result, components)
