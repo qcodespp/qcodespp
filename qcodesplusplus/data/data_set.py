@@ -889,7 +889,7 @@ class DataSet(DelegateAttributes):
         except (AttributeError, KeyError):
             return None
         
-    def live_plotting(self, *dataitems):
+    def plot(self, *dataitems):
         """
         Live plotting function for a dataset.
 
