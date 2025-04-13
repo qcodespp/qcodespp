@@ -2280,6 +2280,10 @@ class LineCutWindow(QtWidgets.QWidget):
             self.guess_checkbox.setCheckState(2)
             self.guess_edit.setEnabled(True)
             self.guess_edit.setText('0 0 2')
+        elif self.fit_class_box.currentText() == 'MultiPeak w/background':
+            self.guess_checkbox.setCheckState(2)
+            self.guess_edit.setEnabled(True)
+            self.guess_edit.setText('0 0 2 0')
         self.fit_type_changed()
         #self.pars_label.setText(fits.get_names(parameters=self.fit_box.currentText()))
     
@@ -2297,7 +2301,7 @@ class LineCutWindow(QtWidgets.QWidget):
             self.guess_edit.setText('2')
         else:
             self.guess_edit.setEnabled(True)
-            pars=fits.get_names(parameters=self.fit_box.currentText(),fitclass=self.fit_class_box.currentText())
+            pars=fits.get_parameters(self.fit_class_box.currentText(),self.fit_box.currentText())
             self.guess_checkbox.setEnabled(True)
             self.guess_checkbox.setText(f'Initial guess: {pars}')
     
@@ -2317,6 +2321,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.x_forfit=self.x[min_ind:max_ind]
         self.y_forfit=self.y[min_ind:max_ind]
 
+        function_class = self.fit_class_box.currentText()
         function_name = self.fit_box.currentText()
         self.y_fit = np.copy(self.y)
         if self.guess_checkbox.checkState():
@@ -2329,24 +2334,30 @@ class LineCutWindow(QtWidgets.QWidget):
         else:
             p0 = None
         try:
-            if self.fit_class_box.currentText()=='MultiPeak':
+            if function_class in ['MultiPeak', 'MultiPeak w/background']:
+                errormessages={'MultiPeak':'Initial guess is required for MultiPeak fit.\n'
+                               'If you only want to provide the number of peaks, write '
+                                '0 0 # where # is the number of peaks.',
+                                'MultiPeak w/background':'Initial guess is required for MultiPeak fit.\n'
+                                'If you only want to provide the number of peaks, write '
+                                '0 0 # 0 where # is the number of peaks.'}
                 if p0 is None:
-                    self.output_window.setText('Initial guess is required for MultiPeak fit.\n'
-                                               'If you only want to provide the number of peaks, write' \
-                                               '0 0 # where # is the number of peaks.')
+                    self.output_window.setText(errormessages[function_class])
                 else:
-                    self.fit_result,self.fit_components = fits.fit_data(function_name=function_name, xdata=self.x_forfit,
+                    self.fit_result,self.fit_components = fits.fit_data(function_class=function_class,
+                                                    function_name=function_name, xdata=self.x_forfit,
                                                     ydata=self.y_forfit, p0=p0)
             else:
-                self.fit_parameters = fits.fit_data(function_name=function_name, xdata=self.x_forfit, 
+                self.fit_parameters = fits.fit_data(function_class=function_class,
+                                                    function_name=function_name, xdata=self.x_forfit, 
                                                     ydata=self.y_forfit, p0=p0)
-                self.y_fit = fits.get_function(function_name)(self.x_forfit, *self.fit_parameters)
+                self.y_fit = fits.get_function(function_class,function_name)(self.x_forfit, *self.fit_parameters)
         except Exception as e:
             self.output_window.setText(f'Curve could not be fitted: {e}')
             self.fit_parameters = [np.nan]*len(fits.get_names(function_name).split(','))
             self.y_fit = np.nan
         self.draw_plot()
-        if self.fit_class_box.currentText()=='MultiPeak':
+        if function_class in ['MultiPeak','MultiPeak w/background']:
             self.draw_multipeak_fit()
         else:
             self.draw_fits()
@@ -2359,11 +2370,11 @@ class LineCutWindow(QtWidgets.QWidget):
             if self.fit_box.currentText()=='Linear':
                 self.output_window.setText(f'Slope: {self.fit_parameters[0]:.4g}\nOffset: {self.fit_parameters[1]:.4g}')
             elif self.fit_box.currentText()=='General':
-                text=f'Polyfit parameters:\n'
+                text=f'Polynomial fit parameters:\n'
                 for i,parameter in enumerate(self.fit_parameters):
                     text+=f'a_{i}: {parameter:.4g}\n'
                 self.output_window.setText(text)
-            elif self.fit_class_box.currentText()=='MultiPeak':
+            elif self.fit_class_box.currentText() in ['MultiPeak', 'MultiPeak w/background']:
                 self.output_window.setText(self.fit_result.fit_report())
             elif '_bg' in self.fit_box.currentText():
                 text=f'Peak fit parameters:\n'

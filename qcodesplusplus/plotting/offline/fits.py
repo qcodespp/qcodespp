@@ -7,41 +7,38 @@ Created on Wed Nov 29 21:56:57 2017
 
 import numpy as np
 from scipy.optimize import curve_fit
-from lmfit.models import LorentzianModel, GaussianModel
+from lmfit.models import LorentzianModel, GaussianModel, ConstantModel
 
 functions = {}
-functions['Polyfit'] = {'Linear': 'no inputs', 'General': 'polynomial order'}
-functions['Single peak'] = {'Lorentzian': 'fwhm, height, middle',
-                'Gaussian': 'fwhm, height, middle',
-                'Fano': 'fwhm, height, middle, q',
-                'Frota': 'fwhm, height, middle'}
-functions['Single peak w/background']={'Lorentzian_bg': 'fwhm, height, middle, background', 
-                'Gaussian_bg': 'fwhm, height, middle, background',
-                'Fano_bg': 'fwhm, height, middle, background, q',
-                'Frota_bg': 'fwhm, height, middle, background'}
-functions['MultiPeak'] = {'LorentzianMulti': 'fwhm, height, # of peaks',
-                'GaussianMulti': 'fwhm, height, # of peaks'}
+functions['Polyfit'] = {'Linear': {'parameters':'no inputs'},
+                        'General': {'parameters':'polynomial order'}}
+functions['Single peak'] = {'Lorentzian': {'parameters':'fwhm, height, middle'},
+                'Gaussian': {'parameters':'fwhm, height, middle'},
+                'Fano': {'parameters':'fwhm, height, middle, q'},
+                'Frota': {'parameters':'fwhm, height, middle'}}
+
+functions['Single peak w/background']={'Lorentzian_bg': {'parameters':'fwhm, height, middle, background'},
+                'Gaussian_bg': {'parameters':'fwhm, height, middle, background'},
+                'Fano_bg': {'parameters':'fwhm, height, middle, background, q'},
+                'Frota_bg': {'parameters':'fwhm, height, middle, background'}} 
+
+functions['MultiPeak'] = {'LorentzianMulti': {'parameters':'fwhm, height, # of peaks'},
+                'GaussianMulti': {'parameters':'fwhm, height, # of peaks'}}
+
+functions['MultiPeak w/background'] = {'LorentzianMulti_bg': {'parameters':'fwhm, height, # of peaks, background'},
+                'GaussianMulti_bg': {'parameters':'fwhm, height, # of peaks, background'}}
 
 def get_class_names():
-    #classes = ['Polyfit', 'Single peak','Multipeak', 'Single peak w/background', 'Multipeak w/background']
-    classes = ['Polyfit', 'Single peak', 'Single peak w/background', 'MultiPeak']
-    return classes
+    return functions.keys()
 
-def get_names(parameters=None,fitclass='Polyfit'):
+def get_function(function_class,function_name):
+    return functions[function_class][function_name]['function']
 
-    if parameters:
-        return functions[fitclass][parameters]
-    else:
-        return functions[fitclass].keys()
-
-def get_function(function_name):
-    functions = {'Linear': linear, 'General': general_polyfit,
-                'Lorentzian': lorentzian, 'Gaussian': gaussian,
-                'Fano': fano, 'Frota': frota,
-                'Lorentzian_bg': lorentzian_bg, 'Gaussian_bg': gaussian_bg,
-                'Fano_bg': fano_bg, 'Frota_bg': frota_bg,
-                'LorentzianMulti': fit_lorentzians, 'GaussianMulti': fit_gaussians}
-    return functions[function_name]
+def get_names(fitclass='Polyfit'):
+    return functions[fitclass].keys()
+    
+def get_parameters(function_class,function_name):
+    return functions[function_class][function_name]['parameters']
 
 def estimate_parameters(function_name, x, y):
     fwhm = 0.1*(np.amax(x)-np.amin(x))
@@ -57,20 +54,20 @@ def estimate_parameters(function_name, x, y):
         estimated_parameters.append(q)
     return estimated_parameters
 
-def fit_data(function_name, xdata, ydata, p0=None):
-    if function_name in list(functions['Single peak'].keys()) or function_name in list(functions['Single peak w/background'].keys()):
-        f = get_function(function_name)
+def fit_data(function_class,function_name, xdata, ydata, p0=None):
+    f = functions[function_class][function_name]['function']
+    if function_class in ['Single peak','Single peak w/background']:
         if not p0:
             p0 = estimate_parameters(function_name, xdata, ydata)
         popt, _ = curve_fit(f=f, xdata=xdata, ydata=ydata, p0=p0)
         return popt
     
-    elif function_name == 'LorentzianMulti':
-        result, components = fit_lorentzians(xdata, ydata, numofpeaks=p0[2], amplitudes=p0[1], sigmas=p0[0])
+    elif function_class == 'MultiPeak':
+        result, components = f(xdata, ydata, numofpeaks=p0[2], amplitudes=p0[1], sigmas=p0[0])
         return result, components
     
-    elif function_name == 'GaussianMulti':
-        result, components = fit_gaussians(xdata, ydata, numofpeaks=p0[2], amplitudes=p0[1], sigmas=p0[0])
+    elif function_class == 'MultiPeak w/background':
+        result, components = f(xdata, ydata, numofpeaks=p0[2], amplitudes=p0[1], sigmas=p0[0],background=p0[3])
         return result, components
     
     elif function_name == 'Linear':
@@ -87,48 +84,58 @@ def fit_data(function_name, xdata, ydata, p0=None):
 
 def linear(x, m, b):
     return m*x + b
+functions['Polyfit']['Linear']['function'] = linear
 
 def general_polyfit(x, *coeffs):
     y = 0
     for i, coeff in enumerate(coeffs[::-1]):
         y += coeff*x**i
     return y
+functions['Polyfit']['General']['function'] = general_polyfit
 
 def lorentzian(x, fwhm, height, middle):
     y = height*(fwhm/2)**2/((x-middle)**2+(fwhm/2)**2)
     return y
+functions['Single peak']['Lorentzian']['function'] = lorentzian
 
 def gaussian(x, fwhm, height, middle):
     c = fwhm/(2*np.sqrt(2*np.log(2)))
     y = height*np.exp(-(x-middle)**2/(2*c**2))
     return y
+functions['Single peak']['Gaussian']['function'] = gaussian
 
 def fano(x, fwhm, height, middle, q):
     epsilon = 2*(x-middle)/fwhm
     y = height*(epsilon+q)**2/(1+epsilon**2)/(1+q**2)
     return y
+functions['Single peak']['Fano']['function'] = fano
 
 def frota(x, fwhm, height, middle):
     y = height*np.real(np.sqrt(1j*(fwhm/2)/((x-middle)+1j*(fwhm/2))))
     return y
+functions['Single peak']['Frota']['function'] = frota
 
 def lorentzian_bg(x, fwhm, height, middle, background):
     y = height*(fwhm/2)**2/((x-middle)**2+(fwhm/2)**2) + background
     return y
+functions['Single peak w/background']['Lorentzian_bg']['function'] = lorentzian_bg
 
 def gaussian_bg(x, fwhm, height, middle, background):
     c = fwhm/(2*np.sqrt(2*np.log(2)))
     y = height*np.exp(-(x-middle)**2/(2*c**2)) + background
     return y
+functions['Single peak w/background']['Gaussian_bg']['function'] = gaussian_bg
 
 def fano_bg(x, fwhm, height, middle, background, q):
     epsilon = 2*(x-middle)/fwhm
     y = height*(epsilon+q)**2/(1+epsilon**2)/(1+q**2) + background
     return y
+functions['Single peak w/background']['Fano_bg']['function'] = fano_bg
 
 def frota_bg(x, fwhm, height, middle, background):
     y = height*np.real(np.sqrt(1j*(fwhm/2)/((x-middle)+1j*(fwhm/2)))) + background
     return y
+functions['Single peak w/background']['Frota_bg']['function'] = frota_bg
 
 
 #MultiPeak fitting
@@ -145,7 +152,7 @@ def fit_lorentzians(xdata,ydata,numofpeaks=None,
     if xdata[0]>xdata[-1]:
         xdata=xdata[::-1]
         ydata=ydata[::-1]
-
+    
     peakspacing=(xdata.max()-xdata.min())/numofpeaks
     rough_peak_positions=[i*peakspacing+peakspacing/2+xdata.min() for i in range(int(numofpeaks))]
         #print(rough_peak_positions)
@@ -154,7 +161,7 @@ def fit_lorentzians(xdata,ydata,numofpeaks=None,
         amplitudes=np.max(ydata)
     if sigmas==None or sigmas==0: #Sigma = FWHM/2, so sigma should be roughly a fourth of the peak spacing. May be much less if peaks not overlapping
         sigmas=np.abs(xdata[-1]-xdata[0])/(4*numofpeaks)
-        
+
     peakpos0=rough_peak_positions[0]
     peakpositions=rough_peak_positions[1:]
     
@@ -177,10 +184,21 @@ def fit_lorentzians(xdata,ydata,numofpeaks=None,
         model = model + peak
         params.update(pars)
 
+    if background is not None:
+        if background==0:
+            background = ydata.min()
+        bg = ConstantModel(prefix='bg_')
+        pars = bg.make_params()
+        pars['bg_c'].set(background)
+        model = model + bg
+        params.update(pars)
+
     init = model.eval(params, x=xdata)
     result = model.fit(ydata, params, x=xdata)
     components = result.eval_components()
     return(result, components)
+functions['MultiPeak']['LorentzianMulti']['function'] = fit_lorentzians
+functions['MultiPeak w/background']['LorentzianMulti_bg']['function'] = fit_lorentzians
 
 def fit_gaussians(xdata,ydata,numofpeaks=None,
                     amplitudes=None,sigmas=None,background=None):
@@ -227,7 +245,19 @@ def fit_gaussians(xdata,ydata,numofpeaks=None,
         model = model + peak
         params.update(pars)
 
+    if background is not None:
+        if background==0:
+            background = ydata.min()
+        bg = ConstantModel(prefix='bg_')
+        pars = bg.make_params()
+        pars['bg_c'].set(background)
+        model = model + bg
+        params.update(pars)
+
     init = model.eval(params, x=xdata)
     result = model.fit(ydata, params, x=xdata)
     components = result.eval_components()
     return(result, components)
+
+functions['MultiPeak']['GaussianMulti']['function'] = fit_gaussians
+functions['MultiPeak w/background']['GaussianMulti_bg']['function'] = fit_gaussians
