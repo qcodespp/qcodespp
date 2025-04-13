@@ -14,8 +14,10 @@ from .gnuplot_format import GNUPlotFormat
 from .io import DiskIO
 from .location import FormatLocation
 from .data_array import DataArray
+from qcodesplusplus.plotting.RemotePlot import Plot
 from qcodes.utils.helpers import DelegateAttributes, full_class, deep_update
 from qcodesplusplus.station import Station
+from qcodesplusplus.parameters import Parameter
 from qcodes import config
 import os
 
@@ -886,7 +888,25 @@ class DataSet(DelegateAttributes):
             return self.metadata['arrays'][array_id]
         except (AttributeError, KeyError):
             return None
+        
+    def live_plotting(self, *dataitems):
+        """
+        Live plotting function for a dataset.
 
+        Args:
+            dataset (DataSet): The dataset to be plotted.
+            dataitems (list): List of items within the dataset to be plotted.
+                Should be data.item, where item is a DataArray in the DataSet.
+                Note: NOT a parameter (anymore!)
+
+        Returns:
+            The plot object. The user can add subplots, etc before running the loop.
+        """
+        plot = Plot(title=self.name, name=self.name)
+        self.publisher=plot
+        plot.add_multiple(*dataitems)
+        return plot
+        
     def __repr__(self):
         """Rich information about the DataSet and contained arrays."""
         out = type(self).__name__ + ':'
