@@ -1306,6 +1306,11 @@
     <string>Start/stop tracking (Ctrl+T)</string>
    </property>
   </action>
+  <action name="action_save_session">
+   <property name="text">
+    <string>Save session (Ctrl+Shift+S)</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>

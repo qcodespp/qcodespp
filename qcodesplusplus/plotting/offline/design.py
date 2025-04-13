@@ -601,6 +601,8 @@ class Ui_MainWindow(object):
         self.action_copy_plot_as_image.setObjectName("action_copy_plot_as_image")
         self.action_track_data = QtWidgets.QAction(MainWindow)
         self.action_track_data.setObjectName("action_track_data")
+        self.action_save_session = QtWidgets.QAction(MainWindow)
+        self.action_save_session.setObjectName("action_save_session")
         self.menu_save_session.addAction(self.action_current_file)
         self.menu_save_session.addAction(self.action_all_files)
         self.menu_save_session.addAction(self.action_checked_files)
@@ -619,6 +621,7 @@ class Ui_MainWindow(object):
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionSave_plot_s_as)
         self.menuFile.addAction(self.action_copy_plot_as_image)
+        self.menuFile.addAction(self.action_save_session)
         self.menuBatch_Actions.addAction(self.action_save_files_as_PDF)
         self.menuBatch_Actions.addAction(self.action_save_files_as_PNG)
         self.menu_bar.addAction(self.menuFile.menuAction())
@@ -734,6 +737,7 @@ class Ui_MainWindow(object):
         self.actionSave_plot_s_as.setText(_translate("MainWindow", "Save plot as pdf or png (Ctrl+S)"))
         self.action_copy_plot_as_image.setText(_translate("MainWindow", "Copy plot as image (Ctrl+C)"))
         self.action_track_data.setText(_translate("MainWindow", "Start/stop tracking (Ctrl+T)"))
+        self.action_save_session.setText(_translate("MainWindow", "Save session (Ctrl+Shift+S)"))
 
 
 if __name__ == "__main__":

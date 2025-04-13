@@ -340,7 +340,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                     left=0.121, right=0.86)
 
     def load_data_item(self,filepath,load_the_data=True):
-        print(f'Open {filepath}...')
+        #print(f'Open {filepath}...')
         filename, extension = os.path.splitext(filepath)
         if extension == '.npy': # Numpy files (saved session)
             dataset_list = np.load(filepath, allow_pickle=True)
@@ -351,6 +351,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 except Exception as e:
                     print(f'Failed to add NumPy dataset '
                             f'{dataset["File Name"]}:', e)
+                    
+        elif (extension == '.dat' and # qcodes++ files
+                os.path.isfile(os.path.dirname(filepath)+'/snapshot.json')):
+            metapath = os.path.dirname(filepath)+'/snapshot.json'
+            try:
+                item = DataItem(qcodes_pp_extension.qcodesppData(filepath, self.canvas, metapath,load_the_data))
+                return item
+            except Exception as e:
+                print(f'Failed to add qcodes++ dataset {filepath}:', e)
         
         elif extension == '.db': # QCoDeS files
             initialise_or_create_database_at(filepath)
@@ -368,15 +377,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             metapath = os.path.dirname(filepath)+'/meta.json'
             item = DataItem(qd_extension.QdData(filepath, self.canvas, metapath))
             return item
-        
-        elif (extension == '.dat' and # qcodes++ files
-                os.path.isfile(os.path.dirname(filepath)+'/snapshot.json')):
-            metapath = os.path.dirname(filepath)+'/snapshot.json'
-            try:
-                item = DataItem(qcodes_pp_extension.qcodesppData(filepath, self.canvas, metapath,load_the_data))
-                return item
-            except Exception as e:
-                print(f'Failed to add qcodes++ dataset {filepath}:', e)
         
         else: # bare column-based data file
             item = DataItem(BaseClassData(filepath, self.canvas))
@@ -637,7 +637,19 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if current_item:
             self.settings_table.itemChanged.disconnect(self.plot_setting_edited)
             self.settings_table.setRowCount(0)
-            settings = current_item.data.settings
+            old_settings = current_item.data.settings
+            preferred_order= ['X data', 'Y data', 'Z data',
+                              'title', 'xlabel', 'ylabel', 'clabel', 
+                              'titlesize','labelsize','ticksize',
+                              'linewidth', 'spinewidth', 'columns',
+                              'colorbar','minorticks','delimiter']
+            settings = OrderedDict()
+            for key in preferred_order:
+                if key in old_settings:
+                    settings[key] = old_settings[key]
+            for key, value in old_settings.items():
+                if key not in preferred_order:
+                    settings[key] = value
             for key, value in list(settings.items()):
                 row = self.settings_table.rowCount()
                 self.settings_table.insertRow(row)
@@ -731,8 +743,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             current_item.data.settings[setting_name] = value
             self.settings_table.clearFocus()
             try:
+                if setting_name == 'X data' or setting_name == 'Y data' or setting_name == 'Z data':
+                    current_item.data.prepare_data_for_plot(reload_data=True,reload_from_file=False)
+                    self.update_plots()
                 if setting_name == 'columns' or setting_name == 'delimiter':
-                    current_item.data.prepare_data_for_plot(reload_data=True)
+                    current_item.data.prepare_data_for_plot(reload_data=True,reload_from_file=False)
                     self.update_plots()           
                 elif setting_name == 'linecolor':
                     for line in current_item.data.axes.get_lines():
@@ -973,7 +988,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if current_item:
             checked_items = self.get_checked_items()
             menu = QtWidgets.QMenu(self)
-            actions = ['Duplicate (Ctrl+D)','Check all']
+            actions = ['Duplicate (Ctrl+D)','Check all','Uncheck all']
             if len(checked_items) > 1:
                 actions.append('Combine plots')
             for entry in actions:
@@ -992,6 +1007,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 for item_index in range(self.file_list.count()):                        
                     self.file_list.item(item_index).setCheckState(QtCore.Qt.Checked)
                     self.file_list.itemChanged.connect(self.file_checked)
+                self.update_plots()
+            elif signal.text() == 'Uncheck all':
+                checked_items = self.get_checked_items()
+                self.file_list.itemChanged.disconnect(self.file_checked)
+                for item in checked_items:
+                    item.setCheckState(QtCore.Qt.Unchecked)
+                self.file_list.itemChanged.connect(self.file_checked)
                 self.update_plots()
             elif signal.text() == 'Combine plots':
                 try:
@@ -1206,7 +1228,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                    'File Path': filepath,
                                    'Settings': item.data.settings, 
                                    'Filters': item.data.filters, 
-                                   'View Settings': item.data.view_settings, 
+                                   'View Settings': item.data.view_settings,
+                                   'Axlim Settings': item.data.axlim_settings,
                                    'Raw Data': item.data.raw_data}
                 dictionary_list.append(item_dictionary)
             np.save(filepath, dictionary_list)
@@ -1586,6 +1609,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             else:
                 self.stop_auto_refresh()
                 print('Stop live tracking...')
+        # Below doesn't work because arrow keys already function to move between items in the GUI.
+        # Could try to override it one day.
+        # if event.key() == QtCore.Qt.Key_Up or event.key() == QtCore.Qt.Key_Down or event.key() == QtCore.Qt.Key_Left or event.key() == QtCore.Qt.Key_Right:
+        #     if self.linecut_window:
+        #         self.linecut_window.keyPressEvent(event)
+        #         return
+
                               
     def apply_preset(self, preset_number):
         checked_items = self.get_checked_items()
@@ -1613,6 +1643,9 @@ class DataItem(QtWidgets.QListWidgetItem):
 class BaseClassData:    
     # Set default plot settings
     DEFAULT_PLOT_SETTINGS = {}
+    DEFAULT_PLOT_SETTINGS['X data'] = ''
+    DEFAULT_PLOT_SETTINGS['Y data'] = ''
+    DEFAULT_PLOT_SETTINGS['Z data'] = ''
     DEFAULT_PLOT_SETTINGS['title'] = '<label>'
     DEFAULT_PLOT_SETTINGS['xlabel'] = ''
     DEFAULT_PLOT_SETTINGS['ylabel'] = ''
@@ -1680,7 +1713,7 @@ class BaseClassData:
     def get_columns(self):
         return [int(col) for col in self.settings['columns'].split(',')]
     
-    def load_and_reshape_data(self,reload=False):
+    def load_and_reshape_data(self,reload=False,reload_from_file=False):
         column_data = self.get_column_data()
         if column_data.ndim == 1: # if empty array or single-row array
             self.raw_data = None
@@ -1740,9 +1773,9 @@ class BaseClassData:
     def copy_raw_to_processed_data(self):
         self.processed_data = [np.copy(self.raw_data[x]) for x in self.get_columns()]
 
-    def prepare_data_for_plot(self, reload_data=False, refresh_filters=False):
+    def prepare_data_for_plot(self, reload_data=False, refresh_filters=False, reload_from_file=False):
         if not hasattr(self, 'raw_data') or reload_data:
-            self.load_and_reshape_data(reload_data)
+            self.load_and_reshape_data(reload_data, reload_from_file)
         if self.raw_data:
             self.copy_raw_to_processed_data()
             self.apply_all_filters()
@@ -1773,6 +1806,16 @@ class BaseClassData:
                     self.cbar = self.figure.colorbar(self.image, orientation='vertical')
             self.cursor = Cursor(self.axes, useblit=True, 
                                  color=self.settings['linecolor'], linewidth=0.5)
+
+            # Below removes data options for data types where selecting
+            # axes data from the settings menu isn't implemented.
+            # Remove if implemented for all data types one day.
+            if 'X data' in self.settings.keys() and self.settings['X data'] == '':
+                self.settings.pop('X data')
+            if 'Y data' in self.settings.keys() and self.settings['Y data'] == '':
+                self.settings.pop('Y data')
+            if 'Z data' in self.settings.keys() and self.settings['Z data'] == '':
+                self.settings.pop('Z data')
 
             self.apply_plot_settings()
             self.apply_axlim_settings()
@@ -1939,7 +1982,8 @@ class NumpyData(BaseClassData):
             if setting in self.settings:
                 self.settings[setting] = value        
         self.filters = self.dataset['Filters']
-        self.view_settings = self.dataset['View Settings']       
+        self.view_settings = self.dataset['View Settings']
+        self.axlim_settings = self.dataset['Axlim Settings']
         self.raw_data = self.dataset['Raw Data']
 
     def prepare_data_for_plot(self, reload_data=False):
@@ -2075,6 +2119,8 @@ class LineCutWindow(QtWidgets.QWidget):
         self.save_image_button = QtWidgets.QPushButton('Save Image')
         self.copy_image_button = QtWidgets.QPushButton('Copy Image')
         self.orientation_button = QtWidgets.QPushButton('Hor./Vert.')
+        self.up_button = QtWidgets.QPushButton('Up/Right')
+        self.down_button = QtWidgets.QPushButton('Down/Left')
         self.clear_button = QtWidgets.QPushButton('Clear')
         self.fit_button = QtWidgets.QPushButton('Fit')
         self.guess_checkbox = QtWidgets.QCheckBox('Initial guess')
@@ -2089,6 +2135,8 @@ class LineCutWindow(QtWidgets.QWidget):
         self.save_image_button.clicked.connect(self.save_image)
         self.copy_image_button.clicked.connect(self.copy_image)
         self.orientation_button.clicked.connect(self.change_orientation)
+        self.up_button.clicked.connect(lambda: self.change_index('up'))
+        self.down_button.clicked.connect(lambda: self.change_index('down'))
         self.clear_button.clicked.connect(self.clear_lines)
         self.fit_box.currentIndexChanged.connect(self.fit_type_changed)
         self.fit_button.clicked.connect(self.start_fitting)
@@ -2111,8 +2159,10 @@ class LineCutWindow(QtWidgets.QWidget):
         self.top_buttons_layout.addWidget(self.save_button)
         self.top_buttons_layout.addWidget(self.save_image_button)
         self.top_buttons_layout.addWidget(self.copy_image_button)
-        self.top_buttons_layout.addWidget(self.orientation_button)
         self.top_buttons_layout.addStretch()
+        self.top_buttons_layout.addWidget(self.orientation_button)
+        self.top_buttons_layout.addWidget(self.down_button)
+        self.top_buttons_layout.addWidget(self.up_button)
         
         self.bottom_buttons_layout.addStretch()
         self.bottom_buttons_layout.addWidget(self.fit_button)
@@ -2316,6 +2366,28 @@ class LineCutWindow(QtWidgets.QWidget):
         if DARK_THEME and qdarkstyle_imported:
             rcParams_to_dark_theme()
             self.update() 
+
+    def change_index(self, direction):
+        if self.orientation == 'horizontal':
+            if direction == 'up':
+                new_index = self.parent.selected_indices[1]+1
+                if new_index < self.parent.processed_data[0].shape[1]:
+                    self.parent.selected_indices[1] = new_index
+            elif direction == 'down':
+                new_index = self.parent.selected_indices[1]-1
+                if new_index >= 0:
+                    self.parent.selected_indices[1] = new_index
+        elif self.orientation == 'vertical':
+            if direction == 'up':
+                new_index = self.parent.selected_indices[0]+1
+                if new_index < self.parent.processed_data[0].shape[0]:
+                    self.parent.selected_indices[0] = new_index
+            elif direction == 'down':
+                new_index = self.parent.selected_indices[0]-1
+                if new_index >= 0:
+                    self.parent.selected_indices[0] = new_index
+        self.update()
+        self.parent.canvas.draw()
             
     def mouse_scroll_canvas(self, event):
         if event.inaxes:
@@ -2330,6 +2402,34 @@ class LineCutWindow(QtWidgets.QWidget):
                     self.parent.selected_indices[0] = new_index
             self.update()
             self.parent.canvas.draw()
+    
+    # Below doesn't work because arrow keys already function to move between items in the GUI.
+    # Could try to override it one day.
+
+    # def keyPressEvent(self,event):
+    #     if self.orientation == 'horizontal' or self.orientation == 'vertical':
+    #         data_shape = self.parent.processed_data[0].shape
+    #         if self.orientation == 'horizontal':
+    #             if event.key() == QtCore.Qt.Key_Up:
+    #                 new_index = self.parent.selected_indices[1]+1
+    #                 if new_index < data_shape[1]:
+    #                     self.parent.selected_indices[1] = new_index
+    #             elif event.key() == QtCore.Qt.Key_Down:
+    #                 new_index = self.parent.selected_indices[1]-1
+    #                 if new_index >= 0:
+    #                     self.parent.selected_indices[1] = new_index
+            
+    #         elif self.orientation == 'vertical':
+    #             if event.key() == QtCore.Qt.Key_Right:
+    #                 new_index = self.parent.selected_indices[0]+1
+    #                 if new_index < data_shape[0]:
+    #                     self.parent.selected_indices[0] = new_index
+    #             elif event.key() == QtCore.Qt.Key_Left:
+    #                 new_index = self.parent.selected_indices[0]-1
+    #                 if new_index >= 0:
+    #                     self.parent.selected_indices[0] = new_index
+    #         self.update()
+    #         self.parent.canvas.draw()
   
             
 class MultiPlotWindow(LineCutWindow):
