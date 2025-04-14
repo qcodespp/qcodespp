@@ -75,6 +75,16 @@ for peaktype in ['Voigt','PseudoVoigt','BreitWigner/Fano','SplitLorentzian','Exp
     functions['Peaks: 4 param'][peaktype]['parameters']='fwhm(s), height(s), position(s), gammas(s), background'
     functions['Peaks: 4 param'][peaktype]['description'] = multipeak_description.format(peaktype,fourparamform)
 
+#Wrap the ExpressionModel to allow arbitrary input.
+functions['User input']={'Expression':{}}
+functions['User input']['Expression']['inputs'] = 'Expression'
+functions['User input']['Expression']['parameters'] = 'all fit parameters'
+functions['User input']['Expression']['description'] =('Fit an arbitrary expression. Input any function you like. '
+                                            'x must be the independent variable. e.g.\n'
+                                            'C + A * exp(-x/x0) * sin(x*phase)\n'
+                                            'You must also provide initial guesses for each parameter in the form:\n'
+                                            'C=0.25, A=1.0, x0=2.0, phase=0.04')
+
 # functions to return different parts of the functions dictionary. Makes it easier to call in main
 def get_class_names():
     return functions.keys()
@@ -352,3 +362,16 @@ functions['Peaks: 4 param']['Moffat']['function'] = partial(fit_voigttype, lmm.M
 functions['Peaks: 4 param']['Pearson7']['function'] = partial(fit_voigttype, lmm.Pearson7Model)
 functions['Peaks: 4 param']['DampedHarmOsc']['function'] = partial(fit_voigttype, lmm.DampedHarmonicOscillatorModel)
 functions['Peaks: 4 param']['Doniach']['function'] = partial(fit_voigttype, lmm.DoniachModel)
+
+def expression_fit(xdata,ydata,p0,inputinfo):
+    #Fit an arbitrary function given in inputinfo. 
+    #Initial guesses for parameters are given in p0 in a string form. This needs to be decoded.
+    model=lmm.ExpressionModel(inputinfo)
+    params=model.make_params()
+    for i,whatever in enumerate(p0):
+        params[whatever.split('=')[0].strip()].set(value=float(whatever.split('=')[1]))
+    init=model.eval(params,x=xdata)
+    result=model.fit(ydata,params,x=xdata)
+    return result
+
+functions['User input']['Expression']['function']=expression_fit

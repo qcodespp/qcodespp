@@ -2328,7 +2328,9 @@ class LineCutWindow(QtWidgets.QWidget):
             self.y_forfit = self.y
 
     def collect_fit_inputs(self,function_class,function_name):
-        if 'inputs' in fits.functions[function_class][function_name].keys():
+        if function_name=='Expression':
+            inputinfo=self.input_edit.text()
+        elif 'inputs' in fits.functions[function_class][function_name].keys():
             try:
                 inputinfo = [float(par) for par in self.input_edit.text().split(',')]
             except Exception as e:
