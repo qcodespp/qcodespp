@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1700, 563)
+        MainWindow.resize(1700, 700)
         self.central_widget = QtWidgets.QWidget(MainWindow)
         self.central_widget.setObjectName("central_widget")
         self.horizontalLayout = QtWidgets.QHBoxLayout(self.central_widget)
@@ -621,7 +621,6 @@ class Ui_MainWindow(object):
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionSave_plot_s_as)
         self.menuFile.addAction(self.action_copy_plot_as_image)
-        self.menuFile.addAction(self.action_save_session)
         self.menuBatch_Actions.addAction(self.action_save_files_as_PDF)
         self.menuBatch_Actions.addAction(self.action_save_files_as_PNG)
         self.menu_bar.addAction(self.menuFile.menuAction())

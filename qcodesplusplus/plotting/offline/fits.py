@@ -56,7 +56,7 @@ for peaktype in ['Lorentzian','Gaussian','Lognormal','StudentsT','DampedOscillat
     functions['Peaks: 3 param'][peaktype] = {}
     functions['Peaks: 3 param'][peaktype]['inputs']='# of peaks, use offset'
     functions['Peaks: 3 param'][peaktype]['default_inputs']='1,0'
-    functions['Peaks: 3 param'][peaktype]['parameters']='fwhm(s), height(s), position(s), background'
+    functions['Peaks: 3 param'][peaktype]['parameters']='fwhm(s), height(s), position(s), y_offset'
     functions['Peaks: 3 param'][peaktype]['description'] = multipeak_description.format(peaktype,lorgaussform)
 
 functions['Peaks: 4 param']={}
@@ -72,7 +72,7 @@ for peaktype in ['Voigt','PseudoVoigt','BreitWigner/Fano','SplitLorentzian','Exp
     functions['Peaks: 4 param'][peaktype] = {}
     functions['Peaks: 4 param'][peaktype]['inputs']='# of peaks, use offset'
     functions['Peaks: 4 param'][peaktype]['default_inputs']='1,0'
-    functions['Peaks: 4 param'][peaktype]['parameters']='fwhm(s), height(s), position(s), gammas(s), background'
+    functions['Peaks: 4 param'][peaktype]['parameters']='fwhm(s), height(s), position(s), gammas(s), y_offset'
     functions['Peaks: 4 param'][peaktype]['description'] = multipeak_description.format(peaktype,fourparamform)
 
 #Wrap the ExpressionModel to allow arbitrary input.
@@ -100,21 +100,6 @@ def get_parameters(function_class,function_name):
 
 def get_description(function_class,function_name):
     return functions[function_class][function_name]['description']
-
-# Used for single peak fitting at current. Long term, will move all to lmfit.
-def estimate_parameters(function_name, x, y, function_class):
-    fwhm = 0.1*(np.amax(x)-np.amin(x))
-    height = np.amax(y)-np.amin(y)
-    middle = 0.5*(np.amax(x)+np.amin(x))
-    if 'background' in function_class:
-        background = np.amin(y)
-        estimated_parameters = [fwhm, height, middle, background]
-    else:
-        estimated_parameters = [fwhm, height, middle]
-    if 'Fano' in function_name:
-        q = 1
-        estimated_parameters.append(q)
-    return estimated_parameters
 
 # Entry point for fitting the data. Passes info along to relevant functions and returns the fit result
 def fit_data(function_class,function_name, xdata, ydata, p0=None, inputinfo=None):
@@ -226,8 +211,8 @@ def fit_lorgausstype(modeltype,xdata,ydata,p0,inputinfo):
 
     if amplitudes ==None: #Guess that the amplitudes will be close to the maximum value of the data
         amplitudes=[ydata.max()-ydata.min() for i in range(int(numofpeaks))]
-    if sigmas==None: #Sigma = FWHM/2, so sigma should be roughly a fourth of the peak spacing. May be much less if peaks not overlapping
-        sigmas=[np.abs(xdata[-1]-xdata[0])/(4*numofpeaks) for i in range(int(numofpeaks))]
+    if sigmas==None: #Sigma will be much smaller than the peak spacing unless peaks are overlapping. However, starting with a low value seems to work even if overlapping, but not the other way around.
+        sigmas=[np.abs(xdata[-1]-xdata[0])/(12*numofpeaks) for i in range(int(numofpeaks))]
 
     peakpos0=rough_peak_positions[0]
     peakpositions=rough_peak_positions[1:]
@@ -312,8 +297,8 @@ def fit_voigttype(modeltype,xdata,ydata,p0,inputinfo):
 
     if amplitudes ==None: #Guess that the amplitudes will be close to the maximum value of the data
         amplitudes=[ydata.max()-ydata.min() for i in range(int(numofpeaks))]
-    if sigmas==None: #Sigma = FWHM/2, so sigma should be roughly a fourth of the peak spacing. May be much less if peaks not overlapping
-        sigmas=[np.abs(xdata[-1]-xdata[0])/(4*numofpeaks) for i in range(int(numofpeaks))]
+    if sigmas==None: #Sigma will be much smaller than the peak spacing unless peaks are overlapping. However, starting with a low value seems to work even if overlapping, but not the other way around.
+        sigmas=[np.abs(xdata[-1]-xdata[0])/(12*numofpeaks) for i in range(int(numofpeaks))]
     if gammas==None: #God I have no idea
         gammas=[0 for i in range(int(numofpeaks))]
 

@@ -2135,7 +2135,8 @@ class LineCutWindow(QtWidgets.QWidget):
         self.fit_box.SizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
         self.output_window = QtWidgets.QTextEdit()
         self.output_window.setReadOnly(True)
-        self.output_window.setMaximumHeight(200)
+        #self.output_window.setMaximumHeight(250)
+        self.lims_label = QtWidgets.QLabel('Fit limits:')
         self.xmin_label = QtWidgets.QLabel('Xmin:')
         self.xmin_label.setStyleSheet("QLabel { color : blue; }")
         self.xmax_label = QtWidgets.QLabel('Xmax:')
@@ -2177,7 +2178,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.inputs_layout = QtWidgets.QHBoxLayout()
         self.guess_layout = QtWidgets.QHBoxLayout()
         self.output_layout = QtWidgets.QVBoxLayout()
-        
+
         self.top_buttons_layout.addWidget(self.save_button)
         self.top_buttons_layout.addWidget(self.save_image_button)
         self.top_buttons_layout.addWidget(self.copy_image_button)
@@ -2187,6 +2188,7 @@ class LineCutWindow(QtWidgets.QWidget):
             self.top_buttons_layout.addWidget(self.down_button)
             self.top_buttons_layout.addWidget(self.up_button)
 
+        self.lims_layout.addWidget(self.lims_label)
         self.lims_layout.addWidget(self.xmin_label)
         self.lims_layout.addWidget(self.xmin_box)
         self.lims_layout.addWidget(self.xmax_label)
@@ -2208,17 +2210,28 @@ class LineCutWindow(QtWidgets.QWidget):
         #self.guess_layout.addStretch()
 
         self.output_layout.addWidget(self.output_window)
-
+    
     def set_main_layout(self):
         self.main_layout = QtWidgets.QVBoxLayout()
-        self.main_layout.addLayout(self.top_buttons_layout)
-        self.main_layout.addWidget(self.navi_toolbar)
-        self.main_layout.addWidget(self.canvas)
-        self.main_layout.addLayout(self.lims_layout)
-        self.main_layout.addLayout(self.fit_layout)
-        self.main_layout.addLayout(self.inputs_layout)
-        self.main_layout.addLayout(self.guess_layout)
-        self.main_layout.addLayout(self.output_layout)
+        self.plotbox=QtWidgets.QGroupBox('')
+        self.plottinglayout = QtWidgets.QVBoxLayout()
+        self.plottinglayout.addLayout(self.top_buttons_layout)
+        self.plottinglayout.addWidget(self.navi_toolbar)
+        self.plottinglayout.addWidget(self.canvas)
+        self.plotbox.setLayout(self.plottinglayout)
+
+        self.fittingbox=QtWidgets.QGroupBox('')
+        self.fittingbox.setMaximumHeight(450)
+        self.fittinglayout = QtWidgets.QVBoxLayout()
+        self.fittinglayout.addLayout(self.lims_layout)
+        self.fittinglayout.addLayout(self.fit_layout)
+        self.fittinglayout.addLayout(self.inputs_layout)
+        self.fittinglayout.addLayout(self.guess_layout)
+        self.fittinglayout.addLayout(self.output_layout)
+        self.fittingbox.setLayout(self.fittinglayout)
+
+        self.main_layout.addWidget(self.plotbox)
+        self.main_layout.addWidget(self.fittingbox)
         self.setLayout(self.main_layout)
              
     def change_orientation(self):
@@ -2326,6 +2339,10 @@ class LineCutWindow(QtWidgets.QWidget):
         else:
             self.x_forfit = self.x
             self.y_forfit = self.y
+
+        # if self.x_forfit[-1]<self.x_forfit[0]:
+        #     self.x_forfit=self.x_forfit[::-1]
+        #     self.y_forfit=self.y_forfit[::-1]
 
     def collect_fit_inputs(self,function_class,function_name):
         if function_name=='Expression':
