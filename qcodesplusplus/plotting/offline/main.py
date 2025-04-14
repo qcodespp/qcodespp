@@ -2120,7 +2120,10 @@ class LineCutWindow(QtWidgets.QWidget):
         self.orientation_button = QtWidgets.QPushButton('Hor./Vert.')
         self.clear_button = QtWidgets.QPushButton('Clear')
         self.fit_button = QtWidgets.QPushButton('Fit')
-        self.guess_checkbox = QtWidgets.QCheckBox('Initial guess')
+        self.fit_functions_label = QtWidgets.QLabel('Select fit function:')
+        self.input_label = QtWidgets.QLabel('Input info:')
+        self.input_edit = QtWidgets.QLineEdit()
+        self.guess_checkbox = QtWidgets.QCheckBox('Initial guess:')
         self.guess_edit = QtWidgets.QLineEdit()
         self.fit_class_box = QtWidgets.QComboBox()
         self.fit_class_box.addItems(fits.get_class_names())
@@ -2169,9 +2172,11 @@ class LineCutWindow(QtWidgets.QWidget):
     
     def init_layouts(self):
         self.top_buttons_layout = QtWidgets.QHBoxLayout()
+        self.lims_layout = QtWidgets.QHBoxLayout()
         self.fit_layout = QtWidgets.QHBoxLayout()
-        self.bottom_buttons_layout = QtWidgets.QHBoxLayout()
-        self.main_layout = QtWidgets.QVBoxLayout()
+        self.inputs_layout = QtWidgets.QHBoxLayout()
+        self.guess_layout = QtWidgets.QHBoxLayout()
+        self.output_layout = QtWidgets.QVBoxLayout()
         
         self.top_buttons_layout.addWidget(self.save_button)
         self.top_buttons_layout.addWidget(self.save_image_button)
@@ -2181,30 +2186,38 @@ class LineCutWindow(QtWidgets.QWidget):
         if self.dimension == '2D':
             self.top_buttons_layout.addWidget(self.down_button)
             self.top_buttons_layout.addWidget(self.up_button)
-        
-        self.bottom_buttons_layout.addWidget(self.xmin_label)
-        self.bottom_buttons_layout.addWidget(self.xmin_box)
-        self.bottom_buttons_layout.addWidget(self.xmax_label)
-        self.bottom_buttons_layout.addWidget(self.xmax_box)
-        self.bottom_buttons_layout.addStretch()
-        self.bottom_buttons_layout.addWidget(self.fit_button)
-        self.bottom_buttons_layout.addWidget(self.clear_button)        
 
-        self.fit_layout.addStretch()
+        self.lims_layout.addWidget(self.xmin_label)
+        self.lims_layout.addWidget(self.xmin_box)
+        self.lims_layout.addWidget(self.xmax_label)
+        self.lims_layout.addWidget(self.xmax_box)
+        self.lims_layout.addStretch()
+
+        self.fit_layout.addWidget(self.fit_functions_label)
         self.fit_layout.addWidget(self.fit_class_box)
         self.fit_layout.addWidget(self.fit_box)
-        self.fit_layout.addWidget(self.guess_checkbox)
-        self.fit_layout.addWidget(self.guess_edit)
+        self.fit_layout.addStretch()
+        self.fit_layout.addWidget(self.fit_button)
+        self.fit_layout.addWidget(self.clear_button)
 
-        self.output_layout = QtWidgets.QVBoxLayout()
+        self.inputs_layout.addWidget(self.input_label)
+        self.inputs_layout.addWidget(self.input_edit)
+        self.inputs_layout.addStretch()
+        self.guess_layout.addWidget(self.guess_checkbox)
+        self.guess_layout.addWidget(self.guess_edit)
+        #self.guess_layout.addStretch()
+
         self.output_layout.addWidget(self.output_window)
 
     def set_main_layout(self):
+        self.main_layout = QtWidgets.QVBoxLayout()
         self.main_layout.addLayout(self.top_buttons_layout)
-        self.main_layout.addWidget(self.canvas)
         self.main_layout.addWidget(self.navi_toolbar)
+        self.main_layout.addWidget(self.canvas)
+        self.main_layout.addLayout(self.lims_layout)
         self.main_layout.addLayout(self.fit_layout)
-        self.main_layout.addLayout(self.bottom_buttons_layout)
+        self.main_layout.addLayout(self.inputs_layout)
+        self.main_layout.addLayout(self.guess_layout)
         self.main_layout.addLayout(self.output_layout)
         self.setLayout(self.main_layout)
              
@@ -2265,45 +2278,34 @@ class LineCutWindow(QtWidgets.QWidget):
         self.xmax_box.clear()
         self.update()
         self.output_window.clear()
+        self.fit_type_changed(resetinputs=False)
         self.canvas.draw()
     
     def fit_class_changed(self):
         self.fit_box.clear()
         self.fit_box.addItems(fits.get_names(fitclass=self.fit_class_box.currentText()))
         self.fit_box.setCurrentIndex(0)
-        if self.fit_class_box.currentText() == 'MultiPeak':
-            self.guess_checkbox.setCheckState(2)
-            self.guess_edit.setEnabled(True)
-            self.guess_edit.setText('0 0 2')
-        elif self.fit_class_box.currentText() == 'MultiPeak w/background':
-            self.guess_checkbox.setCheckState(2)
-            self.guess_edit.setEnabled(True)
-            self.guess_edit.setText('0 0 2 0')
         self.fit_type_changed()
         #self.pars_label.setText(fits.get_names(parameters=self.fit_box.currentText()))
     
-    def fit_type_changed(self):
-        if self.fit_box.currentText()=='Linear':
-            self.guess_checkbox.setCheckState(0)
-            self.guess_checkbox.setText('No data to supply')
-            self.guess_checkbox.setEnabled(False)
-            self.guess_edit.setEnabled(False)
-        elif self.fit_box.currentText()=='Polynomial':
-            self.guess_checkbox.setEnabled(True)
-            self.guess_checkbox.setCheckState(2)
-            self.guess_checkbox.setText('Polynomial order')
-            self.guess_edit.setEnabled(True)
-            self.guess_edit.setText('2')
+    def fit_type_changed(self,resetinputs=True):
+        fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
+        if resetinputs:
+            if 'default_inputs' in fit_function.keys():
+                self.input_edit.setText(fit_function['default_inputs'])
+            if 'default_guess' in fit_function.keys():
+                self.guess_edit.setText(fit_function['default_guess'])
+        if 'inputs' in fit_function.keys():
+            self.input_label.setText(f'Input info: {fit_function['inputs']}')
         else:
-            self.guess_edit.setEnabled(True)
-            pars=fits.get_parameters(self.fit_class_box.currentText(),self.fit_box.currentText())
-            self.guess_checkbox.setEnabled(True)
-            self.guess_checkbox.setText(f'Initial guess: {pars}')
+            self.input_label.setText(f'Input info:')
+        if 'parameters' in fit_function.keys():
+            self.guess_checkbox.setText(f'Initial guess: {fit_function['parameters']}')
+        else:
+            self.guess_checkbox.setText(f'Initial guess:')
         self.output_window.setText('Information about selected fit type:\n'+
-                                   fits.get_description(self.fit_class_box.currentText(),
-                                                         self.fit_box.currentText()))
-    
-    def start_fitting(self):
+                                   fit_function['description'])
+    def collect_fit_data(self):
         # If diagonal or circular, setting limits doesn't work; however, one can easily change the range during linecut definition anyway
         if self.orientation in ['horizontal','vertical','1D']:
             if self.xmin_box.text() != '':
@@ -2325,83 +2327,60 @@ class LineCutWindow(QtWidgets.QWidget):
             self.x_forfit = self.x
             self.y_forfit = self.y
 
-        # Find which function to use
-        function_class = self.fit_class_box.currentText()
-        function_name = self.fit_box.currentText()
-        self.y_fit = np.copy(self.y)
+    def collect_fit_inputs(self,function_class,function_name):
+        if 'inputs' in fits.functions[function_class][function_name].keys():
+            try:
+                inputinfo = [float(par) for par in self.input_edit.text().split(',')]
+            except Exception as e:
+                self.output_window.setText(f'Could not parse inputs: {e}\n'
+                                            'Review information below:\n'
+                                            f'{fits.functions[function_class][function_name]['description']}')
+                inputinfo=None
+        else:
+            inputinfo=None
+        return inputinfo
+        
 
+    def collect_init_guess(self,function_class, function_name):
         # Collect parameters/initial guess
         if self.guess_checkbox.checkState():
             try:
-                p0 = [float(par) for par in self.guess_edit.text().split()]
+                p0 = self.guess_edit.text().split(',')
             except Exception as e:
-                self.output_window.setText(f'Could not parse input: {e}\n'
-                                           'Please provide a space-separated list of numbers.')
+                self.output_window.setText(f'Could not parse Initial guess: {e}\n'
+                                            'Review information below:\n'
+                                            f'{fits.functions[function_class][function_name]['description']}')
                 p0 = None
         else:
             p0 = None
+        return p0
+
+    def start_fitting(self):
+        self.collect_fit_data()
+        function_class = self.fit_class_box.currentText()
+        function_name = self.fit_box.currentText()
+        inputinfo=self.collect_fit_inputs(function_class,function_name)
+        p0=self.collect_init_guess(function_class,function_name)
 
         # Try to do the fit.
         try:
-            # Insist on getting the number of peaks for MultiPeak but this _should_ never come up; taken care of earlier.
-            if function_class in ['MultiPeak', 'MultiPeak w/background']:
-                errormessages={'MultiPeak':'Initial guess is required for MultiPeak fit.\n'
-                               'If you only want to provide the number of peaks, write '
-                                '0 0 # where # is the number of peaks.',
-                                'MultiPeak w/background':'Initial guess is required for MultiPeak fit.\n'
-                                'If you only want to provide the number of peaks, write '
-                                '0 0 # 0 where # is the number of peaks.'}
-                if p0 is None:
-                    self.output_window.setText(errormessages[function_class])
-                else:
-                    # For lmfit fitting, return the result and components
-                    self.fit_result,self.fit_components = fits.fit_data(function_class=function_class,
-                                                    function_name=function_name, xdata=self.x_forfit,
-                                                    ydata=self.y_forfit, p0=p0)
-            # For all other fits, only the fit parameters and best fit data are returned.
-            else:
-                self.fit_parameters = fits.fit_data(function_class=function_class,
-                                                    function_name=function_name, xdata=self.x_forfit, 
-                                                    ydata=self.y_forfit, p0=p0)
-                self.y_fit = fits.get_function(function_class,function_name)(self.x_forfit, *self.fit_parameters)
+            self.fit_result = fits.fit_data(function_class=function_class, function_name=function_name,
+                                                xdata=self.x_forfit,ydata=self.y_forfit, p0=p0, inputinfo=inputinfo)
+            self.y_fit = self.fit_result.best_fit
         except Exception as e:
             self.output_window.setText(f'Curve could not be fitted: {e}')
             self.fit_parameters = [np.nan]*len(fits.get_names(function_name).split(','))
             self.y_fit = np.nan
-        # Plot the data again
+
         self.draw_plot(parent_linecut=False)
-        # Plotting for lmfit MultiPeak
-        if function_class in ['MultiPeak','MultiPeak w/background']:
-            self.draw_multipeak_fit()
-        else: # All other plots
-            self.draw_fits()
+        self.draw_fits()
         self.plot_parameters()
            
     def plot_parameters(self):
         self.output_window.clear()
         try:
-            if self.fit_box.currentText()=='Linear':
-                self.output_window.setText(f'Linear fit result:'
-                                           f'y = {self.fit_parameters[0]:.4g} * x + {self.fit_parameters[1]:.4g}')
-            
-            elif self.fit_box.currentText()=='Polynomial':
-                text=f'Polynomial fit result:\n y = '
-                for i,parameter in enumerate(self.fit_parameters[::-1]):
-                    if i==0:
-                        text+=f'{parameter:.4g}'
-                    else:
-                        text+=f' + {parameter:.4g}*x^{i}'
-                self.output_window.setText(text)
+            self.output_window.setText(self.fit_result.fit_report())
 
-            elif self.fit_class_box.currentText() in ['MultiPeak', 'MultiPeak w/background']:
-                self.output_window.setText(self.fit_result.fit_report())
-
-            else:
-                text=f'Fit parameters:\n'
-                parameter_names=fits.get_parameters(self.fit_class_box.currentText(),self.fit_box.currentText()).split(', ')
-                for i,parameter in enumerate(self.fit_parameters):
-                    text+=f'{parameter_names[i]}: {parameter:.4g}\n'
-                self.output_window.setText(text)
         except Exception as e:
             self.output_window.setText('Could not print fit parameters:', e)
          
@@ -2483,15 +2462,10 @@ class LineCutWindow(QtWidgets.QWidget):
         self.parent.canvas.draw()
               
     def draw_fits(self):
-        self.axes.plot(self.x_forfit, self.y_fit, 'k--', 
-                       linewidth=self.parent.settings['linewidth'])     
-        #zoom_factory(self.axes)       
-        self.canvas.draw()
-    
-    def draw_multipeak_fit(self):
         try:
-            self.axes.plot(self.x_forfit, self.fit_result.best_fit, 'k--',
+            self.axes.plot(self.x_forfit, self.y_fit, 'k--',
                 linewidth=self.parent.settings['linewidth'])
+            self.fit_components=self.fit_result.eval_components()
             for key in self.fit_components.keys():
                 self.axes.plot(self.x_forfit, self.fit_components[key], '--', alpha=0.75, linewidth=self.parent.settings['linewidth'])
         except Exception as e:

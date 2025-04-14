@@ -6,55 +6,76 @@ Created on Wed Nov 29 21:56:57 2017
 """
 
 import numpy as np
-from scipy.optimize import curve_fit
-from lmfit.models import LorentzianModel, GaussianModel, ConstantModel, PowerLawModel
+from lmfit import models as lmm
+from functools import partial
 
 # Dictionary for storing info about the fit functions used in this module.
 functions = {}
-functions['Polynomials and powers'] = {'Linear': {'parameters':'no inputs'},
-                        'Polynomial': {'parameters':'polynomial order'},
-                        'Power law': {'parameters':'list of powers'}}
-functions['Single peak'] = {'Lorentzian': {'parameters':'fwhm, height, middle'},
-                'Gaussian': {'parameters':'fwhm, height, middle'},
-                'Fano': {'parameters':'fwhm, height, middle, q'},
-                'Frota': {'parameters':'fwhm, height, middle'}}
-
-functions['Single peak w/background']={'Lorentzian': {'parameters':'fwhm, height, middle, background'},
-                                        'Gaussian': {'parameters':'fwhm, height, middle, background'},
-                                        'Fano': {'parameters':'fwhm, height, middle, background, q'},
-                                        'Frota': {'parameters':'fwhm, height, middle, background'}} 
-
-functions['MultiPeak'] = {'Lorentzian': {'parameters':'fwhm, height, # of peaks'},
-                        'Gaussian': {'parameters':'fwhm, height, # of peaks'}}
-
-functions['MultiPeak w/background'] = {'Lorentzian': {'parameters':'fwhm, height, # of peaks, background'},
-                                    'Gaussian': {'parameters':'fwhm, height, # of peaks, background'}}
-
+functions['Polynomials and powers'] = {'Linear': {},
+                                    'Polynomial': {'inputs':'order', 
+                                                'default_inputs' : '2'
+                                                },
+                                    'Power law': {'inputs':'# of terms, use offset',
+                                                'default_inputs': '1,0',
+                                                'parameters': 'a_0,b_0,...,a_n,b_n,c'
+                                                },
+                                    'Exponentials': {'inputs':'# of terms, use offset',
+                                                'default_inputs': '1,0',
+                                                'parameters': 'a_0,b_0,...,a_n,b_n,c'
+                                                }
+                                    }
 
 # Give descriptions to help the user.
 functions['Polynomials and powers']['Linear']['description'] = 'Simple linear y = mx + b fit'
 functions['Polynomials and powers']['Polynomial']['description'] = ('Polynomial fit of order n, y = a_n*x^n + ... + a_1*x + a_0.\n'
-                                                                    'n must be provided in the box above.')
-functions['Polynomials and powers']['Power law']['description'] = ('Power law fit of the form y = a*x^b + c.\n'
-                                                                    'a,b,c must be provided in the box above.')
+                                                                    'Provide n, the polynomial order.')
+functions['Polynomials and powers']['Power law']['description'] = ('Power law fit of the form y = a_0*x^b_0 + ... + a_n*x^b_n + c.\n'
+                                                                    'Provide inputs n,c, where n is the number of terms to include '
+                                                                    'and c is whether to include a constant offset; c=0: no offset, c=1: offset')
+functions['Polynomials and powers']['Exponentials']['description'] = ('Exponential fit of the form y = a_0*exp(-x/b_0) + ... + a_n*exp(-x/b_n) + c.\n'
+                                                                    'Provide inputs n,c, where n is the number of terms to include '
+                                                                    'and c is whether to include a constant offset; c=0: no offset, c=1: offset')
 
-single_peak_description = ('Fit a single {} peak. IF the fit does not succeed, try to provide sensible initial guesses.')
-single_peak_background_description = ('Fit a single {} peak on a constant background/offset. If the fit does not succeed, try to provide sensible initial guesses.')
-for function in functions['Single peak']:
-    functions['Single peak'][function]['description'] = single_peak_description.format(function)
-for function in functions['Single peak w/background']:
-    functions['Single peak w/background'][function]['description'] = single_peak_background_description.format(function)
+# Add simple peaks that take amplitude, width and position as only arguments.
+functions['Peaks: 3 param']={}
+multipeak_description= ('Fit one or more {} peaks. The inputs are n,c, where n is the number of peaks and c is whether to '
+                        'include a constant offset in the fit. c=0 --> no offset, c=1 --> Offset.\n'
+                        'For exmaple, inputs of 4,0 will fit four peaks without a constant offset.\n'
+                        'By default, the fit assumes equally spaced peaks with heights approximately the max value of the data.\n'
+                        'To change this, provide an initial guess of the form {}\n'
+                        'If providing an intial guess, you must provide '
+                        'all parameters for all peaks.')
+lorgaussform=('w1 ... wn, a1 ... an, x1 ... xn, c where w = peak fwhm, a = peak height, '
+                        'x = peak position and c = constant offset value (if used). For example:\n'
+                        '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1\n'
+                        'for three peaks with no constant offset, and\n'
+                        '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1,5\n'
+                        'for three peaks with a large constant offset of 5.\n')
 
-multipeak_description= ('Fit multiple {} peaks. The fit assumes equally spaced peaks and therefore usually succeeds as long as the number '
-                        'of peaks is supplied. You can provide initial guesses for other parameters. Leave them as 0 to use the default guesses.')
-multipeak_background_description= ('Fit multiple {} peaks on a constant background/offset. The fit assumes equally spaced peaks and therefore '
-                        'usually succeeds as long as the number of peaks is supplied. You can provide initial guesses for other parameters. '
-                        'Leave them as 0 to use the default guesses.')
-for function in functions['MultiPeak']:
-    functions['MultiPeak'][function]['description'] = multipeak_description.format(function)
-for function in functions['MultiPeak w/background']:
-    functions['MultiPeak w/background'][function]['description'] = multipeak_background_description.format(function)
+for peaktype in ['Lorentzian','Gaussian','Lognormal','StudentsT','DampedOscillator']:
+    functions['Peaks: 3 param'][peaktype] = {}
+    functions['Peaks: 3 param'][peaktype]['inputs']='# of peaks, use offset'
+    functions['Peaks: 3 param'][peaktype]['default_inputs']='1,0'
+    functions['Peaks: 3 param'][peaktype]['parameters']='fwhm(s), height(s), position(s), background'
+    functions['Peaks: 3 param'][peaktype]['description'] = multipeak_description.format(peaktype,lorgaussform)
 
+functions['Peaks: 4 param']={}
+fourparamform=('w1 ... wn, a1 ... an, x1 ... xn, g1 ... gn, c where w = peak fwhm, a = peak height, '
+                        'x = peak position, g = gamma (see lmfit documentation for meaning in each case) '
+                        'and c = constant offset value (if used). For example:\n'
+                        '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001\n'
+                        'for three peaks with no constant offset, and\n'
+                        '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001,5\n'
+                        'for three peaks with a large constant offset of 5.\n')
+
+for peaktype in ['Voigt','PseudoVoigt','BreitWigner/Fano','SplitLorentzian','ExpGaussian','SkewedGaussian','Moffat','Pearson7','DampedHarmOsc','Doniach']:
+    functions['Peaks: 4 param'][peaktype] = {}
+    functions['Peaks: 4 param'][peaktype]['inputs']='# of peaks, use offset'
+    functions['Peaks: 4 param'][peaktype]['default_inputs']='1,0'
+    functions['Peaks: 4 param'][peaktype]['parameters']='fwhm(s), height(s), position(s), gammas(s), background'
+    functions['Peaks: 4 param'][peaktype]['description'] = multipeak_description.format(peaktype,fourparamform)
+
+# functions to return different parts of the functions dictionary. Makes it easier to call in main
 def get_class_names():
     return functions.keys()
 
@@ -70,6 +91,7 @@ def get_parameters(function_class,function_name):
 def get_description(function_class,function_name):
     return functions[function_class][function_name]['description']
 
+# Used for single peak fitting at current. Long term, will move all to lmfit.
 def estimate_parameters(function_name, x, y, function_class):
     fwhm = 0.1*(np.amax(x)-np.amin(x))
     height = np.amax(y)-np.amin(y)
@@ -84,112 +106,94 @@ def estimate_parameters(function_name, x, y, function_class):
         estimated_parameters.append(q)
     return estimated_parameters
 
-def fit_data(function_class,function_name, xdata, ydata, p0=None):
-    f = functions[function_class][function_name]['function']
-    if function_class in ['Single peak','Single peak w/background']:
-        if not p0:
-            p0 = estimate_parameters(function_name, xdata, ydata, function_class)
-        popt, _ = curve_fit(f=f, xdata=xdata, ydata=ydata, p0=p0)
-        return popt
-    
-    elif function_class == 'MultiPeak':
-        result, components = f(xdata, ydata, numofpeaks=p0[2], amplitudes=p0[1], sigmas=p0[0])
-        return result, components
-    
-    elif function_class == 'MultiPeak w/background':
-        result, components = f(xdata, ydata, numofpeaks=p0[2], amplitudes=p0[1], sigmas=p0[0],background=p0[3])
-        return result, components
-    
-    elif function_name == 'Linear':
-        m,b = np.polyfit(xdata, ydata, 1)
-        return m,b
-    
-    elif function_name == 'Polynomial':
-        if not p0:
-            order=2
-        else:
-            order = int(p0[0])
-        coeffs = np.polyfit(xdata, ydata, order)
-        return coeffs
-    
-    elif function_name == 'Power law':
-        popt, _ = curve_fit(f=f(p0), xdata=xdata, ydata=ydata)
+# Entry point for fitting the data. Passes info along to relevant functions and returns the fit result
+def fit_data(function_class,function_name, xdata, ydata, p0=None, inputinfo=None):
 
+    # all fit functions get called through the dictionary
+    f = functions[function_class][function_name]['function']
+    result = f(xdata,ydata,p0,inputinfo)
+    return result
+
+
+# The rest of this code is the definition of the actual fit functions, and referencing them from the functions dictionary
 
 # Polynomials and powers
-def linear(x, m, b):
-    return m*x + b
+def linear(xdata,ydata,p0,inputinfo):
+    model=lmm.LinearModel()
+    params=model.guess(ydata, x=xdata)
+    result = model.fit(ydata, params, x=xdata)
+    return result
 functions['Polynomials and powers']['Linear']['function'] = linear
 
-def polynomial(x, *coeffs):
-    y = 0
-    for i, coeff in enumerate(coeffs[::-1]):
-        y += coeff*x**i
-    return y
+def polynomial(xdata,ydata,p0,inputinfo):
+    degree = int(inputinfo[0]) or int(inputinfo)
+    model=lmm.PolynomialModel(degree=degree)
+    params=model.guess(ydata, x=xdata)
+    result = model.fit(ydata, params, x=xdata)
+    return result
 functions['Polynomials and powers']['Polynomial']['function'] = polynomial
 
-# def fit_powerlaw(xdata,ydata, *powers):
-#     power0=powers[0]
-#     powers=powers[1:]
-#     model=PowerLawModel(prefix='power0_')
-#     params = model.make_params()
-#     for i, power in enumerate(powers):
-#         newmodel = PowerLawModel(prefix=f'power{i+1}_')
-#         pars = newmodel.make_params()
-#         model = model + newmodel
-#         params.update(pars)
+def fit_powerlaw(xdata,ydata, p0,inputinfo):
+    if p0:
+        p0 = [float(par) for par in p0]
+    order=inputinfo[0]
+    constant=inputinfo[1]
 
-def lorentzian(x, fwhm, height, middle):
-    y = height*(fwhm/2)**2/((x-middle)**2+(fwhm/2)**2)
-    return y
-functions['Single peak']['Lorentzian']['function'] = lorentzian
+    model= lmm.PowerLawModel(prefix='power0_')
+    params = model.make_params()
+    for i in range(int(order-1)):
+        newmodel = lmm.PowerLawModel(prefix=f'power{i+1}_')
+        pars = newmodel.make_params()
+        model = model + newmodel
+        params.update(pars)
+    if constant !=0:
+        bg = lmm.ConstantModel(prefix='bg_')
+        pars = bg.make_params()
+        pars['bg_c'].set(constant)
+        model = model + bg
+        params.update(pars)
 
-def gaussian(x, fwhm, height, middle):
-    c = fwhm/(2*np.sqrt(2*np.log(2)))
-    y = height*np.exp(-(x-middle)**2/(2*c**2))
-    return y
-functions['Single peak']['Gaussian']['function'] = gaussian
+    init = model.eval(params, x=xdata)
+    result = model.fit(ydata, params, x=xdata)
+    #components = result.eval_components()
+    return result
+functions['Polynomials and powers']['Power law']['function'] = fit_powerlaw
 
-def fano(x, fwhm, height, middle, q):
-    epsilon = 2*(x-middle)/fwhm
-    y = height*(epsilon+q)**2/(1+epsilon**2)/(1+q**2)
-    return y
-functions['Single peak']['Fano']['function'] = fano
+def fit_exponentials(xdata,ydata, p0,inputinfo):
+    if p0:
+        p0 = [float(par) for par in p0]
+    order=inputinfo[0]
+    constant=inputinfo[1]
 
-def frota(x, fwhm, height, middle):
-    y = height*np.real(np.sqrt(1j*(fwhm/2)/((x-middle)+1j*(fwhm/2))))
-    return y
-functions['Single peak']['Frota']['function'] = frota
+    model= lmm.ExponentialModel(prefix='term0_')
+    params = model.make_params()
+    for i in range(int(order-1)):
+        newmodel = lmm.ExponentialModel(prefix=f'term{i+1}_')
+        pars = newmodel.make_params()
+        model = model + newmodel
+        params.update(pars)
+    if constant !=0:
+        bg = lmm.ConstantModel(prefix='bg_')
+        pars = bg.make_params()
+        pars['bg_c'].set(constant)
+        model = model + bg
+        params.update(pars)
 
-def lorentzian_bg(x, fwhm, height, middle, background):
-    y = height*(fwhm/2)**2/((x-middle)**2+(fwhm/2)**2) + background
-    return y
-functions['Single peak w/background']['Lorentzian']['function'] = lorentzian_bg
+    init = model.eval(params, x=xdata)
+    result = model.fit(ydata, params, x=xdata)
+    #components = result.eval_components()
+    return result
+functions['Polynomials and powers']['Exponentials']['function'] = fit_exponentials
 
-def gaussian_bg(x, fwhm, height, middle, background):
-    c = fwhm/(2*np.sqrt(2*np.log(2)))
-    y = height*np.exp(-(x-middle)**2/(2*c**2)) + background
-    return y
-functions['Single peak w/background']['Gaussian']['function'] = gaussian_bg
-
-def fano_bg(x, fwhm, height, middle, background, q):
-    epsilon = 2*(x-middle)/fwhm
-    y = height*(epsilon+q)**2/(1+epsilon**2)/(1+q**2) + background
-    return y
-functions['Single peak w/background']['Fano']['function'] = fano_bg
-
-def frota_bg(x, fwhm, height, middle, background):
-    y = height*np.real(np.sqrt(1j*(fwhm/2)/((x-middle)+1j*(fwhm/2)))) + background
-    return y
-functions['Single peak w/background']['Frota']['function'] = frota_bg
-
-
-#MultiPeak fitting
-def fit_lorentzians(xdata,ydata,numofpeaks=None,
-                    amplitudes=None,sigmas=None,background=None):
-    #Fits x,y data with lorentzian functions, assumed to be equally spaced.
+#Peak fitting
+def fit_lorgausstype(modeltype,xdata,ydata,p0,inputinfo):
+    #Fits x,y data with peaks characterised by amplitude, fwhm and position.
     #Custom starting amplitudes (proportional to height) and sigmas (proportional to width) may also be given
-    #Returns the entire fit report and the components of the fit.
+    #Returns the entire lmfit result.
+    numofpeaks=inputinfo[0]
+    usebackground=inputinfo[1]
+    sigmas=None
+    amplitudes=None
 
     if xdata[0]>xdata[-1]:
         xdata=xdata[::-1]
@@ -197,39 +201,48 @@ def fit_lorentzians(xdata,ydata,numofpeaks=None,
     
     peakspacing=(xdata.max()-xdata.min())/numofpeaks
     rough_peak_positions=[i*peakspacing+peakspacing/2+xdata.min() for i in range(int(numofpeaks))]
-        #print(rough_peak_positions)
 
-    if amplitudes==None or amplitudes==0: #Guess that the amplitudes will be close to the maximum value of the data
-        amplitudes=ydata.max()-ydata.min()
-    if sigmas==None or sigmas==0: #Sigma = FWHM/2, so sigma should be roughly a fourth of the peak spacing. May be much less if peaks not overlapping
-        sigmas=np.abs(xdata[-1]-xdata[0])/(4*numofpeaks)
+    if p0: #Format should be list of strings: ['w w ... w','a a ... a','x x ... x','c']
+        sigmas=[float(par) for par in p0[0].split()]
+        amplitudes=[float(par) for par in p0[1].split()]
+        rough_peak_positions=[float(par) for par in p0[2].split()]
+    if usebackground==1:
+        try:
+            background=p0[3]
+        except:
+            background=0
+    else:
+        background=None
+
+    if amplitudes ==None: #Guess that the amplitudes will be close to the maximum value of the data
+        amplitudes=[ydata.max()-ydata.min() for i in range(int(numofpeaks))]
+    if sigmas==None: #Sigma = FWHM/2, so sigma should be roughly a fourth of the peak spacing. May be much less if peaks not overlapping
+        sigmas=[np.abs(xdata[-1]-xdata[0])/(4*numofpeaks) for i in range(int(numofpeaks))]
 
     peakpos0=rough_peak_positions[0]
     peakpositions=rough_peak_positions[1:]
     
-    def add_peak(prefix, center, amplitude=amplitudes, sigma=sigmas):
-        peak = LorentzianModel(prefix=prefix)
+    def add_peak(prefix, center, amplitude, sigma):
+        peak = modeltype(prefix=prefix)
         pars = peak.make_params()
         pars[prefix + 'center'].set(center)
-        pars[prefix + 'amplitude'].set(amplitude, min=0)
+        pars[prefix + 'amplitude'].set(amplitude)
         pars[prefix + 'sigma'].set(sigma, min=0)
         return peak, pars
 
-    model = LorentzianModel(prefix='peak0_')
+    model = modeltype(prefix='peak0_')
     params = model.make_params()
     params['peak0_center'].set(peakpos0)
-    params['peak0_amplitude'].set(amplitudes, min=0)
-    params['peak0_sigma'].set(sigmas, min=0)
+    params['peak0_amplitude'].set(amplitudes[0])
+    params['peak0_sigma'].set(sigmas[0], min=0)
 
     for i, cen in enumerate(peakpositions):
-        peak, pars = add_peak('peak%d_' % (i+1), cen)
+        peak, pars = add_peak('peak%d_' % (i+1), cen, amplitudes[i+1], sigmas[i+1])
         model = model + peak
         params.update(pars)
 
     if background is not None:
-        if background==0:
-            background = ydata.min()
-        bg = ConstantModel(prefix='bg_')
+        bg = lmm.ConstantModel(prefix='bg_')
         pars = bg.make_params()
         pars['bg_c'].set(background)
         model = model + bg
@@ -237,56 +250,89 @@ def fit_lorentzians(xdata,ydata,numofpeaks=None,
 
     init = model.eval(params, x=xdata)
     result = model.fit(ydata, params, x=xdata)
-    components = result.eval_components()
-    return(result, components)
-functions['MultiPeak']['Lorentzian']['function'] = fit_lorentzians
-functions['MultiPeak w/background']['Lorentzian']['function'] = fit_lorentzians
+    return result
 
-def fit_gaussians(xdata,ydata,numofpeaks=None,
-                    amplitudes=None,sigmas=None,background=None):
-   
-    #Fits x,y data with gaussian functions, assumed to be equally spaced.
+# Any lmfit built-in function taking only amplitude, sigma and position can use the above function.
+functions['Peaks: 3 param']['Lorentzian']['function'] = partial(fit_lorgausstype, lmm.LorentzianModel)
+functions['Peaks: 3 param']['Gaussian']['function'] = partial(fit_lorgausstype,lmm.GaussianModel)
+functions['Peaks: 3 param']['StudentsT']['function'] = partial(fit_lorgausstype,lmm.StudentsTModel)
+functions['Peaks: 3 param']['Lognormal']['function'] = partial(fit_lorgausstype,lmm.LognormalModel)
+functions['Peaks: 3 param']['DampedOscillator']['function'] = partial(fit_lorgausstype,lmm.DampedOscillatorModel)
+
+# Function for lmfit peaks with four parameters.
+def fit_voigttype(modeltype,xdata,ydata,p0,inputinfo):
+    #Fits x,y data with peaks characterised by amplitude, fwhm and position.
     #Custom starting amplitudes (proportional to height) and sigmas (proportional to width) may also be given
-    #Returns the entire fit report and the components of the fit.
+    #Returns the entire lmfit result.
+    fourthparamdict={'SplitLorentzianModel':'sigma_r',
+                'PseudoVoigtModel':'fraction',
+                'MoffatModel':'beta',
+                'Pearson7Model':'exponent',
+                'BreitWignerModel':'q'}
+    if modeltype.__name__ in fourthparamdict.keys():
+        fourthparam=fourthparamdict[modeltype.__name__]
+    else:
+        fourthparam='gamma'
+
+    numofpeaks=inputinfo[0]
+    usebackground=inputinfo[1]
+    sigmas=None
+    amplitudes=None
+    gammas=None
 
     if xdata[0]>xdata[-1]:
         xdata=xdata[::-1]
         ydata=ydata[::-1]
-
+    
     peakspacing=(xdata.max()-xdata.min())/numofpeaks
     rough_peak_positions=[i*peakspacing+peakspacing/2+xdata.min() for i in range(int(numofpeaks))]
 
-    if amplitudes==None or amplitudes==0: #Guess that the amplitudes will be close to the maximum value of the data
-        amplitudes=ydata.max()-ydata.min()
-    if sigmas==None or sigmas==0: #Sigma = FWHM/2, so sigma should be roughly a fourth of the peak spacing. May be much less if peaks not overlapping
-        sigmas=np.abs(xdata[-1]-xdata[0])/(4*numofpeaks)
-        
+    if p0: #Format should be list of strings: ['w w ... w','a a ... a','x x ... x','c']
+        sigmas=[float(par) for par in p0[0].split()]
+        amplitudes=[float(par) for par in p0[1].split()]
+        rough_peak_positions=[float(par) for par in p0[2].split()]
+        gammas=[float(par) for par in p0[3].split()]
+    if usebackground==1:
+        try:
+            background=p0[4]
+        except:
+            background=0
+    else:
+        background=None
+
+    if amplitudes ==None: #Guess that the amplitudes will be close to the maximum value of the data
+        amplitudes=[ydata.max()-ydata.min() for i in range(int(numofpeaks))]
+    if sigmas==None: #Sigma = FWHM/2, so sigma should be roughly a fourth of the peak spacing. May be much less if peaks not overlapping
+        sigmas=[np.abs(xdata[-1]-xdata[0])/(4*numofpeaks) for i in range(int(numofpeaks))]
+    if gammas==None: #God I have no idea
+        gammas=[0 for i in range(int(numofpeaks))]
+
     peakpos0=rough_peak_positions[0]
     peakpositions=rough_peak_positions[1:]
     
-    def add_peak(prefix, center, amplitude=amplitudes, sigma=sigmas):
-        peak = GaussianModel(prefix=prefix)
+    def add_peak(prefix, center, amplitude, sigma,gamma):
+        peak = modeltype(prefix=prefix)
         pars = peak.make_params()
         pars[prefix + 'center'].set(center)
-        pars[prefix + 'amplitude'].set(amplitude, min=0)
+        pars[prefix + 'amplitude'].set(amplitude)
         pars[prefix + 'sigma'].set(sigma, min=0)
+        pars[prefix + fourthparam].set(gamma)
         return peak, pars
 
-    model = LorentzianModel(prefix='peak0_')
+    model = modeltype(prefix='peak0_')
     params = model.make_params()
     params['peak0_center'].set(peakpos0)
-    params['peak0_amplitude'].set(amplitudes, min=0)
-    params['peak0_sigma'].set(sigmas, min=0)
+    params['peak0_amplitude'].set(amplitudes[0])
+    params['peak0_sigma'].set(sigmas[0], min=0)
+    params['peak0_'+fourthparam].set(gammas[0])
 
     for i, cen in enumerate(peakpositions):
-        peak, pars = add_peak('peak%d_' % (i+1), cen)
+        peak, pars = add_peak('peak%d_' % (i+1), cen, amplitudes[i+1], sigmas[i+1], gammas[i+1])
         model = model + peak
         params.update(pars)
 
     if background is not None:
-        if background==0:
-            background = ydata.min()
-        bg = ConstantModel(prefix='bg_')
+        bg = lmm.ConstantModel(prefix='bg_')
         pars = bg.make_params()
         pars['bg_c'].set(background)
         model = model + bg
@@ -294,8 +340,15 @@ def fit_gaussians(xdata,ydata,numofpeaks=None,
 
     init = model.eval(params, x=xdata)
     result = model.fit(ydata, params, x=xdata)
-    components = result.eval_components()
-    return(result, components)
+    return result
 
-functions['MultiPeak']['Gaussian']['function'] = fit_gaussians
-functions['MultiPeak w/background']['Gaussian']['function'] = fit_gaussians
+functions['Peaks: 4 param']['Voigt']['function'] = partial(fit_voigttype, lmm.VoigtModel)
+functions['Peaks: 4 param']['PseudoVoigt']['function'] = partial(fit_voigttype, lmm.PseudoVoigtModel)
+functions['Peaks: 4 param']['BreitWigner/Fano']['function'] = partial(fit_voigttype, lmm.BreitWignerModel)
+functions['Peaks: 4 param']['SplitLorentzian']['function'] = partial(fit_voigttype, lmm.SplitLorentzianModel)
+functions['Peaks: 4 param']['ExpGaussian']['function'] = partial(fit_voigttype, lmm.ExponentialGaussianModel)
+functions['Peaks: 4 param']['SkewedGaussian']['function'] = partial(fit_voigttype, lmm.SkewedGaussianModel)
+functions['Peaks: 4 param']['Moffat']['function'] = partial(fit_voigttype, lmm.MoffatModel)
+functions['Peaks: 4 param']['Pearson7']['function'] = partial(fit_voigttype, lmm.Pearson7Model)
+functions['Peaks: 4 param']['DampedHarmOsc']['function'] = partial(fit_voigttype, lmm.DampedHarmonicOscillatorModel)
+functions['Peaks: 4 param']['Doniach']['function'] = partial(fit_voigttype, lmm.DoniachModel)
