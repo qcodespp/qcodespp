@@ -166,7 +166,6 @@ def get_description(function_class,function_name):
 
 # Entry point for fitting the data. Passes info along to relevant functions and returns the fit result
 def fit_data(function_class,function_name, xdata, ydata, p0=None, inputinfo=None):
-
     # all fit functions get called through the dictionary
     f = functions[function_class][function_name]['function']
     result = f(xdata,ydata,p0,inputinfo)
