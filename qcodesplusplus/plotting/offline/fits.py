@@ -148,6 +148,7 @@ functions['User input']['Expression']['description'] =('Fit an arbitrary express
                                             'You must also provide initial guesses for each parameter in the form:\n'
                                             'C=0.25, A=1.0, x0=2.0, phase=0.04')
 
+
 # functions to return different parts of the functions dictionary. Makes it easier to call in main
 def get_class_names():
     return functions.keys()
@@ -212,15 +213,12 @@ def fit_powerlaw(xdata,ydata, p0,inputinfo):
         for i,key in enumerate(params.keys()):
             params[key].set(float(p0[i]))
 
-    init = model.eval(params, x=xdata)
     result = model.fit(ydata, params, x=xdata)
     #components = result.eval_components()
     return result
 functions['Polynomials and powers']['Power law']['function'] = fit_powerlaw
 
 def fit_exponentials(xdata,ydata, p0,inputinfo):
-    if p0:
-        p0 = [float(par) for par in p0]
     order=inputinfo[0]
     constant=inputinfo[1]
 
@@ -242,7 +240,16 @@ def fit_exponentials(xdata,ydata, p0,inputinfo):
         for i,key in enumerate(params.keys()):
             params[key].set(float(p0[i]))
 
-    init = model.eval(params, x=xdata)
+    else:
+        amplitudes=ydata.max()-ydata.min()
+        decays=xdata.max()-xdata.min()
+        #more or less. Beats negative infinity.
+        for key in params.keys():
+            if 'amplitude' in key:
+                params[key].set(amplitudes)
+            elif 'decay' in key:
+                params[key].set(decays)
+
     result = model.fit(ydata, params, x=xdata)
     #components = result.eval_components()
     return result
@@ -311,7 +318,6 @@ def fit_lorgausstype(modeltype,xdata,ydata,p0,inputinfo):
         model = model + bg
         params.update(pars)
 
-    init = model.eval(params, x=xdata)
     result = model.fit(ydata, params, x=xdata)
     return result
 
@@ -401,7 +407,6 @@ def fit_voigttype(modeltype,xdata,ydata,p0,inputinfo):
         model = model + bg
         params.update(pars)
 
-    init = model.eval(params, x=xdata)
     result = model.fit(ydata, params, x=xdata)
     return result
 
@@ -498,7 +503,6 @@ def fit_skewedpeaks(modeltype,xdata,ydata,p0,inputinfo):
         model = model + bg
         params.update(pars)
 
-    init = model.eval(params, x=xdata)
     result = model.fit(ydata, params, x=xdata)
     return result
 
@@ -568,7 +572,6 @@ def fit_sines(xdata,ydata,p0,inputinfo):
         model = model + bg
         params.update(pars)
 
-    init = model.eval(params, x=xdata)
     result = model.fit(ydata, params, x=xdata)
     return result
 functions['Oscillating']['Sine']['function']=fit_sines
@@ -576,12 +579,13 @@ functions['Oscillating']['Sine']['function']=fit_sines
 #Fit a thermal distribution of MB, FD or BE type.
 def thermal_fit(modeltype,xdata,ydata,p0,inputinfo):
     model=lmm.ThermalDistributionModel(form=modeltype)
-    params=model.make_params()
+    
     if p0:
+        params=model.make_params()
         for i,key in enumerate(params.keys()):
             params[key]=float(p0[i])
-
-    init=model.eval(params,x=xdata)
+    else:
+        params=model.guess(ydata,x=xdata)
     result=model.fit(ydata,params,x=xdata)
     return result
 
@@ -607,7 +611,6 @@ def step_fit(modeltype,xdata,ydata,p0,inputinfo):
         params['center'].set((xdata[0]+xdata[-1])/2)
         params['sigma'].set((xdata[-1]-xdata[0])/10)
 
-    init=model.eval(params,x=xdata)
     result=model.fit(ydata,params,x=xdata)
     return result
 
@@ -636,7 +639,6 @@ def rectangle_fit(modeltype,xdata,ydata,p0,inputinfo):
         params['sigma1'].set((xdata[-1]-xdata[0])/20)
         params['sigma2'].set((xdata[-1]-xdata[0])/20)
 
-    init=model.eval(params,x=xdata)
     result=model.fit(ydata,params,x=xdata)
     return result
 
@@ -653,7 +655,7 @@ def expression_fit(xdata,ydata,p0,inputinfo):
     params=model.make_params()
     for i,whatever in enumerate(p0):
         params[whatever.split('=')[0].strip()].set(value=float(whatever.split('=')[1]))
-    init=model.eval(params,x=xdata)
+
     result=model.fit(ydata,params,x=xdata)
     return result
 

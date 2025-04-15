@@ -2393,9 +2393,9 @@ class LineCutWindow(QtWidgets.QWidget):
             self.fit_parameters = [np.nan]*len(fits.get_names(function_name).split(','))
             self.y_fit = np.nan
 
-        self.draw_plot(parent_linecut=False)
-        self.draw_fits()
+        #self.draw_plot(parent_linecut=False)
         self.plot_parameters()
+        self.draw_fits()
            
     def plot_parameters(self):
         self.output_window.clear()
