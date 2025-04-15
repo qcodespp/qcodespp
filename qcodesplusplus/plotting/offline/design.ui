@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1700</width>
+    <width>1400</width>
     <height>700</height>
    </rect>
   </property>
@@ -34,6 +34,45 @@
         <layout class="QGridLayout" name="gridLayout_2">
          <item row="0" column="0">
           <layout class="QGridLayout" name="files_layout" columnminimumwidth="0,0,0">
+           <item row="0" column="2">
+            <widget class="QPushButton" name="link_folder_button">
+             <property name="minimumSize">
+              <size>
+               <width>130</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Link Folder</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QPushButton" name="open_folder_button">
+             <property name="minimumSize">
+              <size>
+               <width>130</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Open Folder</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="2">
+            <widget class="QPushButton" name="unlink_folder_button">
+             <property name="minimumSize">
+              <size>
+               <width>130</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Unlink Folder</string>
+             </property>
+            </widget>
+           </item>
            <item row="4" column="1">
             <widget class="QPushButton" name="down_file_button">
              <property name="minimumSize">
@@ -89,38 +128,6 @@
              </property>
             </widget>
            </item>
-           <item row="4" column="2">
-            <widget class="QPushButton" name="delete_files_button">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>130</width>
-               <height>0</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>Remove file</string>
-             </property>
-            </widget>
-           </item>
-           <item row="5" column="0">
-            <widget class="QPushButton" name="refresh_file_button">
-             <property name="minimumSize">
-              <size>
-               <width>130</width>
-               <height>0</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>Refresh</string>
-             </property>
-            </widget>
-           </item>
            <item row="5" column="1">
             <widget class="QPushButton" name="clear_files_button">
              <property name="sizePolicy">
@@ -140,8 +147,8 @@
              </property>
             </widget>
            </item>
-           <item row="0" column="1">
-            <widget class="QPushButton" name="open_folder_button">
+           <item row="4" column="2">
+            <widget class="QPushButton" name="refresh_file_button">
              <property name="minimumSize">
               <size>
                <width>130</width>
@@ -149,12 +156,18 @@
               </size>
              </property>
              <property name="text">
-              <string>Open Folder</string>
+              <string>Refresh</string>
              </property>
             </widget>
            </item>
-           <item row="0" column="2">
-            <widget class="QPushButton" name="link_folder_button">
+           <item row="5" column="0">
+            <widget class="QPushButton" name="delete_files_button">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
              <property name="minimumSize">
               <size>
                <width>130</width>
@@ -162,20 +175,7 @@
               </size>
              </property>
              <property name="text">
-              <string>Link Folder</string>
-             </property>
-            </widget>
-           </item>
-           <item row="5" column="2">
-            <widget class="QPushButton" name="unlink_folder_button">
-             <property name="minimumSize">
-              <size>
-               <width>130</width>
-               <height>0</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>Unlink Folder</string>
+              <string>Remove file</string>
              </property>
             </widget>
            </item>
@@ -1011,8 +1011,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1700</width>
-     <height>18</height>
+     <width>1400</width>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_save_session">
