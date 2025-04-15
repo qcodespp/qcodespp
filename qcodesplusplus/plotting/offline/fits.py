@@ -75,6 +75,22 @@ for peaktype in ['Voigt','PseudoVoigt','BreitWigner/Fano','SplitLorentzian','Exp
     functions['Peaks: 4 param'][peaktype]['parameters']='fwhm(s), height(s), position(s), gammas(s), y_offset'
     functions['Peaks: 4 param'][peaktype]['description'] = multipeak_description.format(peaktype,fourparamform)
 
+# Oscillating
+functions['Oscillating']={'Sine':{},
+                        'Sine w/exp decay':{},
+                        'Sine w/power decay':{}
+                        }
+functions['Oscillating']['Sine']['inputs']='# of waves, use offset'
+functions['Oscillating']['Sine']['default_inputs']='1,0'
+functions['Oscillating']['Sine']['parameters']='Amplitude(s), frequency(ies), phase(s), offset'
+functions['Oscillating']['Sine']['description']=('Fit a sine wave A*sin(f*x+phase) with optional + c if use offset == 1.\n'
+                                                'Specify # of waves > 1 to fit A_1*sin(f_1*x+ph_1) + ... + A_n*sin(f_n*x+ph_n) + c.\n'
+                                                'Initial guesses for more than one wave take the form\n'
+                                                'A_1 ... A_n, f_1 ... f_n, ph_1 ... ph_n, c\n'
+                                                'e.g., for three waves:\n'
+                                                '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001,5\n')
+
+
 #Wrap the ExpressionModel to allow arbitrary input.
 functions['User input']={'Expression':{}}
 functions['User input']['Expression']['inputs'] = 'Expression'
@@ -348,9 +364,78 @@ functions['Peaks: 4 param']['Pearson7']['function'] = partial(fit_voigttype, lmm
 functions['Peaks: 4 param']['DampedHarmOsc']['function'] = partial(fit_voigttype, lmm.DampedHarmonicOscillatorModel)
 functions['Peaks: 4 param']['Doniach']['function'] = partial(fit_voigttype, lmm.DoniachModel)
 
+#Multiple sine wave fitting
+def fit_sines(xdata,ydata,p0,inputinfo):
+    modeltype=lmm.SineModel
+    #Fits x,y data with peaks characterised by amplitude, fwhm and position.
+    #Custom starting amplitudes (proportional to height) and sigmas (proportional to width) may also be given
+    #Returns the entire lmfit result.
+    numofwaves=inputinfo[0]
+    usebackground=inputinfo[1]
+    amps=None
+    freqs=None
+    phases=None
+
+    if xdata[0]>xdata[-1]:
+        xdata=xdata[::-1]
+        ydata=ydata[::-1]
+
+    if p0: #Format should be list of strings: ['A A ... A','f f ... f','ph ph ... ph','c']
+        amps=[float(par) for par in p0[0].split()]
+        freqs=[float(par) for par in p0[1].split()]
+        phases=[float(par) for par in p0[2].split()]
+    if usebackground==1:
+        try:
+            background=p0[3]
+        except:
+            background=0
+    else:
+        background=None
+
+    if amps ==None: #Guess that the amplitudes will be close to the maximum minus minimum
+        amps=[ydata.max()-ydata.min() for i in range(int(numofwaves))]
+    if freqs==None: #Guess that the user probably provides somewhere between 1 and 20 periods for fitting.
+        freqs=[10/np.abs(xdata[-1]-xdata[0]) for i in range(int(numofwaves))]
+    if phases==None: # The phases (surely?!) just have to be something sensible in units of radians
+        phases=[0.1 for i in range(int(numofwaves))]
+    
+    def add_wave(prefix, amplitude, frequency, phase):
+        wave = modeltype(prefix=prefix)
+        pars = wave.make_params()
+        pars[prefix + 'amplitude'].set(amplitude)
+        pars[prefix + 'frequency'].set(frequency)
+        pars[prefix + 'shift'].set(phase)
+        return wave, pars
+
+    model = modeltype(prefix='wave0_')
+    params = model.make_params()
+    params['wave0_amplitude'].set(amps[0])
+    params['wave0_frequency'].set(freqs[0])
+    params['wave0_shift'].set(phases[0])
+
+    new_amps=amps[1:]
+
+    for i, amp in enumerate(new_amps):
+        wave, pars = add_wave('wave%d_' % (i+1), amp, freqs[i+1], phases[i+1])
+        model = model + wave
+        params.update(pars)
+
+    if background is not None:
+        bg = lmm.ConstantModel(prefix='bg_')
+        pars = bg.make_params()
+        pars['bg_c'].set(background)
+        model = model + bg
+        params.update(pars)
+
+    init = model.eval(params, x=xdata)
+    result = model.fit(ydata, params, x=xdata)
+    return result
+functions['Oscillating']['Sine']['function']=fit_sines
+
+# Arbitrary expressions get fitted using the below:
 def expression_fit(xdata,ydata,p0,inputinfo):
     #Fit an arbitrary function given in inputinfo. 
-    #Initial guesses for parameters are given in p0 in a string form. This needs to be decoded.
+    #Initial guesses for parameters are given in p0 in a string form.
     model=lmm.ExpressionModel(inputinfo)
     params=model.make_params()
     for i,whatever in enumerate(p0):
