@@ -2306,8 +2306,12 @@ class LineCutWindow(QtWidgets.QWidget):
         if resetinputs:
             if 'default_inputs' in fit_function.keys():
                 self.input_edit.setText(fit_function['default_inputs'])
+            else:
+                self.input_edit.setText('')
             if 'default_guess' in fit_function.keys():
                 self.guess_edit.setText(fit_function['default_guess'])
+            else:
+                self.guess_edit.setText('')
         if 'inputs' in fit_function.keys():
             self.input_label.setText(f'Input info: {fit_function['inputs']}')
         else:
@@ -2393,9 +2397,9 @@ class LineCutWindow(QtWidgets.QWidget):
             self.fit_parameters = [np.nan]*len(fits.get_names(function_name).split(','))
             self.y_fit = np.nan
 
-        self.draw_plot(parent_linecut=False)
-        self.draw_fits()
+        #self.draw_plot(parent_linecut=False)
         self.plot_parameters()
+        self.draw_fits()
            
     def plot_parameters(self):
         self.output_window.clear()
