@@ -106,6 +106,38 @@ functions['Oscillating']['Sine']['description']=('Fit a sine wave A*sin(f*x+phas
                                                 '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001,5\n')
 
 
+# Thermal distributions
+functions['Thermal']={'Maxwell':{'fullname':'Maxwell-Boltzmann', 'equation':'1/A*exp((x-x0)/kT)'},
+                    'Fermi':{'fullname':'Fermi-Dirac', 'equation':'1/[A*exp((x-x0)/kT)+1]'},
+                    'Bose':{'fullname':'Bose-Einstein', 'equation':'1/[A*exp((x-x0)/kT)-1]'},
+                    }
+
+thermaldescription=('Fit to a {} distribution: y = {}. kT is considered a single fit parameter. Initial guesses '
+                    'for kT should be in units of x, usually either eV or J.')
+for key in functions['Thermal'].keys():
+    functions['Thermal'][key]['parameters']=['A, x0, kT']
+    functions['Thermal'][key]['description']=thermaldescription.format(functions['Thermal'][key]['fullname'], functions['Thermal'][key]['equation'])
+
+#Step functions
+functions['Step']={'Linear':{},'Arctan':{},'ErrorFunction':{},'Logistic':{}}
+stepdescription=('Fit a single step function of type {} (see lmfit documentation for information). \n'
+                'The step function starts at 0 and ends with value +/- A. '
+                'The x-value where y=A/2 is given by x0, and sigma is the characteristic width of the step.\n'
+                'Use an offset filter on the data in the main panel to ensure your data starts at y=0.')
+for key in functions['Step'].keys():
+    functions['Step'][key]['parameters']=['A, x0, sigma']
+    functions['Step'][key]['description']=stepdescription.format(key)
+
+#Rectangle functions
+functions['Rectangle']={'Linear':{},'Arctan':{},'ErrorFunction':{},'Logistic':{}}
+rectdescription=('Fit a rectangle function of type {} (see lmfit documentation for information). \n'
+                'A rectangle function steps from 0 to +/- A, then back to 0. '
+                'The x-values where y=A/2 are given by x0_1, x0_2, and sigma_1 and sigma_2 are the characteristic widths of the steps.\n'
+                'Use an offset filter on the data in the main panel to ensure your data starts at y=0.')
+for key in functions['Rectangle'].keys():
+    functions['Rectangle'][key]['parameters']=['A, x0_1, x0_2, sigma_1, sigma_2']
+    functions['Rectangle'][key]['description']=rectdescription.format(key)
+
 #Wrap the ExpressionModel to allow arbitrary input.
 functions['User input']={'Expression':{}}
 functions['User input']['Expression']['inputs'] = 'Expression'
@@ -160,8 +192,6 @@ def polynomial(xdata,ydata,p0,inputinfo):
 functions['Polynomials and powers']['Polynomial']['function'] = polynomial
 
 def fit_powerlaw(xdata,ydata, p0,inputinfo):
-    if p0:
-        p0 = [float(par) for par in p0]
     order=inputinfo[0]
     constant=inputinfo[1]
 
@@ -178,6 +208,10 @@ def fit_powerlaw(xdata,ydata, p0,inputinfo):
         pars['bg_c'].set(constant)
         model = model + bg
         params.update(pars)
+
+    if p0:
+        for i,key in enumerate(params.keys()):
+            params[key].set(float(p0[i]))
 
     init = model.eval(params, x=xdata)
     result = model.fit(ydata, params, x=xdata)
@@ -204,6 +238,10 @@ def fit_exponentials(xdata,ydata, p0,inputinfo):
         pars['bg_c'].set(constant)
         model = model + bg
         params.update(pars)
+
+    if p0:
+        for i,key in enumerate(params.keys()):
+            params[key].set(float(p0[i]))
 
     init = model.eval(params, x=xdata)
     result = model.fit(ydata, params, x=xdata)
@@ -535,6 +573,78 @@ def fit_sines(xdata,ydata,p0,inputinfo):
     result = model.fit(ydata, params, x=xdata)
     return result
 functions['Oscillating']['Sine']['function']=fit_sines
+
+#Fit a thermal distribution of MB, FD or BE type.
+def thermal_fit(modeltype,xdata,ydata,p0,inputinfo):
+    model=lmm.ThermalDistributionModel(form=modeltype)
+    params=model.make_params()
+    if p0:
+        for i,key in enumerate(params.keys()):
+            params[key]=float(p0[i])
+
+    init=model.eval(params,x=xdata)
+    result=model.fit(ydata,params,x=xdata)
+    return result
+
+functions['Thermal']['Maxwell']['function'] = partial(thermal_fit, 'maxwell')
+functions['Thermal']['Bose']['function'] = partial(thermal_fit, 'bose')
+functions['Thermal']['Fermi']['function'] = partial(thermal_fit, 'fermi')
+
+#Fit a step function.
+def step_fit(modeltype,xdata,ydata,p0,inputinfo):
+    if xdata[0]>xdata[-1]:
+        xdata=xdata[::-1]
+        ydata=ydata[::-1]
+    model=lmm.StepModel(form=modeltype)
+    params=model.make_params()
+    if p0:
+        for i,key in enumerate(params.keys()):
+            params[key]=float(p0[i])
+    else:
+        if ydata[-1]>ydata[0]:
+            params['amplitude'].set(ydata.max())
+        else:
+            params['amplitude'].set(ydata.min())
+        params['center'].set((xdata[0]+xdata[-1])/2)
+        params['sigma'].set((xdata[-1]-xdata[0])/10)
+
+    init=model.eval(params,x=xdata)
+    result=model.fit(ydata,params,x=xdata)
+    return result
+
+functions['Step']['Linear']['function'] = partial(step_fit, 'linear')
+functions['Step']['Arctan']['function'] = partial(step_fit, 'arctan')
+functions['Step']['ErrorFunction']['function'] = partial(step_fit, 'erf')
+functions['Step']['Logistic']['function'] = partial(step_fit, 'logistic')
+
+#Fit a rectangle function.
+def rectangle_fit(modeltype,xdata,ydata,p0,inputinfo):
+    if xdata[0]>xdata[-1]:
+        xdata=xdata[::-1]
+        ydata=ydata[::-1]
+    model=lmm.RectangleModel(form=modeltype)
+    params=model.make_params()
+    if p0:
+        for i,key in enumerate(params.keys()):
+            params[key]=float(p0[i])
+    else:
+        if ydata[-1]>ydata[0]:
+            params['amplitude'].set(ydata.max())
+        else:
+            params['amplitude'].set(ydata.min())
+        params['center1'].set((3*xdata[0]+xdata[-1])/4)
+        params['center2'].set((xdata[0]+3*xdata[-1])/4)
+        params['sigma1'].set((xdata[-1]-xdata[0])/20)
+        params['sigma2'].set((xdata[-1]-xdata[0])/20)
+
+    init=model.eval(params,x=xdata)
+    result=model.fit(ydata,params,x=xdata)
+    return result
+
+functions['Rectangle']['Linear']['function'] = partial(rectangle_fit, 'linear')
+functions['Rectangle']['Arctan']['function'] = partial(rectangle_fit, 'arctan')
+functions['Rectangle']['ErrorFunction']['function'] = partial(rectangle_fit, 'erf')
+functions['Rectangle']['Logistic']['function'] = partial(rectangle_fit, 'logistic')
 
 # Arbitrary expressions get fitted using the below:
 def expression_fit(xdata,ydata,p0,inputinfo):
