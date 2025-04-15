@@ -50,7 +50,7 @@ lorgaussform=('w1 ... wn, a1 ... an, x1 ... xn, c where w = peak fwhm, a = peak 
                         '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1\n'
                         'for three peaks with no constant offset, and\n'
                         '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1,5\n'
-                        'for three peaks with a large constant offset of 5.\n')
+                        'for three peaks with a constant offset of 5.\n')
 
 for peaktype in ['Lorentzian','Gaussian','Lognormal','StudentsT','DampedOscillator']:
     functions['Peaks: 3 param'][peaktype] = {}
@@ -66,7 +66,7 @@ fourparamform=('w1 ... wn, a1 ... an, x1 ... xn, g1 ... gn, c where w = peak fwh
                         '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001\n'
                         'for three peaks with no constant offset, and\n'
                         '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001,5\n'
-                        'for three peaks with a large constant offset of 5.\n')
+                        'for three peaks with a constant offset of 5.\n')
 
 for peaktype in ['Voigt','PseudoVoigt','BreitWigner/Fano','SplitLorentzian','ExpGaussian','SkewedGaussian','Moffat','Pearson7','DampedHarmOsc','Doniach']:
     functions['Peaks: 4 param'][peaktype] = {}
@@ -74,6 +74,21 @@ for peaktype in ['Voigt','PseudoVoigt','BreitWigner/Fano','SplitLorentzian','Exp
     functions['Peaks: 4 param'][peaktype]['default_inputs']='1,0'
     functions['Peaks: 4 param'][peaktype]['parameters']='fwhm(s), height(s), position(s), gammas(s), y_offset'
     functions['Peaks: 4 param'][peaktype]['description'] = multipeak_description.format(peaktype,fourparamform)
+
+functions['Peaks: skewed']={}
+fiveparamform=('w1 ... wn, a1 ... an, x1 ... xn, g1 ... gn, s1 ... sn, c where w = peak fwhm, a = peak height, '
+                        'x = peak position, g = gamma (see lmfit documentation for meaning in each case), '
+                        's = skew and c = constant offset value (if used). For example:\n'
+                        '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001, 0.1 0.12 0.14\n'
+                        'for three peaks with no constant offset, and\n'
+                        '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001, 0.1 0.12 0.14, 5\n'
+                        'for three peaks with a constant offset of 5.\n')
+for peaktype in ['Pearson4','SkewedVoigt']:
+    functions['Peaks: skewed'][peaktype] = {}
+    functions['Peaks: skewed'][peaktype]['inputs']='# of peaks, use offset'
+    functions['Peaks: skewed'][peaktype]['default_inputs']='1,0'
+    functions['Peaks: skewed'][peaktype]['parameters']='fwhm(s), height(s), position(s), gammas(s), skews(s), y_offset'
+    functions['Peaks: skewed'][peaktype]['description'] = multipeak_description.format(peaktype,fiveparamform)
 
 # Oscillating
 functions['Oscillating']={'Sine':{},
@@ -278,7 +293,7 @@ def fit_voigttype(modeltype,xdata,ydata,p0,inputinfo):
     fourthparamdict={'SplitLorentzianModel':'sigma_r',
                 'PseudoVoigtModel':'fraction',
                 'MoffatModel':'beta',
-                'Pearson7Model':'exponent',
+                'Pearson7Model':'expon',
                 'BreitWignerModel':'q'}
     if modeltype.__name__ in fourthparamdict.keys():
         fourthparam=fourthparamdict[modeltype.__name__]
@@ -363,6 +378,95 @@ functions['Peaks: 4 param']['Moffat']['function'] = partial(fit_voigttype, lmm.M
 functions['Peaks: 4 param']['Pearson7']['function'] = partial(fit_voigttype, lmm.Pearson7Model)
 functions['Peaks: 4 param']['DampedHarmOsc']['function'] = partial(fit_voigttype, lmm.DampedHarmonicOscillatorModel)
 functions['Peaks: 4 param']['Doniach']['function'] = partial(fit_voigttype, lmm.DoniachModel)
+
+# Function for lmfit peaks with five parameters.
+def fit_skewedpeaks(modeltype,xdata,ydata,p0,inputinfo):
+    #Fits x,y data with peaks characterised by amplitude, fwhm and position.
+    #Custom starting amplitudes (proportional to height) and sigmas (proportional to width) may also be given
+    #Returns the entire lmfit result.
+    fourthparamdict={'Pearson4Model':'expon'}
+    if modeltype.__name__ in fourthparamdict.keys():
+        fourthparam=fourthparamdict[modeltype.__name__]
+    else:
+        fourthparam='gamma'
+    #Fifth parameter is always 'skew'
+
+    numofpeaks=inputinfo[0]
+    usebackground=inputinfo[1]
+    sigmas=None
+    amplitudes=None
+    gammas=None
+    skews=None
+
+    if xdata[0]>xdata[-1]:
+        xdata=xdata[::-1]
+        ydata=ydata[::-1]
+    
+    peakspacing=(xdata.max()-xdata.min())/numofpeaks
+    rough_peak_positions=[i*peakspacing+peakspacing/2+xdata.min() for i in range(int(numofpeaks))]
+
+    if p0: #Format should be list of strings: ['w w ... w','a a ... a','x x ... x','c']
+        sigmas=[float(par) for par in p0[0].split()]
+        amplitudes=[float(par) for par in p0[1].split()]
+        rough_peak_positions=[float(par) for par in p0[2].split()]
+        gammas=[float(par) for par in p0[3].split()]
+        skews=[float(par) for par in p0[4].split()]
+    if usebackground==1:
+        try:
+            background=p0[5]
+        except:
+            background=0
+    else:
+        background=None
+
+    if amplitudes ==None: #Guess that the amplitudes will be close to the maximum value of the data
+        amplitudes=[ydata.max()-ydata.min() for i in range(int(numofpeaks))]
+    if sigmas==None: #Sigma will be much smaller than the peak spacing unless peaks are overlapping. However, starting with a low value seems to work even if overlapping, but not the other way around.
+        sigmas=[np.abs(xdata[-1]-xdata[0])/(12*numofpeaks) for i in range(int(numofpeaks))]
+    if gammas==None:
+        gammas=[0 for i in range(int(numofpeaks))]
+    if skews==None:
+        skews=[1 for i in range(int(numofpeaks))]
+
+    peakpos0=rough_peak_positions[0]
+    peakpositions=rough_peak_positions[1:]
+    
+    def add_peak(prefix, center, amplitude, sigma,gamma,skew):
+        peak = modeltype(prefix=prefix)
+        pars = peak.make_params()
+        pars[prefix + 'center'].set(center)
+        pars[prefix + 'amplitude'].set(amplitude)
+        pars[prefix + 'sigma'].set(sigma, min=0)
+        pars[prefix + fourthparam].set(gamma)
+        pars[prefix + 'skew'].set(skew)
+        return peak, pars
+
+    model = modeltype(prefix='peak0_')
+    params = model.make_params()
+    params['peak0_center'].set(peakpos0)
+    params['peak0_amplitude'].set(amplitudes[0])
+    params['peak0_sigma'].set(sigmas[0], min=0)
+    params['peak0_'+fourthparam].set(gammas[0])
+    params['peak0_skew'].set(skews[0])
+
+    for i, cen in enumerate(peakpositions):
+        peak, pars = add_peak('peak%d_' % (i+1), cen, amplitudes[i+1], sigmas[i+1], gammas[i+1],skews[i+1])
+        model = model + peak
+        params.update(pars)
+
+    if background is not None:
+        bg = lmm.ConstantModel(prefix='bg_')
+        pars = bg.make_params()
+        pars['bg_c'].set(background)
+        model = model + bg
+        params.update(pars)
+
+    init = model.eval(params, x=xdata)
+    result = model.fit(ydata, params, x=xdata)
+    return result
+
+functions['Peaks: skewed']['Pearson4']['function'] = partial(fit_skewedpeaks, lmm.Pearson4Model)
+functions['Peaks: skewed']['SkewedVoigt']['function'] = partial(fit_skewedpeaks,lmm.SkewedVoigtModel)
 
 #Multiple sine wave fitting
 def fit_sines(xdata,ydata,p0,inputinfo):
