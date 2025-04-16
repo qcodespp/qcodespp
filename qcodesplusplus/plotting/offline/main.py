@@ -1407,20 +1407,30 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         
                     elif event.button == 3:
                         rightclick_menu = QtWidgets.QMenu(self)
+
+                        index_x = np.argmin(np.abs(data.processed_data[0]-x))
+                        index_y = np.argmin(np.abs(data.processed_data[1]-y))
+                        coordinates = (f'x = {x:.4g}, y = {y:.4g}'
+                                           f' ({index_x}, {index_y})')
                         if len(data.get_columns()) == 3:
                             index_x = np.argmin(np.abs(data.processed_data[0][:,0]-x))
                             index_y = np.argmin(np.abs(data.processed_data[1][0,:]-y))
                             z = data.processed_data[2][index_x,index_y]
                             coordinates = (f'x = {x:.4g}, y = {y:.4g}, z = {z:.4g}'
                                            f' ({index_x}, {index_y})')
-                            action = QtWidgets.QAction(coordinates, self)
-                            action.setEnabled(False)
-                            rightclick_menu.addAction(action)
-                            rightclick_menu.addSeparator()
+                        action = QtWidgets.QAction(coordinates, self)
+                        action.setEnabled(False)
+                        rightclick_menu.addAction(action)
+                        rightclick_menu.addSeparator()
+
+                        actions = []
+                        actions.append(QtWidgets.QAction(f'Offset X by {x:6g}', self))
+                        actions.append(QtWidgets.QAction(f'Offset Y by {y:6g}', self))
+                        if len(data.get_columns()) == 3:
+                            actions.append(QtWidgets.QAction(f'Offset Z by {z:6g}', self))
                             
                         # Add actions from extension modules
                         data.add_extension_actions(self, rightclick_menu)
-                        actions = []
                         if len(data.get_columns()) == 3:
                             actions.append(QtWidgets.QAction('Draw diagonal linecut', self))
                             #data.linecut_from = [x, y]
@@ -1462,7 +1472,16 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     
     def popup_canvas(self, signal):
         data = self.plot_in_focus[0].data
-        if (signal.text() == 'Plot horizontal linecuts' or
+        if 'Offset' in signal.text():
+            axis=signal.text().split()[1]
+            value=-float(signal.text().split()[3])
+            current_item = self.file_list.currentItem()
+            if current_item:
+                filt = Filter('Offset',method=axis, settings=[str(value),''], checkstate=2)
+                current_item.data.filters.append(filt)
+            if current_item.checkState() and filt.checkstate:
+                self.update_plots()
+        elif (signal.text() == 'Plot horizontal linecuts' or
             signal.text() == 'Plot vertical linecuts'):
             data.multi_linecuts_window = MultipleLineCutsWindow(data) 
             if signal.text() == 'Plot horizontal linecuts':
@@ -2175,6 +2194,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.xmax_label.setStyleSheet("QLabel { color : red; }")
         self.xmin_box = QtWidgets.QLineEdit()
         self.xmax_box = QtWidgets.QLineEdit()
+        self.reset_axes_button = QtWidgets.QPushButton('Reset')
         if self.dimension=='2D':
             self.up_button = QtWidgets.QPushButton('Up/Right')
             self.down_button = QtWidgets.QPushButton('Down/Left')
@@ -2193,6 +2213,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.load_preset_button.clicked.connect(self.load_fit_preset)
         self.xmin_box.editingFinished.connect(self.limits_edited)
         self.xmax_box.editingFinished.connect(self.limits_edited)
+        self.reset_axes_button.clicked.connect(self.reset_limits)
         if self.dimension=='2D':
             self.up_button.clicked.connect(lambda: self.change_index('up'))
             self.down_button.clicked.connect(lambda: self.change_index('down'))
@@ -2229,6 +2250,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.lims_layout.addWidget(self.xmin_box)
         self.lims_layout.addWidget(self.xmax_label)
         self.lims_layout.addWidget(self.xmax_box)
+        self.lims_layout.addWidget(self.reset_axes_button)
         self.lims_layout.addStretch()
 
         self.fit_layout.addWidget(self.fit_functions_label)
@@ -2306,6 +2328,21 @@ class LineCutWindow(QtWidgets.QWidget):
             xmax=float(xmax)
             self.maxline=self.axes.axvline(xmax, 0,0.1, color='red', linestyle='--')
         self.canvas.draw()
+    
+    def reset_limits(self):
+        try:
+            if hasattr(self, 'minline'):
+                self.minline.remove()
+                del self.minline
+            if hasattr(self, 'maxline'):
+                self.maxline.remove()
+                del self.maxline
+        except:
+            pass
+        self.xmin_box.clear()
+        self.xmax_box.clear()
+
+        self.canvas.draw()
   
     def update(self):
         if self.running:
@@ -2330,8 +2367,6 @@ class LineCutWindow(QtWidgets.QWidget):
                 del line
         if hasattr(self, 'peak_estimates'):
             self.peak_estimates = []
-        self.xmin_box.clear()
-        self.xmax_box.clear()
         self.update()
         self.output_window.clear()
         self.fit_type_changed(resetinputs=False)
@@ -2534,8 +2569,9 @@ class LineCutWindow(QtWidgets.QWidget):
             self.axes.plot(self.x_forfit, self.y_fit, 'k--',
                 linewidth=self.parent.settings['linewidth'])
             self.fit_components=self.fit_result.eval_components()
-            for key in self.fit_components.keys():
-                self.axes.plot(self.x_forfit, self.fit_components[key], '--', alpha=0.75, linewidth=self.parent.settings['linewidth'])
+            line_colors = cm.viridis(np.linspace(0.1,0.9,len(self.fit_components.keys())))
+            for i,key in enumerate(self.fit_components.keys()):
+                self.axes.plot(self.x_forfit, self.fit_components[key], '--', color=line_colors[i],alpha=0.75, linewidth=self.parent.settings['linewidth'])
         except Exception as e:
             self.output_window.setText(f'Could not plot fit components: {e}')
         self.canvas.draw()
