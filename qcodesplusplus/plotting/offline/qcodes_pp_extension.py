@@ -48,14 +48,6 @@ class qcodesppData(main.BaseClassData):
             self.data_loaded=False
             self.dataset=None
 
-        # Default to conductance as dependent variable if present.
-        if "conductance" in self.dependent_parameter_names:
-            self.index_dependent_parameter = self.dependent_parameter_names.index("conductance")
-        elif "Conductance" in self.dependent_parameter_names:
-            self.index_dependent_parameter = self.dependent_parameter_names.index("Conductance")
-        else: 
-            self.index_dependent_parameter = 0
-
         self.index_x = 0
         self.index_y = 1
 
@@ -224,16 +216,29 @@ class qcodesppData(main.BaseClassData):
         self.all_parameters = self.independent_parameters + self.dependent_parameters
         self.all_parameter_names = self.independent_parameter_names + self.dependent_parameter_names
         
+                            # Default to conductance as dependent variable if present.
+        defnamefound=False
+        for paramname in ['onductance','esistance', 'urr', 'olt']:
+            for name in self.dependent_parameter_names:
+                if not defnamefound:
+                    print(name,paramname,defnamefound)
+                    if paramname in name:
+                        self.index_dependent_parameter = self.dependent_parameter_names.index(name)
+                        defnamefound=True
+        if not defnamefound: 
+            self.index_dependent_parameter = 0
+        #print(self.index_dependent_parameter,name,paramname)
+
         self.settings['X data'] = self.independent_parameter_names[0]
         self.DEFAULT_PLOT_SETTINGS['X data'] = self.independent_parameter_names[0]
         if len(self.independent_parameters) > 1:
             self.settings['Y data'] = self.independent_parameter_names[1]
-            self.settings['Z data'] = self.dependent_parameter_names[0]
+            self.settings['Z data'] = self.dependent_parameter_names[self.index_dependent_parameter]
             self.DEFAULT_PLOT_SETTINGS['Y data'] = self.independent_parameter_names[1]
-            self.DEFAULT_PLOT_SETTINGS['Z data'] = self.dependent_parameter_names[0]
+            self.DEFAULT_PLOT_SETTINGS['Z data'] = self.dependent_parameter_names[self.index_dependent_parameter]
         else:
-            self.settings['Y data'] = self.dependent_parameter_names[0]
-            self.DEFAULT_PLOT_SETTINGS['Y data'] = self.dependent_parameter_names[0]
+            self.settings['Y data'] = self.dependent_parameter_names[self.index_dependent_parameter]
+            self.DEFAULT_PLOT_SETTINGS['Y data'] = self.dependent_parameter_names[self.index_dependent_parameter]
 
             self.settings.pop('Z data', None)
             self.DEFAULT_PLOT_SETTINGS.pop('Z data', None)
