@@ -221,13 +221,11 @@ class qcodesppData(main.BaseClassData):
         for paramname in ['onductance','esistance', 'urr', 'olt']:
             for name in self.dependent_parameter_names:
                 if not defnamefound:
-                    print(name,paramname,defnamefound)
                     if paramname in name:
                         self.index_dependent_parameter = self.dependent_parameter_names.index(name)
                         defnamefound=True
         if not defnamefound: 
             self.index_dependent_parameter = 0
-        #print(self.index_dependent_parameter,name,paramname)
 
         self.settings['X data'] = self.independent_parameter_names[0]
         self.DEFAULT_PLOT_SETTINGS['X data'] = self.independent_parameter_names[0]
@@ -246,6 +244,32 @@ class qcodesppData(main.BaseClassData):
         self.settings_menu_options = {'X data': self.all_parameter_names,
                                       'Y data': self.all_parameter_names,
                                       'Z data': self.all_parameter_names}
+        
+    # Redefine apply_all_filters so that data from other columns can be sent to the filters.
+    def apply_all_filters(self, update_color_limits=True):
+        print(self.dims)
+        for filt in self.filters:
+            if filt.checkstate:
+                if filt.name in ['Multiply', 'Divide']:
+                    if filt.settings[0] in self.all_parameter_names:
+                        array=self.data_dict[filt.settings[0]][:self.dims[0]][:self.dims[1]]
+                    else:
+                        array=None
+                    
+                    self.processed_data = filt.function(self.processed_data, 
+                                                filt.method,
+                                                filt.settings[0], 
+                                                filt.settings[1],
+                                                array)
+                else:
+                    self.processed_data = filt.function(self.processed_data, 
+                                                    filt.method,
+                                                    filt.settings[0], 
+                                                    filt.settings[1])
+        if update_color_limits:
+            self.reset_view_settings()
+            if hasattr(self, 'image'):
+                self.apply_view_settings()
 
 # Old way of choosing axes. Basically is broken now but could be reintroduced
     # def add_extension_actions(self, editor, menu):

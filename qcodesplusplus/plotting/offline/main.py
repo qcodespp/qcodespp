@@ -15,6 +15,9 @@ import sys
 import os
 import copy
 import io
+from json import load as jsonload
+from json import dump as jsondump
+from csv import writer as csvwriter
 from stat import ST_CTIME
 import numpy as np
 from scipy.ndimage import map_coordinates
@@ -31,6 +34,7 @@ import matplotlib.patches as patches
 from cycler import cycler
 try: # lmfit is used for fitting the evolution of the properties of multiple peaks 
     from lmfit.models import LorentzianModel, GaussianModel, ConstantModel
+    from lmfit.model import save_modelresult
     lmfit_imported = True
 except ModuleNotFoundError:
     lmfit_imported = False
@@ -1914,6 +1918,7 @@ class BaseClassData:
         else:
             self.image[0].set_color(cmap(0.5))            
 
+    # The below function seems to NOT be used by anything!!
     def apply_filter(self, filt, update_color_limits=True):
         if filt.checkstate:
             self.processed_data = filt.function(self.processed_data, 
@@ -1924,7 +1929,7 @@ class BaseClassData:
                 self.reset_view_settings()
                 self.apply_view_settings()
                 
-    def apply_all_filters(self, update_color_limits=True):        
+    def apply_all_filters(self, update_color_limits=True):
         for filt in self.filters:
             if filt.checkstate:
                 self.processed_data = filt.function(self.processed_data, 
@@ -2016,7 +2021,7 @@ class Filter:
                         'Add Slope': {'Method': [''],
                                   'Settings': ['0', '-1'],
                                   'Function': filters.add_slope,
-                                  'Checkstate': 0}, 
+                                  'Checkstate': 0},
                         'Invert': {'Method': ['X','Y','Z'],
                                    'Settings': ['', ''],
                                    'Function': filters.invert,
@@ -2120,6 +2125,9 @@ class LineCutWindow(QtWidgets.QWidget):
         self.orientation_button = QtWidgets.QPushButton('Hor./Vert.')
         self.clear_button = QtWidgets.QPushButton('Clear')
         self.fit_button = QtWidgets.QPushButton('Fit')
+        self.save_preset_button = QtWidgets.QPushButton('Save preset')
+        self.load_preset_button = QtWidgets.QPushButton('Load preset')
+        self.save_result_button = QtWidgets.QPushButton('Save fit result')
         self.fit_functions_label = QtWidgets.QLabel('Select fit function:')
         self.input_label = QtWidgets.QLabel('Input info:')
         self.input_edit = QtWidgets.QLineEdit()
@@ -2136,7 +2144,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.output_window = QtWidgets.QTextEdit()
         self.output_window.setReadOnly(True)
         #self.output_window.setMaximumHeight(250)
-        self.lims_label = QtWidgets.QLabel('Fit limits:')
+        self.lims_label = QtWidgets.QLabel('Fit limits (left-click plot):')
         self.xmin_label = QtWidgets.QLabel('Xmin:')
         self.xmin_label.setStyleSheet("QLabel { color : blue; }")
         self.xmax_label = QtWidgets.QLabel('Xmax:')
@@ -2156,6 +2164,9 @@ class LineCutWindow(QtWidgets.QWidget):
         self.fit_class_box.currentIndexChanged.connect(self.fit_class_changed)
         self.fit_box.currentIndexChanged.connect(self.fit_type_changed)
         self.fit_button.clicked.connect(self.start_fitting)
+        self.save_result_button.clicked.connect(self.save_fit_result)
+        self.save_preset_button.clicked.connect(self.save_fit_preset)
+        self.load_preset_button.clicked.connect(self.load_fit_preset)
         self.xmin_box.editingFinished.connect(self.limits_edited)
         self.xmax_box.editingFinished.connect(self.limits_edited)
         if self.dimension=='2D':
@@ -2178,6 +2189,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.inputs_layout = QtWidgets.QHBoxLayout()
         self.guess_layout = QtWidgets.QHBoxLayout()
         self.output_layout = QtWidgets.QVBoxLayout()
+        self.fit_buttons_layout = QtWidgets.QHBoxLayout()
 
         self.top_buttons_layout.addWidget(self.save_button)
         self.top_buttons_layout.addWidget(self.save_image_button)
@@ -2199,18 +2211,24 @@ class LineCutWindow(QtWidgets.QWidget):
         self.fit_layout.addWidget(self.fit_class_box)
         self.fit_layout.addWidget(self.fit_box)
         self.fit_layout.addStretch()
-        self.fit_layout.addWidget(self.fit_button)
-        self.fit_layout.addWidget(self.clear_button)
 
         self.inputs_layout.addWidget(self.input_label)
         self.inputs_layout.addWidget(self.input_edit)
-        self.inputs_layout.addStretch()
+        #self.inputs_layout.addStretch()
+
         self.guess_layout.addWidget(self.guess_checkbox)
         self.guess_layout.addWidget(self.guess_edit)
         #self.guess_layout.addStretch()
 
         self.output_layout.addWidget(self.output_window)
-    
+
+        self.fit_buttons_layout.addWidget(self.fit_button)
+        self.fit_buttons_layout.addWidget(self.save_result_button)
+        self.fit_buttons_layout.addWidget(self.clear_button)
+        self.fit_buttons_layout.addStretch()
+        self.fit_buttons_layout.addWidget(self.save_preset_button)
+        self.fit_buttons_layout.addWidget(self.load_preset_button)
+
     def set_main_layout(self):
         self.main_layout = QtWidgets.QVBoxLayout()
         self.plotbox=QtWidgets.QGroupBox('')
@@ -2220,7 +2238,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.plottinglayout.addWidget(self.canvas)
         self.plotbox.setLayout(self.plottinglayout)
 
-        self.fittingbox=QtWidgets.QGroupBox('')
+        self.fittingbox=QtWidgets.QGroupBox('Curve Fitting')
         self.fittingbox.setMaximumHeight(450)
         self.fittinglayout = QtWidgets.QVBoxLayout()
         self.fittinglayout.addLayout(self.lims_layout)
@@ -2228,6 +2246,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.fittinglayout.addLayout(self.inputs_layout)
         self.fittinglayout.addLayout(self.guess_layout)
         self.fittinglayout.addLayout(self.output_layout)
+        self.fittinglayout.addLayout(self.fit_buttons_layout)
         self.fittingbox.setLayout(self.fittinglayout)
 
         self.main_layout.addWidget(self.plotbox)
@@ -2502,10 +2521,42 @@ class LineCutWindow(QtWidgets.QWidget):
         self.running = False
         
     def save_data(self):
+        formats = 'JSON (*.json);;Comma Separated Value (*.csv)'
         filename, extension = QtWidgets.QFileDialog.getSaveFileName(
-                self, 'Save Data As')
-        data = np.array([self.x, self.y])
-        np.savetxt(filename, data.T)
+                self, 'Save Data As','',formats)
+        try:
+            data={}
+            data['X']=list(self.x)
+            data['Y']=list(self.y)
+            if hasattr(self,'fit_result'):
+                data['X_bestfit']=list(self.x_forfit)
+                data['Y_bestfit']=list(self.y_fit)
+            if hasattr(self,'fit_components'):
+                for key in self.fit_components.keys():
+                    data[key]=list(self.fit_components[key])
+            if extension=='JSON (*.json)':
+                with open(filename, 'w', encoding='utf-8') as f:
+                    jsondump(data, f, ensure_ascii=False,indent=4)
+            elif extension=='Comma Separated Value (*.csv)':
+                with open(filename, 'w', newline='') as f:
+                    writer = csvwriter(f)
+                    writer.writerow([key for key in data])
+                    for i in range(len(data['X'])):
+                        row = []
+                        for param in data:
+                            try:
+                                row.append(data[param][i])
+                            except IndexError:
+                                row.append('')
+                        writer.writerow(row)
+        except Exception as e:
+            print(e)
+    
+    def save_fit_result(self):
+        formats = 'lmfit Model Result (*.sav)'
+        filename, extension = QtWidgets.QFileDialog.getSaveFileName(
+            self, 'Save Fit Result','', formats)
+        save_modelresult(self.fit_result,filename)
         
     def save_image(self):
         formats = 'Portable Network Graphic (*.png);;Adobe Acrobat (*.pdf)'
@@ -2593,6 +2644,40 @@ class LineCutWindow(QtWidgets.QWidget):
                     else:
                         self.xmax_box.setText(str(x_value))
                 self.limits_edited()
+
+    def save_fit_preset(self):
+        preset_dict={}
+        preset_dict['xlims']=[self.xmin_box.text(),self.xmax_box.text()]
+        preset_dict['function_class']=self.fit_class_box.currentText()
+        preset_dict['function_name']=self.fit_box.currentText()
+        preset_dict['inputinfo']=self.input_edit.text()
+        preset_dict['initial_guess']=self.guess_edit.text()
+        if self.guess_checkbox.isChecked():
+            preset_dict['intial_checkbox']=True
+                
+        formats = 'JSON (*.json)'
+        filename, extension = QtWidgets.QFileDialog.getSaveFileName(
+                self, 'Save Figure As', '', formats)
+        if filename:
+            with open(filename, 'w', encoding='utf-8') as f:
+                jsondump(preset_dict, f, ensure_ascii=False)
+
+    def load_fit_preset(self):
+        filename, _ = QtWidgets.QFileDialog.getOpenFileName(
+                    self, 'Open Fitting Preset', '', '*.json')
+        if filename:
+            with open(filename) as f:
+                preset_dict=jsonload(f)
+            self.xmin_box.setText(preset_dict['xlims'][0])
+            self.xmax_box.setText(preset_dict['xlims'][1])
+            self.fit_class_box.setEditText(preset_dict['function_class'])
+            self.fit_box.setEditText(preset_dict['function_name'])
+            self.input_edit.setText(preset_dict['inputinfo'])
+            self.guess_edit.setText(preset_dict['initial_guess'])
+            if preset_dict['intial_checkbox']:
+                self.guess_checkbox.setCheckState(QtCore.Qt.Checked)
+            else:
+                self.guess_checkbox.setCheckState(QtCore.Qt.UnChecked)
 
     
     # Below doesn't work because arrow keys already function to move between items in the GUI.

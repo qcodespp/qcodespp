@@ -174,18 +174,62 @@ def absolute(data, method, setting1, setting2):
     data[-1] = np.absolute(data[-1])
     return data
     
-def multiply(data, method, setting1, setting2):
-    if setting1 == 'e^2/h':
-        value = 0.025974
-    else:
-        value = float(setting1)
+# def multiply(data, method, setting1, setting2):
+#     if setting1 == 'e^2/h':
+#         value = 0.025974
+#     else:
+#         value = float(setting1)
     
+#     axis = {'X': 0, 'Y': 1, 'Z': 2}
+#     if len(data) == 3:
+#         data[axis[method]] *= value
+#     elif len(data) == 2 and axis[method] < 2:
+#         data[axis[method]] *= value
+#     return data
+
+def multiply(data, method, setting1, setting2, array=None):
     axis = {'X': 0, 'Y': 1, 'Z': 2}
-    if len(data) == 3:
-        data[axis[method]] *= value
-    elif len(data) == 2 and axis[method] < 2:
-        data[axis[method]] *= value
+    if array is not None:
+        if len(data) == 3:
+            data[axis[method]] *= array
+        elif len(data) == 2 and axis[method] < 2:
+            data[axis[method]] *= array
+
+    else:
+        if setting1 == 'e^2/h':
+            value = 0.025974
+        else:
+            value = float(setting1)
+    
+        if len(data) == 3:
+            data[axis[method]] *= value
+        elif len(data) == 2 and axis[method] < 2:
+            data[axis[method]] *= value
     return data
+
+# def divide(data, method, setting1, setting2):
+#     axis = {'X': 0, 'Y': 1, 'Z': 2}
+#     if len(data) == 3:
+#         data[axis[method]] /= float(setting1)
+#     elif len(data) == 2 and axis[method] < 2:
+#         data[axis[method]] /= float(setting1)
+#     return data
+
+def divide(data, method, setting1, setting2, array=None):
+    axis = {'X': 0, 'Y': 1, 'Z': 2}
+    if array is not None:
+        if len(data) == 3:
+            data[axis[method]] /= array
+        elif len(data) == 2 and axis[method] < 2:
+            data[axis[method]] /= array
+
+    else:
+        if len(data) == 3:
+            data[axis[method]] /= float(setting1)
+        elif len(data) == 2 and axis[method] < 2:
+            data[axis[method]] /= float(setting1)
+    return data
+
 
 def logarithm(data, method, setting1, setting2):
     if method == 'Mask':
@@ -240,14 +284,6 @@ def subtract_trace(data, method, index, setting2):
             data[-1] -= np.tile(data[-1][:,index], (len(data[-1][0,:]),1)).T
         elif method == 'Ver':
             data[-1] -= np.tile(data[-1][index,:], (len(data[-1][:,0]),1))
-    return data
-   
-def divide(data, method, setting1, setting2):
-    axis = {'X': 0, 'Y': 1, 'Z': 2}
-    if len(data) == 3:
-        data[axis[method]] /= float(setting1)
-    elif len(data) == 2 and axis[method] < 2:
-        data[axis[method]] /= float(setting1)
     return data
 
 def invert(data, method, setting1, setting2):
