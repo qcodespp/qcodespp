@@ -1080,7 +1080,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         row = self.filters_table.currentRow()
         column = self.filters_table.currentColumn()
         filter_name = self.filters_table.item(row, 0).text()
-        if filter_name in ['Multiply','Divide'] and column == 2:
+        if filter_name in ['Multiply','Divide','Offset'] and column == 2:
             menu = QtWidgets.QMenu(self)
             filter_settings={}
             current_item = self.file_list.currentItem()

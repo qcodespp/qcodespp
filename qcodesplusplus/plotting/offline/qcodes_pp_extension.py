@@ -183,11 +183,13 @@ class qcodesppData(main.BaseClassData):
                     # flip if first column is sorted from high to low 
                     if column_data[:,columns[0]][-1] < column_data[:,columns[0]][0]: 
                         column_data = np.flipud(column_data)
+                        self.udflipped=True
                     self.raw_data = [np.reshape(column_data[:,x], data_shape) 
                                      for x in range(column_data.shape[1])]
                     # flip if second column is sorted from high to low
                     if self.raw_data[1][0,0] > self.raw_data[1][0,1]: 
                         self.raw_data = [np.fliplr(self.raw_data[x]) for x in range(column_data.shape[1])]
+                        self.lrflipped=True
                         
             elif data_shape[0] == 1: # if first two sweeps are not finished -> duplicate data of first sweep to enable 3D plotting
                 self.raw_data = [np.tile(column_data[:data_shape[1],x], (2,1)) for x in range(column_data.shape[1])]    
@@ -246,22 +248,33 @@ class qcodesppData(main.BaseClassData):
                                       'Z data': self.all_parameter_names}
         
         self.filter_menu_options = {'Multiply': self.all_parameter_names,
-                                    'Divide': self.all_parameter_names}
+                                    'Divide': self.all_parameter_names,
+                                    'Offset': self.all_parameter_names}
         
     # Redefine apply_all_filters so that data from other columns can be sent to the filters.
     def apply_all_filters(self, update_color_limits=True):
         for filt in self.filters:
             if filt.checkstate:
-                if filt.name in ['Multiply', 'Divide']:
-                    if filt.settings[0] in self.all_parameter_names:
-                        array=self.data_dict[filt.settings[0]][:self.dims[0]][:self.dims[1]]
+                if filt.name in ['Multiply', 'Divide', 'Offset']:
+                    if filt.settings[0][0]=='-':
+                        arrayname=filt.settings[0][1:]
+                        setting2='-'
+                    else:
+                        arrayname=filt.settings[0]
+                        setting2='+'
+                    if arrayname in self.all_parameter_names:
+                        array=self.data_dict[arrayname][:self.dims[0]][:self.dims[1]]
+                        if hasattr(self,'udflipped'): # If the calculated column data got flipped.
+                            array=np.flipud(array)
+                        if hasattr(self,'lrflipped'):
+                            array=np.fliplr(array)
                     else:
                         array=None
                     
                     self.processed_data = filt.function(self.processed_data, 
                                                 filt.method,
                                                 filt.settings[0], 
-                                                filt.settings[1],
+                                                setting2,
                                                 array)
                 else:
                     self.processed_data = filt.function(self.processed_data, 

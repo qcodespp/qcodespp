@@ -161,13 +161,26 @@ def normalize(data, method, point_x, point_y):
     data[-1] = data[-1] / norm_value
     return data
 
-def offset(data, method, setting1, setting2):
-    if method == 'X':
-        data[0] += float(setting1)
-    if method == 'Y':
-        data[1] += float(setting1)
-    if method == 'Z' and len(data) == 3:
-        data[2] += float(setting1)
+def offset(data, method, setting1, setting2, array=None):
+    axis = {'X': 0, 'Y': 1, 'Z': 2}
+    if array is not None:
+        if len(data) == 3:
+            if setting2=='+':
+                data[axis[method]] += array
+            else:
+                data[axis[method]] = np.subtract(data[axis[method]],array) 
+        elif len(data) == 2 and axis[method] < 2:
+            if setting2=='+':
+                data[axis[method]] += array
+            else:
+                data[axis[method]] = np.subtract(data[axis[method]],array)
+    else:
+        if method == 'X':
+            data[0] += float(setting1)
+        if method == 'Y':
+            data[1] += float(setting1)
+        if method == 'Z' and len(data) == 3:
+            data[2] += float(setting1)
     return data
     
 def absolute(data, method, setting1, setting2):
