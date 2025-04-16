@@ -218,7 +218,7 @@ class qcodesppData(main.BaseClassData):
         self.all_parameters = self.independent_parameters + self.dependent_parameters
         self.all_parameter_names = self.independent_parameter_names + self.dependent_parameter_names
         
-                            # Default to conductance as dependent variable if present.
+        # Default to conductance as dependent variable if present.
         defnamefound=False
         for paramname in ['onductance','esistance', 'urr', 'olt']:
             for name in self.dependent_parameter_names:
@@ -263,7 +263,10 @@ class qcodesppData(main.BaseClassData):
                         arrayname=filt.settings[0]
                         setting2='+'
                     if arrayname in self.all_parameter_names:
-                        array=self.data_dict[arrayname][:self.dims[0]][:self.dims[1]]
+                        if len(self.independent_parameters) > 1:
+                            array=self.data_dict[arrayname][:self.dims[0]][:self.dims[1]]
+                        else:
+                            array=self.data_dict[arrayname][:self.dims[0]]
                         if hasattr(self,'udflipped'): # If the calculated column data got flipped.
                             array=np.flipud(array)
                         if hasattr(self,'lrflipped'):

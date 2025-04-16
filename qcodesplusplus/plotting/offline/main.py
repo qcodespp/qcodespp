@@ -1394,12 +1394,16 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         index_x = np.argmin(np.abs(data.processed_data[0][:,0]-x))
                         index_y = np.argmin(np.abs(data.processed_data[1][0,:]-y))
                         data.selected_indices = [int(index_x), int(index_y)]
-                        if not hasattr(data, 'linecut_window'):
-                            data.linecut_window = LineCutWindow(data)
                         if event.button == 1:
-                            data.linecut_window.orientation = 'horizontal'
+                            if not hasattr(data, 'linecut_window'):
+                                data.linecut_window = LineCutWindow(data,orientation='horizontal')
+                            else:
+                                data.linecut_window.orientation='horizontal'
                         elif event.button == 2:
-                            data.linecut_window.orientation = 'vertical'
+                            if not hasattr(data, 'linecut_window'):
+                                data.linecut_window = LineCutWindow(data,orientation='vertical')
+                            else:
+                                data.linecut_window.orientation='vertical'
                         data.linecut_window.running = True
                         data.linecut_window.update()
                         self.canvas.draw()
@@ -1428,9 +1432,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         actions.append(QtWidgets.QAction(f'Offset Y by {y:6g}', self))
                         if len(data.get_columns()) == 3:
                             actions.append(QtWidgets.QAction(f'Offset Z by {z:6g}', self))
-                            
+                        for action in actions:
+                            rightclick_menu.addAction(action)
                         # Add actions from extension modules
+                        rightclick_menu.addSeparator()
                         data.add_extension_actions(self, rightclick_menu)
+                        rightclick_menu.addSeparator()
+                        actions=[]
                         if len(data.get_columns()) == 3:
                             actions.append(QtWidgets.QAction('Draw diagonal linecut', self))
                             #data.linecut_from = [x, y]
@@ -1447,7 +1455,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     elif event.button == 1 and len(data.get_columns()) == 2:
                         # Opening linecut/fitting window for 1D data
                         if not hasattr(data, 'linecut_window'):
-                            data.linecut_window = LineCutWindow(data,dimension='1D')
+                            data.linecut_window = LineCutWindow(data,orientation='1D')
                         data.linecut_window.running = True
                         data.linecut_window.update()
                         self.canvas.draw()
@@ -1500,8 +1508,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             data.linecut_points.append(DraggablePoint(data, x_mid, y_mid, 
                                                       draw_line=True))
             if not hasattr(data, 'linecut_window'):
-                data.linecut_window = LineCutWindow(data)
-            data.linecut_window.orientation = 'diagonal'
+                data.linecut_window = LineCutWindow(data,orientation='diagonal')
+            else:
+                data.linecut_window.orientation='diagonal'
             data.linecut_window.running = True
             data.linecut_window.update()
             self.canvas.draw()
@@ -1518,9 +1527,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             data.linecut_points.append(DraggablePoint(data, x, y+data.yr,
                                                       draw_circle=True))
             if not hasattr(data, 'linecut_window'):
-                data.linecut_window = LineCutWindow(data)
+                data.linecut_window = LineCutWindow(data,orientation='circular')
+            else:
+                data.linecut_window.orientation='circular'
             data.linecut_window.running = True
-            data.linecut_window.orientation = 'circular'
             data.linecut_window.update()
             self.canvas.draw()
             data.linecut_window.activateWindow()
@@ -2147,11 +2157,11 @@ class Filter:
         
 
 class LineCutWindow(QtWidgets.QWidget):
-    def __init__(self, parent, dimension='2D'):
+    def __init__(self, parent, orientation):
         super().__init__()
         self.parent = parent
         self.running = True
-        self.dimension = dimension
+        self.orientation = orientation
         self.init_widgets()
         self.init_canvas()
         self.init_connections()
@@ -2165,7 +2175,6 @@ class LineCutWindow(QtWidgets.QWidget):
         self.save_button = QtWidgets.QPushButton('Save Data')
         self.save_image_button = QtWidgets.QPushButton('Save Image')
         self.copy_image_button = QtWidgets.QPushButton('Copy Image')
-        self.orientation_button = QtWidgets.QPushButton('Hor./Vert.')
         self.clear_button = QtWidgets.QPushButton('Clear')
         self.fit_button = QtWidgets.QPushButton('Fit')
         self.save_preset_button = QtWidgets.QPushButton('Save preset')
@@ -2195,7 +2204,8 @@ class LineCutWindow(QtWidgets.QWidget):
         self.xmin_box = QtWidgets.QLineEdit()
         self.xmax_box = QtWidgets.QLineEdit()
         self.reset_axes_button = QtWidgets.QPushButton('Reset')
-        if self.dimension=='2D':
+        if self.orientation in ['horizontal','vertical']:
+            self.orientation_button = QtWidgets.QPushButton('Hor./Vert.')
             self.up_button = QtWidgets.QPushButton('Up/Right')
             self.down_button = QtWidgets.QPushButton('Down/Left')
 
@@ -2203,7 +2213,6 @@ class LineCutWindow(QtWidgets.QWidget):
         self.save_button.clicked.connect(self.save_data)
         self.save_image_button.clicked.connect(self.save_image)
         self.copy_image_button.clicked.connect(self.copy_image)
-        self.orientation_button.clicked.connect(self.change_orientation)
         self.clear_button.clicked.connect(self.clear_lines)
         self.fit_class_box.currentIndexChanged.connect(self.fit_class_changed)
         self.fit_box.currentIndexChanged.connect(self.fit_type_changed)
@@ -2214,7 +2223,8 @@ class LineCutWindow(QtWidgets.QWidget):
         self.xmin_box.editingFinished.connect(self.limits_edited)
         self.xmax_box.editingFinished.connect(self.limits_edited)
         self.reset_axes_button.clicked.connect(self.reset_limits)
-        if self.dimension=='2D':
+        if self.orientation in ['horizontal','vertical']:
+            self.orientation_button.clicked.connect(self.change_orientation)
             self.up_button.clicked.connect(lambda: self.change_index('up'))
             self.down_button.clicked.connect(lambda: self.change_index('down'))
         
@@ -2240,8 +2250,8 @@ class LineCutWindow(QtWidgets.QWidget):
         self.top_buttons_layout.addWidget(self.save_image_button)
         self.top_buttons_layout.addWidget(self.copy_image_button)
         self.top_buttons_layout.addStretch()
-        self.top_buttons_layout.addWidget(self.orientation_button)
-        if self.dimension == '2D':
+        if self.orientation in ['horizontal','vertical']:
+            self.top_buttons_layout.addWidget(self.orientation_button)
             self.top_buttons_layout.addWidget(self.down_button)
             self.top_buttons_layout.addWidget(self.up_button)
 
@@ -2351,11 +2361,10 @@ class LineCutWindow(QtWidgets.QWidget):
                 del self.parent.linecut
             except:
                 pass
-            if len(self.parent.get_columns()) == 3:
-                self.ylabel = self.parent.settings['clabel']
-            else: 
-                self.orientation = '1D'
+            if self.orientation == '1D':
                 self.ylabel = self.parent.settings['ylabel']
+            else:
+                self.ylabel = self.parent.settings['clabel']
             self.draw_plot()
             self.parent.canvas.draw()
             self.show()
@@ -2543,6 +2552,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.x = map_coordinates(self.parent.processed_data[0], 
                                          np.vstack((x_diag, y_diag)))                
                 self.xlabel = self.parent.settings['xlabel']
+                self.title = f'({x0:5g},{y0:5g}) : ({x1:5g},{y1:5g})'
             elif self.orientation == 'circular':
                 n = int(8*np.sqrt((i_x0-i_x1)**2+(i_y0-i_y1)**2))
                 theta = np.linspace(0, 2*np.pi, n)
@@ -2552,12 +2562,12 @@ class LineCutWindow(QtWidgets.QWidget):
                                          np.vstack((i_x_circ, i_y_circ)))
                 self.x = theta
                 self.xlabel = 'Angle (rad)'
-            self.title = ''
+                self.title = ''
             self.ylabel = self.parent.settings['clabel']
         self.image = self.axes.plot(self.x, self.y, linewidth=self.parent.settings['linewidth'])
         self.cursor = Cursor(self.axes, useblit=True, color='grey', linewidth=0.5)
-        self.axes.set_xlabel(self.xlabel, size='xx-large')
-        self.axes.set_ylabel(self.ylabel, size='xx-large')
+        self.axes.set_xlabel(self.xlabel, size='x-large')
+        self.axes.set_ylabel(self.ylabel, size='x-large')
         self.axes.tick_params(labelsize='x-large', color=rcParams['axes.edgecolor'])
         self.axes.set_title(self.title, size='x-large')
         self.limits_edited()
