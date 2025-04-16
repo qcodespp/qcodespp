@@ -245,9 +245,11 @@ class qcodesppData(main.BaseClassData):
                                       'Y data': self.all_parameter_names,
                                       'Z data': self.all_parameter_names}
         
+        self.filter_menu_options = {'Multiply': self.all_parameter_names,
+                                    'Divide': self.all_parameter_names}
+        
     # Redefine apply_all_filters so that data from other columns can be sent to the filters.
     def apply_all_filters(self, update_color_limits=True):
-        print(self.dims)
         for filt in self.filters:
             if filt.checkstate:
                 if filt.name in ['Multiply', 'Divide']:

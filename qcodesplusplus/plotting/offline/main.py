@@ -237,6 +237,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         h.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
         for col in range(1,4):
             h.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeToContents)
+        self.filters_table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.filters_table.customContextMenuRequested.connect(self.open_filter_settings_menu)
         
     def init_connections(self):
         self.open_files_button.clicked.connect(self.open_files)
@@ -1069,10 +1071,32 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     menu.addAction(action)
                 menu.triggered[QtWidgets.QAction].connect(self.replace_plot_setting)
                 menu.popup(QtGui.QCursor.pos())
-   
+
     def replace_plot_setting(self, signal):
         item = self.settings_table.currentItem()
         item.setText(signal.text())
+
+    def open_filter_settings_menu(self):
+        row = self.filters_table.currentRow()
+        column = self.filters_table.currentColumn()
+        filter_name = self.filters_table.item(row, 0).text()
+        if filter_name in ['Multiply','Divide'] and column == 2:
+            menu = QtWidgets.QMenu(self)
+            filter_settings={}
+            current_item = self.file_list.currentItem()
+            if current_item and hasattr(current_item.data, 'filter_menu_options'):
+                filter_settings.update(current_item.data.filter_menu_options)
+            if filter_name in filter_settings.keys():
+                for entry in filter_settings[filter_name]:
+                    action = QtWidgets.QAction(entry, self)
+                    menu.addAction(action)
+                menu.triggered[QtWidgets.QAction].connect(self.replace_filter_setting)
+                menu.popup(QtGui.QCursor.pos())
+
+    def replace_filter_setting(self,signal):
+        item = self.filters_table.currentItem()
+        item.setText(signal.text())
+
 
     def reset_color_limits(self):
         current_item = self.file_list.currentItem()
