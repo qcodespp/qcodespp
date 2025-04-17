@@ -291,6 +291,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.action_current_file.triggered.connect(lambda: self.save_session('current'))
         self.action_all_files.triggered.connect(lambda: self.save_session('all'))
         self.action_checked_files.triggered.connect(lambda: self.save_session('checked'))
+        self.action_restore_session.triggered.connect(self.load_session)
         self.action_combine_files.triggered.connect(self.combine_plots)
         self.action_duplicate_file.triggered.connect(self.duplicate_item)
         self.action_save_data_selected_file.triggered.connect(self.save_processed_data)
@@ -329,6 +330,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.copy_image_shortcut.activated.connect(self.copy_canvas_to_clipboard)
         self.duplicate_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+D"), self)
         self.duplicate_shortcut.activated.connect(self.duplicate_item)
+        self.save_session_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+S"),self)
+        self.save_session_shortcut.activated.connect(lambda: self.save_session('all'))
+        self.load_session_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+R"),self)
+        self.load_session_shortcut.activated.connect(self.load_session)
     
     def init_canvas(self):
         self.figure = Figure()
@@ -344,7 +349,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                              (5,5)]
         self.figure.subplots_adjust(top=0.893, bottom=0.137, 
                                     left=0.121, right=0.86)
-
+        
     def load_data_item(self,filepath,load_the_data=True):
         #print(f'Open {filepath}...')
         filename, extension = os.path.splitext(filepath)
@@ -388,26 +393,40 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             item = DataItem(BaseClassData(filepath, self.canvas))
             return item
 
-    def open_files(self, filepaths=None, load_the_data=True):
+    def open_files(self, filepaths=None, load_the_data=True, attr_dicts=None):
+        overrideautocheck=False #If loading a previously saved session, don't automatically check only the last file.
         self.file_list.itemChanged.disconnect(self.file_checked)
         if not filepaths:
             filepaths, _ = QtWidgets.QFileDialog.getOpenFileNames(
                 self, 'Open File', '', 'Data Files (*.dat *.npy *.db)')
         if filepaths:
-            for filepath in filepaths:
+            for i,filepath in enumerate(filepaths):
                 try:
                     item=self.load_data_item(filepath,load_the_data)
+                    item.filepath=filepath
                     self.file_list.addItem(item)
+
+                    if attr_dicts is not None: #then a previous session is being loaded
+                        for attr in attr_dicts[i]:
+                            if attr not in ['filename','checkState']:
+                                setattr(item.data,attr,attr_dicts[i][attr])
+                            elif attr=='checkState':
+                                item.setCheckState(attr_dicts[i][attr])
+                                if attr_dicts[i][attr]==2:
+                                    self.file_checked(item)
+                                    overrideautocheck=True #If any item is checked, override autochecking. But if NONE of them are checked, let autocheck do it's thing.
+
                 except Exception as e:
                     print(f'Failed to open {filepath}:', e)
 
             if self.file_list.count() > 0:
                 last_item = self.file_list.item(self.file_list.count()-1)
                 self.file_list.setCurrentItem(last_item)
-                for item_index in range(self.file_list.count()-1):
-                    self.file_list.item(item_index).setCheckState(QtCore.Qt.Unchecked)
-                last_item.setCheckState(QtCore.Qt.Checked)
-                self.file_checked(last_item)
+                if not overrideautocheck:
+                    for item_index in range(self.file_list.count()-1):
+                        self.file_list.item(item_index).setCheckState(QtCore.Qt.Unchecked)
+                    last_item.setCheckState(QtCore.Qt.Checked)
+                    self.file_checked(last_item)
         self.file_list.itemChanged.connect(self.file_checked)
     
     def remove_files(self, which='current'):
@@ -1249,17 +1268,32 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                          if self.file_list.item(n).checkState() == 2]                             
             dictionary_list = []
             for item in items:
-                item_dictionary = {'Label': item.data.label, 
-                                   'File Path': filepath,
-                                   'Settings': item.data.settings, 
-                                   'Filters': item.data.filters, 
-                                   'View Settings': item.data.view_settings,
-                                   'Axlim Settings': item.data.axlim_settings,
-                                   'Raw Data': item.data.raw_data}
+                item_dictionary = {}
+                if hasattr(item,'filepath'):
+                    item_dictionary['filepath']=item.filepath
+                if hasattr(item,'checkState'):
+                    item_dictionary['checkState']=item.checkState()
+                attributes=['label','settings','filters','view_settings','axlim_settings',
+                            'raw_data','processed_data']
+                for attribute in attributes:
+                    if hasattr(item.data,attribute):
+                        item_dictionary[attribute]=getattr(item.data,attribute)
                 dictionary_list.append(item_dictionary)
             np.save(filepath, dictionary_list)
-            print('Saved!')
-    
+            print(f'Session saved as {filepath}')
+
+    # Could consider to add the linecut window as part of a 'session'
+
+    def load_session(self):
+        filepath, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open Session', '', 'Saved Session (*.npy)')
+        if filepath:
+            self.remove_files('all')
+            data=np.load(filepath, allow_pickle=True)
+            file_list=[]
+            for attr_dict in data:
+                file_list.append(attr_dict['filepath'])
+            self.open_files(file_list,load_the_data=False,attr_dicts=data)
+
     def open_files_from_folder(self): 			
         rootdir = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory to Open")
         filepaths = []
@@ -2549,7 +2583,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 y_diag = np.linspace(i_y0, i_y1, n)
                 self.y = map_coordinates(self.parent.processed_data[-1], 
                                          np.vstack((x_diag, y_diag)))
-                self.x = map_coordinates(self.parent.processed_data[0], 
+                self.x = map_coordinates(self.parent.processed_data[0],
                                          np.vstack((x_diag, y_diag)))                
                 self.xlabel = self.parent.settings['xlabel']
                 self.title = f'({x0:5g},{y0:5g}) : ({x1:5g},{y1:5g})'

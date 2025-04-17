@@ -193,7 +193,7 @@
          </sizepolicy>
         </property>
         <property name="title">
-         <string>Settings For Selected File</string>
+         <string>Settings For Selected File: right-click for options</string>
         </property>
         <layout class="QGridLayout" name="gridLayout_4">
          <item row="0" column="0">
@@ -1012,16 +1012,13 @@
      <x>0</x>
      <y>0</y>
      <width>1400</width>
-     <height>22</height>
+     <height>18</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_save_session">
     <property name="title">
      <string>Export Data</string>
     </property>
-    <addaction name="action_current_file"/>
-    <addaction name="action_all_files"/>
-    <addaction name="action_checked_files"/>
     <addaction name="action_filters"/>
    </widget>
    <widget class="QMenu" name="menu_apply_preset">
@@ -1043,6 +1040,14 @@
     <property name="title">
      <string>File</string>
     </property>
+    <widget class="QMenu" name="menuSave_session">
+     <property name="title">
+      <string>Save session...</string>
+     </property>
+     <addaction name="action_all_files"/>
+     <addaction name="action_checked_files"/>
+     <addaction name="action_current_file"/>
+    </widget>
     <addaction name="action_open_file"/>
     <addaction name="action_open_files_from_folder"/>
     <addaction name="separator"/>
@@ -1052,6 +1057,9 @@
     <addaction name="separator"/>
     <addaction name="actionSave_plot_s_as"/>
     <addaction name="action_copy_plot_as_image"/>
+    <addaction name="separator"/>
+    <addaction name="menuSave_session"/>
+    <addaction name="action_restore_session"/>
    </widget>
    <widget class="QMenu" name="menuBatch_Actions">
     <property name="title">
@@ -1188,7 +1196,7 @@
   </action>
   <action name="action_all_files">
    <property name="text">
-    <string>All Files</string>
+    <string>All Files (Ctrl+Shift+S)</string>
    </property>
   </action>
   <action name="action_filters">
@@ -1309,6 +1317,16 @@
   <action name="action_save_session">
    <property name="text">
     <string>Save session (Ctrl+Shift+S)</string>
+   </property>
+  </action>
+  <action name="action_restore_session">
+   <property name="text">
+    <string>Open saved session (Ctrl+R)</string>
+   </property>
+  </action>
+  <action name="actionAll_files_Ctrl_Shift_S">
+   <property name="text">
+    <string>All files (Ctrl+Shift+S)</string>
    </property>
   </action>
  </widget>
