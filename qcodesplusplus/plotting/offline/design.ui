@@ -562,7 +562,7 @@
         <item>
          <widget class="QPushButton" name="save_image_button">
           <property name="text">
-           <string>Save figure</string>
+           <string>Save plot</string>
           </property>
          </widget>
         </item>
@@ -1017,8 +1017,12 @@
    </property>
    <widget class="QMenu" name="menu_save_session">
     <property name="title">
-     <string>Export Data</string>
+     <string>Export Processed Data</string>
     </property>
+    <addaction name="action_save_data_selected_file"/>
+    <addaction name="action_save_data_checked_files"/>
+    <addaction name="actionsave_data_all_files"/>
+    <addaction name="separator"/>
     <addaction name="action_filters"/>
    </widget>
    <widget class="QMenu" name="menu_apply_preset">
@@ -1034,7 +1038,12 @@
     </property>
     <addaction name="action_combine_files"/>
     <addaction name="action_duplicate_file"/>
-    <addaction name="action_save_data_selected_file"/>
+    <addaction name="separator"/>
+    <addaction name="actionSave_plot_s_as"/>
+    <addaction name="action_copy_plot_as_image"/>
+    <addaction name="separator"/>
+    <addaction name="action_save_files_as_PDF"/>
+    <addaction name="action_save_files_as_PNG"/>
    </widget>
    <widget class="QMenu" name="menuFile">
     <property name="title">
@@ -1055,24 +1064,13 @@
     <addaction name="action_unlink_folder"/>
     <addaction name="action_track_data"/>
     <addaction name="separator"/>
-    <addaction name="actionSave_plot_s_as"/>
-    <addaction name="action_copy_plot_as_image"/>
-    <addaction name="separator"/>
     <addaction name="menuSave_session"/>
     <addaction name="action_restore_session"/>
-   </widget>
-   <widget class="QMenu" name="menuBatch_Actions">
-    <property name="title">
-     <string>Batch Actions</string>
-    </property>
-    <addaction name="action_save_files_as_PDF"/>
-    <addaction name="action_save_files_as_PNG"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuCombine_Plots"/>
    <addaction name="menu_save_session"/>
    <addaction name="menu_apply_preset"/>
-   <addaction name="menuBatch_Actions"/>
   </widget>
   <action name="actionNew">
    <property name="text">
@@ -1196,12 +1194,12 @@
   </action>
   <action name="action_all_files">
    <property name="text">
-    <string>All Files (Ctrl+Shift+S)</string>
+    <string>All Files (Ctrl+S)</string>
    </property>
   </action>
   <action name="action_filters">
    <property name="text">
-    <string>Filters</string>
+    <string>Export filters</string>
    </property>
   </action>
   <action name="action_merge_raw">
@@ -1271,7 +1269,7 @@
   </action>
   <action name="action_unlink_folder">
    <property name="text">
-    <string>Unlink Folder</string>
+    <string>Unlink Folder (Ctrl+Shift+L)</string>
    </property>
   </action>
   <action name="action_live_tracking">
@@ -1291,7 +1289,7 @@
   </action>
   <action name="action_save_data_selected_file">
    <property name="text">
-    <string>Save Data Selected File</string>
+    <string>Selected File</string>
    </property>
   </action>
   <action name="action_open_file">
@@ -1301,7 +1299,7 @@
   </action>
   <action name="actionSave_plot_s_as">
    <property name="text">
-    <string>Save plot as pdf or png (Ctrl+S)</string>
+    <string>Save plot as pdf or png (Ctrl+Shift+S)</string>
    </property>
   </action>
   <action name="action_copy_plot_as_image">
@@ -1327,6 +1325,16 @@
   <action name="actionAll_files_Ctrl_Shift_S">
    <property name="text">
     <string>All files (Ctrl+Shift+S)</string>
+   </property>
+  </action>
+  <action name="actionsave_data_all_files">
+   <property name="text">
+    <string>All files</string>
+   </property>
+  </action>
+  <action name="action_save_data_checked_files">
+   <property name="text">
+    <string>Checked files</string>
    </property>
   </action>
  </widget>

@@ -105,9 +105,6 @@ class qcodesppData(main.BaseClassData):
                 self.settings["xlabel"] = "{} ({})".format(self.independent_parameters[0]["label"], self.independent_parameters[0]["unit"])
             column_data = np.column_stack((xdata, ydata))
 
-            self.DEFAULT_PLOT_SETTINGS["xlabel"] = self.settings["xlabel"]
-            self.DEFAULT_PLOT_SETTINGS["ylabel"] = self.settings["ylabel"]
-
         elif len(self.independent_parameters) > 1: # data is 2D
             # In this case it's possible to select a 2D array as the X data, but X data MUST always be 1D
             # In future, I will add that each X point is the average of that row in the 2D array
@@ -130,11 +127,6 @@ class qcodesppData(main.BaseClassData):
                                          ydata.flatten(),
                                         zdata.flatten()
                                         ))
-
-            # Not sure if this is necessary, I think I fixed it. Should test and remove later.
-            self.DEFAULT_PLOT_SETTINGS["xlabel"] = self.settings["xlabel"]
-            self.DEFAULT_PLOT_SETTINGS["ylabel"] = self.settings["ylabel"]
-            self.DEFAULT_PLOT_SETTINGS["clabel"] = self.settings["clabel"]
 
             # # Delete unfinished rows to enable plotting
             if not self.isFinished():
@@ -230,18 +222,15 @@ class qcodesppData(main.BaseClassData):
             self.index_dependent_parameter = 0
 
         self.settings['X data'] = self.independent_parameter_names[0]
-        self.DEFAULT_PLOT_SETTINGS['X data'] = self.independent_parameter_names[0]
+
         if len(self.independent_parameters) > 1:
             self.settings['Y data'] = self.independent_parameter_names[1]
             self.settings['Z data'] = self.dependent_parameter_names[self.index_dependent_parameter]
-            self.DEFAULT_PLOT_SETTINGS['Y data'] = self.independent_parameter_names[1]
-            self.DEFAULT_PLOT_SETTINGS['Z data'] = self.dependent_parameter_names[self.index_dependent_parameter]
+
         else:
             self.settings['Y data'] = self.dependent_parameter_names[self.index_dependent_parameter]
-            self.DEFAULT_PLOT_SETTINGS['Y data'] = self.dependent_parameter_names[self.index_dependent_parameter]
 
             self.settings.pop('Z data', None)
-            self.DEFAULT_PLOT_SETTINGS.pop('Z data', None)
 
         self.settings_menu_options = {'X data': self.all_parameter_names,
                                       'Y data': self.all_parameter_names,

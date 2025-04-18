@@ -294,7 +294,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.action_restore_session.triggered.connect(self.load_session)
         self.action_combine_files.triggered.connect(self.combine_plots)
         self.action_duplicate_file.triggered.connect(self.duplicate_item)
-        self.action_save_data_selected_file.triggered.connect(self.save_processed_data)
+        self.action_save_data_selected_file.triggered.connect(lambda: self.save_processed_data('current'))
         self.track_button.clicked.connect(self.track_button_clicked)
         self.refresh_line_edit.editingFinished.connect(lambda: self.refresh_interval_changed(self.refresh_line_edit.text()))
         self.actionSave_plot_s_as.triggered.connect(self.save_image)
@@ -324,13 +324,17 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.open_folder_shortcut.activated.connect(self.open_files_from_folder)
         self.link_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+L"), self)
         self.link_shortcut.activated.connect(lambda: self.update_link_to_folder(new_folder=True))
-        self.save_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+S"), self)
+        self.unlink_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+L"), self)
+        self.unlink_shortcut.activated.connect(self.unlink_folder)
+        self.track_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+T"), self)
+        self.track_shortcut.activated.connect(self.track_button_clicked)
+        self.save_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+S"), self)
         self.save_shortcut.activated.connect(self.save_image)
         self.copy_image_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+C"), self)
         self.copy_image_shortcut.activated.connect(self.copy_canvas_to_clipboard)
         self.duplicate_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+D"), self)
         self.duplicate_shortcut.activated.connect(self.duplicate_item)
-        self.save_session_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+S"),self)
+        self.save_session_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+S"),self)
         self.save_session_shortcut.activated.connect(lambda: self.save_session('all'))
         self.load_session_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+R"),self)
         self.load_session_shortcut.activated.connect(self.load_session)
@@ -398,7 +402,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.file_list.itemChanged.disconnect(self.file_checked)
         if not filepaths:
             filepaths, _ = QtWidgets.QFileDialog.getOpenFileNames(
-                self, 'Open File', '', 'Data Files (*.dat *.npy *.db)')
+                self, 'Open File', '', 'Data Files (*.dat *.npy *.db *.csv)')
         if filepaths:
             for i,filepath in enumerate(filepaths):
                 try:
@@ -446,7 +450,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.file_list.takeItem(index)
                 del item
         self.show_current_all()
-        if update_plots: 
+        if update_plots:
             self.update_plots()
     
     def file_checked(self, item):
@@ -466,7 +470,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.update_plots()
     
     def update_plots(self, update_data=True):
-        self.figure.clear()
+        #Clearing the figure is the source of the NotImplementedError. Annoying but not sure what else to do than just ignore it for now.
+        self.figure.clf()
+
         checked_items = self.get_checked_items()
         if checked_items:
             rows, cols = self.subplot_grid[len(checked_items)-1]
@@ -476,7 +482,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         item.data.prepare_data_for_plot()
                     item.data.figure = self.figure
                     item.data.axes = item.data.figure.add_subplot(rows, cols, index+1)
-                    zoom_factory(item.data.axes)
                     item.data.add_plot(dim=len(item.data.get_columns()))
                     if hasattr(item.data, 'linecut_window'):
                         item.data.linecut_window.update()
@@ -658,6 +663,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.show_current_axlim_settings()
     
     def show_current_plot_settings(self):
+        self.settings_table.clear()
+        self.settings_table.setRowCount(0)
         current_item = self.file_list.currentItem()
         if current_item:
             self.settings_table.itemChanged.disconnect(self.plot_setting_edited)
@@ -824,12 +831,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current_item = self.file_list.currentItem()
         if current_item:
             current_item.data.reset_axlim_settings()
-            self.xmin_line_edit.setText('')
-            self.xmax_line_edit.setText('')
-            self.ymin_line_edit.setText('')
-            self.ymax_line_edit.setText('')
-            #if current_item.checkState():
-            current_item.data.reset_axlim_settings()
+            self.show_current_axlim_settings()
             self.canvas.draw()
 
     def axis_scaling_changed(self):
@@ -1293,7 +1295,83 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for attr_dict in data:
                 file_list.append(attr_dict['filepath'])
             self.open_files(file_list,load_the_data=False,attr_dicts=data)
+    # Old version. New version below uses .dat or .csv to export also.
+    # def save_processed_data(self):
+    #     current_item = self.file_list.currentItem()
+    #     if current_item:
+    #         suggested_filename = (current_item.data.label.replace(':','') +
+    #                               '_processed')
+    #         filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
+    #             self, 'Save Processed Data As', suggested_filename, '*.npy')
+    #         if filepath:
+    #             #save_data = np.column_stack(tuple(data.flatten() for data in 
+    #             #                                  current_item.data.processed_data))
+    #             if len(current_item.data.get_columns()) == 2:
+    #                 np.save(filepath, np.column_stack(current_item.data.processed_data))
+    #             elif len(current_item.data.get_columns()) == 3:
+    #                 np.save(filepath, np.stack(current_item.data.processed_data, axis=2))
 
+    def save_processed_data(self, which='current'):
+        current_item = self.file_list.currentItem()
+        if current_item:
+            formats='Numpy text (*.dat);;Numpy format (*.npy);;CSV (*.csv)'
+            if which == 'current':
+                suggested_filename = current_item.data.label
+                filepath, ext = QtWidgets.QFileDialog.getSaveFileName(
+                    self, 'Export Data As', suggested_filename, formats)
+                item = current_item
+                if hasattr(item.data,'processed_data'):
+                    if '.dat' in ext:
+                        header=''
+                        for label in ['xlabel','ylabel','clabel']:
+                            if item.data.settings[label] != '':
+                                header+=f'{item.data.settings[label]}\t'
+                        header=header.strip('\t')
+                        with open(filepath, "w") as dat_file:
+                            if len(current_item.data.get_columns()) == 2:
+                                np.savetxt(filepath, np.column_stack(current_item.data.processed_data),header=header)
+                            elif len(current_item.data.get_columns()) == 3:
+                                dat_file.write(f'# {header}\n')
+                                for j in range(np.shape(item.data.processed_data[2])[0]):
+                                    for k in range(np.shape(item.data.processed_data[2])[1]):
+                                        dat_file.write('{}\t{}\t{}\n'.format(item.data.processed_data[0][j,k],item.data.processed_data[1][j,k],item.data.processed_data[2][j,k]))
+                    elif '.npy' in ext:
+                            if len(current_item.data.get_columns()) == 2:
+                                np.save(filepath, np.column_stack(current_item.data.processed_data))
+                            elif len(current_item.data.get_columns()) == 3:
+                                np.save(filepath, np.stack(current_item.data.processed_data, axis=2))
+                    elif '.csv' in ext:
+                        with open(filepath, 'w', newline='') as f:
+                            writer = csvwriter(f,delimiter='\t')
+                            header=[]
+                            for label in ['xlabel','ylabel','clabel']:
+                                if item.data.settings[label] != '':
+                                    header.append(f'#{item.data.settings[label]}')
+                            writer.writerow(header)
+                            if len(current_item.data.get_columns())==2:
+                                for i,x in enumerate(item.data.processed_data[0]):
+                                    writer.writerow([x,item.data.processed_data[1][i]])
+                            elif len(current_item.data.get_columns()) == 3:
+                                for j in range(np.shape(item.data.processed_data[2])[0]):
+                                    for k in range(np.shape(item.data.processed_data[2])[1]):
+                                        writer.writerow([item.data.processed_data[0][j,k],item.data.processed_data[1][j,k],item.data.processed_data[2][j,k]])
+
+                else:
+                    print('No processed data to export')
+            # else:
+            #     if which == 'all':
+            #         filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
+            #             self, 'Export Data As: Specify Base Filename', '', formats)
+            #         items = [self.file_list.item(n) for n in range(self.file_list.count())]
+            #     elif which == 'checked':
+            #         filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
+            #             self, 'Export Data As: Specify Base Filename', '', formats)
+            #         items = [self.file_list.item(n) for n in range(self.file_list.count()) 
+            #                 if self.file_list.item(n).checkState() == 2]
+            #     for i,item in enumerate(items):
+            #         if hasattr(item.data,'processed_data'):
+            #             np.savetxt(filepath+'_'+str(i).zfill(2),item.data.processed_data)
+                
     def open_files_from_folder(self): 			
         rootdir = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory to Open")
         filepaths = []
@@ -1602,21 +1680,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             rcParams_to_dark_theme()
             self.update_plots(update_data=False)
             
-    def save_processed_data(self):
-        current_item = self.file_list.currentItem()
-        if current_item:
-            suggested_filename = (current_item.data.label.replace(':','') +
-                                  '_processed')
-            filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
-                self, 'Save Processed Data As', suggested_filename, '*.npy')
-            if filepath:
-                #save_data = np.column_stack(tuple(data.flatten() for data in 
-                #                                  current_item.data.processed_data))
-                if len(current_item.data.get_columns()) == 2:
-                    np.save(filepath, np.column_stack(current_item.data.processed_data))
-                elif len(current_item.data.get_columns()) == 3:
-                    np.save(filepath, np.stack(current_item.data.processed_data, axis=2))
-            
     def mouse_scroll_canvas(self, event):
         if event.inaxes:
             y = event.ydata
@@ -1624,7 +1687,37 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.plot_in_focus = [checked_item for checked_item in checked_items 
                                   if checked_item.data.axes == event.inaxes]
             
-            # The below has been replaces by zooming. The mousewheel still steps through the 
+            if self.plot_in_focus:
+                scale=1.2
+                data = self.plot_in_focus[0].data
+                scale_factor = np.power(scale, -event.step)
+                xdata = event.xdata
+                ydata = event.ydata
+                x_left = xdata - event.inaxes.get_xlim()[0]
+                x_right = event.inaxes.get_xlim()[1] - xdata
+                y_top = ydata - event.inaxes.get_ylim()[0]
+                y_bottom = event.inaxes.get_ylim()[1] - ydata
+                newxlims=[xdata - x_left * scale_factor, xdata + x_right * scale_factor]
+                newylims=[ydata - y_top * scale_factor, ydata + y_bottom * scale_factor]
+                if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
+                    data.axlim_settings['Xmin']=newxlims[0]
+                    data.axlim_settings['Xmax']=newxlims[1]
+                elif QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
+                    data.axlim_settings['Ymin']=newylims[0]
+                    data.axlim_settings['Ymax']=newylims[1]
+                else:
+                    data.axlim_settings['Xmin']=newxlims[0]
+                    data.axlim_settings['Xmax']=newxlims[1]
+                    data.axlim_settings['Ymin']=newylims[0]
+                    data.axlim_settings['Ymax']=newylims[1]
+                data.apply_axlim_settings()
+                event.inaxes.figure.canvas.draw()
+                self.show_current_axlim_settings()
+                # Update toolbar so back/forward buttons work
+                fig = event.inaxes.get_figure()
+                fig.canvas.toolbar.push_current()
+
+            # The below has been replaces by the zooming function above. The mousewheel still steps through the 
             # linecuts if the linecut window is in focus.
             # if self.plot_in_focus:
             #     data = self.plot_in_focus[0].data
@@ -1659,6 +1752,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 data.apply_view_settings()
                 self.canvas.draw()
                 self.show_current_view_settings()
+
         else:
             width, height = self.canvas.get_width_height()
             speed = 0.03
@@ -1731,9 +1825,6 @@ class DataItem(QtWidgets.QListWidgetItem):
 class BaseClassData:    
     # Set default plot settings
     DEFAULT_PLOT_SETTINGS = {}
-    DEFAULT_PLOT_SETTINGS['X data'] = ''
-    DEFAULT_PLOT_SETTINGS['Y data'] = ''
-    DEFAULT_PLOT_SETTINGS['Z data'] = ''
     DEFAULT_PLOT_SETTINGS['title'] = '<label>'
     DEFAULT_PLOT_SETTINGS['xlabel'] = ''
     DEFAULT_PLOT_SETTINGS['ylabel'] = ''
@@ -1794,7 +1885,37 @@ class BaseClassData:
                 self.creation_time = None
         
     def get_column_data(self):
-        column_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'])
+        try:
+            column_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'])
+        except ValueError: # Can occur if python doesn't recognise a header
+            column_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'],skip_header=1)
+
+        if column_data.shape[0]<column_data.shape[1]: # Should be getting three columns and many more rows. If not the case, try to transpose.
+            column_data=column_data.transpose()
+        
+        try: # to get column names if there is a header. Importing like this completely screws the data formatting for some reason, so use this to just load the header
+            namedata=np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'],names=True)
+            if namedata.dtype.names:
+                self.column_array=namedata.dtype.names
+                self.column_dict={}
+                for i,name in enumerate(namedata.dtype.names):
+                    self.column_dict[name]=i
+        except:
+            pass
+
+        # This whole column names thing is incomplete... Will finish at some point, just not priority.
+        # The way that data is loaded is completely opaque to me. I have no idea where the columns are first defined.
+
+        if not hasattr(self,'column_dict'):
+            self.column_array=[i for i in range(column_data.shape[1])]
+            self.column_dict={}
+            for i in self.column_array:
+                self.column_dict[f'{i}']=i
+
+        self.settings_menu_options = {'X data': self.column_array,
+                                      'Y data': self.column_array,
+                                      'Z data': self.column_array}
+
         self.measured_data_points = column_data.shape[0]
         return column_data
     
@@ -1857,9 +1978,16 @@ class BaseClassData:
                     self.raw_data[columns[0]][0,:] = unique_values[0]-1
                     self.raw_data[columns[0]][1,:] = unique_values[0]+1
             self.settings['columns'] = ','.join([str(i) for i in columns])
+
+            # self.settings['X data']=self.column_array[columns[0]]
+            # self.settings['Y data']=self.column_array[columns[1]]
+            # if len(self.get_columns())>2:
+            #     self.settings['Z data']=self.column_array[columns[2]]
+            # else:
+            #     self.settings.pop('Z data', None)
                    
     def copy_raw_to_processed_data(self):
-        self.processed_data = [np.copy(self.raw_data[x]) for x in self.get_columns()]
+        self.processed_data = [np.array(np.copy(self.raw_data[x])) for x in self.get_columns()]
 
     def prepare_data_for_plot(self, reload_data=False, refresh_filters=False, reload_from_file=False):
         if not hasattr(self, 'raw_data') or reload_data:
@@ -1989,10 +2117,10 @@ class BaseClassData:
         
     def reset_axlim_settings(self):
         self.axes.autoscale()
-        self.axlim_settings['Xmin'] = None
-        self.axlim_settings['Xmax'] = None
-        self.axlim_settings['Ymin'] = None
-        self.axlim_settings['Ymax'] = None
+        self.axlim_settings['Xmin'] = self.axes.get_xlim()[0]
+        self.axlim_settings['Xmax'] = self.axes.get_xlim()[1]
+        self.axlim_settings['Ymin'] = self.axes.get_ylim()[0]
+        self.axlim_settings['Ymax'] = self.axes.get_ylim()[1]
     
     def apply_colormap(self):
         cmap_str = self.view_settings['Colormap']
@@ -2017,6 +2145,7 @@ class BaseClassData:
                 self.apply_view_settings()
                 
     def apply_all_filters(self, update_color_limits=True):
+        # Note to Damon (i.e. self): Don't forget this is redefined in the qcpp wrapper.
         for filt in self.filters:
             if filt.checkstate:
                 self.processed_data = filt.function(self.processed_data, 
@@ -2085,6 +2214,10 @@ class Filter:
                                        'Settings': ['0', '1'],
                                        'Function': filters.derivative,
                                        'Checkstate': 2},
+                        'Integrate': {'Method': ['Z','Y','X'],
+                                       'Settings': ['0', '1'],
+                                       'Function': filters.integrate,
+                                       'Checkstate': 2},
                         'Smoothen': {'Method': ['Gauss', 'Median'],
                                      'Settings': ['0', '2'],
                                      'Function': filters.smooth,
@@ -2096,7 +2229,7 @@ class Filter:
                         'Offset': {'Method': ['X','Y','Z'],
                                    'Settings': ['0', ''],
                                    'Function': filters.offset,
-                                   'Checkstate': 0},
+                                   'Checkstate': 2},
                         'Multiply': {'Method': ['X','Y','Z'],
                                      'Settings': ['1', ''],
                                      'Function': filters.multiply,
@@ -2104,24 +2237,32 @@ class Filter:
                         'Divide': {'Method': ['X','Y','Z'],
                                    'Settings': ['1', ''],
                                    'Function': filters.divide,
-                                   'Checkstate': 0},
+                                   'Checkstate': 2},
                         'Add Slope': {'Method': [''],
                                   'Settings': ['0', '-1'],
                                   'Function': filters.add_slope,
-                                  'Checkstate': 0},
+                                  'Checkstate': 2},
                         'Invert': {'Method': ['X','Y','Z'],
                                    'Settings': ['', ''],
                                    'Function': filters.invert,
-                                   'Checkstate': 0},
+                                   'Checkstate': 2},
                         'Normalize': {'Method': ['Max', 'Min', 'Point'],
                                       'Settings': ['', ''],
                                       'Function': filters.normalize,
-                                      'Checkstate': 0},
+                                      'Checkstate': 2},
+                        'Offset line by line': {'Method': ['Z', 'Y'],
+                                      'Settings': ['0', ''],
+                                      'Function': filters.offset_line_by_line,
+                                      'Checkstate': 2},
                         'Logarithm': {'Method': ['Mask','Shift','Abs'],
                                       'Settings': ['', ''],
                                       'Function': filters.logarithm,
                                       'Checkstate': 2}, 
-                        'Root': {'Method': [''],
+                        'Power': {'Method': ['X','Y','Z'],
+                                 'Settings': ['2', ''],
+                                 'Function': filters.power,
+                                 'Checkstate': 2}, 
+                        'Root': {'Method': ['X','Y','Z'],
                                  'Settings': ['2', ''],
                                  'Function': filters.root,
                                  'Checkstate': 2}, 
@@ -2534,7 +2675,6 @@ class LineCutWindow(QtWidgets.QWidget):
         self.running = True
         self.figure.clear()
         self.axes = self.figure.add_subplot(111)
-        #zoom_factory(self.axes)
 
         if self.orientation == '1D':
             self.x = self.parent.processed_data[0]
@@ -3057,7 +3197,7 @@ class MultiPlotWindow(LineCutWindow):
         self.running = True
         self.figure.clear()
         self.axes = self.figure.add_subplot(111)
-        #zoom_factory(self.axes)
+
         try:
             self.offset = float(self.offset_line_edit.text())
         except Exception as e:
@@ -3138,7 +3278,7 @@ class MultipleLineCutsWindow(MultiPlotWindow):
         self.running = True
         self.figure.clear()
         self.axes = self.figure.add_subplot(111)
-        #zoom_factory(self.axes)
+
         try:
             self.offset = float(self.offset_line_edit.text())
         except Exception as e:
@@ -3280,7 +3420,7 @@ class FFTWindow(QtWidgets.QWidget):
         self.vertical_layout = QtWidgets.QVBoxLayout()
         self.figure = Figure()
         self.axes = self.figure.add_subplot(111)
-        #zoom_factory(self.axes)
+        zoom_factory(self.axes)
         self.canvas = FigureCanvas(self.figure)
         self.navi_toolbar = NavigationToolbar(self.canvas, self)
         self.fft = np.absolute(fftdata).transpose()
@@ -3521,7 +3661,9 @@ if __name__ == '__main__':
 
 import threading
 
-def offline_plotting():
-    plot_thread = threading.Thread(target = main)
-
-    plot_thread.start()
+def offline_plotting(use_thread=True):
+    if use_thread:
+        plot_thread = threading.Thread(target = main)
+        plot_thread.start()
+    else:
+        main()

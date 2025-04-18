@@ -19,7 +19,31 @@ def derivative(data, method, times_x, times_y):
     elif len(data) == 2:
         for _ in range(times_y):
             data[-1] = np.gradient(data[-1], data[0])        
-    return data                       
+    return data
+
+def integrate(data, method, times_x, times_y):
+    times_x, times_y = int(times_x), int(times_y)
+    if len(data) == 3:
+        if method=='Z':
+            for _ in range(times_x):
+                data[-1] = np.cumsum(data[-1], axis=0)
+            for _ in range(times_y):
+                data[-1] = np.cumsum(data[-1], axis=1)
+        elif method=='Y':
+            for _ in range(times_y):
+                data[1] = np.cumsum(data[1], axis=1)
+        elif method=='X':
+            for _ in range(times_x):
+                data[0] = np.cumsum(data[0], axis=0)
+    elif len(data) == 2:
+        if method in ['Y','Z']:
+            for _ in range(times_y):
+                data[-1] = np.cumsum(data[-1])
+        elif method == 'X':
+            for _ in range(times_x):
+                data[0] = np.cumsum(data[0])
+    
+    return data    
         
 def smooth(data, method, width_x, width_y):
     filters = {'Gauss': ndimage.gaussian_filter, 
@@ -161,6 +185,27 @@ def normalize(data, method, point_x, point_y):
     data[-1] = data[-1] / norm_value
     return data
 
+def offset_line_by_line(data,method,index,setting2):
+    index=int(index)
+    if len(data) == 3:
+        shape=np.shape(data[-1])
+        if method=='Z':
+            newdata=np.zeros_like(data[-1])
+            for i in range(shape[0]):
+                for j in range(shape[1]):
+                    newdata[i][j]=data[-1][i][j]-data[-1][i][index]
+            data[-1]=newdata
+        elif method=='Y':
+            newdata=np.zeros_like(data[-1])
+            for i in range(shape[0]):
+                for j in range(shape[1]):
+                    newdata[i][j]=data[1][i][j]-data[1][i][index]
+            data[1]=newdata
+    else:
+        print('Cannot offset 1D data line by line. Use regular offset')
+
+    return data
+
 def offset(data, method, setting1, setting2, array=None):
     axis = {'X': 0, 'Y': 1, 'Z': 2}
     if array is not None:
@@ -175,12 +220,14 @@ def offset(data, method, setting1, setting2, array=None):
             else:
                 data[axis[method]] = np.subtract(data[axis[method]],array)
     else:
-        if method == 'X':
-            data[0] += float(setting1)
-        if method == 'Y':
-            data[1] += float(setting1)
-        if method == 'Z' and len(data) == 3:
-            data[2] += float(setting1)
+        value=float(setting1)
+        if len(data) == 3:
+            for i,row in enumerate(data[axis[method]]):
+                for j,val in enumerate(row):
+                    data[axis[method]][i][j] += value
+        elif len(data) == 2 and axis[method] < 2:
+            for j,val in enumerate(data[axis[method]]):
+                data[axis[method]] += value
     return data
     
 def absolute(data, method, setting1, setting2):
@@ -215,9 +262,12 @@ def multiply(data, method, setting1, setting2, array=None):
             value = float(setting1)
     
         if len(data) == 3:
-            data[axis[method]] *= value
+            for i,row in enumerate(data[axis[method]]):
+                for j,val in enumerate(row):
+                    data[axis[method]][i][j] *= value
         elif len(data) == 2 and axis[method] < 2:
-            data[axis[method]] *= value
+            for j,val in enumerate(data[axis[method]]):
+                data[axis[method]] *= value
     return data
 
 # def divide(data, method, setting1, setting2):
@@ -237,10 +287,14 @@ def divide(data, method, setting1, setting2, array=None):
             data[axis[method]] /= array
 
     else:
+        value=float(setting1)
         if len(data) == 3:
-            data[axis[method]] /= float(setting1)
+            for i,row in enumerate(data[axis[method]]):
+                for j,val in enumerate(row):
+                    data[axis[method]][i][j] /= value
         elif len(data) == 2 and axis[method] < 2:
-            data[axis[method]] /= float(setting1)
+            for j,val in enumerate(data[axis[method]]):
+                data[axis[method]] /= value
     return data
 
 
@@ -257,10 +311,29 @@ def logarithm(data, method, setting1, setting2):
         data[-1] = np.ma.log10(np.abs(data[-1]))
     return data
 
+def power(data, method, setting1, setting2):
+    axis = {'X': 0, 'Y': 1, 'Z': 2}
+    value=float(setting1)
+    if len(data) == 3:
+        for i,row in enumerate(data[axis[method]]):
+            for j,val in enumerate(row):
+                data[axis[method]][i][j] = data[axis[method]][i][j]**value
+    elif len(data) == 2 and axis[method] < 2:
+        for j,val in enumerate(data[axis[method]]):
+            data[axis[method]] = data[axis[method]]**value
+    return data
+
 def root(data, method, setting1, setting2):
     root = float(setting1)
+    axis = {'X': 0, 'Y': 1, 'Z': 2}
     if root > 0:
-        data[-1] = np.abs(data[-1])**(1/float(setting1))
+        if len(data) == 3:
+            for i,row in enumerate(data[axis[method]]):
+                for j,val in enumerate(row):
+                    data[axis[method]][i][j] = np.abs(data[axis[method]][i][j])**(1/root)
+        elif len(data) == 2 and axis[method] < 2:
+            for j,val in enumerate(data[axis[method]]):
+                data[axis[method]] = np.abs(data[axis[method]])**(1/float(setting1))
     return data
 
 def interpolate(data, method, n_x, n_y):
