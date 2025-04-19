@@ -40,11 +40,11 @@ from .helpers import (cmaps, MidpointNormalize,NavigationToolbarMod,
                       NoScrollQComboBox,DraggablePoint)
 from .filters import Filter
 from .datatypes import DataItem, BaseClassData, NumpyData
+from .qcodes_pp_extension import qcodesppData
+from .qcodes_extension import QCodesData
+from .qd_extension import QdData
 
 from qcodes import initialise_or_create_database_at, load_last_experiment
-import qcodesplusplus.plotting.offline.qd_extension as qd_extension
-import qcodesplusplus.plotting.offline.qcodes_extension as qcodes_extension
-import qcodesplusplus.plotting.offline.qcodes_pp_extension as qcodes_pp_extension
 
 # UI settings
 DARK_THEME = True
@@ -342,7 +342,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 os.path.isfile(os.path.dirname(filepath)+'/snapshot.json')):
             metapath = os.path.dirname(filepath)+'/snapshot.json'
             try:
-                item = DataItem(qcodes_pp_extension.qcodesppData(filepath, self.canvas, metapath,load_the_data))
+                item = DataItem(qcodesppData(filepath, self.canvas, metapath,load_the_data))
                 return item
             except Exception as e:
                 print(f'Failed to add qcodes++ dataset {filepath}:', e)
@@ -352,7 +352,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             datasets = load_last_experiment().data_sets()
             for dataset in datasets:
                 try:
-                    item = DataItem(qcodes_extension.QCodesData(filepath, self.canvas, dataset))
+                    item = DataItem(QCodesData(filepath, self.canvas, dataset))
                     return item
                 except Exception as e:
                     print(f'Failed to add QCoDes dataset '
@@ -361,7 +361,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         elif (os.path.basename(filepath) == 'data.dat' and # Matlab qd files
                 os.path.isfile(os.path.dirname(filepath)+'/meta.json')):
             metapath = os.path.dirname(filepath)+'/meta.json'
-            item = DataItem(qd_extension.QdData(filepath, self.canvas, metapath))
+            item = DataItem(QdData(filepath, self.canvas, metapath))
             return item
         
         else: # bare column-based data file

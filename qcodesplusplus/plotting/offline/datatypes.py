@@ -3,7 +3,7 @@ import numpy as np
 import os
 from matplotlib.widgets import Cursor
 from matplotlib import cm, rcParams
-from .helpers import cmaps, MidpointNormalize,NavigationToolbarMod,rcParams_to_dark_theme,rcParams_to_light_theme
+from .helpers import MidpointNormalize
 from .popupwindows import FFTWindow
 
 class DataItem(QtWidgets.QListWidgetItem):

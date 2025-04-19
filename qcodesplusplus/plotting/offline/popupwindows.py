@@ -7,14 +7,10 @@ import qcodesplusplus.plotting.offline.fits as fits
 from scipy.ndimage import map_coordinates
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
-import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-from matplotlib.colors import Normalize, LogNorm, ListedColormap
-from matplotlib import cm
+from matplotlib.colors import LogNorm
 from matplotlib.widgets import Cursor
-from matplotlib import rcParams
-from matplotlib.lines import Line2D
-import matplotlib.patches as patches
+from matplotlib import cm, rcParams
 import numpy as np
 try: # lmfit is used for fitting the evolution of the properties of multiple peaks 
     from lmfit.models import LorentzianModel, GaussianModel, ConstantModel
