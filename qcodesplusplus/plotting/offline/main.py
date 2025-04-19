@@ -775,9 +775,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if setting_name == 'X data' or setting_name == 'Y data' or setting_name == 'Z data':
                     current_item.data.prepare_data_for_plot(reload_data=True,reload_from_file=False)
                     self.update_plots()
+                    self.reset_axlim_settings()
                 if setting_name == 'columns' or setting_name == 'delimiter':
                     current_item.data.prepare_data_for_plot(reload_data=True,reload_from_file=False)
-                    self.update_plots()           
+                    self.update_plots()
+                    self.reset_axlim_settings()
                 elif setting_name == 'linecolor':
                     for line in current_item.data.axes.get_lines():
                         line.set_color(value)
@@ -926,6 +928,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.update_plots()
                     self.show_current_filters()
                     self.show_current_view_settings()
+                    self.reset_axlim_settings()
             except Exception as e:
                 print('Invalid value of filter!', e)
                 self.paste_filters(which='old')
@@ -1601,6 +1604,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 current_item.data.filters.append(filt)
             if current_item.checkState() and filt.checkstate:
                 self.update_plots()
+                self.reset_axlim_settings()
         elif (signal.text() == 'Plot horizontal linecuts' or
             signal.text() == 'Plot vertical linecuts'):
             data.multi_linecuts_window = MultipleLineCutsWindow(data) 
@@ -2237,7 +2241,7 @@ class Filter:
                         'Divide': {'Method': ['X','Y','Z'],
                                    'Settings': ['1', ''],
                                    'Function': filters.divide,
-                                   'Checkstate': 2},
+                                   'Checkstate': 0},
                         'Add Slope': {'Method': [''],
                                   'Settings': ['0', '-1'],
                                   'Function': filters.add_slope,
@@ -2245,7 +2249,7 @@ class Filter:
                         'Invert': {'Method': ['X','Y','Z'],
                                    'Settings': ['', ''],
                                    'Function': filters.invert,
-                                   'Checkstate': 2},
+                                   'Checkstate': 0},
                         'Normalize': {'Method': ['Max', 'Min', 'Point'],
                                       'Settings': ['', ''],
                                       'Function': filters.normalize,

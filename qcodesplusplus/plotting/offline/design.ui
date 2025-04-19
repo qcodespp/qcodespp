@@ -787,7 +787,7 @@
         <item>
          <widget class="QPushButton" name="reset_xy_button">
           <property name="text">
-           <string>Reset limits</string>
+           <string>Reset limits/autoscale</string>
           </property>
          </widget>
         </item>

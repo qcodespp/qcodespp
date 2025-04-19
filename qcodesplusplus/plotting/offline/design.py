@@ -687,7 +687,7 @@ class Ui_MainWindow(object):
         self.ymax_label.setText(_translate("MainWindow", "Max:"))
         self.copy_xy_button.setText(_translate("MainWindow", "Copy limits"))
         self.paste_xy_button.setText(_translate("MainWindow", "Paste limits"))
-        self.reset_xy_button.setText(_translate("MainWindow", "Reset limits"))
+        self.reset_xy_button.setText(_translate("MainWindow", "Reset limits/autoscale"))
         self.paste_view_button.setText(_translate("MainWindow", "Paste cbar"))
         self.reset_limits_button.setText(_translate("MainWindow", "Reset cbar"))
         self.mid_checkbox.setText(_translate("MainWindow", "Mid"))
