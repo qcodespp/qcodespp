@@ -9,6 +9,9 @@ import numpy as np
 from scipy import ndimage, signal
 from scipy.interpolate import interp1d, interp2d
 
+
+# Filter definitions
+
 def derivative(data, method, times_x, times_y):
     times_x, times_y = int(times_x), int(times_y)
     if len(data) == 3:
@@ -377,4 +380,125 @@ def invert(data, method, setting1, setting2):
     data[axis[method]] = 1./data[axis[method]]
     return data
         
+        
+class Filter:   
+    DEFAULT_SETTINGS = {'Derivative': {'Method': ['Mid'],
+                                       'Settings': ['0', '1'],
+                                       'Function': derivative,
+                                       'Checkstate': 2},
+                        'Integrate': {'Method': ['Z','Y','X'],
+                                       'Settings': ['0', '1'],
+                                       'Function': integrate,
+                                       'Checkstate': 2},
+                        'Smoothen': {'Method': ['Gauss', 'Median'],
+                                     'Settings': ['0', '2'],
+                                     'Function': smooth,
+                                     'Checkstate': 2},
+                        'Savitzy-Golay smoothing': {'Method': ['Y','X','dY','dX','ddY','ddX'],
+                                    'Settings': ['7', '2'],
+                                    'Function': sav_gol,
+                                    'Checkstate': 2},                               
+                        'Offset': {'Method': ['X','Y','Z'],
+                                   'Settings': ['0', ''],
+                                   'Function': offset,
+                                   'Checkstate': 2},
+                        'Multiply': {'Method': ['X','Y','Z'],
+                                     'Settings': ['1', ''],
+                                     'Function': multiply,
+                                     'Checkstate': 2}, 
+                        'Divide': {'Method': ['X','Y','Z'],
+                                   'Settings': ['1', ''],
+                                   'Function': divide,
+                                   'Checkstate': 0},
+                        'Add Slope': {'Method': [''],
+                                  'Settings': ['0', '-1'],
+                                  'Function': add_slope,
+                                  'Checkstate': 2},
+                        'Invert': {'Method': ['X','Y','Z'],
+                                   'Settings': ['', ''],
+                                   'Function': invert,
+                                   'Checkstate': 0},
+                        'Normalize': {'Method': ['Max', 'Min', 'Point'],
+                                      'Settings': ['', ''],
+                                      'Function': normalize,
+                                      'Checkstate': 2},
+                        'Offset line by line': {'Method': ['Z', 'Y'],
+                                      'Settings': ['0', ''],
+                                      'Function': offset_line_by_line,
+                                      'Checkstate': 2},
+                        'Logarithm': {'Method': ['Mask','Shift','Abs'],
+                                      'Settings': ['', ''],
+                                      'Function': logarithm,
+                                      'Checkstate': 2}, 
+                        'Power': {'Method': ['X','Y','Z'],
+                                 'Settings': ['2', ''],
+                                 'Function': power,
+                                 'Checkstate': 2}, 
+                        'Root': {'Method': ['X','Y','Z'],
+                                 'Settings': ['2', ''],
+                                 'Function': root,
+                                 'Checkstate': 2}, 
+                        'Absolute': {'Method': [''],
+                                     'Settings': ['', ''],
+                                     'Function': absolute,
+                                     'Checkstate': 2}, 
+                        'Flip': {'Method': ['L-R','U-D'],
+                                 'Settings': ['', ''],
+                                 'Function': flip,
+                                 'Checkstate': 2}, 
+                        'Interp': {'Method': ['linear','cubic','quintic'],
+                                   'Settings': ['800', '600'],
+                                   'Function': interpolate,
+                                   'Checkstate': 0},
+                        'Roll X': {'Method': ['Index'],
+                                   'Settings': ['0', '0'],
+                                   'Function': roll_x,
+                                   'Checkstate': 0},                             
+                        'Roll Y': {'Method': ['Index'],
+                                   'Settings': ['0', '0'],
+                                   'Function': roll_y,
+                                   'Checkstate': 0},
+                        'Crop X': {'Method': ['Abs', 'Rel', 'Lim'],
+                                   'Settings': ['-1', '1'],
+                                   'Function': crop_x,
+                                   'Checkstate': 0},                              
+                        'Crop Y': {'Method': ['Abs', 'Rel', 'Lim'],
+                                   'Settings': ['-2', '2'],
+                                   'Function': crop_y,
+                                   'Checkstate': 0},
+                        'Cut X': {'Method': ['Index'],
+                                  'Settings': ['0', '0'],
+                                  'Function': cut_x,
+                                  'Checkstate': 0},                               
+                        'Cut Y': {'Method': ['Index'],
+                                  'Settings': ['0', '0'],
+                                  'Function': cut_y,
+                                  'Checkstate': 0},                                
+                        'Swap X/Y': {'Method': [''],
+                                    'Settings': ['', ''],
+                                    'Function': swap_xy,
+                                    'Checkstate': 2}, 
+                        'Subtract trace': {'Method': ['Ver', 'Hor'],
+                                     'Settings': ['0', ''],
+                                     'Function': subtract_trace,
+                                     'Checkstate': 0}
+                                   } 
+    
+    def __init__(self, name, method=None, settings=None, checkstate=None):
+        self.name = name
+        default_settings = self.DEFAULT_SETTINGS.copy()
+        self.method_list = default_settings[name]['Method']
+        if method:
+            self.method = method
+        else:
+            self.method = self.method_list[0]
+        if settings:
+            self.settings = settings
+        else:
+            self.settings = default_settings[name]['Settings']
+        if checkstate:
+            self.checkstate = checkstate
+        else:
+            self.checkstate = default_settings[name]['Checkstate']
+        self.function = default_settings[name]['Function']
         
