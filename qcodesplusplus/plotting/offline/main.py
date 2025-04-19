@@ -1494,19 +1494,22 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 max_index=np.max(list(data.linecuts[orientation]['lines'].keys()))
                             except ValueError:
                                 max_index=-1
-                            data.linecuts[orientation]['lines'][int(max_index+1)]={'data_index':data.selected_indices[1],
-                                                                                    'checkState':2}
+                            data.linecuts[orientation]['lines'][int(max_index+1)]={'data_index':index_y,
+                                                                                'cut_axis_value':data.processed_data[1][0,index_y],
+                                                                                'checkstate':2}
                         elif event.button == 2:
                             orientation='vertical'
                             try:
                                 max_index=np.max(list(data.linecuts[orientation]['lines'].keys()))
                             except ValueError:
                                 max_index=-1
-                            data.linecuts[orientation]['lines'][int(max_index+1)]={'data_index':data.selected_indices[0],
-                                                                                    'checkState':2}
+                            data.linecuts[orientation]['lines'][int(max_index+1)]={'data_index':index_x,
+                                                                                'cut_axis_value':data.processed_data[0][index_x,0],
+                                                                                'checkstate':2}
                         if data.linecuts[orientation]['linecut_window']==None:
                             data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation)
                         data.linecuts[orientation]['linecut_window'].running = True
+                        data.linecuts[orientation]['linecut_window'].append_cut_to_table(data.linecuts[orientation]['lines'][int(max_index+1)])
                         data.linecuts[orientation]['linecut_window'].update()
                         data.linecuts[orientation]['linecut_window'].activateWindow()
                         self.canvas.draw()

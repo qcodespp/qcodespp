@@ -47,6 +47,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.init_connections()
         self.init_layouts()
         self.set_main_layout()
+        self.init_cuts_table()
         self.fit_type_changed()
         
     def init_widgets(self):
@@ -59,6 +60,9 @@ class LineCutWindow(QtWidgets.QWidget):
         self.add_cut_button = QtWidgets.QPushButton('Add')
         self.remove_cut_button = QtWidgets.QPushButton('Remove')
         self.clear_cuts_button = QtWidgets.QPushButton('Clear list')
+        self.generate_label = QtWidgets.QLabel('start,end,num,offset')
+        self.generate_line_edit=QtWidgets.QLineEdit()
+        self.generate_button=QtWidgets.QPushButton('Generate')
         self.clear_fit_button = QtWidgets.QPushButton('Clear fit')
         self.fit_button = QtWidgets.QPushButton('Fit')
         self.save_preset_button = QtWidgets.QPushButton('Save preset')
@@ -107,6 +111,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.xmin_box.editingFinished.connect(self.limits_edited)
         self.xmax_box.editingFinished.connect(self.limits_edited)
         self.reset_axes_button.clicked.connect(self.reset_limits)
+        self.cuts_table.itemChanged.connect(self.cuts_table_edited)
         if self.orientation in ['horizontal','vertical']:
             #self.orientation_button.clicked.connect(self.change_orientation)
             self.up_button.clicked.connect(lambda: self.change_index('up'))
@@ -127,6 +132,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.plot_layout = QtWidgets.QVBoxLayout()
         self.table_layout = QtWidgets.QVBoxLayout()
         self.table_buttons_layout = QtWidgets.QHBoxLayout()
+        self.generate_layout = QtWidgets.QHBoxLayout()
         self.lims_layout = QtWidgets.QHBoxLayout()
         self.fit_layout = QtWidgets.QHBoxLayout()
         self.inputs_layout = QtWidgets.QHBoxLayout()
@@ -137,6 +143,10 @@ class LineCutWindow(QtWidgets.QWidget):
         self.table_buttons_layout.addWidget(self.add_cut_button)
         self.table_buttons_layout.addWidget(self.remove_cut_button)
         self.table_buttons_layout.addWidget(self.clear_cuts_button)
+
+        self.generate_layout.addWidget(self.generate_label)
+        self.generate_layout.addWidget(self.generate_line_edit)
+        self.generate_layout.addWidget(self.generate_button)
 
         self.top_buttons_layout.addWidget(self.save_button)
         self.top_buttons_layout.addWidget(self.save_image_button)
@@ -190,9 +200,10 @@ class LineCutWindow(QtWidgets.QWidget):
 
         self.tablebox=QtWidgets.QGroupBox('Linecut list')
         self.table_layout.addLayout(self.table_buttons_layout)
+        self.table_layout.addLayout(self.generate_layout)
         self.table_layout.addWidget(self.cuts_table)
         self.tablebox.setLayout(self.table_layout)
-        self.tablebox.setMaximumWidth(300)
+        self.tablebox.setMaximumWidth(400)
 
         self.fittingbox=QtWidgets.QGroupBox('Curve Fitting')
         self.fittingbox.setMaximumHeight(450)
@@ -212,13 +223,59 @@ class LineCutWindow(QtWidgets.QWidget):
         self.setLayout(self.main_layout)
 
     def init_cuts_table(self):
-        self.cuts_table.setColumnCount(4)
+        self.cuts_table.setColumnCount(5)
         self.cuts_table.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked)
         h = self.cuts_table.horizontalHeader()
         h.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
-        for col in range(1,4):
+        for col in range(5):
             h.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeToContents)
+        self.cuts_table.setHorizontalHeaderLabels(['cut #','index','value','offset','color'])
+        v=self.cuts_table.verticalHeader()
+        v.setVisible(False)
 
+
+    def append_cut_to_table(self,linecut):
+        row = self.cuts_table.rowCount()
+        # linecut is an entry in the parent.linecuts['orientation']['lines'] dictionary
+        # It has keys 'data_index', 'checkstate', 'cut_axis_value', and possibly 'linecolor'
+        self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+        self.cuts_table.insertRow(row)
+        v = self.cuts_table.verticalHeader()
+        v.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        for rownum in range(int(row+1)):
+            v.setSectionResizeMode(rownum, QtWidgets.QHeaderView.ResizeToContents)
+
+        linecut_item = QtWidgets.QTableWidgetItem(str(row))
+        linecut_item.setFlags(QtCore.Qt.ItemIsSelectable | 
+                                 QtCore.Qt.ItemIsEnabled | 
+                                 QtCore.Qt.ItemIsUserCheckable)
+        linecut_item.setText(str(row))
+        linecut_item.setCheckState(linecut['checkstate'])
+        index_box=QtWidgets.QSpinBox()
+        if self.orientation=='horizontal':
+            index_box.setRange(0,np.shape(self.parent.processed_data[-1])[1])
+        elif self.orientation=='vertical':
+            index_box.setRange(0,np.shape(self.parent.processed_data[-1])[0])
+        index_box.setSingleStep(1)
+        index_box.setValue(linecut['data_index'])
+        index_box.valueChanged[int].connect(lambda: self.cuts_table_edited('index'))
+        value_box=QtWidgets.QTableWidgetItem(f'{linecut['cut_axis_value']}')
+        offset_box=QtWidgets.QTableWidgetItem('0')
+        color_box=QtWidgets.QTableWidgetItem(f'color')
+
+        self.cuts_table.setItem(row,0,linecut_item)
+        self.cuts_table.setCellWidget(row,1,index_box)
+        self.cuts_table.setItem(row,2,value_box)
+        self.cuts_table.item(row, 2).setTextAlignment(int(QtCore.Qt.AlignRight) | 
+                                                    int(QtCore.Qt.AlignVCenter))
+        self.cuts_table.setItem(row,3,offset_box)
+        self.cuts_table.setItem(row,4,color_box)
+
+        self.cuts_table.setCurrentCell(row,0)
+        self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+
+    def cuts_table_edited(self,setting):
+        0
              
     def change_orientation(self):
         if self.orientation == 'horizontal':
