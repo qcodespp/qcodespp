@@ -6,6 +6,7 @@ Author: Joeri de Bruijckere
 
 Adapted for qcodes++ by: Dags Olsteins and Damon Carrad
 
+To convert QtDesigner UI to python file:
 pyuic5 -x design.ui -o design.py
 
 """
@@ -181,6 +182,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             h = self.settings_table.horizontalHeader()
             h.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeToContents)
         self.settings_table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        # Opens options menu with right-click
         self.settings_table.customContextMenuRequested.connect(self.open_plot_settings_menu)
     
     def init_view_settings(self):
@@ -209,6 +211,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         for col in range(1,4):
             h.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeToContents)
         self.filters_table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        # Opens options menu with right-click
         self.filters_table.customContextMenuRequested.connect(self.open_filter_settings_menu)
         
     def init_connections(self):
@@ -1480,20 +1483,33 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         index_x = np.argmin(np.abs(data.processed_data[0][:,0]-x))
                         index_y = np.argmin(np.abs(data.processed_data[1][0,:]-y))
                         data.selected_indices = [int(index_x), int(index_y)]
+                        #Make entry to store linecuts in
+                        if not hasattr(data,'linecuts'):
+                            data.linecuts={'horizontal':{'linecut_window':None,'lines':{}},
+                                           'vertical':{'linecut_window':None,'lines':{}}
+                                            }
                         if event.button == 1:
-                            if not hasattr(data, 'linecut_window'):
-                                data.linecut_window = LineCutWindow(data,orientation='horizontal')
-                            else:
-                                data.linecut_window.orientation='horizontal'
+                            orientation='horizontal'
+                            try:
+                                max_index=np.max(list(data.linecuts[orientation]['lines'].keys()))
+                            except ValueError:
+                                max_index=-1
+                            data.linecuts[orientation]['lines'][int(max_index+1)]={'data_index':data.selected_indices[1],
+                                                                                    'checkState':2}
                         elif event.button == 2:
-                            if not hasattr(data, 'linecut_window'):
-                                data.linecut_window = LineCutWindow(data,orientation='vertical')
-                            else:
-                                data.linecut_window.orientation='vertical'
-                        data.linecut_window.running = True
-                        data.linecut_window.update()
+                            orientation='vertical'
+                            try:
+                                max_index=np.max(list(data.linecuts[orientation]['lines'].keys()))
+                            except ValueError:
+                                max_index=-1
+                            data.linecuts[orientation]['lines'][int(max_index+1)]={'data_index':data.selected_indices[0],
+                                                                                    'checkState':2}
+                        if data.linecuts[orientation]['linecut_window']==None:
+                            data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation)
+                        data.linecuts[orientation]['linecut_window'].running = True
+                        data.linecuts[orientation]['linecut_window'].update()
+                        data.linecuts[orientation]['linecut_window'].activateWindow()
                         self.canvas.draw()
-                        data.linecut_window.activateWindow()
                         
                     elif event.button == 3:
                         rightclick_menu = QtWidgets.QMenu(self)
@@ -1657,11 +1673,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             
     def mouse_scroll_canvas(self, event):
         if event.inaxes:
-            y = event.ydata
             checked_items = self.get_checked_items()
             self.plot_in_focus = [checked_item for checked_item in checked_items 
                                   if checked_item.data.axes == event.inaxes]
             
+            # Scolling within plot bounds zooms
             if self.plot_in_focus:
                 scale=1.2
                 data = self.plot_in_focus[0].data
@@ -1692,7 +1708,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 fig = event.inaxes.get_figure()
                 fig.canvas.toolbar.push_current()
 
-            # The below has been replaces by the zooming function above. The mousewheel still steps through the 
+            # The below has been replaced by the zooming function above. The mousewheel still steps through the 
             # linecuts if the linecut window is in focus.
             # if self.plot_in_focus:
             #     data = self.plot_in_focus[0].data
@@ -1712,7 +1728,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             # else:
             self.cbar_in_focus = [checked_item for checked_item in checked_items
                                     if checked_item.data.cbar.ax == event.inaxes]
+            
+            #Scrolling within colourbar changes limits
             if self.cbar_in_focus:
+                y = event.ydata
                 data = self.cbar_in_focus[0].data
                 min_map = data.view_settings['Minimum']
                 max_map = data.view_settings['Maximum']
@@ -1728,6 +1747,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.canvas.draw()
                 self.show_current_view_settings()
 
+        # Scrolling outside of plot bounds changes the whitespace around/between plots
         else:
             width, height = self.canvas.get_width_height()
             speed = 0.03

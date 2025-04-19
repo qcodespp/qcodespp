@@ -38,6 +38,7 @@ from .helpers import rcParams_to_dark_theme, rcParams_to_light_theme, cmaps
 class LineCutWindow(QtWidgets.QWidget):
     def __init__(self, parent, orientation):
         super().__init__()
+        # The parent is the DATA object.
         self.parent = parent
         self.running = True
         self.orientation = orientation
@@ -50,11 +51,15 @@ class LineCutWindow(QtWidgets.QWidget):
         
     def init_widgets(self):
         self.setWindowTitle('Inspectra Gadget - Linecut and Fitting Window')
-        self.resize(800, 800)
+        self.resize(800, 900)
+        self.cuts_table = QtWidgets.QTableWidget()
         self.save_button = QtWidgets.QPushButton('Save Data')
         self.save_image_button = QtWidgets.QPushButton('Save Image')
         self.copy_image_button = QtWidgets.QPushButton('Copy Image')
-        self.clear_button = QtWidgets.QPushButton('Clear')
+        self.add_cut_button = QtWidgets.QPushButton('Add')
+        self.remove_cut_button = QtWidgets.QPushButton('Remove')
+        self.clear_cuts_button = QtWidgets.QPushButton('Clear list')
+        self.clear_fit_button = QtWidgets.QPushButton('Clear fit')
         self.fit_button = QtWidgets.QPushButton('Fit')
         self.save_preset_button = QtWidgets.QPushButton('Save preset')
         self.load_preset_button = QtWidgets.QPushButton('Load preset')
@@ -84,7 +89,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.xmax_box = QtWidgets.QLineEdit()
         self.reset_axes_button = QtWidgets.QPushButton('Reset')
         if self.orientation in ['horizontal','vertical']:
-            self.orientation_button = QtWidgets.QPushButton('Hor./Vert.')
+            #self.orientation_button = QtWidgets.QPushButton('Hor./Vert.')
             self.up_button = QtWidgets.QPushButton('Up/Right')
             self.down_button = QtWidgets.QPushButton('Down/Left')
 
@@ -92,7 +97,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.save_button.clicked.connect(self.save_data)
         self.save_image_button.clicked.connect(self.save_image)
         self.copy_image_button.clicked.connect(self.copy_image)
-        self.clear_button.clicked.connect(self.clear_lines)
+        self.clear_fit_button.clicked.connect(self.clear_lines)
         self.fit_class_box.currentIndexChanged.connect(self.fit_class_changed)
         self.fit_box.currentIndexChanged.connect(self.fit_type_changed)
         self.fit_button.clicked.connect(self.start_fitting)
@@ -103,7 +108,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.xmax_box.editingFinished.connect(self.limits_edited)
         self.reset_axes_button.clicked.connect(self.reset_limits)
         if self.orientation in ['horizontal','vertical']:
-            self.orientation_button.clicked.connect(self.change_orientation)
+            #self.orientation_button.clicked.connect(self.change_orientation)
             self.up_button.clicked.connect(lambda: self.change_index('up'))
             self.down_button.clicked.connect(lambda: self.change_index('down'))
         
@@ -118,6 +123,10 @@ class LineCutWindow(QtWidgets.QWidget):
     
     def init_layouts(self):
         self.top_buttons_layout = QtWidgets.QHBoxLayout()
+        self.plot_and_table_layout = QtWidgets.QHBoxLayout()
+        self.plot_layout = QtWidgets.QVBoxLayout()
+        self.table_layout = QtWidgets.QVBoxLayout()
+        self.table_buttons_layout = QtWidgets.QHBoxLayout()
         self.lims_layout = QtWidgets.QHBoxLayout()
         self.fit_layout = QtWidgets.QHBoxLayout()
         self.inputs_layout = QtWidgets.QHBoxLayout()
@@ -125,12 +134,16 @@ class LineCutWindow(QtWidgets.QWidget):
         self.output_layout = QtWidgets.QVBoxLayout()
         self.fit_buttons_layout = QtWidgets.QHBoxLayout()
 
+        self.table_buttons_layout.addWidget(self.add_cut_button)
+        self.table_buttons_layout.addWidget(self.remove_cut_button)
+        self.table_buttons_layout.addWidget(self.clear_cuts_button)
+
         self.top_buttons_layout.addWidget(self.save_button)
         self.top_buttons_layout.addWidget(self.save_image_button)
         self.top_buttons_layout.addWidget(self.copy_image_button)
         self.top_buttons_layout.addStretch()
         if self.orientation in ['horizontal','vertical']:
-            self.top_buttons_layout.addWidget(self.orientation_button)
+            #self.top_buttons_layout.addWidget(self.orientation_button)
             self.top_buttons_layout.addWidget(self.down_button)
             self.top_buttons_layout.addWidget(self.up_button)
 
@@ -159,19 +172,27 @@ class LineCutWindow(QtWidgets.QWidget):
 
         self.fit_buttons_layout.addWidget(self.fit_button)
         self.fit_buttons_layout.addWidget(self.save_result_button)
-        self.fit_buttons_layout.addWidget(self.clear_button)
+        self.fit_buttons_layout.addWidget(self.clear_fit_button)
         self.fit_buttons_layout.addStretch()
         self.fit_buttons_layout.addWidget(self.save_preset_button)
         self.fit_buttons_layout.addWidget(self.load_preset_button)
 
     def set_main_layout(self):
         self.main_layout = QtWidgets.QVBoxLayout()
-        self.plotbox=QtWidgets.QGroupBox('')
+        self.top_half_layout = QtWidgets.QHBoxLayout()
+        
+        self.plotbox=QtWidgets.QGroupBox('Plotting')
         self.plottinglayout = QtWidgets.QVBoxLayout()
         self.plottinglayout.addLayout(self.top_buttons_layout)
         self.plottinglayout.addWidget(self.navi_toolbar)
         self.plottinglayout.addWidget(self.canvas)
         self.plotbox.setLayout(self.plottinglayout)
+
+        self.tablebox=QtWidgets.QGroupBox('Linecut list')
+        self.table_layout.addLayout(self.table_buttons_layout)
+        self.table_layout.addWidget(self.cuts_table)
+        self.tablebox.setLayout(self.table_layout)
+        self.tablebox.setMaximumWidth(300)
 
         self.fittingbox=QtWidgets.QGroupBox('Curve Fitting')
         self.fittingbox.setMaximumHeight(450)
@@ -184,9 +205,20 @@ class LineCutWindow(QtWidgets.QWidget):
         self.fittinglayout.addLayout(self.fit_buttons_layout)
         self.fittingbox.setLayout(self.fittinglayout)
 
-        self.main_layout.addWidget(self.plotbox)
+        self.top_half_layout.addWidget(self.tablebox)
+        self.top_half_layout.addWidget(self.plotbox)
+        self.main_layout.addLayout(self.top_half_layout)
         self.main_layout.addWidget(self.fittingbox)
         self.setLayout(self.main_layout)
+
+    def init_cuts_table(self):
+        self.cuts_table.setColumnCount(4)
+        self.cuts_table.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked)
+        h = self.cuts_table.horizontalHeader()
+        h.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        for col in range(1,4):
+            h.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeToContents)
+
              
     def change_orientation(self):
         if self.orientation == 'horizontal':
@@ -374,39 +406,62 @@ class LineCutWindow(QtWidgets.QWidget):
 
         except Exception as e:
             self.output_window.setText('Could not print fit parameters:', e)
-         
+
+    def get_line_data(self,line):
+        # Returns the actual x,y,z data for a particular entry in the linecuts/orientation/lines dictionary
+        if self.orientation == '1D':
+            x = self.parent.processed_data[0]
+            y = self.parent.processed_data[1]
+            z = None
+        
+        elif self.orientation == 'horizontal':
+            x = self.parent.processed_data[0][:,self.parent.linecuts[self.orientation]['lines'][line]['data_index']]
+            y = self.parent.processed_data[2][:,self.parent.linecuts[self.orientation]['lines'][line]['data_index']]
+            z = self.parent.processed_data[1][0,self.parent.linecuts[self.orientation]['lines'][line]['data_index']]
+            # Confusingly enough, z here is just the value of the y axis of the parent plot/data where the cut is taken
+        
+        elif self.orientation == 'vertical':
+            x = self.parent.processed_data[1][self.parent.linecuts[self.orientation]['lines'][line]['data_index'],:]
+            y = self.parent.processed_data[2][self.parent.linecuts[self.orientation]['lines'][line]['data_index'],:]
+            z = self.parent.processed_data[0][self.parent.linecuts[self.orientation]['lines'][line]['data_index'],0]
+        return (x,y,z)
+
     def draw_plot(self,parent_linecut=True):
         self.running = True
         self.figure.clear()
         self.axes = self.figure.add_subplot(111)
 
         if self.orientation == '1D':
-            self.x = self.parent.processed_data[0]
-            self.y = self.parent.processed_data[1]
+            x,y,z=self.get_line_data(0)
             self.xlabel = self.parent.settings['xlabel']
             self.ylabel = self.parent.settings['ylabel']
             self.title = self.parent.settings['title']
-        
+            self.axes.plot(x, y, linewidth=self.parent.settings['linewidth'])
+
         elif self.orientation == 'horizontal':
-            self.x = self.parent.processed_data[0][:,self.parent.selected_indices[1]]
-            self.y = self.parent.processed_data[2][:,self.parent.selected_indices[1]]
-            self.z = self.parent.processed_data[1][0,self.parent.selected_indices[1]]
-            self.xlabel = self.parent.settings['xlabel']
-            self.title = f'{self.parent.settings["ylabel"]} = {self.z}'
-            if parent_linecut:
-                self.parent.linecut = self.parent.axes.axhline(y=self.z, linestyle='dashed', linewidth=1, 
-                                                           color=self.parent.settings['linecolor'])
-            self.ylabel = self.parent.settings['clabel']
+            for line in self.parent.linecuts[self.orientation]['lines']:
+                x,y,z= self.get_line_data(line)
+                self.xlabel = self.parent.settings['xlabel']
+                self.title = f'Cuts at fixed {self.parent.settings['ylabel']}'
+                self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value'] = z
+                if parent_linecut:
+                    self.parent.linecut = self.parent.axes.axhline(y=z, linestyle='dashed', linewidth=1, 
+                                                            color=self.parent.settings['linecolor'])
+                self.ylabel = self.parent.settings['clabel']
+                self.axes.plot(x, y, linewidth=self.parent.settings['linewidth'])
+
         elif self.orientation == 'vertical':
-            self.x = self.parent.processed_data[1][self.parent.selected_indices[0],:]
-            self.y = self.parent.processed_data[2][self.parent.selected_indices[0],:]
-            self.z = self.parent.processed_data[0][self.parent.selected_indices[0],0]
-            self.xlabel = self.parent.settings['ylabel']
-            self.title = f'{self.parent.settings["xlabel"]} = {self.z}'
-            if parent_linecut:
-                self.parent.linecut = self.parent.axes.axvline(x=self.z, linestyle='dashed', linewidth=1, 
-                                                           color=self.parent.settings['linecolor'])
-            self.ylabel = self.parent.settings['clabel']
+            for line in self.parent.linecuts[self.orientation]['lines']:
+                x,y,z= self.get_line_data(line)
+                self.xlabel = self.parent.settings['ylabel']
+                self.title = f'Cuts at fixed {self.parent.settings['xlabel']}'
+                self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value'] = z
+                if parent_linecut:
+                    self.parent.linecut = self.parent.axes.axvline(x=z, linestyle='dashed', linewidth=1, 
+                                                            color=self.parent.settings['linecolor'])
+                self.ylabel = self.parent.settings['clabel']
+                self.axes.plot(x, y, linewidth=self.parent.settings['linewidth'])
+
         elif self.orientation == 'diagonal' or self.orientation == 'circular':
             x0 = self.parent.linecut_points[0].x 
             y0 = self.parent.linecut_points[0].y
@@ -426,9 +481,9 @@ class LineCutWindow(QtWidgets.QWidget):
                 x_diag = np.linspace(i_x0, i_x1, n), 
                 y_diag = np.linspace(i_y0, i_y1, n)
                 self.y = map_coordinates(self.parent.processed_data[-1], 
-                                         np.vstack((x_diag, y_diag)))
+                                        np.vstack((x_diag, y_diag)))
                 self.x = map_coordinates(self.parent.processed_data[0],
-                                         np.vstack((x_diag, y_diag)))                
+                                        np.vstack((x_diag, y_diag)))                
                 self.xlabel = self.parent.settings['xlabel']
                 self.title = f'({x0:5g},{y0:5g}) : ({x1:5g},{y1:5g})'
             elif self.orientation == 'circular':
@@ -437,17 +492,18 @@ class LineCutWindow(QtWidgets.QWidget):
                 i_x_circ = i_x0+(i_x1-i_x0)*np.cos(theta) 
                 i_y_circ = i_y0+(i_y1-i_y0)*np.sin(theta)
                 self.y = map_coordinates(self.parent.processed_data[-1], 
-                                         np.vstack((i_x_circ, i_y_circ)))
+                                        np.vstack((i_x_circ, i_y_circ)))
                 self.x = theta
                 self.xlabel = 'Angle (rad)'
                 self.title = ''
             self.ylabel = self.parent.settings['clabel']
-        self.image = self.axes.plot(self.x, self.y, linewidth=self.parent.settings['linewidth'])
+            self.axes.plot(x, y, linewidth=self.parent.settings['linewidth'])
         self.cursor = Cursor(self.axes, useblit=True, color='grey', linewidth=0.5)
         self.axes.set_xlabel(self.xlabel, size='x-large')
         self.axes.set_ylabel(self.ylabel, size='x-large')
         self.axes.tick_params(labelsize='x-large', color=rcParams['axes.edgecolor'])
-        self.axes.set_title(self.title, size='x-large')
+        if hasattr(self,'title'):
+            self.axes.set_title(self.title, size='x-large')
         self.limits_edited()
         self.canvas.draw()
         self.parent.canvas.draw()
