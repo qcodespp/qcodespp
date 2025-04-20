@@ -52,38 +52,40 @@ class LineCutWindow(QtWidgets.QWidget):
         
     def init_widgets(self):
         self.setWindowTitle('Inspectra Gadget - Linecut and Fitting Window')
-        self.resize(800, 900)
-        self.cuts_table = QtWidgets.QTableWidget()
-        self.save_button = QtWidgets.QPushButton('Save Data')
-        self.save_image_button = QtWidgets.QPushButton('Save Image')
-        self.copy_image_button = QtWidgets.QPushButton('Copy Image')
+        self.resize(1200, 900)
+
+        # Widgets in Linecut list box
         self.add_cut_button = QtWidgets.QPushButton('Add')
         self.remove_cut_button = QtWidgets.QPushButton('Remove')
         self.clear_cuts_button = QtWidgets.QPushButton('Clear list')
+
         self.generate_label = QtWidgets.QLabel('start,end,num,offset')
         self.generate_line_edit=QtWidgets.QLineEdit()
         self.generate_button=QtWidgets.QPushButton('Generate')
-        self.clear_fit_button = QtWidgets.QPushButton('Clear fit')
-        self.fit_button = QtWidgets.QPushButton('Fit')
-        self.save_preset_button = QtWidgets.QPushButton('Save preset')
-        self.load_preset_button = QtWidgets.QPushButton('Load preset')
-        self.save_result_button = QtWidgets.QPushButton('Save fit result')
-        self.fit_functions_label = QtWidgets.QLabel('Select fit function:')
-        self.input_label = QtWidgets.QLabel('Input info:')
-        self.input_edit = QtWidgets.QLineEdit()
-        self.guess_checkbox = QtWidgets.QCheckBox('Initial guess:')
-        self.guess_edit = QtWidgets.QLineEdit()
-        self.fit_class_box = QtWidgets.QComboBox()
-        self.fit_class_box.addItems(fits.get_class_names())
-        self.fit_class_box.setCurrentIndex(0)
-        self.fit_class_box.SizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
-        self.fit_box = QtWidgets.QComboBox()
-        self.fit_box.addItems(fits.get_names(fitclass=self.fit_class_box.currentText()))
-        self.fit_box.setCurrentIndex(0)
-        self.fit_box.SizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
-        self.output_window = QtWidgets.QTextEdit()
-        self.output_window.setReadOnly(True)
-        #self.output_window.setMaximumHeight(250)
+
+        self.cuts_table = QtWidgets.QTableWidget()
+
+        self.move_up_button = QtWidgets.QPushButton('Move Up')
+        self.move_down_button = QtWidgets.QPushButton('Move Up')
+        self.reorder_by_index_button = QtWidgets.QPushButton('Reorder by ind')
+
+        self.colormap_type_box = QtWidgets.QComboBox()
+        self.colormap_box = QtWidgets.QComboBox()
+        self.apply_colormap_to_box = QtWidgets.QComboBox() # All by index, all by num, selected by ind, selected by num, checked by ind, checked by num
+        self.apply_button = QtWidgets.QPushButton('Apply')
+
+        applymethods=['All by #', 'All by ind', 'Chkd by #','Chkd by ind']
+        self.apply_colormap_to_box.addItems(applymethods)
+        for cmap_type in cmaps:    
+            self.colormap_type_box.addItem(cmap_type)
+        self.colormap_box.addItems(list(cmaps.values())[0])
+
+        # Plotting widgets
+        self.save_button = QtWidgets.QPushButton('Save Data')
+        self.save_image_button = QtWidgets.QPushButton('Save Image')
+        self.copy_image_button = QtWidgets.QPushButton('Copy Image')
+
+        # Fitting widgets
         self.lims_label = QtWidgets.QLabel('Fit limits (left-click plot):')
         self.xmin_label = QtWidgets.QLabel('Xmin:')
         self.xmin_label.setStyleSheet("QLabel { color : blue; }")
@@ -92,10 +94,36 @@ class LineCutWindow(QtWidgets.QWidget):
         self.xmin_box = QtWidgets.QLineEdit()
         self.xmax_box = QtWidgets.QLineEdit()
         self.reset_axes_button = QtWidgets.QPushButton('Reset')
-        if self.orientation in ['horizontal','vertical']:
-            #self.orientation_button = QtWidgets.QPushButton('Hor./Vert.')
-            self.up_button = QtWidgets.QPushButton('Up/Right')
-            self.down_button = QtWidgets.QPushButton('Down/Left')
+
+        self.fit_functions_label = QtWidgets.QLabel('Select fit function:')
+        self.fit_class_box = QtWidgets.QComboBox()
+        self.fit_class_box.addItems(fits.get_class_names())
+        self.fit_class_box.setCurrentIndex(0)
+        self.fit_class_box.SizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
+        self.fit_box = QtWidgets.QComboBox()
+        self.fit_box.addItems(fits.get_names(fitclass=self.fit_class_box.currentText()))
+        self.fit_box.setCurrentIndex(0)
+        self.fit_box.SizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
+
+        self.input_label = QtWidgets.QLabel('Input info:')
+        self.input_edit = QtWidgets.QLineEdit()
+
+        self.guess_checkbox = QtWidgets.QCheckBox('Initial guess:')
+        self.guess_edit = QtWidgets.QLineEdit()
+
+        self.output_window = QtWidgets.QTextEdit()
+        self.output_window.setReadOnly(True)
+
+        self.fit_button = QtWidgets.QPushButton('Fit')
+        self.save_result_button = QtWidgets.QPushButton('Save fit result')
+        self.clear_fit_button = QtWidgets.QPushButton('Clear fit')
+        self.save_preset_button = QtWidgets.QPushButton('Save preset')
+        self.load_preset_button = QtWidgets.QPushButton('Load preset')
+
+        # if self.orientation in ['horizontal','vertical']:
+        #     #self.orientation_button = QtWidgets.QPushButton('Hor./Vert.')
+        #     self.up_button = QtWidgets.QPushButton('Up/Right')
+        #     self.down_button = QtWidgets.QPushButton('Down/Left')
 
     def init_connections(self):
         self.save_button.clicked.connect(self.save_data)
@@ -112,10 +140,11 @@ class LineCutWindow(QtWidgets.QWidget):
         self.xmax_box.editingFinished.connect(self.limits_edited)
         self.reset_axes_button.clicked.connect(self.reset_limits)
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
-        if self.orientation in ['horizontal','vertical']:
-            #self.orientation_button.clicked.connect(self.change_orientation)
-            self.up_button.clicked.connect(lambda: self.change_index('up'))
-            self.down_button.clicked.connect(lambda: self.change_index('down'))
+        self.colormap_type_box.currentIndexChanged.connect(self.colormap_type_edited)
+        # if self.orientation in ['horizontal','vertical']:
+        #     #self.orientation_button.clicked.connect(self.change_orientation)
+        #     self.up_button.clicked.connect(lambda: self.change_index('up'))
+        #     self.down_button.clicked.connect(lambda: self.change_index('down'))
         
     def init_canvas(self):
         self.figure = Figure(tight_layout={'pad':2})
@@ -127,12 +156,46 @@ class LineCutWindow(QtWidgets.QWidget):
         self.navi_toolbar = NavigationToolbar(self.canvas, self)
     
     def init_layouts(self):
-        self.top_buttons_layout = QtWidgets.QHBoxLayout()
-        self.plot_and_table_layout = QtWidgets.QHBoxLayout()
-        self.plot_layout = QtWidgets.QVBoxLayout()
-        self.table_layout = QtWidgets.QVBoxLayout()
+        # Sub-layouts in Linecut list box:
         self.table_buttons_layout = QtWidgets.QHBoxLayout()
         self.generate_layout = QtWidgets.QHBoxLayout()
+        self.move_buttons_layout = QtWidgets.QHBoxLayout()
+        self.colormap_layout = QtWidgets.QHBoxLayout()
+
+        # Populating
+        self.table_buttons_layout.addWidget(self.add_cut_button)
+        self.table_buttons_layout.addWidget(self.remove_cut_button)
+        self.table_buttons_layout.addWidget(self.clear_cuts_button)
+
+        self.move_buttons_layout.addWidget(self.move_up_button)
+        self.move_buttons_layout.addWidget(self.move_down_button)
+        self.move_buttons_layout.addWidget(self.reorder_by_index_button)
+
+        self.generate_layout.addWidget(self.generate_label)
+        self.generate_layout.addWidget(self.generate_line_edit)
+        self.generate_layout.addWidget(self.generate_button)
+
+        self.colormap_layout.addWidget(self.colormap_type_box)
+        self.colormap_layout.addWidget(self.colormap_box)
+        self.colormap_layout.addWidget(self.apply_colormap_to_box)
+        self.colormap_layout.addWidget(self.apply_button)
+
+        # Sublayout(s) in plotting box:
+        self.top_buttons_layout = QtWidgets.QHBoxLayout()
+
+        # Populating
+        #self.top_buttons_layout.addWidget(self.navi_toolbar)
+        self.top_buttons_layout.addStretch()
+        self.top_buttons_layout.addWidget(self.save_button)
+        self.top_buttons_layout.addWidget(self.save_image_button)
+        self.top_buttons_layout.addWidget(self.copy_image_button)
+        #self.top_buttons_layout.addStretch()
+        # if self.orientation in ['horizontal','vertical']:
+        #     #self.top_buttons_layout.addWidget(self.orientation_button)
+        #     self.top_buttons_layout.addWidget(self.down_button)
+        #     self.top_buttons_layout.addWidget(self.up_button)
+        
+        # Sub-layouts(s) in fitting box
         self.lims_layout = QtWidgets.QHBoxLayout()
         self.fit_layout = QtWidgets.QHBoxLayout()
         self.inputs_layout = QtWidgets.QHBoxLayout()
@@ -140,23 +203,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.output_layout = QtWidgets.QVBoxLayout()
         self.fit_buttons_layout = QtWidgets.QHBoxLayout()
 
-        self.table_buttons_layout.addWidget(self.add_cut_button)
-        self.table_buttons_layout.addWidget(self.remove_cut_button)
-        self.table_buttons_layout.addWidget(self.clear_cuts_button)
-
-        self.generate_layout.addWidget(self.generate_label)
-        self.generate_layout.addWidget(self.generate_line_edit)
-        self.generate_layout.addWidget(self.generate_button)
-
-        self.top_buttons_layout.addWidget(self.save_button)
-        self.top_buttons_layout.addWidget(self.save_image_button)
-        self.top_buttons_layout.addWidget(self.copy_image_button)
-        self.top_buttons_layout.addStretch()
-        if self.orientation in ['horizontal','vertical']:
-            #self.top_buttons_layout.addWidget(self.orientation_button)
-            self.top_buttons_layout.addWidget(self.down_button)
-            self.top_buttons_layout.addWidget(self.up_button)
-
+        # Populating
         self.lims_layout.addWidget(self.lims_label)
         self.lims_layout.addWidget(self.xmin_label)
         self.lims_layout.addWidget(self.xmin_box)
@@ -190,6 +237,16 @@ class LineCutWindow(QtWidgets.QWidget):
     def set_main_layout(self):
         self.main_layout = QtWidgets.QVBoxLayout()
         self.top_half_layout = QtWidgets.QHBoxLayout()
+
+        self.tablebox=QtWidgets.QGroupBox('Linecut list')
+        self.table_layout = QtWidgets.QVBoxLayout()
+        self.table_layout.addLayout(self.table_buttons_layout)
+        self.table_layout.addLayout(self.generate_layout)
+        self.table_layout.addWidget(self.cuts_table)
+        self.table_layout.addLayout(self.move_buttons_layout)
+        self.table_layout.addLayout(self.colormap_layout)
+        self.tablebox.setLayout(self.table_layout)
+        self.tablebox.setMaximumWidth(450)
         
         self.plotbox=QtWidgets.QGroupBox('Plotting')
         self.plottinglayout = QtWidgets.QVBoxLayout()
@@ -197,13 +254,6 @@ class LineCutWindow(QtWidgets.QWidget):
         self.plottinglayout.addWidget(self.navi_toolbar)
         self.plottinglayout.addWidget(self.canvas)
         self.plotbox.setLayout(self.plottinglayout)
-
-        self.tablebox=QtWidgets.QGroupBox('Linecut list')
-        self.table_layout.addLayout(self.table_buttons_layout)
-        self.table_layout.addLayout(self.generate_layout)
-        self.table_layout.addWidget(self.cuts_table)
-        self.tablebox.setLayout(self.table_layout)
-        self.tablebox.setMaximumWidth(400)
 
         self.fittingbox=QtWidgets.QGroupBox('Curve Fitting')
         self.fittingbox.setMaximumHeight(450)
@@ -276,16 +326,22 @@ class LineCutWindow(QtWidgets.QWidget):
 
     def cuts_table_edited(self,setting):
         0
+
+    def colormap_type_edited(self):
+        self.colormap_box.clear()
+        self.colormap_box.addItems(cmaps[self.colormap_type_box.currentText()])
+
              
-    def change_orientation(self):
-        if self.orientation == 'horizontal':
-            self.orientation = 'vertical'
-        elif self.orientation == 'vertical':
-            self.orientation = 'horizontal'
-        self.xmin_box.clear()
-        self.xmax_box.clear()
-        self.output_window.clear()
-        self.update()
+    # Marked for deletion. each window is now either horiz or vert
+    # def change_orientation(self):
+    #     if self.orientation == 'horizontal':
+    #         self.orientation = 'vertical'
+    #     elif self.orientation == 'vertical':
+    #         self.orientation = 'horizontal'
+    #     self.xmin_box.clear()
+    #     self.xmax_box.clear()
+    #     self.output_window.clear()
+    #     self.update()
 
     def limits_edited(self):
         try:
