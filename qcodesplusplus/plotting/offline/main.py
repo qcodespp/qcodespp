@@ -1496,7 +1496,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 max_index=-1
                             data.linecuts[orientation]['lines'][int(max_index+1)]={'data_index':index_y,
                                                                                 'cut_axis_value':data.processed_data[1][0,index_y],
-                                                                                'checkstate':2}
+                                                                                'checkstate':2,
+                                                                                'offset':0}
                         elif event.button == 2:
                             orientation='vertical'
                             try:
@@ -1505,7 +1506,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 max_index=-1
                             data.linecuts[orientation]['lines'][int(max_index+1)]={'data_index':index_x,
                                                                                 'cut_axis_value':data.processed_data[0][index_x,0],
-                                                                                'checkstate':2}
+                                                                                'checkstate':2,
+                                                                                'offset':0}
                         if data.linecuts[orientation]['linecut_window']==None:
                             data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation)
                         data.linecuts[orientation]['linecut_window'].running = True

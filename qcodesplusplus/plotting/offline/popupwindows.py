@@ -59,14 +59,14 @@ class LineCutWindow(QtWidgets.QWidget):
         self.remove_cut_button = QtWidgets.QPushButton('Remove')
         self.clear_cuts_button = QtWidgets.QPushButton('Clear list')
 
-        self.generate_label = QtWidgets.QLabel('start,end,num,offset')
-        self.generate_line_edit=QtWidgets.QLineEdit()
+        self.generate_label = QtWidgets.QLabel('start,end,step,offset')
+        self.generate_line_edit=QtWidgets.QLineEdit('0,-1,1,0')
         self.generate_button=QtWidgets.QPushButton('Generate')
 
         self.cuts_table = QtWidgets.QTableWidget()
 
         self.move_up_button = QtWidgets.QPushButton('Move Up')
-        self.move_down_button = QtWidgets.QPushButton('Move Up')
+        self.move_down_button = QtWidgets.QPushButton('Move Down')
         self.reorder_by_index_button = QtWidgets.QPushButton('Reorder by ind')
 
         self.colormap_type_box = QtWidgets.QComboBox()
@@ -126,6 +126,15 @@ class LineCutWindow(QtWidgets.QWidget):
         #     self.down_button = QtWidgets.QPushButton('Down/Left')
 
     def init_connections(self):
+        self.add_cut_button.clicked.connect(self.add_cut_manually)
+        self.remove_cut_button.clicked.connect(lambda: self.remove_cut('selected'))
+        self.clear_cuts_button.clicked.connect(lambda: self.remove_cut('all'))
+        self.generate_button.clicked.connect(self.generate_cuts)
+        self.move_up_button.clicked.connect(lambda: self.move_cut('up'))
+        self.move_down_button.clicked.connect(lambda: self.move_cut('down'))
+        self.reorder_by_index_button.clicked.connect(self.reorder_cuts)
+        self.apply_button.clicked.connect(self.apply_colormap)
+
         self.save_button.clicked.connect(self.save_data)
         self.save_image_button.clicked.connect(self.save_image)
         self.copy_image_button.clicked.connect(self.copy_image)
@@ -303,14 +312,14 @@ class LineCutWindow(QtWidgets.QWidget):
         linecut_item.setCheckState(linecut['checkstate'])
         index_box=QtWidgets.QSpinBox()
         if self.orientation=='horizontal':
-            index_box.setRange(0,np.shape(self.parent.processed_data[-1])[1])
+            index_box.setRange(0,np.shape(self.parent.processed_data[-1])[1]-1)
         elif self.orientation=='vertical':
-            index_box.setRange(0,np.shape(self.parent.processed_data[-1])[0])
+            index_box.setRange(0,np.shape(self.parent.processed_data[-1])[0]-1)
         index_box.setSingleStep(1)
         index_box.setValue(linecut['data_index'])
         index_box.valueChanged[int].connect(lambda: self.cuts_table_edited('index'))
-        value_box=QtWidgets.QTableWidgetItem(f'{linecut['cut_axis_value']}')
-        offset_box=QtWidgets.QTableWidgetItem('0')
+        value_box=QtWidgets.QTableWidgetItem(f'{linecut['cut_axis_value']:6g}')
+        offset_box=QtWidgets.QTableWidgetItem(f'{linecut['offset']:6g}')
         color_box=QtWidgets.QTableWidgetItem(f'color')
 
         self.cuts_table.setItem(row,0,linecut_item)
@@ -325,6 +334,140 @@ class LineCutWindow(QtWidgets.QWidget):
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
 
     def cuts_table_edited(self,setting):
+        if setting=='index':
+            row = self.cuts_table.currentRow()
+            index_box = self.cuts_table.cellWidget(row,1)
+            data_index=index_box.value()
+            linecut = self.cuts_table.item(row,0).text()
+            linecut = int(linecut)
+            try:
+                if self.orientation == 'horizontal':
+                    self.parent.linecuts[self.orientation]['lines'][linecut]['cut_axis_value']=self.parent.processed_data[1][0,data_index]
+                    self.cuts_table.item(row,2).setText(f'{self.parent.processed_data[1][0,data_index]:6g}')
+                elif self.orientation == 'vertical':
+                    self.parent.linecuts[self.orientation]['lines'][linecut]['cut_axis_value']=self.parent.processed_data[0][data_index,0]
+                    self.cuts_table.item(row,2).setText(f'{self.parent.processed_data[0][data_index,0]:6g}')
+                self.parent.linecuts[self.orientation]['lines'][linecut]['data_index'] = data_index
+                self.update()
+            except Exception as e:
+                print(e)
+
+    def add_cut_manually(self,data_index=0,offset=0,update=True):
+        # Add a linecut when the button is pushed or from the generator. Default to zero-th index if it's the push button.
+        data_index=int(data_index)
+        try:
+            max_index=np.max(list(self.parent.linecuts[self.orientation]['lines'].keys()))
+        except ValueError:
+            max_index=-1
+        try:
+            if self.orientation == 'horizontal':
+                linecut={'data_index':data_index, 'checkstate':QtCore.Qt.Checked,
+                        'cut_axis_value':self.parent.processed_data[1][0,data_index],
+                        'offset':offset}
+            elif self.orientation == 'vertical':
+                linecut={'data_index':data_index, 'checkstate':QtCore.Qt.Checked,
+                        'cut_axis_value':self.parent.processed_data[0][data_index,0],
+                        'offset':offset}
+            self.parent.linecuts[self.orientation]['lines'][max_index+1] = linecut
+            self.append_cut_to_table(linecut)
+        except IndexError:
+            print('Index out of range.')
+        if update: # Don't update every time a cut is added when 'generate' is used
+            self.update()
+
+    def remove_cut(self,which='selected'):
+        # which = 'selected', 'all'
+        if which=='selected':
+            try:
+                row = self.cuts_table.currentRow()
+                linecut = self.cuts_table.item(row,0).text()
+                linecut = int(linecut)
+                self.parent.linecuts[self.orientation]['lines'].pop(linecut)
+                self.cuts_table.removeRow(row)
+            except Exception as e:
+                print(e)
+        elif which=='all':
+            self.parent.linecuts[self.orientation]['lines'] = {}
+            self.cuts_table.setRowCount(0)
+
+        self.update()
+
+    def generate_cuts(self):
+        # Generate a list of cuts based on the input in the line edit boxes.
+        # The input is a string of the form 'start,end,step,offset'.
+        inputstring=self.generate_line_edit.text()
+        try:
+            start=int(inputstring.split(',')[0])
+            end=int(inputstring.split(',')[1])
+            step=int(inputstring.split(',')[2])
+            offset=float(inputstring.split(',')[3])
+        except Exception as e:
+            self.output_window.setText(f'Could not parse input: {e}')
+            return
+        if end == -1:
+            if self.orientation == 'horizontal':
+                end = self.parent.processed_data[1][0,:].shape[0]-1
+            elif self.orientation == 'vertical':
+                end = self.parent.processed_data[0][:,0].shape[0]-1
+        for index in np.arange(start,end+1,step):
+            self.add_cut_manually(data_index=index,offset=offset*index,update=False)
+        self.update()
+
+    def move_cut(self, direction):
+        self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+        try:
+            current_row = self.cuts_table.currentRow()
+            if direction == 'up' and current_row > 0:
+                delta=-1
+            elif direction == 'down' and current_row < self.cuts_table.rowCount()-1:
+                delta=1
+            if delta in [-1,1]:
+                current_col = self.cuts_table.currentColumn()
+                items = [self.cuts_table.takeItem(current_row, c) for c in range(self.cuts_table.columnCount())]
+                oldSpinBox = self.cuts_table.cellWidget(current_row, 1)
+                self.cuts_table.removeRow(current_row)
+                new_row = current_row + delta
+                self.cuts_table.insertRow(new_row)
+                for i, item in enumerate(items):
+                    self.cuts_table.setItem(new_row, i, item)
+                if isinstance(oldSpinBox, QtWidgets.QAbstractSpinBox):
+                    newSpinBox = QtWidgets.QSpinBox()
+                    newSpinBox.setValue(oldSpinBox.value())
+                    newSpinBox.setRange(0,oldSpinBox.maximum())
+                    newSpinBox.valueChanged[int].connect(lambda: self.cuts_table_edited('index'))
+                    self.cuts_table.setCellWidget(new_row, 1, newSpinBox)
+                if current_col >= 0:
+                    self.cuts_table.setCurrentCell(new_row, current_col)
+
+        except Exception as e:
+            pass
+        self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+
+
+    def reorder_cuts(self):
+        # Reorder the cuts in the list based on the data index.
+        # Super broken; the spin box really affects everything. It will be hard to make it work I think.
+        self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+        self.cuts_table.setSortingEnabled(False)
+        for row in range(self.cuts_table.rowCount()):
+            item = self.cuts_table.item(row, 1)
+            if isinstance(item, QtWidgets.QSpinBox):
+                oldSpinBox=item
+                dummy_box=QtWidgets.QTableWidgetItem(str(oldSpinBox.value()))
+                self.cuts_table.setItem(row, 1, dummy_box)
+
+        self.cuts_table.sortItems(1, QtCore.Qt.AscendingOrder)
+        for row in range(self.cuts_table.rowCount()):
+            item = self.cuts_table.item(row, 1)
+            newSpinBox = QtWidgets.QSpinBox()
+            newSpinBox.setValue(int(item.text()))
+            newSpinBox.setRange(0,oldSpinBox.maximum())
+            self.cuts_table.setCellWidget(row, 1, newSpinBox)
+
+        self.cuts_table.setSortingEnabled(True)
+        self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+
+    def apply_colormap(self):
         0
 
     def colormap_type_edited(self):
@@ -561,7 +704,8 @@ class LineCutWindow(QtWidgets.QWidget):
                     self.parent.linecut = self.parent.axes.axhline(y=z, linestyle='dashed', linewidth=1, 
                                                             color=self.parent.settings['linecolor'])
                 self.ylabel = self.parent.settings['clabel']
-                self.axes.plot(x, y, linewidth=self.parent.settings['linewidth'])
+                offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
+                self.axes.plot(x, y+offset, linewidth=self.parent.settings['linewidth'])
 
         elif self.orientation == 'vertical':
             for line in self.parent.linecuts[self.orientation]['lines']:
@@ -573,7 +717,8 @@ class LineCutWindow(QtWidgets.QWidget):
                     self.parent.linecut = self.parent.axes.axvline(x=z, linestyle='dashed', linewidth=1, 
                                                             color=self.parent.settings['linecolor'])
                 self.ylabel = self.parent.settings['clabel']
-                self.axes.plot(x, y, linewidth=self.parent.settings['linewidth'])
+                offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
+                self.axes.plot(x, y+offset, linewidth=self.parent.settings['linewidth'])
 
         elif self.orientation == 'diagonal' or self.orientation == 'circular':
             x0 = self.parent.linecut_points[0].x 
