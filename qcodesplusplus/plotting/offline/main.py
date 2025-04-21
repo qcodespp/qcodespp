@@ -36,7 +36,7 @@ except ModuleNotFoundError:
     qdarkstyle_imported = False
 
 import qcodesplusplus.plotting.offline.design as design
-from .popupwindows import LineCutWindow, MultiPlotWindow, MultipleLineCutsWindow, ParameterWindow, FFTWindow
+from .popupwindows import LineCutWindow, FFTWindow
 from .helpers import (cmaps, MidpointNormalize,NavigationToolbarMod,
                       rcParams_to_dark_theme,rcParams_to_light_theme,
                       NoScrollQComboBox,DraggablePoint)
@@ -1044,13 +1044,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 for item in checked_items:
                     data_list.append(item.data)
                     if len(item.data.get_columns()) != 2:
-                        three_dimensional_data = True
-                if not three_dimensional_data:
-                    self.multi_plot_window = MultiPlotWindow(data_list)
-                    self.multi_plot_window.draw_plot()
-                    self.multi_plot_window.show()
-                else:
-                    print('Cannot combine three-dimensional data')
+                         three_dimensional_data = True
+                # if not three_dimensional_data:
+                    #self.multi_plot_window = MultiPlotWindow(data_list)
+                    #self.multi_plot_window.draw_plot()
+                    #self.multi_plot_window.show()
+                # else:
+                #     print('Cannot combine three-dimensional data')
             except Exception as e:
                 print('Cannot combine data:', e)
     
@@ -1254,7 +1254,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if hasattr(item,'checkState'):
                     item_dictionary['checkState']=item.checkState()
                 attributes=['label','settings','filters','view_settings','axlim_settings',
-                            'raw_data','processed_data','fit']
+                            'raw_data','processed_data','linecuts']
                 for attribute in attributes:
                     if hasattr(item.data,attribute):
                         item_dictionary[attribute]=getattr(item.data,attribute)
@@ -1593,12 +1593,24 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.reset_axlim_settings()
         elif (signal.text() == 'Plot horizontal linecuts' or
             signal.text() == 'Plot vertical linecuts'):
-            data.multi_linecuts_window = MultipleLineCutsWindow(data) 
+            if not hasattr(data,'linecuts'):
+                data.linecuts={'horizontal':{'linecut_window':None,'lines':{}},
+                                'vertical':{'linecut_window':None,'lines':{}}
+                                }
             if signal.text() == 'Plot horizontal linecuts':
-                data.multi_linecuts_window.orientation = 'horizontal'
+                orientation='horizontal'
             elif signal.text() == 'Plot vertical linecuts':
-                data.multi_linecuts_window.orientation = 'vertical'
-            data.multi_linecuts_window.update()
+                orientation='vertical'
+            if data.linecuts[orientation]['linecut_window']==None:
+                if self.colormap_box.currentText() == 'viridis':
+                    selected_colormap = cm.get_cmap('plasma')
+                else:
+                    selected_colormap = cm.get_cmap('viridis')
+                data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,init_cmap=selected_colormap.name)
+            data.linecuts[orientation]['linecut_window'].add_cut_manually()
+            data.linecuts[orientation]['linecut_window'].remove_cut()
+            data.linecuts[orientation]['linecut_window'].running = True
+            data.linecuts[orientation]['linecut_window'].activateWindow()
         elif signal.text() == 'Draw diagonal linecut':
             if hasattr(data, 'linecut_points'):
                 data.hide_linecuts()
