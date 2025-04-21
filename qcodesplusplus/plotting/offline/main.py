@@ -26,6 +26,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib import rcParams
+from matplotlib import colormaps as cm
 from cycler import cycler
 from collections import OrderedDict
 try:
@@ -1253,7 +1254,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if hasattr(item,'checkState'):
                     item_dictionary['checkState']=item.checkState()
                 attributes=['label','settings','filters','view_settings','axlim_settings',
-                            'raw_data','processed_data']
+                            'raw_data','processed_data','fit']
                 for attribute in attributes:
                     if hasattr(item.data,attribute):
                         item_dictionary[attribute]=getattr(item.data,attribute)
@@ -1272,21 +1273,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for attr_dict in data:
                 file_list.append(attr_dict['filepath'])
             self.open_files(file_list,load_the_data=False,attr_dicts=data)
-    # Old version. New version below uses .dat or .csv to export also.
-    # def save_processed_data(self):
-    #     current_item = self.file_list.currentItem()
-    #     if current_item:
-    #         suggested_filename = (current_item.data.label.replace(':','') +
-    #                               '_processed')
-    #         filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
-    #             self, 'Save Processed Data As', suggested_filename, '*.npy')
-    #         if filepath:
-    #             #save_data = np.column_stack(tuple(data.flatten() for data in 
-    #             #                                  current_item.data.processed_data))
-    #             if len(current_item.data.get_columns()) == 2:
-    #                 np.save(filepath, np.column_stack(current_item.data.processed_data))
-    #             elif len(current_item.data.get_columns()) == 3:
-    #                 np.save(filepath, np.stack(current_item.data.processed_data, axis=2))
 
     def save_processed_data(self, which='current'):
         current_item = self.file_list.currentItem()
@@ -1483,12 +1469,17 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         index_x = np.argmin(np.abs(data.processed_data[0][:,0]-x))
                         index_y = np.argmin(np.abs(data.processed_data[1][0,:]-y))
                         data.selected_indices = [int(index_x), int(index_y)]
+                        if self.colormap_box.currentText() == 'viridis':
+                            selected_colormap = cm.get_cmap('plasma')
+                        else:
+                            selected_colormap = cm.get_cmap('viridis')
                         #Make entry to store linecuts in
                         if not hasattr(data,'linecuts'):
                             data.linecuts={'horizontal':{'linecut_window':None,'lines':{}},
                                            'vertical':{'linecut_window':None,'lines':{}}
                                             }
                         if event.button == 1:
+                            line_colors = selected_colormap(np.linspace(0.1,0.9,len(data.processed_data[1][0,:])))
                             orientation='horizontal'
                             try:
                                 max_index=np.max(list(data.linecuts[orientation]['lines'].keys()))
@@ -1497,8 +1488,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             data.linecuts[orientation]['lines'][int(max_index+1)]={'data_index':index_y,
                                                                                 'cut_axis_value':data.processed_data[1][0,index_y],
                                                                                 'checkstate':2,
-                                                                                'offset':0}
+                                                                                'offset':0,
+                                                                                'linecolor':line_colors[int(index_y)]}
                         elif event.button == 2:
+                            line_colors = selected_colormap(np.linspace(0.1,0.9,len(data.processed_data[0][:,0])))
                             orientation='vertical'
                             try:
                                 max_index=np.max(list(data.linecuts[orientation]['lines'].keys()))
@@ -1507,11 +1500,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             data.linecuts[orientation]['lines'][int(max_index+1)]={'data_index':index_x,
                                                                                 'cut_axis_value':data.processed_data[0][index_x,0],
                                                                                 'checkstate':2,
-                                                                                'offset':0}
+                                                                                'offset':0,
+                                                                                'linecolor':line_colors[int(index_x)]}
                         if data.linecuts[orientation]['linecut_window']==None:
-                            data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation)
+                            data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,init_cmap=selected_colormap.name)
                         data.linecuts[orientation]['linecut_window'].running = True
-                        data.linecuts[orientation]['linecut_window'].append_cut_to_table(data.linecuts[orientation]['lines'][int(max_index+1)])
+                        data.linecuts[orientation]['linecut_window'].append_cut_to_table(int(max_index+1))
                         data.linecuts[orientation]['linecut_window'].update()
                         data.linecuts[orientation]['linecut_window'].activateWindow()
                         self.canvas.draw()

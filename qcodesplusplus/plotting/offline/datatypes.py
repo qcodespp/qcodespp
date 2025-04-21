@@ -83,8 +83,8 @@ class BaseClassData:
         except ValueError: # Can occur if python doesn't recognise a header
             column_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'],skip_header=1)
 
-        if column_data.shape[0]<column_data.shape[1]: # Should be getting three columns and many more rows. If not the case, try to transpose.
-            column_data=column_data.transpose()
+        # if column_data.shape[0]<column_data.shape[1]: # Should be getting three columns and many more rows. If not the case, try to transpose.
+        #     column_data=column_data.transpose()
         
         try: # to get column names if there is a header. Importing like this completely screws the data formatting for some reason, so use this to just load the header
             namedata=np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'],names=True)
@@ -362,7 +362,7 @@ class BaseClassData:
     def file_finished(self):
         return False
     
-    def hide_linecuts(self):
+    def hide_linecuts(self):  # Likely soon to be unused.
         if hasattr(self, 'linecut_window'):
             self.linecut_window.running = False
         for line in reversed(self.axes.get_lines()):

@@ -10,7 +10,8 @@ from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationTo
 from matplotlib.figure import Figure
 from matplotlib.colors import LogNorm
 from matplotlib.widgets import Cursor
-from matplotlib import cm, rcParams
+from matplotlib import rcParams
+from matplotlib import colormaps as cm
 import numpy as np
 try: # lmfit is used for fitting the evolution of the properties of multiple peaks 
     from lmfit.models import LorentzianModel, GaussianModel, ConstantModel
@@ -36,12 +37,13 @@ DARK_THEME = True
 from .helpers import rcParams_to_dark_theme, rcParams_to_light_theme, cmaps
 
 class LineCutWindow(QtWidgets.QWidget):
-    def __init__(self, parent, orientation):
+    def __init__(self, parent, orientation, init_cmap='viridis'):
         super().__init__()
         # The parent is the DATA object.
         self.parent = parent
         self.running = True
         self.orientation = orientation
+        self.init_cmap = init_cmap
         self.init_widgets()
         self.init_canvas()
         self.init_connections()
@@ -79,8 +81,10 @@ class LineCutWindow(QtWidgets.QWidget):
         for cmap_type in cmaps:    
             self.colormap_type_box.addItem(cmap_type)
         self.colormap_box.addItems(list(cmaps.values())[0])
+        self.colormap_box.setCurrentText(self.init_cmap)
 
         # Plotting widgets
+        self.reset_plot_limits_button = QtWidgets.QPushButton('Autoscale axes')
         self.save_button = QtWidgets.QPushButton('Save Data')
         self.save_image_button = QtWidgets.QPushButton('Save Image')
         self.copy_image_button = QtWidgets.QPushButton('Copy Image')
@@ -117,6 +121,9 @@ class LineCutWindow(QtWidgets.QWidget):
         self.fit_button = QtWidgets.QPushButton('Fit')
         self.save_result_button = QtWidgets.QPushButton('Save fit result')
         self.clear_fit_button = QtWidgets.QPushButton('Clear fit')
+        self.fit_checked_button = QtWidgets.QPushButton('Fit checked')
+        self.save_all_fits_button = QtWidgets.QPushButton('Save all fits')
+        self.save_parameters_dependency_button = QtWidgets.QPushButton('Generate param dependency')
         self.save_preset_button = QtWidgets.QPushButton('Save preset')
         self.load_preset_button = QtWidgets.QPushButton('Load preset')
 
@@ -135,14 +142,20 @@ class LineCutWindow(QtWidgets.QWidget):
         self.reorder_by_index_button.clicked.connect(self.reorder_cuts)
         self.apply_button.clicked.connect(self.apply_colormap)
 
+        self.cuts_table.itemClicked.connect(self.item_clicked)
+
+        self.reset_plot_limits_button.clicked.connect(self.autoscale_axes)
         self.save_button.clicked.connect(self.save_data)
         self.save_image_button.clicked.connect(self.save_image)
         self.copy_image_button.clicked.connect(self.copy_image)
-        self.clear_fit_button.clicked.connect(self.clear_lines)
+        self.clear_fit_button.clicked.connect(self.clear_fit)
         self.fit_class_box.currentIndexChanged.connect(self.fit_class_changed)
         self.fit_box.currentIndexChanged.connect(self.fit_type_changed)
         self.fit_button.clicked.connect(self.start_fitting)
         self.save_result_button.clicked.connect(self.save_fit_result)
+        self.fit_checked_button.clicked.connect(self.fit_checked)
+        self.save_all_fits_button.clicked.connect(self.save_all_fits)
+        self.save_parameters_dependency_button.clicked.connect(self.save_parameters_dependency)
         self.save_preset_button.clicked.connect(self.save_fit_preset)
         self.load_preset_button.clicked.connect(self.load_fit_preset)
         self.xmin_box.editingFinished.connect(self.limits_edited)
@@ -159,9 +172,10 @@ class LineCutWindow(QtWidgets.QWidget):
         self.figure = Figure(tight_layout={'pad':2})
         self.axes = self.figure.add_subplot(111)
         self.canvas = FigureCanvas(self.figure)
-        self.scroll_event_id = self.canvas.mpl_connect('scroll_event', 
-                                                       self.mouse_scroll_canvas)
+        # self.scroll_event_id = self.canvas.mpl_connect('scroll_event', 
+        #                                                self.mouse_scroll_canvas)
         self.canvas.mpl_connect('button_press_event', self.mouse_click_canvas)
+        self.canvas.mpl_connect('scroll_event', self.mouse_scroll_canvas)
         self.navi_toolbar = NavigationToolbar(self.canvas, self)
     
     def init_layouts(self):
@@ -194,6 +208,7 @@ class LineCutWindow(QtWidgets.QWidget):
 
         # Populating
         #self.top_buttons_layout.addWidget(self.navi_toolbar)
+        self.top_buttons_layout.addWidget(self.reset_plot_limits_button)
         self.top_buttons_layout.addStretch()
         self.top_buttons_layout.addWidget(self.save_button)
         self.top_buttons_layout.addWidget(self.save_image_button)
@@ -240,6 +255,10 @@ class LineCutWindow(QtWidgets.QWidget):
         self.fit_buttons_layout.addWidget(self.save_result_button)
         self.fit_buttons_layout.addWidget(self.clear_fit_button)
         self.fit_buttons_layout.addStretch()
+        self.fit_buttons_layout.addWidget(self.fit_checked_button)
+        self.fit_buttons_layout.addWidget(self.save_all_fits_button)
+        self.fit_buttons_layout.addWidget(self.save_parameters_dependency_button)
+        self.fit_buttons_layout.addStretch()
         self.fit_buttons_layout.addWidget(self.save_preset_button)
         self.fit_buttons_layout.addWidget(self.load_preset_button)
 
@@ -282,19 +301,50 @@ class LineCutWindow(QtWidgets.QWidget):
         self.setLayout(self.main_layout)
 
     def init_cuts_table(self):
-        self.cuts_table.setColumnCount(5)
+        self.cuts_table.setColumnCount(6)
         self.cuts_table.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked)
         h = self.cuts_table.horizontalHeader()
         h.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
-        for col in range(5):
+        for col in range(6):
             h.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeToContents)
-        self.cuts_table.setHorizontalHeaderLabels(['cut #','index','value','offset','color'])
+        self.cuts_table.setHorizontalHeaderLabels(['cut #','index','value','offset','color','show fit'])
         v=self.cuts_table.verticalHeader()
         v.setVisible(False)
 
+        self.cuts_table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.cuts_table.customContextMenuRequested.connect(self.open_cuts_table_menu)
 
-    def append_cut_to_table(self,linecut):
+
+    def item_clicked(self, item):
+        # displays the fit result and/or information.
+        row = self.cuts_table.currentRow()
+        line = int(self.cuts_table.item(row,0).text())
+        if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+            fit_result = self.parent.linecuts[self.orientation]['lines'][line]['fit']['result']
+            self.output_window.setText(fit_result.fit_report())
+        else:
+            fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
+            self.output_window.setText('Information about selected fit type:\n'+
+                                   fit_function['description'])
+
+    def get_checked_items(self, return_indices = False, cuts_or_fits='cuts'):
+        # Note this is a bit different to the main window, where the entire item is returned.
+        # Here we just return the identifier for the linecut
+        if cuts_or_fits == 'cuts':
+            column = 0
+        elif cuts_or_fits == 'fits':
+            column = 5
+        indices = [index for index in range(self.cuts_table.rowCount()) 
+                   if self.cuts_table.item(index,column).checkState() == 2]
+        checked_items = [int(self.cuts_table.item(index,0).text()) for index in indices]
+        if return_indices:    
+            return checked_items, indices
+        else:
+            return checked_items
+
+    def append_cut_to_table(self,linecut_name):
         row = self.cuts_table.rowCount()
+        linecut=self.parent.linecuts[self.orientation]['lines'][linecut_name]
         # linecut is an entry in the parent.linecuts['orientation']['lines'] dictionary
         # It has keys 'data_index', 'checkstate', 'cut_axis_value', and possibly 'linecolor'
         self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
@@ -304,11 +354,11 @@ class LineCutWindow(QtWidgets.QWidget):
         for rownum in range(int(row+1)):
             v.setSectionResizeMode(rownum, QtWidgets.QHeaderView.ResizeToContents)
 
-        linecut_item = QtWidgets.QTableWidgetItem(str(row))
+        linecut_item = QtWidgets.QTableWidgetItem(str(linecut_name))
         linecut_item.setFlags(QtCore.Qt.ItemIsSelectable | 
                                  QtCore.Qt.ItemIsEnabled | 
                                  QtCore.Qt.ItemIsUserCheckable)
-        linecut_item.setText(str(row))
+        linecut_item.setText(str(linecut_name))
         linecut_item.setCheckState(linecut['checkstate'])
         index_box=QtWidgets.QSpinBox()
         if self.orientation=='horizontal':
@@ -320,7 +370,9 @@ class LineCutWindow(QtWidgets.QWidget):
         index_box.valueChanged[int].connect(lambda: self.cuts_table_edited('index'))
         value_box=QtWidgets.QTableWidgetItem(f'{linecut['cut_axis_value']:6g}')
         offset_box=QtWidgets.QTableWidgetItem(f'{linecut['offset']:6g}')
-        color_box=QtWidgets.QTableWidgetItem(f'color')
+        color_box=QtWidgets.QTableWidgetItem('')
+        rgbavalue = [int(linecut['linecolor'][0]*255), int(linecut['linecolor'][1]*255), int(linecut['linecolor'][2]*255),int(linecut['linecolor'][3]*255)]
+        empty_box=QtWidgets.QTableWidgetItem('')
 
         self.cuts_table.setItem(row,0,linecut_item)
         self.cuts_table.setCellWidget(row,1,index_box)
@@ -328,31 +380,69 @@ class LineCutWindow(QtWidgets.QWidget):
         self.cuts_table.item(row, 2).setTextAlignment(int(QtCore.Qt.AlignRight) | 
                                                     int(QtCore.Qt.AlignVCenter))
         self.cuts_table.setItem(row,3,offset_box)
+        self.cuts_table.item(row, 3).setTextAlignment(int(QtCore.Qt.AlignRight) | 
+                                                    int(QtCore.Qt.AlignVCenter))
         self.cuts_table.setItem(row,4,color_box)
+        self.cuts_table.item(row,4).setBackground(QtGui.QColor(*rgbavalue))
+
+        self.cuts_table.setItem(row,5,empty_box)
 
         self.cuts_table.setCurrentCell(row,0)
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
 
-    def cuts_table_edited(self,setting):
+    def cuts_table_edited(self,setting=None):
         if setting=='index':
-            row = self.cuts_table.currentRow()
-            index_box = self.cuts_table.cellWidget(row,1)
-            data_index=index_box.value()
-            linecut = self.cuts_table.item(row,0).text()
-            linecut = int(linecut)
-            try:
-                if self.orientation == 'horizontal':
-                    self.parent.linecuts[self.orientation]['lines'][linecut]['cut_axis_value']=self.parent.processed_data[1][0,data_index]
-                    self.cuts_table.item(row,2).setText(f'{self.parent.processed_data[1][0,data_index]:6g}')
-                elif self.orientation == 'vertical':
-                    self.parent.linecuts[self.orientation]['lines'][linecut]['cut_axis_value']=self.parent.processed_data[0][data_index,0]
-                    self.cuts_table.item(row,2).setText(f'{self.parent.processed_data[0][data_index,0]:6g}')
-                self.parent.linecuts[self.orientation]['lines'][linecut]['data_index'] = data_index
-                self.update()
-            except Exception as e:
-                print(e)
+            current_row = self.cuts_table.currentRow()
+            self.index_changed(current_row)
 
-    def add_cut_manually(self,data_index=0,offset=0,update=True):
+        else:
+            current_item = self.cuts_table.currentItem()
+            current_col = self.cuts_table.currentColumn()
+
+            if current_col == 2: # The user is trying to edit the value of the data. Let's find a new index for them.
+                current_row = self.cuts_table.currentRow()
+                linecut = self.cuts_table.item(current_row,0).text()
+                linecut = int(linecut)
+                inputval = float(current_item.text())
+                if self.orientation == 'horizontal':
+                    new_index = (np.abs(self.parent.processed_data[1][0,:]-inputval)).argmin()
+                elif self.orientation == 'vertical':
+                    new_index = (np.abs(self.parent.processed_data[0][:,0]-inputval)).argmin()
+                self.cuts_table.cellWidget(current_row,1).setValue(new_index)
+                self.index_changed(current_row)
+
+            elif current_col == 3: #Change the offset in the dictionary and then replot.
+                current_row = self.cuts_table.currentRow()
+                linecut = self.cuts_table.item(current_row,0).text()
+                linecut = int(linecut)
+                offset = float(current_item.text())
+                self.parent.linecuts[self.orientation]['lines'][linecut]['offset'] = offset
+                self.update()
+    
+            elif current_col == 0: # It's the checkstate, so need to replot
+                self.update()
+
+
+
+    def index_changed(self,row):
+        index_box = self.cuts_table.cellWidget(row,1)
+        data_index=index_box.value()
+        linecut = self.cuts_table.item(row,0).text()
+        linecut = int(linecut)
+        try:
+            if self.orientation == 'horizontal':
+                self.parent.linecuts[self.orientation]['lines'][linecut]['cut_axis_value']=self.parent.processed_data[1][0,data_index]
+                self.cuts_table.item(row,2).setText(f'{self.parent.processed_data[1][0,data_index]:6g}')
+            elif self.orientation == 'vertical':
+                self.parent.linecuts[self.orientation]['lines'][linecut]['cut_axis_value']=self.parent.processed_data[0][data_index,0]
+                self.cuts_table.item(row,2).setText(f'{self.parent.processed_data[0][data_index,0]:6g}')
+            self.parent.linecuts[self.orientation]['lines'][linecut]['data_index'] = data_index
+            self.update()
+        except Exception as e:
+            print(e)
+        self.cuts_table.setCurrentItem(self.cuts_table.item(row,0)) # Hopefully fixes a bug that if the index is changed, the focus goes weird.
+
+    def add_cut_manually(self,data_index=0,offset=0,linecolor=None,update=True):
         # Add a linecut when the button is pushed or from the generator. Default to zero-th index if it's the push button.
         data_index=int(data_index)
         try:
@@ -360,16 +450,21 @@ class LineCutWindow(QtWidgets.QWidget):
         except ValueError:
             max_index=-1
         try:
+            selected_colormap = cm.get_cmap(self.colormap_box.currentText())
             if self.orientation == 'horizontal':
+                line_colors = selected_colormap(np.linspace(0.1,0.9,len(self.parent.processed_data[1][0,:])))
                 linecut={'data_index':data_index, 'checkstate':QtCore.Qt.Checked,
                         'cut_axis_value':self.parent.processed_data[1][0,data_index],
-                        'offset':offset}
+                        'offset':offset,
+                        'linecolor':line_colors[data_index]}
             elif self.orientation == 'vertical':
+                line_colors = selected_colormap(np.linspace(0.1,0.9,len(self.parent.processed_data[0][:,0])))
                 linecut={'data_index':data_index, 'checkstate':QtCore.Qt.Checked,
                         'cut_axis_value':self.parent.processed_data[0][data_index,0],
-                        'offset':offset}
-            self.parent.linecuts[self.orientation]['lines'][max_index+1] = linecut
-            self.append_cut_to_table(linecut)
+                        'offset':offset,
+                        'linecolor':line_colors[data_index]}
+            self.parent.linecuts[self.orientation]['lines'][int(max_index+1)] = linecut
+            self.append_cut_to_table(int(max_index+1))
         except IndexError:
             print('Index out of range.')
         if update: # Don't update every time a cut is added when 'generate' is used
@@ -468,23 +563,125 @@ class LineCutWindow(QtWidgets.QWidget):
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
 
     def apply_colormap(self):
-        0
+        # Apply the colormap to the selected lines in the cuts table.
+        # The colormap is applied to the linecut number, not the index.
+        self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+        selected_colormap = cm.get_cmap(self.colormap_box.currentText())
+        applymethod = self.apply_colormap_to_box.currentText()
+        if applymethod == 'All by #':
+            for row in range(self.cuts_table.rowCount()):
+                linecut = int(self.cuts_table.item(row,0).text())
+                line_colors = selected_colormap(np.linspace(0.1,0.9,self.cuts_table.rowCount()))
+                self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor'] = line_colors[row]
+                rgbavalue = [int(line_colors[linecut][0]*255), int(line_colors[linecut][1]*255), int(line_colors[linecut][2]*255),int(line_colors[linecut][3]*255)]
+                self.cuts_table.item(row,4).setBackground(QtGui.QColor(*rgbavalue))
+        elif applymethod == 'All by ind':
+            for row in range(self.cuts_table.rowCount()):
+                index = int(self.cuts_table.cellWidget(row,1).value())
+                linecut = int(self.cuts_table.item(row,0).text())
+                if self.orientation == 'horizontal':
+                    line_colors = selected_colormap(np.linspace(0.1,0.9,len(self.parent.processed_data[1][0,:])))
+                    self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor'] = line_colors[index]
+                    rgbavalue = [int(line_colors[index][0]*255), int(line_colors[index][1]*255), int(line_colors[index][2]*255),int(line_colors[index][3]*255)]
+                    self.cuts_table.item(row,4).setBackground(QtGui.QColor(*rgbavalue))
+                elif self.orientation == 'vertical':
+                    line_colors = selected_colormap(np.linspace(0.1,0.9,len(self.parent.processed_data[0][:,0])))
+                    self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor'] = line_colors[index]
+                    rgbavalue = [int(line_colors[index][0]*255), int(line_colors[index][1]*255), int(line_colors[index][2]*255),int(line_colors[index][3]*255)]
+                    self.cuts_table.item(row,4).setBackground(QtGui.QColor(*rgbavalue))
+
+        elif applymethod == 'Chkd by #':
+            checked_items = self.get_checked_items(cuts_or_fits='cuts')
+            for linecut in checked_items:
+                line_colors = selected_colormap(np.linspace(0.1,0.9,len(checked_items)))
+                self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor'] = line_colors[linecut]
+                rgbavalue = [int(line_colors[linecut][0]*255), int(line_colors[linecut][1]*255), int(line_colors[linecut][2]*255),int(line_colors[linecut][3]*255)]
+                self.cuts_table.item(linecut,4).setBackground(QtGui.QColor(*rgbavalue))
+        elif applymethod == 'Chkd by ind':
+            checked_items = self.get_checked_items(cuts_or_fits='cuts')
+            for linecut in checked_items:
+                index = int(self.cuts_table.cellWidget(linecut,1).value())
+                if self.orientation == 'horizontal':
+                    line_colors = selected_colormap(np.linspace(0.1,0.9,len(self.parent.processed_data[1][0,:])))
+                    self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor'] = line_colors[index]
+                    rgbavalue = [int(line_colors[index][0]*255), int(line_colors[index][1]*255), int(line_colors[index][2]*255),int(line_colors[index][3]*255)]
+                    self.cuts_table.item(linecut,4).setBackground(QtGui.QColor(*rgbavalue))
+                elif self.orientation == 'vertical':
+                    line_colors = selected_colormap(np.linspace(0.1,0.9,len(self.parent.processed_data[0][:,0])))
+                    self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor'] = line_colors[index]
+                    rgbavalue = [int(line_colors[index][0]*255), int(line_colors[index][1]*255), int(line_colors[index][2]*255),int(line_colors[index][3]*255)]
+                    self.cuts_table.item(linecut,4).setBackground(QtGui.QColor(*rgbavalue))
+                    
+        self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+        self.update()
 
     def colormap_type_edited(self):
         self.colormap_box.clear()
         self.colormap_box.addItems(cmaps[self.colormap_type_box.currentText()])
 
-             
-    # Marked for deletion. each window is now either horiz or vert
-    # def change_orientation(self):
-    #     if self.orientation == 'horizontal':
-    #         self.orientation = 'vertical'
-    #     elif self.orientation == 'vertical':
-    #         self.orientation = 'horizontal'
-    #     self.xmin_box.clear()
-    #     self.xmax_box.clear()
-    #     self.output_window.clear()
-    #     self.update()
+    def open_cuts_table_menu(self,position):
+        item=self.cuts_table.currentItem()
+        column=self.cuts_table.currentColumn()
+        row=self.cuts_table.currentRow()
+        if column==4:
+            # Choose colour
+            menu = QtWidgets.QMenu(self)
+            color_action = menu.addAction("Choose Color")
+
+            # Show the menu at the cursor position
+            action = menu.exec_(self.cuts_table.viewport().mapToGlobal(position))
+
+            if action == color_action:
+                if item:
+                    color = QtWidgets.QColorDialog.getColor()
+                    if color.isValid():
+                        item.setBackground(color)
+                        linecut=int(self.cuts_table.item(self.cuts_table.currentRow(),0).text())
+                        self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor'] = color.name()
+                        self.cuts_table.setCurrentItem(self.cuts_table.item(row,0)) # Otherwise the cell stays blue since it's selected.
+                        self.update()
+        
+        elif column==0:
+            menu = QtWidgets.QMenu(self)
+            check_all_action = menu.addAction("Check all")
+            uncheck_all_action = menu.addAction("Uncheck all")
+
+            action = menu.exec_(self.cuts_table.viewport().mapToGlobal(position))
+            if action == check_all_action:
+                self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+                for row in range(self.cuts_table.rowCount()):
+                    item = self.cuts_table.item(row, 0)
+                    item.setCheckState(QtCore.Qt.Checked)
+                self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+                self.update()
+            elif action == uncheck_all_action:
+                self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+                for row in range(self.cuts_table.rowCount()):
+                    item = self.cuts_table.item(row, 0)
+                    item.setCheckState(QtCore.Qt.Unchecked)
+                self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+                self.update()
+
+        elif column==5:
+            menu = QtWidgets.QMenu(self)
+            check_all_action = menu.addAction("Show all fits")
+            uncheck_all_action = menu.addAction("Hide all fits")
+
+            action = menu.exec_(self.cuts_table.viewport().mapToGlobal(position))
+            if action == check_all_action:
+                self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+                for row in range(self.cuts_table.rowCount()):
+                    item = self.cuts_table.item(row, 5)
+                    item.setCheckState(QtCore.Qt.Checked)
+                self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+                self.update()
+            elif action == uncheck_all_action:
+                self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+                for row in range(self.cuts_table.rowCount()):
+                    item = self.cuts_table.item(row, 5)
+                    item.setCheckState(QtCore.Qt.Unchecked)
+                self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+                self.update()
 
     def limits_edited(self):
         try:
@@ -523,16 +720,14 @@ class LineCutWindow(QtWidgets.QWidget):
   
     def update(self):
         if self.running:
-            try:
-                self.parent.linecut.remove()
-                del self.parent.linecut
-            except:
-                pass
-            if self.orientation == '1D':
-                self.ylabel = self.parent.settings['ylabel']
-            else:
-                self.ylabel = self.parent.settings['clabel']
             self.draw_plot()
+
+            fit_lines = self.get_checked_items(cuts_or_fits='fits')
+            if len(fit_lines) > 0:
+                for line in fit_lines:
+                    if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+                        self.draw_fits(line)
+
             self.parent.canvas.draw()
             self.show()
                
@@ -576,29 +771,30 @@ class LineCutWindow(QtWidgets.QWidget):
             self.guess_checkbox.setText(f'Initial guess:')
         self.output_window.setText('Information about selected fit type:\n'+
                                    fit_function['description'])
-    def collect_fit_data(self):
+    def collect_fit_data(self,x,y):
         # If diagonal or circular, setting limits doesn't work; however, one can easily change the range during linecut definition anyway
         if self.orientation in ['horizontal','vertical','1D']:
             if self.xmin_box.text() != '':
                 xmin = float(self.xmin_box.text())
-                min_ind=(np.abs(self.x - xmin)).argmin()
+                min_ind=(np.abs(x - xmin)).argmin()
             else:
-                min_ind = self.x.argmin()
+                min_ind = x.argmin()
             if self.xmax_box.text() != '':
                 xmax = float(self.xmax_box.text())
-                max_ind=(np.abs(self.x - xmax)).argmin()
+                max_ind=(np.abs(x - xmax)).argmin()
             else:
-                max_ind = self.x.argmax()
+                max_ind = x.argmax()
             # Need to check if indices in 'wrong' order; i.e. x data descending.
             if min_ind > max_ind:
-                self.x_forfit=self.x[max_ind:min_ind]
-                self.y_forfit=self.y[max_ind:min_ind]
+                x_forfit=x[max_ind:min_ind]
+                y_forfit=y[max_ind:min_ind]
             else:
-                self.x_forfit=self.x[min_ind:max_ind]
-                self.y_forfit=self.y[min_ind:max_ind]
+                x_forfit=x[min_ind:max_ind]
+                y_forfit=y[min_ind:max_ind]
         else:
-            self.x_forfit = self.x
-            self.y_forfit = self.y
+            x_forfit = x
+            y_forfit = y
+        return x_forfit, y_forfit
 
         # if self.x_forfit[-1]<self.x_forfit[0]:
         #     self.x_forfit=self.x_forfit[::-1]
@@ -634,8 +830,16 @@ class LineCutWindow(QtWidgets.QWidget):
             p0 = None
         return p0
 
-    def start_fitting(self):
-        self.collect_fit_data()
+    def start_fitting(self,line=None,multilinefit=False):
+        if line is None:
+            current_row = self.cuts_table.currentRow()
+            line = int(self.cuts_table.item(current_row,0).text())
+        else: # We are being passed the line from fit_checked
+            # Still need to find the 'current row' to put a checkbox there later
+            labels=[int(self.cuts_table.item(row,0).text()) for row in range(self.cuts_table.rowCount())]
+            current_row=labels.index(line)
+        x,y,z=self.get_line_data(line)
+        x_forfit, y_forfit = self.collect_fit_data(x,y)
         function_class = self.fit_class_box.currentText()
         function_name = self.fit_box.currentText()
         inputinfo=self.collect_fit_inputs(function_class,function_name)
@@ -643,22 +847,43 @@ class LineCutWindow(QtWidgets.QWidget):
 
         # Try to do the fit.
         try:
-            self.fit_result = fits.fit_data(function_class=function_class, function_name=function_name,
-                                                xdata=self.x_forfit,ydata=self.y_forfit, p0=p0, inputinfo=inputinfo)
-            self.y_fit = self.fit_result.best_fit
+            fit_result = fits.fit_data(function_class=function_class, function_name=function_name,
+                                                xdata=x_forfit,ydata=y_forfit, p0=p0, inputinfo=inputinfo)
+            y_fit = fit_result.best_fit
         except Exception as e:
             self.output_window.setText(f'Curve could not be fitted: {e}')
-            self.fit_parameters = [np.nan]*len(fits.get_names(function_name).split(','))
-            self.y_fit = np.nan
+            fit_parameters = [np.nan]*len(fits.get_names(function_name).split(','))
+            y_fit = np.nan
 
-        #self.draw_plot(parent_linecut=False)
-        self.plot_parameters()
-        self.draw_fits()
-           
-    def plot_parameters(self):
+        self.parent.linecuts[self.orientation]['lines'][line]['fit'] = {'result': fit_result,
+                                                                        'xdata': x_forfit,
+                                                                        'ydata': y_forfit,
+                                                                        'fitted_y': y_fit}
+
+        # Add a checkbox to the table now a fit exists.
+        self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+        plot_fit_item = QtWidgets.QTableWidgetItem('')
+        plot_fit_item.setFlags(QtCore.Qt.ItemIsSelectable | 
+                            QtCore.Qt.ItemIsEnabled | 
+                            QtCore.Qt.ItemIsUserCheckable)
+        plot_fit_item.setCheckState(QtCore.Qt.Checked)
+        self.cuts_table.setItem(current_row,5,plot_fit_item)
+        self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+        
+        self.print_parameters(line)
+        self.draw_fits(line)
+
+    def fit_checked(self):
+        # Fit all checked items in the table.
+        fit_lines = self.get_checked_items(cuts_or_fits='cuts')
+        for line in fit_lines:
+            self.start_fitting(line,multilinefit=True)
+
+
+    def print_parameters(self,line):
         self.output_window.clear()
         try:
-            self.output_window.setText(self.fit_result.fit_report())
+            self.output_window.setText(self.parent.linecuts[self.orientation]['lines'][line]['fit']['result'].fit_report())
 
         except Exception as e:
             self.output_window.setText('Could not print fit parameters:', e)
@@ -682,10 +907,13 @@ class LineCutWindow(QtWidgets.QWidget):
             z = self.parent.processed_data[0][self.parent.linecuts[self.orientation]['lines'][line]['data_index'],0]
         return (x,y,z)
 
-    def draw_plot(self,parent_linecut=True):
+    def draw_plot(self,parent_marker=True):
         self.running = True
         self.figure.clear()
+
         self.axes = self.figure.add_subplot(111)
+
+        lines = self.get_checked_items()
 
         if self.orientation == '1D':
             x,y,z=self.get_line_data(0)
@@ -695,30 +923,44 @@ class LineCutWindow(QtWidgets.QWidget):
             self.axes.plot(x, y, linewidth=self.parent.settings['linewidth'])
 
         elif self.orientation == 'horizontal':
-            for line in self.parent.linecuts[self.orientation]['lines']:
+            if hasattr(self.parent,'horimarkers'):
+                for marker in self.parent.horimarkers:
+                    marker.remove()
+            self.parent.horimarkers = []
+            for line in lines:
                 x,y,z= self.get_line_data(line)
                 self.xlabel = self.parent.settings['xlabel']
                 self.title = f'Cuts at fixed {self.parent.settings['ylabel']}'
                 self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value'] = z
-                if parent_linecut:
-                    self.parent.linecut = self.parent.axes.axhline(y=z, linestyle='dashed', linewidth=1, 
-                                                            color=self.parent.settings['linecolor'])
+                if parent_marker:
+                    self.parent.horimarkers.append(self.parent.axes.axhline(y=z, linestyle='dashed', linewidth=1, xmax=0.1,
+                                                    color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
+                    self.parent.horimarkers.append(self.parent.axes.axhline(y=z, linestyle='dashed', linewidth=1, xmin=0.9,
+                                                    color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
                 self.ylabel = self.parent.settings['clabel']
                 offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
-                self.axes.plot(x, y+offset, linewidth=self.parent.settings['linewidth'])
+                self.axes.plot(x, y+offset, linewidth=self.parent.settings['linewidth'],
+                                color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
 
         elif self.orientation == 'vertical':
-            for line in self.parent.linecuts[self.orientation]['lines']:
+            if hasattr(self.parent,'vertmarkers'):
+                for marker in self.parent.vertmarkers:
+                    marker.remove()
+            self.parent.vertmarkers = []
+            for line in lines:
                 x,y,z= self.get_line_data(line)
                 self.xlabel = self.parent.settings['ylabel']
                 self.title = f'Cuts at fixed {self.parent.settings['xlabel']}'
                 self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value'] = z
-                if parent_linecut:
-                    self.parent.linecut = self.parent.axes.axvline(x=z, linestyle='dashed', linewidth=1, 
-                                                            color=self.parent.settings['linecolor'])
+                if parent_marker:
+                    self.parent.vertmarkers.append(self.parent.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymax=0.1,
+                                                    color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
+                    self.parent.vertmarkers.append(self.parent.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymin=0.9,
+                                                    color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
                 self.ylabel = self.parent.settings['clabel']
                 offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
-                self.axes.plot(x, y+offset, linewidth=self.parent.settings['linewidth'])
+                self.axes.plot(x, y+offset, linewidth=self.parent.settings['linewidth'],
+                                color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
 
         elif self.orientation == 'diagonal' or self.orientation == 'circular':
             x0 = self.parent.linecut_points[0].x 
@@ -766,60 +1008,136 @@ class LineCutWindow(QtWidgets.QWidget):
         self.canvas.draw()
         self.parent.canvas.draw()
               
-    def draw_fits(self):
+    def draw_fits(self,line):
         try:
-            self.axes.plot(self.x_forfit, self.y_fit, 'k--',
+            fit_result=self.parent.linecuts[self.orientation]['lines'][line]['fit']['result']
+            x_forfit=self.parent.linecuts[self.orientation]['lines'][line]['fit']['xdata']
+            y_fit=fit_result.best_fit
+            self.axes.plot(x_forfit, y_fit, 'k--',
                 linewidth=self.parent.settings['linewidth'])
-            self.fit_components=self.fit_result.eval_components()
-            line_colors = cm.viridis(np.linspace(0.1,0.9,len(self.fit_components.keys())))
-            for i,key in enumerate(self.fit_components.keys()):
-                self.axes.plot(self.x_forfit, self.fit_components[key], '--', color=line_colors[i],alpha=0.75, linewidth=self.parent.settings['linewidth'])
+            fit_components=fit_result.eval_components()
+            if self.colormap_box.currentText() == 'viridis':
+                selected_colormap = cm.get_cmap('plasma')
+            elif self.colormap_box.currentText() == 'plasma':
+                selected_colormap = cm.get_cmap('viridis')
+            line_colors = selected_colormap(np.linspace(0.1,0.9,len(fit_components.keys())))
+            for i,key in enumerate(fit_components.keys()):
+                self.axes.plot(x_forfit, fit_components[key], '--', color=line_colors[i],alpha=0.75, linewidth=self.parent.settings['linewidth'])
         except Exception as e:
             self.output_window.setText(f'Could not plot fit components: {e}')
         self.canvas.draw()
 
+    def autoscale_axes(self):
+        self.axes.autoscale()
+        self.canvas.draw()
+
     def closeEvent(self, event):
-        self.parent.hide_linecuts()
+        if hasattr(self.parent,'vertmarkers'):
+            for marker in self.parent.vertmarkers:
+                marker.remove()
+                del marker
+            del self.parent.vertmarkers
+        if hasattr(self.parent,'horimarkers'):
+            for marker in self.parent.horimarkers:
+                marker.remove()
+                del marker
+            del self.parent.horimarkers
+        # self.parent.hide_linecuts()
         self.running = False
         
     def save_data(self):
-        formats = 'JSON (*.json);;Comma Separated Value (*.csv)'
-        filename, extension = QtWidgets.QFileDialog.getSaveFileName(
-                self, 'Save Data As','',formats)
-        try:
-            data={}
-            data['X']=list(self.x)
-            data['Y']=list(self.y)
-            if hasattr(self,'fit_result'):
-                data['X_bestfit']=list(self.x_forfit)
-                data['Y_bestfit']=list(self.y_fit)
-            if hasattr(self,'fit_components'):
-                for key in self.fit_components.keys():
-                    data[key]=list(self.fit_components[key])
-            if extension=='JSON (*.json)':
-                with open(filename, 'w', encoding='utf-8') as f:
-                    jsondump(data, f, ensure_ascii=False,indent=4)
-            elif extension=='Comma Separated Value (*.csv)':
-                with open(filename, 'w', newline='') as f:
-                    writer = csvwriter(f)
-                    writer.writerow([key for key in data])
-                    for i in range(len(data['X'])):
-                        row = []
-                        for param in data:
-                            try:
-                                row.append(data[param][i])
-                            except IndexError:
-                                row.append('')
-                        writer.writerow(row)
-        except Exception as e:
-            print(e)
+        # Save only the plotted data to json or csv. The complete dictionary is always saved with save session from the main window.
+        lines= self.get_checked_items(cuts_or_fits='cuts')
+        if len(lines) != 0:
+            fit_lines = self.get_checked_items(cuts_or_fits='fits')
+
+            formats = 'JSON (*.json);;Comma Separated Value (*.csv)'
+            filename, extension = QtWidgets.QFileDialog.getSaveFileName(
+                    self, 'Save Data As','',formats)
+            try:
+                data={}
+                for line in lines:
+                    x,y,z=self.get_line_data(line)
+                    data[f'linecut{line}_X'] = x.tolist()
+                    data[f'linecut{line}_Y'] = y.tolist()
+                for line in fit_lines:
+                    fit_result=self.parent.linecuts[self.orientation]['lines'][line]['fit']['result']
+                    data[f'fit{line}_X'] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['xdata'].tolist()
+                    data[f'fit{line}_Y'] = fit_result.best_fit.tolist()
+                    fit_components=fit_result.eval_components()
+                    for key in fit_components.keys():
+                        data[f'fit{line}_{key}Y'] = fit_components[key].tolist()
+
+                if extension=='JSON (*.json)':
+                    with open(filename, 'w', encoding='utf-8') as f:
+                        jsondump(data, f, ensure_ascii=False,indent=4)
+                elif extension=='Comma Separated Value (*.csv)':
+                    with open(filename, 'w', newline='') as f:
+                        writer = csvwriter(f)
+                        writer.writerow([key for key in data])
+                        for i in range(len(data[f'linecut{lines[0]}_X'])):
+                            row = []
+                            for param in data:
+                                try:
+                                    row.append(data[param][i])
+                                except IndexError:
+                                    row.append('')
+                            writer.writerow(row)
+            except Exception as e:
+                print(e)
     
     def save_fit_result(self):
-        formats = 'lmfit Model Result (*.sav)'
-        filename, extension = QtWidgets.QFileDialog.getSaveFileName(
-            self, 'Save Fit Result','', formats)
-        save_modelresult(self.fit_result,filename)
-        
+        current_row = self.cuts_table.currentRow()
+        line = int(self.cuts_table.item(current_row,0).text())
+        if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+            fit_result = self.parent.linecuts[self.orientation]['lines'][line]['fit']['result']
+            formats = 'lmfit Model Result (*.sav)'
+            filename, extension = QtWidgets.QFileDialog.getSaveFileName(
+                self, 'Save Fit Result','', formats)
+            save_modelresult(fit_result,filename)
+
+    def save_all_fits(self):
+        fit_lines = self.get_checked_items(cuts_or_fits='fits')
+        if len(fit_lines) > 0:
+            formats = 'lmfit Model Result (*.sav)'
+            filename, extension = QtWidgets.QFileDialog.getSaveFileName(
+                self, 'Save Fit Result: Select base name','', formats)
+            for line in fit_lines:
+                fit_result = self.parent.linecuts[self.orientation]['lines'][line]['fit']['result']
+                save_modelresult(fit_result,filename.replace('.sav',f'_{line}.sav'))
+
+    def clear_fit(self):
+        current_row = self.cuts_table.currentRow()
+        line = int(self.cuts_table.item(current_row,0).text())
+        if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+            self.parent.linecuts[self.orientation]['lines'][line].pop('fit')
+            empty_box=QtWidgets.QTableWidgetItem('')
+            self.cuts_table.setItem(current_row,5,empty_box)
+            fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
+            self.output_window.setText('Information about selected fit type:\n'+
+                                   fit_function['description'])
+            self.update()
+
+    def save_parameters_dependency(self):
+        try:
+            fit_lines = self.get_checked_items(cuts_or_fits='fits')
+            first_result = self.parent.linecuts[self.orientation]['lines'][fit_lines[0]]['fit']['result']
+            data=np.zeros((len(fit_lines),len(first_result.params.keys())+1))
+            for i,line in enumerate(fit_lines):
+                data[i,0] = self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value']
+                for j,param in enumerate(first_result.params.keys()):
+                    data[i,j+1] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['result'].params[param].value
+            success=True
+        except Exception as e:
+            print('Could not compile array: {e}')
+            success=False
+        if success:
+            filename, extension = QtWidgets.QFileDialog.getSaveFileName(
+                self, 'Save Fiting Result','', 'numpy dat file (*.dat)')
+            if filename:
+                np.savetxt(filename, data, delimiter='\t', header='X,'+','.join(first_result.params.keys()), fmt='%s')
+                print('Saved!')
+
     def save_image(self):
         formats = 'Portable Network Graphic (*.png);;Adobe Acrobat (*.pdf)'
         filename, extension = QtWidgets.QFileDialog.getSaveFileName(
@@ -852,50 +1170,41 @@ class LineCutWindow(QtWidgets.QWidget):
         if DARK_THEME and qdarkstyle_imported:
             rcParams_to_dark_theme()
             self.update() 
-
-    def change_index(self, direction):
-        if self.orientation == 'horizontal':
-            if direction == 'up':
-                new_index = self.parent.selected_indices[1]+1
-                if new_index < self.parent.processed_data[0].shape[1]:
-                    self.parent.selected_indices[1] = new_index
-            elif direction == 'down':
-                new_index = self.parent.selected_indices[1]-1
-                if new_index >= 0:
-                    self.parent.selected_indices[1] = new_index
-        elif self.orientation == 'vertical':
-            if direction == 'up':
-                new_index = self.parent.selected_indices[0]+1
-                if new_index < self.parent.processed_data[0].shape[0]:
-                    self.parent.selected_indices[0] = new_index
-            elif direction == 'down':
-                new_index = self.parent.selected_indices[0]-1
-                if new_index >= 0:
-                    self.parent.selected_indices[0] = new_index
-        self.update()
-        self.output_window.clear()
-        self.parent.canvas.draw()
             
     def mouse_scroll_canvas(self, event):
         if event.inaxes:
-            data_shape = self.parent.processed_data[0].shape
-            if self.orientation == 'horizontal':
-                new_index = self.parent.selected_indices[1]+int(event.step)
-                if new_index >= 0 and new_index < data_shape[1]:
-                    self.parent.selected_indices[1] = new_index
-            elif self.orientation == 'vertical':
-                new_index = self.parent.selected_indices[0]+int(event.step)
-                if new_index >= 0 and new_index < data_shape[0]:
-                    self.parent.selected_indices[0] = new_index
-            self.update()
-            self.parent.canvas.draw()
+
+            scale=1.2
+            scale_factor = np.power(scale, -event.step)
+            xdata = event.xdata
+            ydata = event.ydata
+            x_left = xdata - event.inaxes.get_xlim()[0]
+            x_right = event.inaxes.get_xlim()[1] - xdata
+            y_top = ydata - event.inaxes.get_ylim()[0]
+            y_bottom = event.inaxes.get_ylim()[1] - ydata
+            newxlims=[xdata - x_left * scale_factor, xdata + x_right * scale_factor]
+            newylims=[ydata - y_top * scale_factor, ydata + y_bottom * scale_factor]
+            if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
+                self.axes.set_xlim(newxlims)
+            elif QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
+                self.axes.set_ylim(newylims)
+            else:
+                self.axes.set_xlim(newxlims)
+                self.axes.set_ylim(newylims)
+            event.inaxes.figure.canvas.draw()
+            # Update toolbar so back/forward buttons work
+            fig = event.inaxes.get_figure()
+            fig.canvas.toolbar.push_current()
 
     def mouse_click_canvas(self, event):
         if self.navi_toolbar.mode == '': # If not using the navigation toolbar tools
             if event.inaxes and event.button == 1:
+                current_row = self.cuts_table.currentRow()
+                # Get the x data for the linecut
+                x,y,z=self.get_line_data(int(self.cuts_table.item(current_row,0).text()))
                 # Snap to data.
-                index=(np.abs(self.x-event.xdata)).argmin()
-                x_value = self.x[index]
+                index=(np.abs(x-event.xdata)).argmin()
+                x_value = x[index]
                 if self.xmin_box.text() == '':
                     self.xmin_box.setText(str(x_value))
                 elif self.xmax_box.text() == '':
@@ -932,45 +1241,16 @@ class LineCutWindow(QtWidgets.QWidget):
                 preset_dict=jsonload(f)
             self.xmin_box.setText(preset_dict['xlims'][0])
             self.xmax_box.setText(preset_dict['xlims'][1])
-            self.fit_class_box.setEditText(preset_dict['function_class'])
-            self.fit_box.setEditText(preset_dict['function_name'])
+            self.fit_class_box.setCurrentText(preset_dict['function_class'])
+            self.fit_box.setCurrentText(preset_dict['function_name'])
             self.input_edit.setText(preset_dict['inputinfo'])
             self.guess_edit.setText(preset_dict['initial_guess'])
             if preset_dict['intial_checkbox']:
                 self.guess_checkbox.setCheckState(QtCore.Qt.Checked)
             else:
                 self.guess_checkbox.setCheckState(QtCore.Qt.UnChecked)
+            self.update()
 
-    
-    # Below doesn't work because arrow keys already function to move between items in the GUI.
-    # Could try to override it one day.
-
-    # def keyPressEvent(self,event):
-    #     if self.orientation == 'horizontal' or self.orientation == 'vertical':
-    #         data_shape = self.parent.processed_data[0].shape
-    #         if self.orientation == 'horizontal':
-    #             if event.key() == QtCore.Qt.Key_Up:
-    #                 new_index = self.parent.selected_indices[1]+1
-    #                 if new_index < data_shape[1]:
-    #                     self.parent.selected_indices[1] = new_index
-    #             elif event.key() == QtCore.Qt.Key_Down:
-    #                 new_index = self.parent.selected_indices[1]-1
-    #                 if new_index >= 0:
-    #                     self.parent.selected_indices[1] = new_index
-            
-    #         elif self.orientation == 'vertical':
-    #             if event.key() == QtCore.Qt.Key_Right:
-    #                 new_index = self.parent.selected_indices[0]+1
-    #                 if new_index < data_shape[0]:
-    #                     self.parent.selected_indices[0] = new_index
-    #             elif event.key() == QtCore.Qt.Key_Left:
-    #                 new_index = self.parent.selected_indices[0]-1
-    #                 if new_index >= 0:
-    #                     self.parent.selected_indices[0] = new_index
-    #         self.update()
-    #         self.parent.canvas.draw()
-  
-            
 class MultiPlotWindow(LineCutWindow):
     def __init__(self, parent):
         super().__init__(parent)
