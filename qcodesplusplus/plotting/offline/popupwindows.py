@@ -419,7 +419,10 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.parent.linecuts[self.orientation]['lines'][linecut]['offset'] = offset
                 self.update()
     
-            elif current_col == 0: # It's the checkstate, so need to replot
+            elif current_col == 0: # It's the checkstate, so need to replot and update dictionary
+                current_row = self.cuts_table.currentRow()
+                linecut = int(self.cuts_table.item(current_row,0).text())
+                self.parent.linecuts[self.orientation]['lines'][linecut]['checkstate'] = current_item.checkState()
                 self.update()
 
 

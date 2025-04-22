@@ -387,6 +387,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                     if attr_dicts is not None: #then a previous session is being loaded
                         for attr in attr_dicts[i]:
+                            print(attr,attr_dicts[i][attr])
                             if attr not in ['filename','checkState']:
                                 setattr(item.data,attr,attr_dicts[i][attr])
                             elif attr=='checkState':
@@ -394,6 +395,16 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 if attr_dicts[i][attr]==2:
                                     self.file_checked(item)
                                     overrideautocheck=True #If any item is checked, override autochecking. But if NONE of them are checked, let autocheck do it's thing.
+                            if hasattr(item.data,'linecuts'):
+                                for orientation in item.data.linecuts.keys():
+                                    if len(item.data.linecuts[orientation]['lines']) > 0:
+                                        item.data.linecuts[orientation]['linecut_window'] = LineCutWindow(item.data,orientation=orientation,init_cmap='plasma')
+                                        item.data.linecuts[orientation]['linecut_window'].running = True
+                                        for line in item.data.linecuts[orientation]['lines']:
+                                            item.data.linecuts[orientation]['linecut_window'].append_cut_to_table(line)
+                                        item.data.linecuts[orientation]['linecut_window'].activateWindow()
+                                        item.data.linecuts[orientation]['linecut_window'].update()
+                                        item.data.linecuts[orientation]['linecut_window'].show()
 
                 except Exception as e:
                     print(f'Failed to open {filepath}:', e)
@@ -1254,15 +1265,39 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if hasattr(item,'checkState'):
                     item_dictionary['checkState']=item.checkState()
                 attributes=['label','settings','filters','view_settings','axlim_settings',
-                            'raw_data','processed_data','linecuts']
+                            'raw_data','processed_data']
                 for attribute in attributes:
                     if hasattr(item.data,attribute):
                         item_dictionary[attribute]=getattr(item.data,attribute)
+                if hasattr(item.data,'linecuts'):
+                    item_dictionary['linecuts'] = self.remove_linecutwindows_and_fits(item.data.linecuts)
+
                 dictionary_list.append(item_dictionary)
             np.save(filepath, dictionary_list)
             print(f'Session saved as {filepath}')
+            del dictionary_list
 
-    # Could consider to add the linecut window as part of a 'session'
+    def remove_linecutwindows_and_fits(self,d,exclude_key='linecut_window',exclude_key2='fit'):
+    # Basically exists to remove the linecut window objects and lmfit objects
+    # in situation where it won't work well, e.g. saving sessions.
+        new_dict = {}
+        for key, value in d.items():
+            if isinstance(value, dict):
+                # Recurse into nested dictionaries
+                new_dict[key] = self.remove_linecutwindows_and_fits(value, exclude_key)
+            else:
+                # For non-dictionary values, just copy them
+                new_dict[key] = value
+
+        if exclude_key in new_dict:
+            new_dict[exclude_key] = None  # Remove the linecut window object
+            # if new_dict[exclude_key] is not None:
+            #     new_dict[exclude_key]=True
+            # else:
+            #     new_dict[exclude_key]=False
+        if exclude_key2 in new_dict:
+            del new_dict[exclude_key2]
+        return new_dict
 
     def load_session(self):
         filepath, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open Session', '', 'Saved Session (*.npy)')
@@ -1464,8 +1499,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     data.selected_x, data.selected_y = x, y
                     
                     if ((event.button == 1 or event.button == 2) and 
-                        len(data.get_columns()) == 3 and 
-                        not hasattr(data, 'linecut_points')):
+                        len(data.get_columns()) == 3):
                         index_x = np.argmin(np.abs(data.processed_data[0][:,0]-x))
                         index_y = np.argmin(np.abs(data.processed_data[1][0,:]-y))
                         data.selected_indices = [int(index_x), int(index_y)]
@@ -1607,10 +1641,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 else:
                     selected_colormap = cm.get_cmap('viridis')
                 data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,init_cmap=selected_colormap.name)
-            data.linecuts[orientation]['linecut_window'].add_cut_manually()
-            data.linecuts[orientation]['linecut_window'].remove_cut()
             data.linecuts[orientation]['linecut_window'].running = True
             data.linecuts[orientation]['linecut_window'].activateWindow()
+            data.linecuts[orientation]['linecut_window'].show()
         elif signal.text() == 'Draw diagonal linecut':
             if hasattr(data, 'linecut_points'):
                 data.hide_linecuts()
