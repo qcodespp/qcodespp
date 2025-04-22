@@ -106,9 +106,6 @@ class qcodesppData(main.BaseClassData):
             column_data = np.column_stack((xdata, ydata))
 
         elif len(self.independent_parameters) > 1: # data is 2D
-            # In this case it's possible to select a 2D array as the X data, but X data MUST always be 1D
-            # In future, I will add that each X point is the average of that row in the 2D array
-
             if self.settings['Y data'] != '':
                 ydata = self.data_dict[self.settings['Y data']]
                 self.settings['ylabel'] = f'{self.channels[self.settings['Y data']]['label']} ({self.channels[self.settings['Y data']]['unit']})'
@@ -277,50 +274,3 @@ class qcodesppData(main.BaseClassData):
             self.reset_view_settings()
             if hasattr(self, 'image'):
                 self.apply_view_settings()
-
-# Old way of choosing axes. Basically is broken now but could be reintroduced
-    # def add_extension_actions(self, editor, menu):
-    #     channel_menu = menu.addMenu('Select X...')
-    #     for par in self.all_parameter_names:
-    #         par_name = par
-    #         action = QtWidgets.QAction(par_name, editor)
-    #         action.setData("x")
-    #         channel_menu.addAction(action) 
-
-    #     channel_menu = menu.addMenu('Select Y...')
-    #     for par in self.all_parameter_names:
-    #         par_name = par
-    #         action = QtWidgets.QAction(par_name, editor)
-    #         action.setData("y")
-    #         channel_menu.addAction(action) 
-    #     if len(self.independent_parameters) > 1:
-    #         channel_menu = menu.addMenu('Select Z...')
-    #         for par in self.all_parameter_names:
-    #             par_name = par
-    #             action = QtWidgets.QAction(par_name, editor)
-    #             action.setData("z")
-    #             channel_menu.addAction(action)
-    #     menu.addSeparator()
-
-
-
-
-    # def do_extension_actions(self, editor, signal):
-    #     if signal.text() in self.all_parameter_names and signal.data() == "z":
-    #         self.index_dependent_parameter = self.dependent_parameter_names.index(signal.text())
-    #         self.load_and_reshape_data()
-    #         editor.update_plots()
-    #         editor.show_current_all()
-    #     if signal.text() in self.all_parameter_names and signal.data() == "y":
-    #         if len(self.independent_parameters) == 1:
-    #             self.index_dependent_parameter = self.dependent_parameter_names.index(signal.text())
-    #         else:
-    #             self.index_y = self.all_parameter_names.index(signal.text())
-    #         self.load_and_reshape_data()
-    #         editor.update_plots()
-    #         editor.show_current_all()
-    #     if signal.text() in self.all_parameter_names and signal.data() == "x":
-    #         self.index_x = self.all_parameter_names.index(signal.text())
-    #         self.load_and_reshape_data()
-    #         editor.update_plots()
-    #         editor.show_current_all()

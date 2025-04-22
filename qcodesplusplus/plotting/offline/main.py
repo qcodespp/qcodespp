@@ -121,23 +121,35 @@ SETTINGS_MENU_OPTIONS['xlabel'] = ['Gate voltage (V)',
                                    '$V$ (mV)',
                                    'Magnetic Field (T)', 
                                    '$B$ (T)', 
-                                   'Angle (degrees)']
+                                   'Angle (degrees)', 
+                                   'Temperature (K)']
 SETTINGS_MENU_OPTIONS['ylabel'] = ['Bias voltage (mV)', 
                                    '$V$ (mV)', 
                                    'Gate voltage (V)', 
                                    '$V_g$ (V)', 
+                                   '$I$ (A)',
+                                   '$I$ (nA)',
+                                   'Current (A)',
+                                   'Current (nA)',
                                    'd$I$/d$V$ (μS)', 
                                    'd$I$/d$V$ $(e^{2}/h)$',
                                    '(d$I$/d$V$ $(e^{2}/h)$)$^{1/4}$',
                                    'Angle (degrees)', 
-                                   'Temperature (mK)']
-SETTINGS_MENU_OPTIONS['clabel'] = ['$I$ (nA)', 
-                                   '$I$ (a.u.)', 
-                                   'Current (nA)', 
-                                   'd$I$/d$V$ (μS)', 
-                                   'd$I$/d$V$ ($G_0$)', 
+                                   'Temperature (K)',
+                                   'Magnetic Field (T)', 
+                                   '$B$ (T)', ]
+SETTINGS_MENU_OPTIONS['clabel'] = ['$I$ (A)',
+                                   '$I$ (nA)',
+                                   'Current (A)',
+                                   'Current (nA)',
+                                   'Voltage (V)',
+                                    'Voltage (mV)',
+                                   'd$I$/d$V$ (S)',
+                                   'd$V$/d$I$ (Ohm)',
                                    'd$I$/d$V$ (a.u.)', 
+                                   'd$I$/d$V$ $(2e^{2}/h)$', 
                                    'd$I$/d$V$ $(e^{2}/h)$', 
+                                   'd$I$/d$V$ ($G_0$)', 
                                    '(d$I$/d$V$ $(e^{2}/h)$)$^{1/4}$',
                                    'log$^{10}$(d$I$/d$V$ $(e^{2}/h)$)', 
                                    'd$^2I$/d$V^2$ (a.u.)', 
@@ -1641,9 +1653,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 else:
                     selected_colormap = cm.get_cmap('viridis')
                 data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,init_cmap=selected_colormap.name)
+
             data.linecuts[orientation]['linecut_window'].running = True
             data.linecuts[orientation]['linecut_window'].activateWindow()
+            if len(data.linecuts[orientation]['lines']) > 0:
+                data.linecuts[orientation]['linecut_window'].update()
             data.linecuts[orientation]['linecut_window'].show()
+
         elif signal.text() == 'Draw diagonal linecut':
             if hasattr(data, 'linecut_points'):
                 data.hide_linecuts()

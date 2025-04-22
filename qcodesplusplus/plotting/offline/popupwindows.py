@@ -124,6 +124,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.fit_checked_button = QtWidgets.QPushButton('Fit checked')
         self.save_all_fits_button = QtWidgets.QPushButton('Save all fits')
         self.save_parameters_dependency_button = QtWidgets.QPushButton('Generate param dependency')
+        self.clear_all_fits_button = QtWidgets.QPushButton('Clear all fits')
         self.save_preset_button = QtWidgets.QPushButton('Save preset')
         self.load_preset_button = QtWidgets.QPushButton('Load preset')
 
@@ -155,6 +156,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.save_result_button.clicked.connect(self.save_fit_result)
         self.fit_checked_button.clicked.connect(self.fit_checked)
         self.save_all_fits_button.clicked.connect(self.save_all_fits)
+        self.clear_all_fits_button.clicked.connect(self.clear_all_fits)
         self.save_parameters_dependency_button.clicked.connect(self.save_parameters_dependency)
         self.save_preset_button.clicked.connect(self.save_fit_preset)
         self.load_preset_button.clicked.connect(self.load_fit_preset)
@@ -258,6 +260,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.fit_buttons_layout.addWidget(self.fit_checked_button)
         self.fit_buttons_layout.addWidget(self.save_all_fits_button)
         self.fit_buttons_layout.addWidget(self.save_parameters_dependency_button)
+        self.fit_buttons_layout.addWidget(self.clear_all_fits_button)
         self.fit_buttons_layout.addStretch()
         self.fit_buttons_layout.addWidget(self.save_preset_button)
         self.fit_buttons_layout.addWidget(self.load_preset_button)
@@ -423,6 +426,12 @@ class LineCutWindow(QtWidgets.QWidget):
                 current_row = self.cuts_table.currentRow()
                 linecut = int(self.cuts_table.item(current_row,0).text())
                 self.parent.linecuts[self.orientation]['lines'][linecut]['checkstate'] = current_item.checkState()
+                self.update()
+
+            elif current_col == 5: # It's the checkstate for the fit. Currently don't implement saving the fits so no need to update the dictionary.
+                # current_row = self.cuts_table.currentRow()
+                # linecut = int(self.cuts_table.item(current_row,0).text())
+                # self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['checkstate'] = current_item.checkState()
                 self.update()
 
 
@@ -873,14 +882,17 @@ class LineCutWindow(QtWidgets.QWidget):
         self.cuts_table.setItem(current_row,5,plot_fit_item)
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
         
-        self.print_parameters(line)
-        self.draw_fits(line)
+        if not multilinefit:
+            self.print_parameters(line)
+            self.draw_fits(line)
 
     def fit_checked(self):
         # Fit all checked items in the table.
         fit_lines = self.get_checked_items(cuts_or_fits='cuts')
         for line in fit_lines:
             self.start_fitting(line,multilinefit=True)
+        self.print_parameters(line)
+        self.update()
 
 
     def print_parameters(self,line):
@@ -1120,6 +1132,17 @@ class LineCutWindow(QtWidgets.QWidget):
             self.output_window.setText('Information about selected fit type:\n'+
                                    fit_function['description'])
             self.update()
+
+    def clear_all_fits(self):
+        fit_lines = self.get_checked_items(cuts_or_fits='fits')
+        for line in fit_lines:
+            self.parent.linecuts[self.orientation]['lines'][line].pop('fit')
+        for row in range(self.cuts_table.rowCount()):
+            empty_box=QtWidgets.QTableWidgetItem('')
+            self.cuts_table.setItem(row,5,empty_box)
+        fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
+        self.output_window.setText('Information about selected fit type:\n'+fit_function['description'])
+        self.update()
 
     def save_parameters_dependency(self):
         try:
