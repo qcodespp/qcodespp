@@ -301,17 +301,25 @@ def divide(data, method, setting1, setting2, array=None):
     return data
 
 
-def logarithm(data, method, setting1, setting2):
+def logarithm(data, method, setting1=10, setting2=None):
+    if setting1 == 'e':
+        function = np.ma.log
+    elif setting1 == '10':
+        function = np.ma.log10
+    elif setting1 == '2':
+        function = np.ma.log2
+    else:
+        print('Setting 1 is not a valid base. Use e, 10 or 2')
     if method == 'Mask':
-        data[-1] = np.ma.log10(data[-1])        
+        data[-1] = function(data[-1])        
     elif method == 'Shift':
         min_value = np.amin(data[-1])
         if min_value <= 0.0:
-            data[-1] = np.ma.log10(data[-1]-min_value)
+            data[-1] = function(data[-1]-min_value)
         else:
-            data[-1] = np.ma.log10(data[-1])
+            data[-1] = function(data[-1])
     elif method == 'Abs':
-        data[-1] = np.ma.log10(np.abs(data[-1]))
+        data[-1] = function(np.abs(data[-1]))
     return data
 
 def power(data, method, setting1, setting2):
@@ -427,7 +435,7 @@ class Filter:
                                       'Function': offset_line_by_line,
                                       'Checkstate': 2},
                         'Logarithm': {'Method': ['Mask','Shift','Abs'],
-                                      'Settings': ['', ''],
+                                      'Settings': ['10', ''],
                                       'Function': logarithm,
                                       'Checkstate': 2}, 
                         'Power': {'Method': ['X','Y','Z'],
