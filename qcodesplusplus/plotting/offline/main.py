@@ -16,6 +16,7 @@ import sys
 import os
 import copy
 import io
+import tarfile
 from json import load as jsonload
 from json import dump as jsondump
 from csv import writer as csvwriter
@@ -34,6 +35,8 @@ try:
     qdarkstyle_imported = True
 except ModuleNotFoundError:
     qdarkstyle_imported = False
+
+from lmfit.model import save_modelresult, load_modelresult
 
 import qcodesplusplus.plotting.offline.design as design
 from .popupwindows import LineCutWindow, FFTWindow
@@ -384,7 +387,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             item = DataItem(BaseClassData(filepath, self.canvas))
             return item
 
-    def open_files(self, filepaths=None, load_the_data=True, attr_dicts=None):
+    def open_files(self, filepaths=None, load_the_data=True, attr_dicts=None, dirpath=None):
         overrideautocheck=False #If loading a previously saved session, don't automatically check only the last file.
         self.file_list.itemChanged.disconnect(self.file_checked)
         if not filepaths:
@@ -409,6 +412,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             if hasattr(item.data,'linecuts'):
                                 for orientation in item.data.linecuts.keys():
                                     if len(item.data.linecuts[orientation]['lines']) > 0:
+                                        for line in item.data.linecuts[orientation]['lines'].keys():
+                                            if 'fit' in item.data.linecuts[orientation]['lines'][line].keys():
+                                                item.data.linecuts[orientation]['lines'][line]['fit']['fit_result'] = load_modelresult(dirpath+'/igtemp/'+item.data.linecuts[orientation]['lines'][line]['fit']['fit_result']+'.sav')
+                                    #Then make the linecut window
                                         item.data.linecuts[orientation]['linecut_window'] = LineCutWindow(item.data,orientation=orientation,init_cmap='plasma')
                                         item.data.linecuts[orientation]['linecut_window'].running = True
                                         for line in item.data.linecuts[orientation]['lines']:
@@ -416,6 +423,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                         item.data.linecuts[orientation]['linecut_window'].activateWindow()
                                         item.data.linecuts[orientation]['linecut_window'].update()
                                         item.data.linecuts[orientation]['linecut_window'].show()
+                            
 
                 except Exception as e:
                     print(f'Failed to open {filepath}:', e)
@@ -449,7 +457,257 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.show_current_all()
         if update_plots:
             self.update_plots()
+
+    def open_files_from_folder(self): 			
+        rootdir = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory to Open")
+        filepaths = []
+        for subdir, dirs, files in os.walk(rootdir):
+            for file in files:
+                filename, file_extension = os.path.splitext(file)
+                if file_extension == '.dat':
+                    already_loaded=self.check_already_loaded(subdir,[file[1] for file in filepaths])
+                    if not already_loaded:
+                        filepath = os.path.join(subdir, file)
+                        try: # on Windows
+                            st_ctime = os.path.getctime(filepath)
+                        except Exception:
+                            try: # on Mac
+                                st_ctime = os.stat(filepath).st_birthtime
+                            except Exception as e:
+                                print(e)
+                        filepaths.append((st_ctime,filepath,subdir))
+        if not os.path.split(filepaths[0][2])[1].startswith('#'): #If it's qcodespp data, it's already sorted. If not, sort by time
+            filepaths.sort(key=lambda tup: tup[0])
+        self.open_files([file[1] for file in filepaths],load_the_data=False)
     
+    def check_already_loaded(self, subdir, filepaths):
+        loaded=False
+        for filepath in filepaths:
+            if subdir in filepath:
+                loaded=True
+        return loaded
+        
+    def update_link_to_folder(self, new_folder=True):
+        if new_folder:
+            self.linked_folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory to Link")
+        if self.linked_folder:
+            self.window_title = f'InSpectra Gadget - Linked to folder {self.linked_folder}'
+            self.setWindowTitle(self.window_title+self.window_title_auto_refresh)
+            new_files = []
+            for subdir, dirs, files in os.walk(self.linked_folder):
+                for file in files:
+                    filename, file_extension = os.path.splitext(file)
+                    if file_extension == '.dat':
+                        already_loaded=self.check_already_loaded(subdir,[file[1] for file in new_files])
+                        if not already_loaded:
+                            filepath = os.path.join(subdir, file)
+                            # Need to deal with qcodespp data differently during refresh since multiple
+                            # .dat files may belong to the same dataset
+                            if os.path.isfile(subdir+'/snapshot.json'):
+                                already_linked=False
+                                for file in self.linked_files:
+                                    if subdir in file:
+                                        already_linked=True
+                                if not already_linked:
+                                    try: # on Windows
+                                        st_ctime = os.path.getctime(filepath)
+                                    except Exception:
+                                        try: # on Mac
+                                            st_ctime = os.stat(filepath).st_birthtime
+                                        except Exception as e:
+                                            print(e)
+                                    new_files.append((st_ctime,filepath,subdir))
+
+                            else:
+                                if filepath not in self.linked_files:
+                                    try: # on Windows
+                                        st_ctime = os.path.getctime(filepath)
+                                    except Exception:
+                                        try: # on Mac
+                                            st_ctime = os.stat(filepath).st_birthtime
+                                        except Exception as e:
+                                            print(e)
+                                    new_files.append((st_ctime,filepath,subdir))
+            if new_files:
+                if not os.path.split(new_files[0][2])[1].startswith('#'): #If it's qcodespp data, it's already sorted. If not, sort by time
+                    new_files.sort(key=lambda tup: tup[0])
+                new_filepaths = [new_file[1] for new_file in new_files]
+                self.open_files(new_filepaths,load_the_data=False)
+                for new_filepath in new_filepaths:
+                    self.linked_files.append(new_filepath)              
+                    
+    def unlink_folder(self):
+        if self.linked_folder:
+            self.linked_folder = None
+            self.window_title = 'InSpectra Gadget'
+            self.setWindowTitle(self.window_title+
+                                self.window_title_auto_refresh)
+            
+    def save_session(self, which='current'):
+        current_item = self.file_list.currentItem()
+        if current_item:
+            if which == 'current':
+                suggested_filename = os.path.splitext(current_item.data.filepath)[0].replace(':','')
+                filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
+                    self, 'Save Session As...', suggested_filename, '*.igs')
+                items = [current_item]
+            elif which == 'all':
+                filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
+                    self, 'Save Session As...', '', '*.igs')
+                items = [self.file_list.item(n) for n in range(self.file_list.count())]
+            elif which == 'checked':
+                filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
+                    self, 'Save Session As...', '', '*.igs')
+                items = [self.file_list.item(n) for n in range(self.file_list.count()) 
+                         if self.file_list.item(n).checkState() == 2]         
+            if filepath:
+                dirpath = os.path.dirname(filepath)
+                dictionary_list = []
+                os.makedirs(dirpath+'/igtemp', exist_ok=True)
+                for item in items:
+                    item_dictionary = {}
+                    if hasattr(item,'filepath'):
+                        item_dictionary['filepath']=item.filepath
+                    if hasattr(item,'checkState'):
+                        item_dictionary['checkState']=item.checkState()
+                    attributes=['label','settings','filters','view_settings','axlim_settings',
+                                'raw_data','processed_data']
+                    for attribute in attributes:
+                        if hasattr(item.data,attribute):
+                            item_dictionary[attribute]=getattr(item.data,attribute)
+                    if hasattr(item.data,'linecuts'):
+                        self.i=0
+                        item_dictionary['linecuts'] = self.remove_linecutwindows_and_fits(item.data.linecuts,dirpath)
+                        self.i=0
+                    dictionary_list.append(item_dictionary)
+
+
+                # Save all needed files to a temperorary directory and add them to the tarball
+                np.save(dirpath+'/igtemp/numpyfile.npy', dictionary_list)
+                with tarfile.open(filepath, 'w:gz') as tar:
+                    for filename in os.listdir(dirpath+'/igtemp'):
+                        tar.add('./igtemp/'+filename, recursive=False)
+
+                print(f'Session saved as {filepath}')
+
+                # Delete unnecessary information
+                for filename in os.listdir(dirpath+'/igtemp'):
+                    file_path = os.path.join(dirpath+'/igtemp', filename)
+                    os.remove(file_path)
+                os.rmdir(dirpath+'/igtemp')
+                del dictionary_list,lmfit_names
+
+    def remove_linecutwindows_and_fits(self,d,dirpath,exclude_key='linecut_window',exclude_key2='fit_result'):
+    # Remove linecut window object and lmfit object from the dictionary. Neither can be pickled. lmfit fit results are saved to
+    # file, added to the tarball, and loaded again when the session is loaded.
+        new_dict = {}
+        for key, value in d.items():
+            if isinstance(value, dict):
+                # Recurse into nested dictionaries
+                new_dict[key] = self.remove_linecutwindows_and_fits(value, dirpath,exclude_key,exclude_key2)
+            else:
+                # For non-dictionary values, just copy them
+                new_dict[key] = value
+
+        if exclude_key in new_dict:
+            new_dict[exclude_key] = None  # Remove the linecut window object
+            # if new_dict[exclude_key] is not None:
+            #     new_dict[exclude_key]=True
+            # else:
+            #     new_dict[exclude_key]=False
+        if exclude_key2 in new_dict:
+            try:
+                save_modelresult(new_dict[exclude_key2], dirpath+'/igtemp/lmfit_result'+str(self.i).zfill(4)+'.sav') # Save the lmfit object to a file
+                new_dict[exclude_key2]='lmfit_result'+str(self.i).zfill(4) # Replace the lmfit model with the name.
+                self.i+=1
+            except Exception as e:
+                print('Error saving lmfit object:', e)
+        return new_dict
+
+    def load_session(self):
+        filepath, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open Session', '', 'Inspectra Gadget session (*.igs)')
+        if filepath:
+            dirpath = os.path.dirname(filepath)
+            self.remove_files('all')
+            print(filepath)
+            with tarfile.open(filepath, 'r') as tar:
+                tar.extractall(dirpath)
+            try:
+                data=np.load(dirpath+'/igtemp/numpyfile.npy', allow_pickle=True)
+                file_list=[]
+                for attr_dict in data:
+                    file_list.append(attr_dict['filepath'])
+                self.open_files(file_list,load_the_data=False,attr_dicts=data,dirpath=dirpath)
+            except Exception as e:
+                print('Error loading session:', e)
+
+            for filename in os.listdir(dirpath+'/igtemp'):
+                file_path = os.path.join(dirpath+'/igtemp', filename)
+                os.remove(file_path)
+            os.rmdir(dirpath+'/igtemp')
+    
+
+    def save_processed_data(self, which='current'):
+        current_item = self.file_list.currentItem()
+        if current_item:
+            formats='Numpy text (*.dat);;Numpy format (*.npy);;CSV (*.csv)'
+            if which == 'current':
+                suggested_filename = current_item.data.label
+                filepath, ext = QtWidgets.QFileDialog.getSaveFileName(
+                    self, 'Export Data As', suggested_filename, formats)
+                item = current_item
+                if hasattr(item.data,'processed_data'):
+                    if '.dat' in ext:
+                        header=''
+                        for label in ['xlabel','ylabel','clabel']:
+                            if item.data.settings[label] != '':
+                                header+=f'{item.data.settings[label]}\t'
+                        header=header.strip('\t')
+                        with open(filepath, "w") as dat_file:
+                            if len(current_item.data.get_columns()) == 2:
+                                np.savetxt(filepath, np.column_stack(current_item.data.processed_data),header=header)
+                            elif len(current_item.data.get_columns()) == 3:
+                                dat_file.write(f'# {header}\n')
+                                for j in range(np.shape(item.data.processed_data[2])[0]):
+                                    for k in range(np.shape(item.data.processed_data[2])[1]):
+                                        dat_file.write('{}\t{}\t{}\n'.format(item.data.processed_data[0][j,k],item.data.processed_data[1][j,k],item.data.processed_data[2][j,k]))
+                    elif '.npy' in ext:
+                            if len(current_item.data.get_columns()) == 2:
+                                np.save(filepath, np.column_stack(current_item.data.processed_data))
+                            elif len(current_item.data.get_columns()) == 3:
+                                np.save(filepath, np.stack(current_item.data.processed_data, axis=2))
+                    elif '.csv' in ext:
+                        with open(filepath, 'w', newline='') as f:
+                            writer = csvwriter(f,delimiter='\t')
+                            header=[]
+                            for label in ['xlabel','ylabel','clabel']:
+                                if item.data.settings[label] != '':
+                                    header.append(f'#{item.data.settings[label]}')
+                            writer.writerow(header)
+                            if len(current_item.data.get_columns())==2:
+                                for i,x in enumerate(item.data.processed_data[0]):
+                                    writer.writerow([x,item.data.processed_data[1][i]])
+                            elif len(current_item.data.get_columns()) == 3:
+                                for j in range(np.shape(item.data.processed_data[2])[0]):
+                                    for k in range(np.shape(item.data.processed_data[2])[1]):
+                                        writer.writerow([item.data.processed_data[0][j,k],item.data.processed_data[1][j,k],item.data.processed_data[2][j,k]])
+
+                else:
+                    print('No processed data to export')
+            # else:
+            #     if which == 'all':
+            #         filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
+            #             self, 'Export Data As: Specify Base Filename', '', formats)
+            #         items = [self.file_list.item(n) for n in range(self.file_list.count())]
+            #     elif which == 'checked':
+            #         filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
+            #             self, 'Export Data As: Specify Base Filename', '', formats)
+            #         items = [self.file_list.item(n) for n in range(self.file_list.count()) 
+            #                 if self.file_list.item(n).checkState() == 2]
+            #     for i,item in enumerate(items):
+            #         if hasattr(item.data,'processed_data'):
+            #             np.savetxt(filepath+'_'+str(i).zfill(2),item.data.processed_data)
+                
     def file_checked(self, item):
         if item.checkState() == 2:
             self.file_list.setCurrentItem(item)
@@ -1231,184 +1489,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if DARK_THEME and qdarkstyle_imported:
                     rcParams_to_dark_theme()
                     self.update_plots(update_data=False)
-                print('Saved!')   
-           
-    def save_filters(self):
-        current_item = self.file_list.currentItem()
-        if current_item:
-            filename, _ = QtWidgets.QFileDialog.getSaveFileName(
-                    self, 'Save Filters As...', '', '.npy')
-            np.save(filename, current_item.data.filters)
-            
-    def load_filters(self):
-        current_item = self.file_list.currentItem()
-        if current_item:
-            filename, _ = QtWidgets.QFileDialog.getOpenFileNames(
-                    self, 'Open Filters File...', '', '*.npy')
-            loaded_filters = list(np.load(filename[0], allow_pickle=True))
-            current_item.data.filters += copy.deepcopy(loaded_filters)
-            current_item.data.apply_all_filters()
-            self.update_plots()
-            self.show_current_view_settings()
-    
-    def save_session(self, which='current'):
-        current_item = self.file_list.currentItem()
-        if current_item:
-            if which == 'current':
-                suggested_filename = os.path.splitext(current_item.data.filepath)[0].replace(':','')
-                filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
-                    self, 'Save Session As...', suggested_filename, '*.npy')
-                items = [current_item]
-            elif which == 'all':
-                filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
-                    self, 'Save Session As...', '', '*.npy')
-                items = [self.file_list.item(n) for n in range(self.file_list.count())]
-            elif which == 'checked':
-                filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
-                    self, 'Save Session As...', '', '*.npy')
-                items = [self.file_list.item(n) for n in range(self.file_list.count()) 
-                         if self.file_list.item(n).checkState() == 2]                             
-            dictionary_list = []
-            for item in items:
-                item_dictionary = {}
-                if hasattr(item,'filepath'):
-                    item_dictionary['filepath']=item.filepath
-                if hasattr(item,'checkState'):
-                    item_dictionary['checkState']=item.checkState()
-                attributes=['label','settings','filters','view_settings','axlim_settings',
-                            'raw_data','processed_data']
-                for attribute in attributes:
-                    if hasattr(item.data,attribute):
-                        item_dictionary[attribute]=getattr(item.data,attribute)
-                if hasattr(item.data,'linecuts'):
-                    item_dictionary['linecuts'] = self.remove_linecutwindows_and_fits(item.data.linecuts)
-
-                dictionary_list.append(item_dictionary)
-            np.save(filepath, dictionary_list)
-            print(f'Session saved as {filepath}')
-            del dictionary_list
-
-    def remove_linecutwindows_and_fits(self,d,exclude_key='linecut_window',exclude_key2='fit'):
-    # Basically exists to remove the linecut window objects and lmfit objects
-    # in situation where it won't work well, e.g. saving sessions.
-        new_dict = {}
-        for key, value in d.items():
-            if isinstance(value, dict):
-                # Recurse into nested dictionaries
-                new_dict[key] = self.remove_linecutwindows_and_fits(value, exclude_key)
-            else:
-                # For non-dictionary values, just copy them
-                new_dict[key] = value
-
-        if exclude_key in new_dict:
-            new_dict[exclude_key] = None  # Remove the linecut window object
-            # if new_dict[exclude_key] is not None:
-            #     new_dict[exclude_key]=True
-            # else:
-            #     new_dict[exclude_key]=False
-        if exclude_key2 in new_dict:
-            del new_dict[exclude_key2]
-        return new_dict
-
-    def load_session(self):
-        filepath, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open Session', '', 'Saved Session (*.npy)')
-        if filepath:
-            self.remove_files('all')
-            data=np.load(filepath, allow_pickle=True)
-            file_list=[]
-            for attr_dict in data:
-                file_list.append(attr_dict['filepath'])
-            self.open_files(file_list,load_the_data=False,attr_dicts=data)
-
-    def save_processed_data(self, which='current'):
-        current_item = self.file_list.currentItem()
-        if current_item:
-            formats='Numpy text (*.dat);;Numpy format (*.npy);;CSV (*.csv)'
-            if which == 'current':
-                suggested_filename = current_item.data.label
-                filepath, ext = QtWidgets.QFileDialog.getSaveFileName(
-                    self, 'Export Data As', suggested_filename, formats)
-                item = current_item
-                if hasattr(item.data,'processed_data'):
-                    if '.dat' in ext:
-                        header=''
-                        for label in ['xlabel','ylabel','clabel']:
-                            if item.data.settings[label] != '':
-                                header+=f'{item.data.settings[label]}\t'
-                        header=header.strip('\t')
-                        with open(filepath, "w") as dat_file:
-                            if len(current_item.data.get_columns()) == 2:
-                                np.savetxt(filepath, np.column_stack(current_item.data.processed_data),header=header)
-                            elif len(current_item.data.get_columns()) == 3:
-                                dat_file.write(f'# {header}\n')
-                                for j in range(np.shape(item.data.processed_data[2])[0]):
-                                    for k in range(np.shape(item.data.processed_data[2])[1]):
-                                        dat_file.write('{}\t{}\t{}\n'.format(item.data.processed_data[0][j,k],item.data.processed_data[1][j,k],item.data.processed_data[2][j,k]))
-                    elif '.npy' in ext:
-                            if len(current_item.data.get_columns()) == 2:
-                                np.save(filepath, np.column_stack(current_item.data.processed_data))
-                            elif len(current_item.data.get_columns()) == 3:
-                                np.save(filepath, np.stack(current_item.data.processed_data, axis=2))
-                    elif '.csv' in ext:
-                        with open(filepath, 'w', newline='') as f:
-                            writer = csvwriter(f,delimiter='\t')
-                            header=[]
-                            for label in ['xlabel','ylabel','clabel']:
-                                if item.data.settings[label] != '':
-                                    header.append(f'#{item.data.settings[label]}')
-                            writer.writerow(header)
-                            if len(current_item.data.get_columns())==2:
-                                for i,x in enumerate(item.data.processed_data[0]):
-                                    writer.writerow([x,item.data.processed_data[1][i]])
-                            elif len(current_item.data.get_columns()) == 3:
-                                for j in range(np.shape(item.data.processed_data[2])[0]):
-                                    for k in range(np.shape(item.data.processed_data[2])[1]):
-                                        writer.writerow([item.data.processed_data[0][j,k],item.data.processed_data[1][j,k],item.data.processed_data[2][j,k]])
-
-                else:
-                    print('No processed data to export')
-            # else:
-            #     if which == 'all':
-            #         filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
-            #             self, 'Export Data As: Specify Base Filename', '', formats)
-            #         items = [self.file_list.item(n) for n in range(self.file_list.count())]
-            #     elif which == 'checked':
-            #         filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
-            #             self, 'Export Data As: Specify Base Filename', '', formats)
-            #         items = [self.file_list.item(n) for n in range(self.file_list.count()) 
-            #                 if self.file_list.item(n).checkState() == 2]
-            #     for i,item in enumerate(items):
-            #         if hasattr(item.data,'processed_data'):
-            #             np.savetxt(filepath+'_'+str(i).zfill(2),item.data.processed_data)
-                
-    def open_files_from_folder(self): 			
-        rootdir = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory to Open")
-        filepaths = []
-        for subdir, dirs, files in os.walk(rootdir):
-            for file in files:
-                filename, file_extension = os.path.splitext(file)
-                if file_extension == '.dat':
-                    already_loaded=self.check_already_loaded(subdir,[file[1] for file in filepaths])
-                    if not already_loaded:
-                        filepath = os.path.join(subdir, file)
-                        try: # on Windows
-                            st_ctime = os.path.getctime(filepath)
-                        except Exception:
-                            try: # on Mac
-                                st_ctime = os.stat(filepath).st_birthtime
-                            except Exception as e:
-                                print(e)
-                        filepaths.append((st_ctime,filepath,subdir))
-        if not os.path.split(filepaths[0][2])[1].startswith('#'): #If it's qcodespp data, it's already sorted. If not, sort by time
-            filepaths.sort(key=lambda tup: tup[0])
-        self.open_files([file[1] for file in filepaths],load_the_data=False)
-    
-    def check_already_loaded(self, subdir, filepaths):
-        loaded=False
-        for filepath in filepaths:
-            if subdir in filepath:
-                loaded=True
-        return loaded
+                print('Saved!')
         
     def save_images_as(self, extension='.png'):
         save_folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory")
@@ -1441,63 +1522,25 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if DARK_THEME and qdarkstyle_imported:
                 rcParams_to_dark_theme()
                 self.update_plots(update_data=False)
-        
-    def update_link_to_folder(self, new_folder=True):
-        if new_folder:
-            self.linked_folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory to Link")
-        if self.linked_folder:
-            self.window_title = f'InSpectra Gadget - Linked to folder {self.linked_folder}'
-            self.setWindowTitle(self.window_title+self.window_title_auto_refresh)
-            new_files = []
-            for subdir, dirs, files in os.walk(self.linked_folder):
-                for file in files:
-                    filename, file_extension = os.path.splitext(file)
-                    if file_extension == '.dat':
-                        already_loaded=self.check_already_loaded(subdir,[file[1] for file in new_files])
-                        if not already_loaded:
-                            filepath = os.path.join(subdir, file)
-                            # Need to deal with qcodespp data differently during refresh since multiple
-                            # .dat files may belong to the same dataset
-                            if os.path.isfile(subdir+'/snapshot.json'):
-                                already_linked=False
-                                for file in self.linked_files:
-                                    if subdir in file:
-                                        already_linked=True
-                                if not already_linked:
-                                    try: # on Windows
-                                        st_ctime = os.path.getctime(filepath)
-                                    except Exception:
-                                        try: # on Mac
-                                            st_ctime = os.stat(filepath).st_birthtime
-                                        except Exception as e:
-                                            print(e)
-                                    new_files.append((st_ctime,filepath,subdir))
-
-                            else:
-                                if filepath not in self.linked_files:
-                                    try: # on Windows
-                                        st_ctime = os.path.getctime(filepath)
-                                    except Exception:
-                                        try: # on Mac
-                                            st_ctime = os.stat(filepath).st_birthtime
-                                        except Exception as e:
-                                            print(e)
-                                    new_files.append((st_ctime,filepath,subdir))
-            if new_files:
-                if not os.path.split(new_files[0][2])[1].startswith('#'): #If it's qcodespp data, it's already sorted. If not, sort by time
-                    new_files.sort(key=lambda tup: tup[0])
-                new_filepaths = [new_file[1] for new_file in new_files]
-                self.open_files(new_filepaths,load_the_data=False)
-                for new_filepath in new_filepaths:
-                    self.linked_files.append(new_filepath)              
-                    
-    def unlink_folder(self):
-        if self.linked_folder:
-            self.linked_folder = None
-            self.window_title = 'InSpectra Gadget'
-            self.setWindowTitle(self.window_title+
-                                self.window_title_auto_refresh)
-        
+           
+    def save_filters(self):
+        current_item = self.file_list.currentItem()
+        if current_item:
+            filename, _ = QtWidgets.QFileDialog.getSaveFileName(
+                    self, 'Save Filters As...', '', '.npy')
+            np.save(filename, current_item.data.filters)
+            
+    def load_filters(self):
+        current_item = self.file_list.currentItem()
+        if current_item:
+            filename, _ = QtWidgets.QFileDialog.getOpenFileNames(
+                    self, 'Open Filters File...', '', '*.npy')
+            loaded_filters = list(np.load(filename[0], allow_pickle=True))
+            current_item.data.filters += copy.deepcopy(loaded_filters)
+            current_item.data.apply_all_filters()
+            self.update_plots()
+            self.show_current_view_settings()
+    
     def mouse_click_canvas(self, event):
         if self.navi_toolbar.mode == '': # If not using the navigation toolbar tools
             if event.inaxes:

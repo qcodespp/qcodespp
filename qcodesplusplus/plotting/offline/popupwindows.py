@@ -323,7 +323,7 @@ class LineCutWindow(QtWidgets.QWidget):
         row = self.cuts_table.currentRow()
         line = int(self.cuts_table.item(row,0).text())
         if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
-            fit_result = self.parent.linecuts[self.orientation]['lines'][line]['fit']['result']
+            fit_result = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result']
             self.output_window.setText(fit_result.fit_report())
         else:
             fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
@@ -375,7 +375,12 @@ class LineCutWindow(QtWidgets.QWidget):
         offset_box=QtWidgets.QTableWidgetItem(f'{linecut['offset']:6g}')
         color_box=QtWidgets.QTableWidgetItem('')
         rgbavalue = [int(linecut['linecolor'][0]*255), int(linecut['linecolor'][1]*255), int(linecut['linecolor'][2]*255),int(linecut['linecolor'][3]*255)]
-        empty_box=QtWidgets.QTableWidgetItem('')
+        plot_fit_item = QtWidgets.QTableWidgetItem('')
+        if 'fit' in linecut.keys():
+            plot_fit_item.setFlags(QtCore.Qt.ItemIsSelectable | 
+                            QtCore.Qt.ItemIsEnabled | 
+                            QtCore.Qt.ItemIsUserCheckable)
+            plot_fit_item.setCheckState(linecut['fit']['checkstate'])
 
         self.cuts_table.setItem(row,0,linecut_item)
         self.cuts_table.setCellWidget(row,1,index_box)
@@ -388,7 +393,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.cuts_table.setItem(row,4,color_box)
         self.cuts_table.item(row,4).setBackground(QtGui.QColor(*rgbavalue))
 
-        self.cuts_table.setItem(row,5,empty_box)
+        self.cuts_table.setItem(row,5,plot_fit_item)
 
         self.cuts_table.setCurrentCell(row,0)
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
@@ -428,12 +433,11 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.parent.linecuts[self.orientation]['lines'][linecut]['checkstate'] = current_item.checkState()
                 self.update()
 
-            elif current_col == 5: # It's the checkstate for the fit. Currently don't implement saving the fits so no need to update the dictionary.
-                # current_row = self.cuts_table.currentRow()
-                # linecut = int(self.cuts_table.item(current_row,0).text())
-                # self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['checkstate'] = current_item.checkState()
+            elif current_col == 5: # It's the checkstate for the fit.
+                current_row = self.cuts_table.currentRow()
+                linecut = int(self.cuts_table.item(current_row,0).text())
+                self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['checkstate'] = current_item.checkState()
                 self.update()
-
 
 
     def index_changed(self,row):
@@ -867,10 +871,11 @@ class LineCutWindow(QtWidgets.QWidget):
             fit_parameters = [np.nan]*len(fits.get_names(function_name).split(','))
             y_fit = np.nan
 
-        self.parent.linecuts[self.orientation]['lines'][line]['fit'] = {'result': fit_result,
+        self.parent.linecuts[self.orientation]['lines'][line]['fit'] = {'fit_result': fit_result,
                                                                         'xdata': x_forfit,
                                                                         'ydata': y_forfit,
-                                                                        'fitted_y': y_fit}
+                                                                        'fitted_y': y_fit,
+                                                                        'checkstate': QtCore.Qt.Checked}
 
         # Add a checkbox to the table now a fit exists.
         self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
@@ -898,7 +903,7 @@ class LineCutWindow(QtWidgets.QWidget):
     def print_parameters(self,line):
         self.output_window.clear()
         try:
-            self.output_window.setText(self.parent.linecuts[self.orientation]['lines'][line]['fit']['result'].fit_report())
+            self.output_window.setText(self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].fit_report())
 
         except Exception as e:
             self.output_window.setText('Could not print fit parameters:', e)
@@ -942,10 +947,10 @@ class LineCutWindow(QtWidgets.QWidget):
                 for marker in self.parent.horimarkers:
                     marker.remove()
             self.parent.horimarkers = []
+            self.xlabel = self.parent.settings['xlabel']
+            self.title = f'Cuts at fixed {self.parent.settings['ylabel']}'
             for line in lines:
                 x,y,z= self.get_line_data(line)
-                self.xlabel = self.parent.settings['xlabel']
-                self.title = f'Cuts at fixed {self.parent.settings['ylabel']}'
                 self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value'] = z
                 if parent_marker:
                     self.parent.horimarkers.append(self.parent.axes.axhline(y=z, linestyle='dashed', linewidth=1, xmax=0.1,
@@ -962,10 +967,10 @@ class LineCutWindow(QtWidgets.QWidget):
                 for marker in self.parent.vertmarkers:
                     marker.remove()
             self.parent.vertmarkers = []
+            self.xlabel = self.parent.settings['ylabel']
+            self.title = f'Cuts at fixed {self.parent.settings['xlabel']}'
             for line in lines:
                 x,y,z= self.get_line_data(line)
-                self.xlabel = self.parent.settings['ylabel']
-                self.title = f'Cuts at fixed {self.parent.settings['xlabel']}'
                 self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value'] = z
                 if parent_marker:
                     self.parent.vertmarkers.append(self.parent.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymax=0.1,
@@ -1025,7 +1030,7 @@ class LineCutWindow(QtWidgets.QWidget):
               
     def draw_fits(self,line):
         try:
-            fit_result=self.parent.linecuts[self.orientation]['lines'][line]['fit']['result']
+            fit_result=self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result']
             x_forfit=self.parent.linecuts[self.orientation]['lines'][line]['fit']['xdata']
             y_fit=fit_result.best_fit
             self.axes.plot(x_forfit, y_fit, 'k--',
@@ -1076,7 +1081,7 @@ class LineCutWindow(QtWidgets.QWidget):
                     data[f'linecut{line}_X'] = x.tolist()
                     data[f'linecut{line}_Y'] = y.tolist()
                 for line in fit_lines:
-                    fit_result=self.parent.linecuts[self.orientation]['lines'][line]['fit']['result']
+                    fit_result=self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result']
                     data[f'fit{line}_X'] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['xdata'].tolist()
                     data[f'fit{line}_Y'] = fit_result.best_fit.tolist()
                     fit_components=fit_result.eval_components()
@@ -1105,7 +1110,7 @@ class LineCutWindow(QtWidgets.QWidget):
         current_row = self.cuts_table.currentRow()
         line = int(self.cuts_table.item(current_row,0).text())
         if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
-            fit_result = self.parent.linecuts[self.orientation]['lines'][line]['fit']['result']
+            fit_result = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result']
             formats = 'lmfit Model Result (*.sav)'
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Fit Result','', formats)
@@ -1118,7 +1123,7 @@ class LineCutWindow(QtWidgets.QWidget):
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Fit Result: Select base name','', formats)
             for line in fit_lines:
-                fit_result = self.parent.linecuts[self.orientation]['lines'][line]['fit']['result']
+                fit_result = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result']
                 save_modelresult(fit_result,filename.replace('.sav',f'_{line}.sav'))
 
     def clear_fit(self):
@@ -1147,12 +1152,12 @@ class LineCutWindow(QtWidgets.QWidget):
     def save_parameters_dependency(self):
         try:
             fit_lines = self.get_checked_items(cuts_or_fits='fits')
-            first_result = self.parent.linecuts[self.orientation]['lines'][fit_lines[0]]['fit']['result']
+            first_result = self.parent.linecuts[self.orientation]['lines'][fit_lines[0]]['fit']['fit_result']
             data=np.zeros((len(fit_lines),len(first_result.params.keys())+1))
             for i,line in enumerate(fit_lines):
                 data[i,0] = self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value']
                 for j,param in enumerate(first_result.params.keys()):
-                    data[i,j+1] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['result'].params[param].value
+                    data[i,j+1] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].value
             success=True
         except Exception as e:
             print('Could not compile array: {e}')
