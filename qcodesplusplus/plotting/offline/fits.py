@@ -91,9 +91,9 @@ for peaktype in ['Pearson4','SkewedVoigt']:
     functions['Peaks: skewed'][peaktype]['description'] = multipeak_description.format(peaktype,fiveparamform)
 
 # Oscillating
-functions['Oscillating']={'Sine':{},
-                        'Sine w/exp decay':{},
-                        'Sine w/power decay':{}
+functions['Oscillating']={'Sine':{}
+                        # 'Sine w/exp decay':{},
+                        # 'Sine w/power decay':{}
                         }
 functions['Oscillating']['Sine']['inputs']='# of waves, use offset'
 functions['Oscillating']['Sine']['default_inputs']='1,0'

@@ -894,7 +894,7 @@ class LineCutWindow(QtWidgets.QWidget):
         
         if not multilinefit:
             self.print_parameters(line)
-            self.draw_fits(line)
+            self.update()
 
     def fit_checked(self):
         # Fit all checked items in the table.
