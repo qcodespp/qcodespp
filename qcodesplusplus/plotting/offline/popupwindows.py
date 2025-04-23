@@ -406,9 +406,9 @@ class LineCutWindow(QtWidgets.QWidget):
         else:
             current_item = self.cuts_table.currentItem()
             current_col = self.cuts_table.currentColumn()
+            current_row = self.cuts_table.currentRow()
 
             if current_col == 2: # The user is trying to edit the value of the data. Let's find a new index for them.
-                current_row = self.cuts_table.currentRow()
                 linecut = self.cuts_table.item(current_row,0).text()
                 linecut = int(linecut)
                 inputval = float(current_item.text())
@@ -420,7 +420,6 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.index_changed(current_row)
 
             elif current_col == 3: #Change the offset in the dictionary and then replot.
-                current_row = self.cuts_table.currentRow()
                 linecut = self.cuts_table.item(current_row,0).text()
                 linecut = int(linecut)
                 offset = float(current_item.text())
@@ -428,13 +427,11 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.update()
     
             elif current_col == 0: # It's the checkstate, so need to replot and update dictionary
-                current_row = self.cuts_table.currentRow()
                 linecut = int(self.cuts_table.item(current_row,0).text())
                 self.parent.linecuts[self.orientation]['lines'][linecut]['checkstate'] = current_item.checkState()
                 self.update()
 
             elif current_col == 5: # It's the checkstate for the fit.
-                current_row = self.cuts_table.currentRow()
                 linecut = int(self.cuts_table.item(current_row,0).text())
                 self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_checkstate'] = current_item.checkState()
                 self.update()
@@ -1038,9 +1035,10 @@ class LineCutWindow(QtWidgets.QWidget):
               
     def draw_fits(self,line):
         try:
+            offset=self.parent.linecuts[self.orientation]['lines'][line]['offset']
             fit_result=self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result']
             x_forfit=self.parent.linecuts[self.orientation]['lines'][line]['fit']['xdata']
-            y_fit=fit_result.best_fit
+            y_fit=fit_result.best_fit+offset
             self.axes.plot(x_forfit, y_fit, 'k--',
                 linewidth=self.parent.settings['linewidth'])
             fit_components=fit_result.eval_components()
@@ -1050,7 +1048,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 selected_colormap = cm.get_cmap('viridis')
             line_colors = selected_colormap(np.linspace(0.1,0.9,len(fit_components.keys())))
             for i,key in enumerate(fit_components.keys()):
-                self.axes.plot(x_forfit, fit_components[key], '--', color=line_colors[i],alpha=0.75, linewidth=self.parent.settings['linewidth'])
+                self.axes.plot(x_forfit, fit_components[key]+offset, '--', color=line_colors[i],alpha=0.75, linewidth=self.parent.settings['linewidth'])
         except Exception as e:
             self.output_window.setText(f'Could not plot fit components: {e}')
         self.canvas.draw()
