@@ -399,7 +399,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                     if attr_dicts is not None: #then a previous session is being loaded
                         for attr in attr_dicts[i]:
-                            print(attr,attr_dicts[i][attr])
                             if attr not in ['filename','checkState']:
                                 setattr(item.data,attr,attr_dicts[i][attr])
                             elif attr=='checkState':
