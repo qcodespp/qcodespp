@@ -380,7 +380,7 @@ class LineCutWindow(QtWidgets.QWidget):
             plot_fit_item.setFlags(QtCore.Qt.ItemIsSelectable | 
                             QtCore.Qt.ItemIsEnabled | 
                             QtCore.Qt.ItemIsUserCheckable)
-            plot_fit_item.setCheckState(linecut['fit']['checkstate'])
+            plot_fit_item.setCheckState(linecut['fit']['fit_checkstate'])
 
         self.cuts_table.setItem(row,0,linecut_item)
         self.cuts_table.setCellWidget(row,1,index_box)
@@ -436,7 +436,7 @@ class LineCutWindow(QtWidgets.QWidget):
             elif current_col == 5: # It's the checkstate for the fit.
                 current_row = self.cuts_table.currentRow()
                 linecut = int(self.cuts_table.item(current_row,0).text())
-                self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['checkstate'] = current_item.checkState()
+                self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_checkstate'] = current_item.checkState()
                 self.update()
 
 
@@ -668,6 +668,8 @@ class LineCutWindow(QtWidgets.QWidget):
                 for row in range(self.cuts_table.rowCount()):
                     item = self.cuts_table.item(row, 0)
                     item.setCheckState(QtCore.Qt.Checked)
+                    linecut=int(self.cuts_table.item(row,0).text())
+                    self.parent.linecuts[self.orientation]['lines'][linecut]['checkstate'] = item.checkState()
                 self.cuts_table.itemChanged.connect(self.cuts_table_edited)
                 self.update()
             elif action == uncheck_all_action:
@@ -675,6 +677,8 @@ class LineCutWindow(QtWidgets.QWidget):
                 for row in range(self.cuts_table.rowCount()):
                     item = self.cuts_table.item(row, 0)
                     item.setCheckState(QtCore.Qt.Unchecked)
+                    linecut=int(self.cuts_table.item(row,0).text())
+                    self.parent.linecuts[self.orientation]['lines'][linecut]['checkstate'] = item.checkState()
                 self.cuts_table.itemChanged.connect(self.cuts_table_edited)
                 self.update()
 
@@ -689,6 +693,8 @@ class LineCutWindow(QtWidgets.QWidget):
                 for row in range(self.cuts_table.rowCount()):
                     item = self.cuts_table.item(row, 5)
                     item.setCheckState(QtCore.Qt.Checked)
+                    linecut=int(self.cuts_table.item(row,0).text())
+                    self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_checkstate'] = item.checkState()
                 self.cuts_table.itemChanged.connect(self.cuts_table_edited)
                 self.update()
             elif action == uncheck_all_action:
@@ -696,6 +702,8 @@ class LineCutWindow(QtWidgets.QWidget):
                 for row in range(self.cuts_table.rowCount()):
                     item = self.cuts_table.item(row, 5)
                     item.setCheckState(QtCore.Qt.Unchecked)
+                    linecut=int(self.cuts_table.item(row,0).text())
+                    self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_checkstate'] = item.checkState()
                 self.cuts_table.itemChanged.connect(self.cuts_table_edited)
                 self.update()
 
@@ -875,7 +883,7 @@ class LineCutWindow(QtWidgets.QWidget):
                                                                         'xdata': x_forfit,
                                                                         'ydata': y_forfit,
                                                                         'fitted_y': y_fit,
-                                                                        'checkstate': QtCore.Qt.Checked}
+                                                                        'fit_checkstate': QtCore.Qt.Checked}
 
         # Add a checkbox to the table now a fit exists.
         self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
