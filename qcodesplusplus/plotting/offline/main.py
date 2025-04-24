@@ -1308,11 +1308,28 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if original_item:
             self.open_files(filepaths=[original_item.data.filepath])
             new_item = self.file_list.currentItem()
-            new_item.setText(f'[DUPLICATE] {new_item.data.label}')
             new_item.duplicate = True
             new_item.data.settings = original_item.data.settings.copy()
             new_item.data.view_settings = original_item.data.view_settings.copy()
-            new_item.data.filters = copy.deepcopy(original_item.data.filters)              
+            new_item.data.filters = copy.deepcopy(original_item.data.filters)
+            if isinstance(original_item.data, qcodesppData):
+                original_label= original_item.data.label
+                if hasattr(original_item,'duplicate'):
+                    if original_item.duplicate:
+                        duplicate_index=int(original_label.split('-')[1])
+                        new_label=f'{original_label.split('-')[0]}-{duplicate_index+1}-{original_label.split("-")[2]}'
+                        new_item.setText(new_label)
+                        new_item.data.label = new_label
+                        new_item.data.settings['title']=f'{new_item.data.dataset_id}-{duplicate_index+1}'
+
+                else:
+                    new_label= f'{original_label.split('_')[0]}-2-{original_label.split("_")[1]}'
+                    new_item.setText(new_label)
+                    new_item.data.label = new_label
+                    new_item.data.settings['title']=new_item.data.dataset_id+'-2'
+            else:
+                new_item.setText(f'[DUPLICATE] {new_item.data.label}')
+                new_item.data.label = f'[DUPLICATE] {new_item.data.label}'
             self.update_plots()
                 
     def combine_plots(self):
