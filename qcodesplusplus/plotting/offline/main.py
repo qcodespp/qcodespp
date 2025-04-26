@@ -724,8 +724,30 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.file_list.itemChanged.connect(self.file_checked)
         self.update_plots()
     
+    def reinstate_markers(self, item, orientation):
+        orientations={'horizontal':'horimarkers','vertical':'vertmarkers'}
+        arrayname=orientations[orientation]
+        setattr(item.data,arrayname,[])
+        if orientation == 'horizontal':
+            for line in item.data.linecuts['horizontal']['lines']:
+                z=item.data.linecuts[orientation]['lines'][line]['cut_axis_value']
+                item.data.horimarkers.append(item.data.axes.axhline(y=z, linestyle='dashed', linewidth=1, xmax=0.1,
+                    color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
+                item.data.horimarkers.append(item.data.axes.axhline(y=z, linestyle='dashed', linewidth=1, xmin=0.9,
+                    color=item.data.linecuts[orientation]['lines'][line]['linecolor']))  
+
+        elif orientation == 'vertical':
+            for line in item.data.linecuts['vertical']['lines']:
+                z=item.data.linecuts[orientation]['lines'][line]['cut_axis_value']
+                item.data.vertmarkers.append(item.data.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymax=0.1,
+                    color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
+                item.data.vertmarkers.append(item.data.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymin=0.9,
+                    color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
+
     def update_plots(self, update_data=True):
-        #Clearing the figure is the source of the NotImplementedError. Annoying but not sure what else to do than just ignore it for now.
+        #Clearing the figure is the source of the NotImplementedError. 
+        # Annoying but not sure what else to do than just ignore it for now.
+        # Think it might be due to the colourbar _already_ being removed beforehand!!
         self.figure.clf()
 
         checked_items = self.get_checked_items()
@@ -738,11 +760,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     item.data.figure = self.figure
                     item.data.axes = item.data.figure.add_subplot(rows, cols, index+1)
                     item.data.add_plot(dim=len(item.data.get_columns()))
-                    if hasattr(item.data, 'linecut_window'):
-                        item.data.linecut_window.update()
-                    if hasattr(item.data, 'multiple_linecuts_window'):
-                        if item.data.multiple_linecuts_window.isVisible():
-                            item.data.multiple_linecuts_window.update()
+                    if hasattr(item.data, 'linecuts'):
+                        for orientation in ['horizontal','vertical']:#,'diagonal','circular']:
+                            if len(item.data.linecuts[orientation]['lines']) > 0:
+                                self.reinstate_markers(item,orientation)
+                            if item.data.linecuts[orientation]['linecut_window'] is not None:
+                                item.data.linecuts[orientation]['linecut_window'].update()
                 except Exception as e:
                     print(f'Could not plot {item.data.filepath}:', e)
                     raise
@@ -1029,6 +1052,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             try:
                 if setting_name == 'X data' or setting_name == 'Y data' or setting_name == 'Z data':
                     current_item.data.prepare_data_for_plot(reload_data=True,reload_from_file=False)
+                    # IF the plotted data has happened, all fits are likely to be irrelevant. Not sure whether to remove by force or not.
+                    # I think keep the fits, because it's easy for the user to remove them, but could be a total pain to re-do if the user has
+                    # changed an axis by mistake. It's also the case for applying a filter.
                     self.update_plots()
                     self.reset_axlim_settings()
                 if setting_name == 'columns' or setting_name == 'delimiter':
@@ -1827,24 +1853,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 fig = event.inaxes.get_figure()
                 fig.canvas.toolbar.push_current()
 
-            # The below has been replaced by the zooming function above. The mousewheel still steps through the 
-            # linecuts if the linecut window is in focus.
-            # if self.plot_in_focus:
-            #     data = self.plot_in_focus[0].data
-            #     if len(data.get_columns()) == 3:
-            #         if hasattr(data, 'linecut_window'):
-            #             data_shape = data.processed_data[0].shape
-            #             if data.linecut_window.orientation == 'horizontal':
-            #                 new_index = data.selected_indices[1]+int(event.step)
-            #                 if new_index >= 0 and new_index < data_shape[1]:
-            #                     data.selected_indices[1] = new_index
-            #             elif data.linecut_window.orientation == 'vertical':
-            #                 new_index = data.selected_indices[0]+int(event.step)
-            #                 if new_index >= 0 and new_index < data_shape[0]:
-            #                     data.selected_indices[0] = new_index
-            #             data.linecut_window.update()
-            #             self.canvas.draw()
-            # else:
             self.cbar_in_focus = [checked_item for checked_item in checked_items
                                     if checked_item.data.cbar.ax == event.inaxes]
             
@@ -1905,12 +1913,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             else:
                 self.stop_auto_refresh()
                 print('Stop live tracking...')
-        # Below doesn't work because arrow keys already function to move between items in the GUI.
-        # Could try to override it one day.
-        # if event.key() == QtCore.Qt.Key_Up or event.key() == QtCore.Qt.Key_Down or event.key() == QtCore.Qt.Key_Left or event.key() == QtCore.Qt.Key_Right:
-        #     if self.linecut_window:
-        #         self.linecut_window.keyPressEvent(event)
-        #         return
 
                               
     def apply_preset(self, preset_number):

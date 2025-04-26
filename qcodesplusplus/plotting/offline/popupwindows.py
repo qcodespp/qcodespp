@@ -948,7 +948,7 @@ class LineCutWindow(QtWidgets.QWidget):
             self.axes.plot(x, y, linewidth=self.parent.settings['linewidth'])
 
         elif self.orientation == 'horizontal':
-            if hasattr(self.parent,'horimarkers'):
+            if hasattr(self.parent,'horimarkers') and len(self.parent.horimarkers)>0:
                 for marker in self.parent.horimarkers:
                     marker.remove()
             self.parent.horimarkers = []
@@ -968,7 +968,7 @@ class LineCutWindow(QtWidgets.QWidget):
                                 color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
 
         elif self.orientation == 'vertical':
-            if hasattr(self.parent,'vertmarkers'):
+            if hasattr(self.parent,'vertmarkers') and len(self.parent.vertmarkers)>0:
                 for marker in self.parent.vertmarkers:
                     marker.remove()
             self.parent.vertmarkers = []
