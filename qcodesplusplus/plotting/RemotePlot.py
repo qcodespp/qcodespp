@@ -24,7 +24,7 @@ def live_plotting(data_set, data_arrays=None, **kwargs):
         None
     """
     plot = Plot(**kwargs)
-    data_set.plotter=plot
+    data_set.publisher=plot
     if data_arrays is not None:
         plot.add_multiple(*data_arrays)
     return plot

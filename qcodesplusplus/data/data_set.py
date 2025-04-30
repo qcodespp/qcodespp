@@ -345,7 +345,7 @@ class DataSet(DelegateAttributes):
 
         self.finalized=False
 
-        self.plotter = None
+        self.publisher = None
 
         self.name=name
 
@@ -596,8 +596,8 @@ class DataSet(DelegateAttributes):
             self.arrays[array_id][loop_indices] = value
         self.last_store = time.time()
 
-        if self.plotter is not None:
-            self.plotter.store(loop_indices, ids_values, uuid=self.uuid)
+        if self.publisher is not None:
+            self.publisher.store(loop_indices, ids_values, uuid=self.uuid)
             
         if (self.write_period is not None and
                 time.time() > self.last_write + self.write_period):
@@ -817,13 +817,13 @@ class DataSet(DelegateAttributes):
         """
         deep_update(self.metadata, new_metadata)
 
-        if self.plotter is not None:
-            self.plotter.add_metadata(new_metadata, uuid=self.uuid)
+        if self.publisher is not None:
+            self.publisher.add_metadata(new_metadata, uuid=self.uuid)
 
     def save_metadata(self):
         """Evaluate and save the DataSet's metadata."""
-        if self.plotter is not None:
-            self.plotter.add_metadata(self.metadata, uuid=self.uuid)
+        if self.publisher is not None:
+            self.publisher.add_metadata(self.metadata, uuid=self.uuid)
 
         if self.location is not False:
             self.snapshot()
@@ -852,8 +852,8 @@ class DataSet(DelegateAttributes):
         if write_metadata:
             self.save_metadata()
 
-        if self.plotter is not None:
-            self.plotter.finalize(uuid=self.uuid)
+        if self.publisher is not None:
+            self.publisher.finalize(uuid=self.uuid)
 
         self.finalized=True
 
