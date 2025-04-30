@@ -170,7 +170,7 @@ class Loop(Metadatable):
         out.then_actions = self.then_actions
         out.station = self.station
         return out
-
+    
     def each(self, *actions):
         """
         Perform a set of actions at each setting of this loop.
@@ -735,12 +735,12 @@ class ActiveLoop(Metadatable):
             The plot object. The user can add subplots, etc before running the loop,
             or specify run=True to run the loop immediately.
         """
-        plot = Plot(title=self.data_set.name, name=self.data_set.name)
-        self.data_set.publisher=plot
-        plot.add_multiple(*dataitems)
+        pp = Plot(title=self.data_set.name, name=self.data_set.name)
+        self.data_set.publisher=pp
+        pp.add_multiple(*dataitems)
         if run:
             self.run()
-        return plot
+        return pp
 
     def run_temp(self, **kwargs):
         """
@@ -750,7 +750,7 @@ class ActiveLoop(Metadatable):
         """
         return self.run(quiet=True, location=False, **kwargs)
 
-    def run(self, use_threads=False, quiet=False, station=None,
+    def run(self, plot=None, use_threads=False, quiet=False, station=None,
             progress_interval=False, set_active=True, publisher=None,
             progress_bar=True, check_written_data=True,
             *args, **kwargs):
@@ -791,6 +791,9 @@ class ActiveLoop(Metadatable):
         returns:
             a DataSet object that we can use to plot
         """
+        if plot is not None:
+            self.plot(*plot, run=False)
+
         self.progress_bar=progress_bar
         if progress_interval is not False:
             self.progress_interval = progress_interval

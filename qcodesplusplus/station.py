@@ -79,7 +79,7 @@ class Station(QStation):
 
     def auto_add(self,variables,add_instruments: bool=True,add_parameters: bool=True,update_snapshot: bool=True):
         """
-        Automatically add instruments to the station.
+        Automatically add instruments and parameters to the station.
         Usually, variables=globals()
         """
         if add_instruments==True:
