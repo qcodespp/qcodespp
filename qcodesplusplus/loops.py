@@ -736,7 +736,7 @@ class ActiveLoop(Metadatable):
             or specify run=True to run the loop immediately.
         """
         pp = Plot(title=self.data_set.name, name=self.data_set.name)
-        self.data_set.publisher=pp
+        self.data_set.plotter=pp
         pp.add_multiple(*dataitems)
         if run:
             self.run()
@@ -751,7 +751,7 @@ class ActiveLoop(Metadatable):
         return self.run(quiet=True, location=False, **kwargs)
 
     def run(self, plot=None, use_threads=False, quiet=False, station=None,
-            progress_interval=False, set_active=True, publisher=None,
+            progress_interval=False, set_active=True, plotter=None,
             progress_bar=True, check_written_data=True,
             *args, **kwargs):
         """
@@ -799,8 +799,8 @@ class ActiveLoop(Metadatable):
             self.progress_interval = progress_interval
 
         data_set = self.get_data_set(*args, **kwargs)
-        if publisher is not None:
-            data_set.publisher = publisher
+        if plotter is not None:
+            data_set.plotter = plotter
 
         self.set_common_attrs(data_set=data_set, use_threads=use_threads)
 
