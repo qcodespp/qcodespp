@@ -37,15 +37,18 @@ DARK_THEME = True
 from .helpers import rcParams_to_dark_theme, rcParams_to_light_theme, cmaps
 
 class LineCutWindow(QtWidgets.QWidget):
-    def __init__(self, parent, orientation, init_cmap='viridis'):
+    def __init__(self, parent, orientation, init_cmap='viridis',init_canvas=True):
         super().__init__()
         # The parent is the DATA object.
         self.parent = parent
         self.running = True
         self.orientation = orientation
         self.init_cmap = init_cmap
+        self.setWindowTitle('Inspectra Gadget - Linecut and Fitting Window')
+        self.resize(1200, 900)
         self.init_widgets()
-        self.init_canvas()
+        if init_canvas:
+            self.init_canvas()
         self.init_connections()
         self.init_layouts()
         self.set_main_layout()
@@ -53,9 +56,6 @@ class LineCutWindow(QtWidgets.QWidget):
         self.fit_type_changed()
         
     def init_widgets(self):
-        self.setWindowTitle('Inspectra Gadget - Linecut and Fitting Window')
-        self.resize(1200, 900)
-
         # Widgets in Linecut list box
         self.add_cut_button = QtWidgets.QPushButton('Add')
         self.remove_cut_button = QtWidgets.QPushButton('Remove')
@@ -242,6 +242,8 @@ class LineCutWindow(QtWidgets.QWidget):
         self.fit_layout.addWidget(self.fit_class_box)
         self.fit_layout.addWidget(self.fit_box)
         self.fit_layout.addStretch()
+        self.fit_layout.addWidget(self.save_preset_button)
+        self.fit_layout.addWidget(self.load_preset_button)
 
         self.inputs_layout.addWidget(self.input_label)
         self.inputs_layout.addWidget(self.input_edit)
@@ -261,9 +263,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.fit_buttons_layout.addWidget(self.save_all_fits_button)
         self.fit_buttons_layout.addWidget(self.save_parameters_dependency_button)
         self.fit_buttons_layout.addWidget(self.clear_all_fits_button)
-        self.fit_buttons_layout.addStretch()
-        self.fit_buttons_layout.addWidget(self.save_preset_button)
-        self.fit_buttons_layout.addWidget(self.load_preset_button)
+
 
     def set_main_layout(self):
         self.main_layout = QtWidgets.QVBoxLayout()
@@ -1288,6 +1288,124 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.guess_checkbox.setCheckState(QtCore.Qt.UnChecked)
             self.update()
 
+class OneDWindow(LineCutWindow):
+    def __init__(self, parent):
+        super().__init__(parent, orientation='1D', init_canvas=False)
+        try:
+            self.setWindowTitle(f'Inspectra Gadget - Options for {parent.label}')
+        except:
+            self.setWindowTitle('Inspectra Gadget - Options for 1D data')
+        self.resize(900, 900)
+        self.parent = parent
+        self.running = True
+        self.init_widgets()
+        self.init_connections()
+        self.init_layouts()
+        self.set_main_layout()
+        self.init_cuts_table()
+        self.fit_type_changed()
+
+    def init_layouts(self):
+        # Sub-layouts in Linecut list box:
+        self.table_buttons_layout = QtWidgets.QHBoxLayout()
+        self.colormap_layout = QtWidgets.QHBoxLayout()
+
+        # Populating
+        self.table_buttons_layout.addWidget(self.add_cut_button)
+        self.table_buttons_layout.addWidget(self.remove_cut_button)
+        self.table_buttons_layout.addWidget(self.clear_cuts_button)
+        self.table_buttons_layout.addWidget(self.move_up_button)
+        self.table_buttons_layout.addWidget(self.move_down_button)
+
+        self.colormap_layout.addWidget(self.colormap_type_box)
+        self.colormap_layout.addWidget(self.colormap_box)
+        self.colormap_layout.addWidget(self.apply_colormap_to_box)
+        self.colormap_layout.addWidget(self.apply_button)
+        
+        # Sub-layouts(s) in fitting box
+        self.lims_layout = QtWidgets.QHBoxLayout()
+        self.fit_layout = QtWidgets.QHBoxLayout()
+        self.inputs_layout = QtWidgets.QHBoxLayout()
+        self.guess_layout = QtWidgets.QHBoxLayout()
+        self.output_layout = QtWidgets.QVBoxLayout()
+        self.fit_buttons_layout = QtWidgets.QHBoxLayout()
+        self.fit_all_buttons_layout = QtWidgets.QHBoxLayout()
+
+        # Populating
+        self.lims_layout.addWidget(self.lims_label)
+        self.lims_layout.addWidget(self.xmin_label)
+        self.lims_layout.addWidget(self.xmin_box)
+        self.lims_layout.addWidget(self.xmax_label)
+        self.lims_layout.addWidget(self.xmax_box)
+        self.lims_layout.addWidget(self.reset_axes_button)
+        self.lims_layout.addStretch()
+
+        self.fit_layout.addWidget(self.fit_functions_label)
+        self.fit_layout.addWidget(self.fit_class_box)
+        self.fit_layout.addWidget(self.fit_box)
+        self.fit_layout.addStretch()
+        self.fit_layout.addWidget(self.save_preset_button)
+        self.fit_layout.addWidget(self.load_preset_button)
+
+        self.inputs_layout.addWidget(self.input_label)
+        self.inputs_layout.addWidget(self.input_edit)
+        #self.inputs_layout.addStretch()
+
+        self.guess_layout.addWidget(self.guess_checkbox)
+        self.guess_layout.addWidget(self.guess_edit)
+        #self.guess_layout.addStretch()
+
+        self.output_layout.addWidget(self.output_window)
+
+        self.fit_buttons_layout.addWidget(self.fit_button)
+        self.fit_buttons_layout.addWidget(self.save_result_button)
+        self.fit_buttons_layout.addWidget(self.clear_fit_button)
+        self.fit_buttons_layout.addStretch()
+        self.fit_all_buttons_layout.addWidget(self.fit_checked_button)
+        self.fit_all_buttons_layout.addWidget(self.save_all_fits_button)
+        self.fit_all_buttons_layout.addWidget(self.clear_all_fits_button)
+        self.fit_all_buttons_layout.addWidget(self.save_parameters_dependency_button)
+        self.fit_all_buttons_layout.addStretch()
+
+    def set_main_layout(self):
+        self.main_layout = QtWidgets.QVBoxLayout()
+
+        self.tablebox=QtWidgets.QGroupBox('Traces list')
+        self.table_layout = QtWidgets.QVBoxLayout()
+        self.table_layout.addLayout(self.table_buttons_layout)
+        self.table_layout.addWidget(self.cuts_table)
+        self.table_layout.addLayout(self.colormap_layout)
+        self.tablebox.setLayout(self.table_layout)
+        
+
+        self.fittingbox=QtWidgets.QGroupBox('Curve Fitting')
+        self.fittinglayout = QtWidgets.QVBoxLayout()
+        self.fittinglayout.addLayout(self.lims_layout)
+        self.fittinglayout.addLayout(self.fit_layout)
+        self.fittinglayout.addLayout(self.inputs_layout)
+        self.fittinglayout.addLayout(self.guess_layout)
+        self.fittinglayout.addLayout(self.output_layout)
+        self.fittinglayout.addLayout(self.fit_buttons_layout)
+        self.fittinglayout.addLayout(self.fit_all_buttons_layout)
+        self.fittingbox.setLayout(self.fittinglayout)
+
+        self.main_layout.addWidget(self.tablebox)
+        self.main_layout.addWidget(self.fittingbox)
+        self.setLayout(self.main_layout)
+
+    def init_cuts_table(self):
+        self.cuts_table.setColumnCount(5)
+        self.cuts_table.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked)
+        h = self.cuts_table.horizontalHeader()
+        h.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        for col in range(5):
+            h.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeToContents)
+        self.cuts_table.setHorizontalHeaderLabels(['#','X data','Y data','color','show fit'])
+        v=self.cuts_table.verticalHeader()
+        v.setVisible(False)
+
+        self.cuts_table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.cuts_table.customContextMenuRequested.connect(self.open_cuts_table_menu)
             
 class FFTWindow(QtWidgets.QWidget):
     def __init__(self, fftdata):
