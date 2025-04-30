@@ -67,7 +67,7 @@ from .loops import Loop, active_loop, active_data_set
 from .measure import Measure
 from .actions import Task, Wait, BreakIf
 
-from .plotting.RemotePlot import Plot, live_plotting
+from .plotting.RemotePlot import Plot, live_plot
 from .plotting.offline.main import offline_plotting
 
 from .data.data_set import DataSet, new_data, load_data, load_data_num, load_data_nums, set_data_format, set_data_folder

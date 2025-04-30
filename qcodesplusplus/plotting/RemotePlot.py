@@ -10,20 +10,22 @@ from uuid import uuid4
 from qcodesplusplus.data.data_array import DataArray
 from qcodesplusplus.utils.helpers import NumpyJSONEncoder
 
-def live_plotting(data_set, data_arrays=None, **kwargs):
+def live_plot(data_set, data_arrays=None):
     """
-    This function is used to plot data in real time.
-    It uses the RemotePlot class to create a plot and update it with new data.
+    This function basically provides a shortcut to link the data set to a plot, so the user
+    doesn't have to even know about the existance of data.publisher.
 
     Args:
         data_set (DataSet): The data set to plot.
-        *data_arrays (DataArray): The data arrays to plot.
+        *data_arrays (DataArray, optional): The data arrays to plot. Usually this wouldn't be used here, since
+            it's easier to add them when using loop.run(). This function will more likely be used for flexibly
+            plotting data with plot.add()
         **kwargs: Additional arguments to pass to the RemotePlot class.
 
     Returns:
         None
     """
-    plot = Plot(**kwargs)
+    plot = Plot()
     data_set.publisher=plot
     if data_arrays is not None:
         plot.add_multiple(*data_arrays)
