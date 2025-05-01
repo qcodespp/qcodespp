@@ -44,7 +44,10 @@ class LineCutWindow(QtWidgets.QWidget):
         self.running = True
         self.orientation = orientation
         self.init_cmap = init_cmap
-        self.setWindowTitle('Inspectra Gadget - Linecut and Fitting Window')
+        try:
+            self.setWindowTitle(f'Inspectra Gadget - {orientation} linecuts for {self.parent.label}')
+        except:
+            self.setWindowTitle('Inspectra Gadget - Linecut and Fitting Window')
         self.resize(1200, 900)
         self.init_widgets()
         if init_canvas:
@@ -1288,7 +1291,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.guess_checkbox.setCheckState(QtCore.Qt.UnChecked)
             self.update()
 
-class OneDWindow(LineCutWindow):
+class Popup1D(LineCutWindow):
     def __init__(self, parent):
         super().__init__(parent, orientation='1D', init_canvas=False)
         try:
@@ -1394,13 +1397,13 @@ class OneDWindow(LineCutWindow):
         self.setLayout(self.main_layout)
 
     def init_cuts_table(self):
-        self.cuts_table.setColumnCount(5)
+        self.cuts_table.setColumnCount(6)
         self.cuts_table.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked)
         h = self.cuts_table.horizontalHeader()
         h.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
-        for col in range(5):
+        for col in range(6):
             h.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeToContents)
-        self.cuts_table.setHorizontalHeaderLabels(['#','X data','Y data','color','show fit'])
+        self.cuts_table.setHorizontalHeaderLabels(['#','X data','Y data','linetype','color','show fit'])
         v=self.cuts_table.verticalHeader()
         v.setVisible(False)
 

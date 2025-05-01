@@ -4,7 +4,7 @@ import os
 from matplotlib.widgets import Cursor
 from matplotlib import cm, rcParams
 from .helpers import MidpointNormalize
-from .popupwindows import FFTWindow, OneDWindow
+from .popupwindows import FFTWindow, Popup1D
 
 class DataItem(QtWidgets.QListWidgetItem):
     def __init__(self, data):
@@ -201,13 +201,11 @@ class BaseClassData:
             if dim == 2:
                 self.image = self.axes.plot(self.processed_data[0], 
                                             self.processed_data[1], color=cmap(0.5))
-                try:
-                    self.popup1D = OneDWindow(self)
+                if not hasattr(self, 'popup1D'):
+                    self.popup1D = Popup1D(self)
                     self.popup1D.running = True
                     self.popup1D.activateWindow()
                     self.popup1D.show()
-                except Exception as e:
-                    print(f"Error opening 1D window: {e}")
 
             elif dim == 3:
                 norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 

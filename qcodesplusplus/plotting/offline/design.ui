@@ -560,41 +560,7 @@
          </spacer>
         </item>
         <item>
-         <widget class="QPushButton" name="save_image_button">
-          <property name="text">
-           <string>Save plot</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="copy_image_button">
-          <property name="text">
-           <string>Copy image</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="previous_button">
-          <property name="text">
-           <string>Previous file</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="next_button">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="text">
-           <string>Next file</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLabel" name="label_4">
+         <widget class="QLabel" name="click_for_help_label">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
             <horstretch>0</horstretch>
@@ -612,6 +578,86 @@
           </property>
           <property name="openExternalLinks">
            <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_4">
+        <item>
+         <widget class="QLabel" name="new_plot_X_label">
+          <property name="text">
+           <string>X:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="new_plot_X_box">
+          <property name="sizeAdjustPolicy">
+           <enum>QComboBox::AdjustToContents</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="new_plot_Y_label">
+          <property name="text">
+           <string>Y:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="new_plot_Y_box">
+          <property name="sizeAdjustPolicy">
+           <enum>QComboBox::AdjustToContents</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="new_plot_Z_label">
+          <property name="text">
+           <string>Z:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="new_plot_Z_box">
+          <property name="sizeAdjustPolicy">
+           <enum>QComboBox::AdjustToContents</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="new_plot_button">
+          <property name="text">
+           <string>Add new plot</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_3">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="save_image_button">
+          <property name="text">
+           <string>Save figure</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="copy_image_button">
+          <property name="text">
+           <string>Copy image</string>
           </property>
          </widget>
         </item>

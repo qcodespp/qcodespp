@@ -254,8 +254,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.paste_filters_button.clicked.connect(lambda: self.paste_filters('copied'))
         self.up_filters_button.clicked.connect(lambda: self.move_filter(-1))
         self.down_filters_button.clicked.connect(lambda: self.move_filter(1))
-        self.previous_button.clicked.connect(self.to_previous_file)
-        self.next_button.clicked.connect(self.to_next_file)
+        # self.previous_button.clicked.connect(self.to_previous_file)
+        # self.next_button.clicked.connect(self.to_next_file)
+        self.new_plot_button.clicked.connect(lambda: self.duplicate_item(new_plot_button=True))
         self.copy_view_button.clicked.connect(self.copy_view_settings)
         self.paste_view_button.clicked.connect(lambda: self.paste_view_settings('copied'))
         self.colormap_type_box.currentIndexChanged.connect(self.colormap_type_edited)
@@ -387,8 +388,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             item = DataItem(BaseClassData(filepath, self.canvas))
             return item
 
-    def open_files(self, filepaths=None, load_the_data=True, attr_dicts=None, dirpath=None):
-        overrideautocheck=False #If loading a previously saved session, don't automatically check only the last file.
+    def open_files(self, filepaths=None, load_the_data=True, attr_dicts=None, dirpath=None,overrideautocheck=False):
         self.file_list.itemChanged.disconnect(self.file_checked)
         if not filepaths:
             filepaths, _ = QtWidgets.QFileDialog.getOpenFileNames(
@@ -715,6 +715,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     
     def file_clicked(self):
         self.show_current_all()
+        
+        current_item = self.file_list.currentItem()
+        if hasattr(current_item.data,'popup1D'):
+            current_item.data.popup1D.show()
             
     def file_double_clicked(self, item):
         self.file_list.itemChanged.disconnect(self.file_checked)
@@ -794,32 +798,33 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.file_double_clicked(last_item)
                 self.file_list.setCurrentItem(last_item)
                 self.track_button_clicked()
-            
-    def to_next_file(self):
-        checked_items, indices = self.get_checked_items(return_indices=True)
-        if (len(checked_items) == 1 and self.file_list.count() > 1 and 
-            indices[0]+1 < self.file_list.count()):
-            item = checked_items[0]
-            next_item = self.file_list.item(indices[0]+1)
-            self.file_list.itemChanged.disconnect(self.file_checked)
-            item.setCheckState(QtCore.Qt.Unchecked)
-            next_item.setCheckState(QtCore.Qt.Checked)
-            self.file_list.setCurrentItem(next_item)
-            self.file_list.itemChanged.connect(self.file_checked)
-            self.update_plots()
+    
+    # The below is not working, but could be useful to fix and include.
+    # def to_next_file(self):
+    #     checked_items, indices = self.get_checked_items(return_indices=True)
+    #     if (len(checked_items) == 1 and self.file_list.count() > 1 and 
+    #         indices[0]+1 < self.file_list.count()):
+    #         item = checked_items[0]
+    #         next_item = self.file_list.item(indices[0]+1)
+    #         self.file_list.itemChanged.disconnect(self.file_checked)
+    #         item.setCheckState(QtCore.Qt.Unchecked)
+    #         next_item.setCheckState(QtCore.Qt.Checked)
+    #         self.file_list.setCurrentItem(next_item)
+    #         self.file_list.itemChanged.connect(self.file_checked)
+    #         self.update_plots()
         
-    def to_previous_file(self):
-        checked_items, indices = self.get_checked_items(return_indices=True)
-        if (len(checked_items) == 1 and self.file_list.count() > 1 
-            and indices[0] > 0):
-            item = checked_items[0]
-            previous_item = self.file_list.item(indices[0]-1)
-            self.file_list.itemChanged.disconnect(self.file_checked)
-            item.setCheckState(QtCore.Qt.Unchecked)
-            previous_item.setCheckState(QtCore.Qt.Checked)
-            self.file_list.setCurrentItem(previous_item)
-            self.file_list.itemChanged.connect(self.file_checked)
-            self.update_plots()
+    # def to_previous_file(self):
+    #     checked_items, indices = self.get_checked_items(return_indices=True)
+    #     if (len(checked_items) == 1 and self.file_list.count() > 1 
+    #         and indices[0] > 0):
+    #         item = checked_items[0]
+    #         previous_item = self.file_list.item(indices[0]-1)
+    #         self.file_list.itemChanged.disconnect(self.file_checked)
+    #         item.setCheckState(QtCore.Qt.Unchecked)
+    #         previous_item.setCheckState(QtCore.Qt.Checked)
+    #         self.file_list.setCurrentItem(previous_item)
+    #         self.file_list.itemChanged.connect(self.file_checked)
+    #         self.update_plots()
             
     def get_checked_items(self, return_indices = False):
         indices = [index for index in range(self.file_list.count()) 
@@ -838,6 +843,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             return unchecked_items, indices
         else:
             return unchecked_items
+    
+    def get_all_items(self, return_indices = False):
+        indices = [index for index in range(self.file_list.count())]
+        all_items = [self.file_list.item(index) for index in indices]
+        if return_indices:    
+            return all_items, indices
+        else:
+            return all_items
         
     def refresh_interval_changed(self, interval):
         AUTO_REFRESH_INTERVAL_3D=float(interval)
@@ -939,6 +952,24 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.show_current_filters()
         self.show_current_axscale_settings()
         self.show_current_axlim_settings()
+        self.populate_new_plot_settings()
+    
+    def populate_new_plot_settings(self):
+        current_item = self.file_list.currentItem()
+        if isinstance(current_item.data, qcodesppData): #Currently only supports qcodespp data
+            dim = len(current_item.data.get_columns())
+            if dim == 2:
+                boxes= [self.new_plot_X_box, self.new_plot_Y_box]
+                self.new_plot_Z_box.clear()
+            else:
+                boxes= [self.new_plot_X_box, self.new_plot_Y_box, self.new_plot_Z_box]
+            for combobox in boxes:
+                combobox.clear()
+                combobox.addItems(current_item.data.all_parameter_names)
+            self.new_plot_X_box.setCurrentIndex(0)
+            self.new_plot_Y_box.setCurrentIndex(1)
+            if dim == 3:
+                self.new_plot_Z_box.setCurrentIndex(2)
     
     def show_current_plot_settings(self):
         self.settings_table.clear()
@@ -1040,12 +1071,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for _ in current_item.data.filters:
                 self.append_filter_to_table()
     
-    def plot_setting_edited(self):
+    def plot_setting_edited(self,setting_name=None):
         current_item = self.file_list.currentItem()
         if current_item:
             current_item.data.old_settings = current_item.data.settings.copy()
             row = self.settings_table.currentRow()
-            setting_name = self.settings_table.item(row, 0).text()
+            if setting_name is not None:
+                setting_name = self.settings_table.item(row, 0).text()
             value = self.settings_table.item(row, 1).text()
             current_item.data.settings[setting_name] = value
             self.settings_table.clearFocus()
@@ -1329,10 +1361,17 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 except Exception as e:
                     print('Cannot combine these plots:', e)
                     
-    def duplicate_item(self):
+    def duplicate_item(self, new_plot_button=False):
         original_item = self.file_list.currentItem()
         if original_item:
-            self.open_files(filepaths=[original_item.data.filepath])
+            if new_plot_button:
+                if not isinstance(original_item.data, qcodesppData):
+                    print('Feature not available for this data type')
+                else:
+                    X = self.new_plot_X_box.currentText()
+                    Y = self.new_plot_Y_box.currentText()
+                    Z = self.new_plot_Z_box.currentText()
+            self.open_files(filepaths=[original_item.data.filepath],overrideautocheck=True)
             new_item = self.file_list.currentItem()
             new_item.duplicate = True
             new_item.data.settings = original_item.data.settings.copy()
@@ -1341,21 +1380,29 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if isinstance(original_item.data, qcodesppData):
                 original_label= original_item.data.label
                 if hasattr(original_item,'duplicate'):
-                    if original_item.duplicate:
-                        duplicate_index=int(original_label.split('-')[1])
-                        new_label=f'{original_label.split('-')[0]}-{duplicate_index+1}-{original_label.split("-")[2]}'
-                        new_item.setText(new_label)
-                        new_item.data.label = new_label
-                        new_item.data.settings['title']=f'{new_item.data.dataset_id}-{duplicate_index+1}'
-
+                    index_str=original_label.split('-')[0]
                 else:
-                    new_label= f'{original_label.split('_')[0]}-2-{original_label.split("_")[1]}'
-                    new_item.setText(new_label)
-                    new_item.data.label = new_label
-                    new_item.data.settings['title']=new_item.data.dataset_id+'-2'
+                    index_str=original_label.split('_')[0]
+                items=[item for item in self.get_all_items() if index_str in item.data.label]
+                duplicate_index=len(list(items))-1
+                if hasattr(original_item,'duplicate'):
+                    new_label=f'{original_label.split('-')[0]}-{duplicate_index}-{original_label.split("-")[2]}'
+                else:
+                    new_label= f'{original_label.split('_')[0]}-{duplicate_index}-{original_label.split("_")[1]}'
+                new_item.setText(new_label)
+                new_item.data.label = new_label
+                new_item.data.settings['title']=f'{new_item.data.dataset_id}-{duplicate_index}'
+                if new_plot_button:
+                    new_item.data.settings['X data'] = X
+                    new_item.data.settings['Y data'] = Y
+                    if 'Z data' in new_item.data.settings.keys():
+                        new_item.data.settings['Z data'] = Z
+
             else:
                 new_item.setText(f'[DUPLICATE] {new_item.data.label}')
                 new_item.data.label = f'[DUPLICATE] {new_item.data.label}'
+                
+            new_item.setCheckState(QtCore.Qt.Checked)
             self.update_plots()
                 
     def combine_plots(self):
