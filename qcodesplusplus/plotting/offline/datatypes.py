@@ -25,7 +25,7 @@ class BaseClassData:
     DEFAULT_PLOT_SETTINGS['titlesize'] = '14'
     DEFAULT_PLOT_SETTINGS['labelsize'] = '14' 
     DEFAULT_PLOT_SETTINGS['ticksize'] = '14'
-    DEFAULT_PLOT_SETTINGS['linewidth'] = '1.5'
+    # DEFAULT_PLOT_SETTINGS['linewidth'] = '1.5'
     DEFAULT_PLOT_SETTINGS['spinewidth'] = '1'
     DEFAULT_PLOT_SETTINGS['columns'] = '0,1,2'
     DEFAULT_PLOT_SETTINGS['colorbar'] = 'True'
@@ -250,8 +250,8 @@ class BaseClassData:
                              size=self.settings['labelsize'])
         self.axes.set_ylabel(self.settings['ylabel'], 
                              size=self.settings['labelsize'])
-        if isinstance(self.image, list):
-            self.image[0].set_linewidth(float(self.settings['linewidth']))
+        # if isinstance(self.image, list):
+        #     self.image[0].set_linewidth(float(self.settings['linewidth']))
         for axis in ['top','bottom','left','right']:
             self.axes.spines[axis].set_linewidth(float(self.settings['spinewidth']))
         self.axes.tick_params(labelsize=self.settings['ticksize'], 

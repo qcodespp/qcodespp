@@ -943,14 +943,7 @@ class LineCutWindow(QtWidgets.QWidget):
 
         lines = self.get_checked_items()
 
-        if self.orientation == '1D':
-            x,y,z=self.get_line_data(0)
-            self.xlabel = self.parent.settings['xlabel']
-            self.ylabel = self.parent.settings['ylabel']
-            self.title = self.parent.settings['title']
-            self.axes.plot(x, y, linewidth=self.parent.settings['linewidth'])
-
-        elif self.orientation == 'horizontal':
+        if self.orientation == 'horizontal':
             if hasattr(self.parent,'horimarkers') and len(self.parent.horimarkers)>0:
                 for marker in self.parent.horimarkers:
                     marker.remove()
@@ -961,13 +954,13 @@ class LineCutWindow(QtWidgets.QWidget):
                 x,y,z= self.get_line_data(line)
                 self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value'] = z
                 if parent_marker:
-                    self.parent.horimarkers.append(self.parent.axes.axhline(y=z, linestyle='dashed', linewidth=1, xmax=0.1,
+                    self.parent.horimarkers.append(self.parent.axes.axhline(y=z, linestyle='dashed', linewidth=1.5, xmax=0.1,
                                                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
-                    self.parent.horimarkers.append(self.parent.axes.axhline(y=z, linestyle='dashed', linewidth=1, xmin=0.9,
+                    self.parent.horimarkers.append(self.parent.axes.axhline(y=z, linestyle='dashed', linewidth=1.5, xmin=0.9,
                                                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
                 self.ylabel = self.parent.settings['clabel']
                 offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
-                self.axes.plot(x, y+offset, linewidth=self.parent.settings['linewidth'],
+                self.axes.plot(x, y+offset, linewidth=1.5,
                                 color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
 
         elif self.orientation == 'vertical':
@@ -981,13 +974,13 @@ class LineCutWindow(QtWidgets.QWidget):
                 x,y,z= self.get_line_data(line)
                 self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value'] = z
                 if parent_marker:
-                    self.parent.vertmarkers.append(self.parent.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymax=0.1,
+                    self.parent.vertmarkers.append(self.parent.axes.axvline(x=z, linestyle='dashed', linewidth=1.5, ymax=0.1,
                                                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
-                    self.parent.vertmarkers.append(self.parent.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymin=0.9,
+                    self.parent.vertmarkers.append(self.parent.axes.axvline(x=z, linestyle='dashed', linewidth=1.5, ymin=0.9,
                                                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
                 self.ylabel = self.parent.settings['clabel']
                 offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
-                self.axes.plot(x, y+offset, linewidth=self.parent.settings['linewidth'],
+                self.axes.plot(x, y+offset, linewidth=1.5,
                                 color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
 
         elif self.orientation == 'diagonal' or self.orientation == 'circular':
@@ -1025,7 +1018,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.xlabel = 'Angle (rad)'
                 self.title = ''
             self.ylabel = self.parent.settings['clabel']
-            self.axes.plot(x, y, linewidth=self.parent.settings['linewidth'])
+            self.axes.plot(x, y, linewidth=1.5)
         self.cursor = Cursor(self.axes, useblit=True, color='grey', linewidth=0.5)
         self.axes.set_xlabel(self.xlabel, size='x-large')
         self.axes.set_ylabel(self.ylabel, size='x-large')
@@ -1043,7 +1036,7 @@ class LineCutWindow(QtWidgets.QWidget):
             x_forfit=self.parent.linecuts[self.orientation]['lines'][line]['fit']['xdata']
             y_fit=fit_result.best_fit+offset
             self.axes.plot(x_forfit, y_fit, 'k--',
-                linewidth=self.parent.settings['linewidth'])
+                linewidth=1.5)
             fit_components=fit_result.eval_components()
             if self.colormap_box.currentText() == 'viridis':
                 selected_colormap = cm.get_cmap('plasma')
@@ -1051,7 +1044,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 selected_colormap = cm.get_cmap('viridis')
             line_colors = selected_colormap(np.linspace(0.1,0.9,len(fit_components.keys())))
             for i,key in enumerate(fit_components.keys()):
-                self.axes.plot(x_forfit, fit_components[key]+offset, '--', color=line_colors[i],alpha=0.75, linewidth=self.parent.settings['linewidth'])
+                self.axes.plot(x_forfit, fit_components[key]+offset, '--', color=line_colors[i],alpha=0.75, linewidth=1.5)
         except Exception as e:
             self.output_window.setText(f'Could not plot fit components: {e}')
         self.canvas.draw()
@@ -1535,13 +1528,15 @@ class Popup1D(QtWidgets.QWidget):
             line={'checkstate': 2,
                 'X data': self.parent.independent_parameter_names[0],
                 'Y data': self.parent.dependent_parameter_names[1],
-                'linecolor': [1,1,1,1],
-                'linewidth': 1,
+                'processed_data': [self.parent.processed_data[0],
+                    self.parent.processed_data[1]],
+                'linecolor': (1,0,0,1),
+                'linewidth': 1.5,
                 'linestyle': '-'}
             self.parent.plotted_lines[int(max_index+1)] = line
             self.append_cut_to_table(int(max_index+1))
-        except IndexError:
-            print('Index out of range.')
+        except Exception as e:
+            print('Cannot add data: '+e)
         self.update()
 
     def append_cut_to_table(self,index):
@@ -1593,43 +1588,23 @@ class Popup1D(QtWidgets.QWidget):
         self.cuts_table.setCurrentCell(row,0)
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
 
-    def cuts_table_edited(self,setting=None):
-        if setting=='index':
-            current_row = self.cuts_table.currentRow()
-            self.index_changed(current_row)
+    def cuts_table_edited(self):
+        current_item = self.cuts_table.currentItem()
+        current_col = self.cuts_table.currentColumn()
+        current_row = self.cuts_table.currentRow()
+        line = int(self.cuts_table.item(current_row,0).text())
 
-        # else:
-        #     current_item = self.cuts_table.currentItem()
-        #     current_col = self.cuts_table.currentColumn()
-        #     current_row = self.cuts_table.currentRow()
+        if current_col == 6:
+            self.parent.plotted_lines[line]['fit']['fit_checkstate'] = current_item.checkState()
 
-        #     if current_col == 2: # The user is trying to edit the value of the data. Let's find a new index for them.
-        #         linecut = self.cuts_table.item(current_row,0).text()
-        #         linecut = int(linecut)
-        #         inputval = float(current_item.text())
-        #         if self.orientation == 'horizontal':
-        #             new_index = (np.abs(self.parent.processed_data[1][0,:]-inputval)).argmin()
-        #         elif self.orientation == 'vertical':
-        #             new_index = (np.abs(self.parent.processed_data[0][:,0]-inputval)).argmin()
-        #         self.cuts_table.cellWidget(current_row,1).setValue(new_index)
-        #         self.index_changed(current_row)
+        elif current_col == 0: # It's the checkstate for the linecut.
+            self.parent.plotted_lines[line]['checkstate'] = current_item.checkState()
 
-        #     elif current_col == 3: #Change the offset in the dictionary and then replot.
-        #         linecut = self.cuts_table.item(current_row,0).text()
-        #         linecut = int(linecut)
-        #         offset = float(current_item.text())
-        #         self.parent.linecuts[self.orientation]['lines'][linecut]['offset'] = offset
-        #         self.update()
-    
-        #     elif current_col == 0: # It's the checkstate, so need to replot and update dictionary
-        #         linecut = int(self.cuts_table.item(current_row,0).text())
-        #         self.parent.linecuts[self.orientation]['lines'][linecut]['checkstate'] = current_item.checkState()
-        #         self.update()
+        edit_dict={1:'X data',2:'Y data',3:'linestyle',5:'linewidth'}
+        if current_col in edit_dict.keys():
+            self.parent.plotted_lines[line][edit_dict[current_col]] = current_item.text()
 
-        #     elif current_col == 5: # It's the checkstate for the fit.
-        #         linecut = int(self.cuts_table.item(current_row,0).text())
-        #         self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_checkstate'] = current_item.checkState()
-        #         self.update()
+        self.update()
 
     def remove_cut(self,which='selected'):
         # which = 'selected', 'all'
@@ -1749,6 +1724,25 @@ class Popup1D(QtWidgets.QWidget):
                 self.cuts_table.itemChanged.connect(self.cuts_table_edited)
                 self.update()
 
+        elif column==1 or column==2:
+            menu = QtWidgets.QMenu(self)
+            for entry in self.parent.all_parameter_names:
+                action = QtWidgets.QAction(entry, self)
+                menu.addAction(action)
+            menu.triggered[QtWidgets.QAction].connect(self.replace_table_entry)
+            menu.popup(QtGui.QCursor.pos())
+            self.update()
+            
+        elif column==3:
+            menu = QtWidgets.QMenu(self)
+            styles=['-', '--', '-.', ':','.','o','v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd', 'P', 'X']
+            for entry in styles:
+                action = QtWidgets.QAction(entry, self)
+                menu.addAction(action)
+            menu.triggered[QtWidgets.QAction].connect(self.replace_table_entry)
+            menu.popup(QtGui.QCursor.pos())
+            self.update()
+
         elif column==6:
             menu = QtWidgets.QMenu(self)
             check_all_action = menu.addAction("Show all fits")
@@ -1773,6 +1767,10 @@ class Popup1D(QtWidgets.QWidget):
                     self.parent.plotted_lines[linecut]['fit']['fit_checkstate'] = item.checkState()
                 self.cuts_table.itemChanged.connect(self.cuts_table_edited)
                 self.update()
+    
+    def replace_table_entry(self, signal):
+        item = self.cuts_table.currentItem()
+        item.setText(signal.text())
 
     def limits_edited(self):
         try:
@@ -1979,17 +1977,20 @@ class Popup1D(QtWidgets.QWidget):
         return (x,y)
     
     def draw_plot(self):
+        self.parent.axes.clear()
         lines = self.get_checked_items()
         if len(lines) > 0:
-            self.parent.axes.clear()
             for line in lines:
                 x,y= self.get_line_data(line)
-                self.parent.axes.plot(x, y, linewidth=self.parent.plotted_lines[line]['linewidth'],
-                                color=self.parent.plotted_lines[line]['linecolor'])
+                self.parent.image = self.parent.axes.plot(x, y,
+                                    self.parent.plotted_lines[line]['linestyle'],
+                                    linewidth=self.parent.plotted_lines[line]['linewidth'],
+                                    markersize=self.parent.plotted_lines[line]['linewidth'],
+                                    color=self.parent.plotted_lines[line]['linecolor'])
             self.parent.apply_plot_settings()
             self.parent.apply_axlim_settings()
             self.parent.apply_axscale_settings()
-            self.parent.canvas.draw()
+        self.parent.canvas.draw()
 
     def draw_fits(self,line):
         try:

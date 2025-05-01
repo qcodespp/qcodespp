@@ -288,8 +288,8 @@ class qcodesppData(main.BaseClassData):
             cmap = cm.get_cmap(cmap_str, lut=int(self.settings['lut']))
             cmap.set_bad(self.settings['maskcolor'])
             if dim == 2:
-                self.image = self.axes.plot(self.processed_data[0], 
-                                            self.processed_data[1], color=cmap(0.5))
+                # self.image = self.axes.plot(self.processed_data[0], 
+                #                             self.processed_data[1], color=cmap(0.5))
                 
                 if not hasattr(self, 'plotted_lines'):
                     self.plotted_lines = {0: {'checkstate': 2,
@@ -297,14 +297,16 @@ class qcodesppData(main.BaseClassData):
                                                 'Y data': self.dependent_parameter_names[self.index_dependent_parameter],
                                                 'processed_data': [self.processed_data[0],
                                                                     self.processed_data[1]],
-                                                'linecolor': [1,1,1,1],
-                                                'linewidth': 1,
+                                                'linecolor': (0.1, 0.5, 0.8, 1),
+                                                'linewidth': 1.5,
                                                 'linestyle': '-'}}
                 if not hasattr(self, 'popup1D'):
                     self.popup1D = Popup1D(self)
                     self.popup1D.running = True
                     self.popup1D.append_cut_to_table(0)
                     self.popup1D.activateWindow()
+
+                self.popup1D.update()
 
                 # This is horrible, but I need to get rid of these. Ideally I would re-write the extension so they're
                 # not used at all in the 1D case. Will try later.
