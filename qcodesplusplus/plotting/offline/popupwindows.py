@@ -855,7 +855,7 @@ class LineCutWindow(QtWidgets.QWidget):
         return p0
 
     def start_fitting(self,line=None,multilinefit=False):
-        if line is None:
+        if not line:
             current_row = self.cuts_table.currentRow()
             line = int(self.cuts_table.item(current_row,0).text())
         else: # We are being passed the line from fit_checked
@@ -1678,7 +1678,6 @@ class Popup1D(QtWidgets.QWidget):
                 self.parent.plotted_lines[linecut]['linecolor'] = line_colors[linecut]
                 rgbavalue = [int(line_colors[linecut][0]*255), int(line_colors[linecut][1]*255), int(line_colors[linecut][2]*255),int(line_colors[linecut][3]*255)]
                 self.cuts_table.item(linecut,4).setBackground(QtGui.QColor(*rgbavalue))
-
 
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
         self.update()
