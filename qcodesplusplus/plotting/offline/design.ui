@@ -560,24 +560,15 @@
          </spacer>
         </item>
         <item>
-         <widget class="QLabel" name="click_for_help_label">
+         <widget class="QLabel" name="data_shape_label">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
           <property name="text">
-           <string>&lt;a href=https://github.com/djcarrad/qcodesplusplus/wiki/Offline-plotting:-InSpectra-Gadget&gt;Click for help&lt;/a&gt;</string>
-          </property>
-          <property name="textFormat">
-           <enum>Qt::AutoText</enum>
-          </property>
-          <property name="scaledContents">
-           <bool>true</bool>
-          </property>
-          <property name="openExternalLinks">
-           <bool>true</bool>
+           <string>Data shape:</string>
           </property>
          </widget>
         </item>
@@ -1113,10 +1104,17 @@
     <addaction name="menuSave_session"/>
     <addaction name="action_restore_session"/>
    </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionOnline_help"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuCombine_Plots"/>
    <addaction name="menu_save_session"/>
    <addaction name="menu_apply_preset"/>
+   <addaction name="menuHelp"/>
   </widget>
   <action name="actionNew">
    <property name="text">
@@ -1381,6 +1379,11 @@
   <action name="action_save_data_checked_files">
    <property name="text">
     <string>Checked files</string>
+   </property>
+  </action>
+  <action name="actionOnline_help">
+   <property name="text">
+    <string>Online help</string>
    </property>
   </action>
  </widget>

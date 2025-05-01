@@ -17,6 +17,7 @@ import os
 import copy
 import io
 import tarfile
+from webbrowser import open as href_open
 from json import load as jsonload
 from json import dump as jsondump
 from csv import writer as csvwriter
@@ -190,6 +191,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.init_canvas()
         self.linked_folder = None
         self.linked_files = []
+        self.resize(1400,1000)
     
     def init_plot_settings(self):
         self.settings_table.setColumnCount(2)
@@ -307,6 +309,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.down_file_button.clicked.connect(lambda: self.move_file('down'))
         self.file_list.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.file_list.customContextMenuRequested.connect(self.open_item_menu)
+        self.actionOnline_help.triggered.connect(lambda: href_open('https://github.com/djcarrad/qcodesplusplus/wiki/Offline-plotting:-InSpectra-Gadget'))
 
         # Keyboard shortcuts
         self.open_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+O"), self)
@@ -439,18 +442,18 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.file_list.itemChanged.connect(self.file_checked)
     
     def remove_files(self, which='current'):
-        update_plots = False
         if self.file_list.count() > 0:
             if which == 'current':
                 items = [self.file_list.currentItem()]
             elif which == 'all':
                 items = [self.file_list.item(n) for n in range(self.file_list.count())]
+            elif which == 'unchecked':
+                items = self.get_unchecked_items()
+            update_plots = any([item.checkState() == 2 for item in items]) # only update plots if any of the items are checked
             for item in items: 
-                if (item.data.filepath in self.linked_files 
+                if (item.data.filepath in self.linked_files
                     and not hasattr(item, 'duplicate')):
                     self.linked_files.remove(item.data.filepath)
-                if item.checkState() == 2:
-                    update_plots = True
                 index = self.file_list.row(item)
                 self.file_list.takeItem(index)
                 del item
@@ -715,7 +718,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     
     def file_clicked(self):
         self.show_current_all()
-        
         current_item = self.file_list.currentItem()
         if hasattr(current_item.data,'popup1D'):
             current_item.data.popup1D.show()
@@ -799,7 +801,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.file_list.setCurrentItem(last_item)
                 self.track_button_clicked()
     
-    # The below is not working, but could be useful to fix and include.
+    # The below is not working and not implemented, but could be useful to fix and include.
     # def to_next_file(self):
     #     checked_items, indices = self.get_checked_items(return_indices=True)
     #     if (len(checked_items) == 1 and self.file_list.count() > 1 and 
@@ -953,23 +955,37 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.show_current_axscale_settings()
         self.show_current_axlim_settings()
         self.populate_new_plot_settings()
+        self.show_data_shape()
     
-    def populate_new_plot_settings(self):
+    def show_data_shape(self):
         current_item = self.file_list.currentItem()
-        if isinstance(current_item.data, qcodesppData): #Currently only supports qcodespp data
-            dim = len(current_item.data.get_columns())
-            if dim == 2:
-                boxes= [self.new_plot_X_box, self.new_plot_Y_box]
-                self.new_plot_Z_box.clear()
-            else:
-                boxes= [self.new_plot_X_box, self.new_plot_Y_box, self.new_plot_Z_box]
-            for combobox in boxes:
-                combobox.clear()
-                combobox.addItems(current_item.data.all_parameter_names)
-            self.new_plot_X_box.setCurrentIndex(0)
-            self.new_plot_Y_box.setCurrentIndex(1)
-            if dim == 3:
-                self.new_plot_Z_box.setCurrentIndex(2)
+        if current_item:
+            try:
+                self.data_shape_label.setText(f'Data shape: {current_item.data.processed_data[-1].shape}')
+            except:
+                self.data_shape_label.setText('Data shape:')
+        else:
+            self.data_shape_label.setText('Data shape:')
+   
+    def populate_new_plot_settings(self):
+        boxes= [self.new_plot_X_box, self.new_plot_Y_box, self.new_plot_Z_box]
+        for combobox in boxes:
+            combobox.clear()
+
+        current_item = self.file_list.currentItem()
+        if current_item:
+            if isinstance(current_item.data, qcodesppData): #Currently only supports qcodespp data
+                dim = len(current_item.data.get_columns())
+                if dim == 2:
+                    boxes= [self.new_plot_X_box, self.new_plot_Y_box]
+                else:
+                    boxes= [self.new_plot_X_box, self.new_plot_Y_box, self.new_plot_Z_box]
+                for combobox in boxes:
+                    combobox.addItems(current_item.data.all_parameter_names)
+                self.new_plot_X_box.setCurrentIndex(0)
+                self.new_plot_Y_box.setCurrentIndex(1)
+                if dim == 3:
+                    self.new_plot_Z_box.setCurrentIndex(2)
     
     def show_current_plot_settings(self):
         self.settings_table.clear()
@@ -1328,7 +1344,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if current_item:
             checked_items = self.get_checked_items()
             menu = QtWidgets.QMenu(self)
-            actions = ['Duplicate (Ctrl+D)','Check all','Uncheck all']
+            actions = ['Duplicate (Ctrl+D)','Remove file','Check all','Uncheck all','Clear list','Remove unchecked']
             if len(checked_items) > 1:
                 actions.append('Combine plots')
             for entry in actions:
@@ -1342,6 +1358,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if current_item:
             if signal.text() == 'Duplicate (Ctrl+D)':
                 self.duplicate_item()
+            elif signal.text() == 'Remove file':
+                self.remove_files(which='current')
             elif signal.text() == 'Check all':
                 self.file_list.itemChanged.disconnect(self.file_checked)
                 for item_index in range(self.file_list.count()):                        
@@ -1355,6 +1373,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     item.setCheckState(QtCore.Qt.Unchecked)
                 self.file_list.itemChanged.connect(self.file_checked)
                 self.update_plots()
+            elif signal.text() == 'Clear list':
+                self.remove_files(which='all')
+            elif signal.text() == 'Remove unchecked':
+                self.remove_files(which='unchecked')
             elif signal.text() == 'Combine plots':
                 try:
                     self.combine_plots()
@@ -1901,7 +1923,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 fig.canvas.toolbar.push_current()
 
             self.cbar_in_focus = [checked_item for checked_item in checked_items
-                                    if checked_item.data.cbar.ax == event.inaxes]
+                                    if hasattr(checked_item.data, 'cbar') and checked_item.data.cbar.ax == event.inaxes]
             
             #Scrolling within colourbar changes limits
             if self.cbar_in_focus:

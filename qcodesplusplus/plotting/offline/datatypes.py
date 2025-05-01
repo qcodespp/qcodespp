@@ -201,11 +201,6 @@ class BaseClassData:
             if dim == 2:
                 self.image = self.axes.plot(self.processed_data[0], 
                                             self.processed_data[1], color=cmap(0.5))
-                if not hasattr(self, 'popup1D'):
-                    self.popup1D = Popup1D(self)
-                    self.popup1D.running = True
-                    self.popup1D.activateWindow()
-                    self.popup1D.show()
 
             elif dim == 3:
                 norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 

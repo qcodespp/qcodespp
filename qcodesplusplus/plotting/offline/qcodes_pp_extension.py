@@ -2,8 +2,13 @@ from PyQt5 import QtWidgets
 import numpy as np
 import os
 import json
+from matplotlib import cm
+from matplotlib.widgets import Cursor
 from qcodesplusplus.data.data_set import load_data
 import qcodesplusplus.plotting.offline.main as main
+
+from .helpers import MidpointNormalize
+from .popupwindows import FFTWindow, Popup1D
 
 
 class qcodesppData(main.BaseClassData):
@@ -274,3 +279,65 @@ class qcodesppData(main.BaseClassData):
             self.reset_view_settings()
             if hasattr(self, 'image'):
                 self.apply_view_settings()
+
+    def add_plot(self, dim):
+        if self.processed_data:
+            cmap_str = self.view_settings['Colormap']
+            if self.view_settings['Reverse']:
+                cmap_str += '_r'
+            cmap = cm.get_cmap(cmap_str, lut=int(self.settings['lut']))
+            cmap.set_bad(self.settings['maskcolor'])
+            if dim == 2:
+                self.image = self.axes.plot(self.processed_data[0], 
+                                            self.processed_data[1], color=cmap(0.5))
+                
+                if not hasattr(self, 'plotted_lines'):
+                    self.plotted_lines = {0: {'checkstate': 2,
+                                                'X data': self.independent_parameter_names[0],
+                                                'Y data': self.dependent_parameter_names[self.index_dependent_parameter],
+                                                'processed_data': [self.processed_data[0],
+                                                                    self.processed_data[1]],
+                                                'linecolor': [1,1,1,1],
+                                                'linewidth': 1,
+                                                'linestyle': '-'}}
+                if not hasattr(self, 'popup1D'):
+                    self.popup1D = Popup1D(self)
+                    self.popup1D.running = True
+                    self.popup1D.append_cut_to_table(0)
+                    self.popup1D.activateWindow()
+
+                # This is horrible, but I need to get rid of these. Ideally I would re-write the extension so they're
+                # not used at all in the 1D case. Will try later.
+                if 'X data' in self.settings.keys():
+                    self.settings.pop('X data')
+                if 'Y data' in self.settings.keys():
+                    self.settings.pop('Y data')
+
+            elif dim == 3:
+                norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
+                                         vmax=self.view_settings['Maximum'], 
+                                         midpoint=self.view_settings['Midpoint'])
+                self.image = self.axes.pcolormesh(self.processed_data[0], 
+                                                  self.processed_data[1], 
+                                                  self.processed_data[2], 
+                                                  shading=self.settings['shading'], 
+                                                  norm=norm, cmap=cmap,
+                                                  rasterized=self.settings['rasterized'])
+                if self.settings['colorbar'] == 'True':
+                    self.cbar = self.figure.colorbar(self.image, orientation='vertical')
+            self.cursor = Cursor(self.axes, useblit=True, 
+                                 color=self.settings['linecolor'], linewidth=0.5)
+
+            # Below removes data options for data types where selecting
+            # axes data from the settings menu isn't implemented.
+            # Remove if implemented for all data types one day.
+            if 'X data' in self.settings.keys() and self.settings['X data'] == '':
+                self.settings.pop('X data')
+            if 'Y data' in self.settings.keys() and self.settings['Y data'] == '':
+                self.settings.pop('Y data')
+            if 'Z data' in self.settings.keys() and self.settings['Z data'] == '':
+                self.settings.pop('Z data')
+
+            self.apply_plot_settings()
+            self.apply_axlim_settings()
+            self.apply_axscale_settings()
