@@ -1285,7 +1285,7 @@ class LineCutWindow(QtWidgets.QWidget):
             self.update()
 
 class Popup1D(QtWidgets.QWidget):
-    def __init__(self, parent):
+    def __init__(self, parent, editor_window=None):
         super().__init__()
         try:
             self.setWindowTitle(f'Inspectra Gadget - Options for {parent.label}')
@@ -1301,6 +1301,8 @@ class Popup1D(QtWidgets.QWidget):
         self.set_main_layout()
         self.init_cuts_table()
         self.fit_type_changed()
+        if editor_window:
+            self.editor_window = editor_window
 
     def init_widgets(self):
         # Widgets in Linecut list box
@@ -1528,13 +1530,15 @@ class Popup1D(QtWidgets.QWidget):
             line={'checkstate': 2,
                 'X data': self.parent.independent_parameter_names[0],
                 'Y data': self.parent.dependent_parameter_names[1],
-                'processed_data': [self.parent.processed_data[0],
-                    self.parent.processed_data[1]],
                 'linecolor': (1,0,0,1),
                 'linewidth': 1.5,
                 'linestyle': '-'}
             self.parent.plotted_lines[int(max_index+1)] = line
+            self.parent.prepare_data_for_plot(reload_data=True,reload_from_file=False,linefrompopup=int(max_index+1))
+            self.parent.plotted_lines[int(max_index+1)]['processed_data'] = [self.parent.processed_data[0],
+                                                    self.parent.processed_data[1]]
             self.append_cut_to_table(int(max_index+1))
+            self.editor_window.show_current_plot_settings()
         except Exception as e:
             print('Cannot add data: '+e)
         self.update()
@@ -1604,6 +1608,12 @@ class Popup1D(QtWidgets.QWidget):
         if current_col in edit_dict.keys():
             self.parent.plotted_lines[line][edit_dict[current_col]] = current_item.text()
 
+        # If the X or Y data is changed, we need to update the processed data.
+        if current_col == 1 or current_col == 2:
+            self.parent.prepare_data_for_plot(reload_data=True,reload_from_file=False,linefrompopup=line)
+            self.parent.plotted_lines[line]['processed_data'] = [self.parent.processed_data[0],
+                                                                self.parent.processed_data[1]]
+            self.editor_window.show_current_plot_settings()
         self.update()
 
     def remove_cut(self,which='selected'):
@@ -1910,7 +1920,7 @@ class Popup1D(QtWidgets.QWidget):
         return p0
 
     def start_fitting(self,line=None,multilinefit=False):
-        if line is None:
+        if not line:
             current_row = self.cuts_table.currentRow()
             line = int(self.cuts_table.item(current_row,0).text())
         else: # We are being passed the line from fit_checked

@@ -90,21 +90,28 @@ class qcodesppData(main.BaseClassData):
     
 
     
-    def get_column_data(self):
+    def get_column_data(self, line=None):
+        if line is not None:
+            Xdataname = self.plotted_lines[line]['X data']
+            Ydataname = self.plotted_lines[line]['Y data']
+        else:
+            Xdataname = self.settings['X data']
+            Ydataname = self.settings['Y data']
+
         self.prepare_dataset()
         # If user has selected X data, use that, otherwise use the first independent parameter
         # X data is the same no matter the data dimension
-        if self.settings['X data'] != '':
-            xdata = self.data_dict[self.settings['X data']]
-            self.settings['xlabel'] = f'{self.channels[self.settings['X data']]['label']} ({self.channels[self.settings['X data']]['unit']})'
+        if Xdataname != '':
+            xdata = self.data_dict[Xdataname]
+            self.settings['xlabel'] = f'{self.channels[Xdataname]['label']} ({self.channels[Xdataname]['unit']})'
         else:
             xdata = self.data_dict[self.all_parameters[self.index_x]["array_id"]]
             self.settings["xlabel"] = "{} ({})".format(self.independent_parameters[0]["label"], self.independent_parameters[0]["unit"])
         
         if len(self.independent_parameters) == 1: # data is 1D
-            if self.settings['Y data'] != '':
-                ydata = self.data_dict[self.settings['Y data']]
-                self.settings['ylabel'] = f'{self.channels[self.settings['Y data']]['label']} ({self.channels[self.settings['Y data']]['unit']})'
+            if Ydataname != '':
+                ydata = self.data_dict[Ydataname]
+                self.settings['ylabel'] = f'{self.channels[Ydataname]['label']} ({self.channels[Ydataname]['unit']})'
             else:
                 ydata = self.data_dict[self.dependent_parameters[self.index_dependent_parameter]["array_id"]]
                 self.settings["xlabel"] = "{} ({})".format(self.independent_parameters[0]["label"], self.independent_parameters[0]["unit"])
@@ -146,7 +153,7 @@ class qcodesppData(main.BaseClassData):
         return column_data
     
 
-    def load_and_reshape_data(self, reload_data=False,reload_from_file=True):
+    def load_and_reshape_data(self, reload_data=False,reload_from_file=True,linefrompopup=None):
         if not self.data_loaded or reload_data and reload_from_file:
             if '.dat' in self.filepath:
                 self.dataset=load_data(os.path.dirname(self.filepath))
@@ -159,7 +166,7 @@ class qcodesppData(main.BaseClassData):
 
             self.data_loaded=True
 
-        column_data = self.get_column_data()
+        column_data = self.get_column_data(line=linefrompopup)
         if column_data.ndim == 1: # if empty array or single-row array
             self.raw_data = None
         else:
@@ -280,7 +287,7 @@ class qcodesppData(main.BaseClassData):
             if hasattr(self, 'image'):
                 self.apply_view_settings()
 
-    def add_plot(self, dim):
+    def add_plot(self, dim, editor_window=None):
         if self.processed_data:
             cmap_str = self.view_settings['Colormap']
             if self.view_settings['Reverse']:
@@ -301,7 +308,7 @@ class qcodesppData(main.BaseClassData):
                                                 'linewidth': 1.5,
                                                 'linestyle': '-'}}
                 if not hasattr(self, 'popup1D'):
-                    self.popup1D = Popup1D(self)
+                    self.popup1D = Popup1D(self,editor_window=editor_window)
                     self.popup1D.running = True
                     self.popup1D.append_cut_to_table(0)
                     self.popup1D.activateWindow()

@@ -115,7 +115,7 @@ class BaseClassData:
     def get_columns(self):
         return [int(col) for col in self.settings['columns'].split(',')]
     
-    def load_and_reshape_data(self,reload=False,reload_from_file=False):
+    def load_and_reshape_data(self,reload=False,reload_from_file=False, fromPopup1D=False):
         column_data = self.get_column_data()
         if column_data.ndim == 1: # if empty array or single-row array
             self.raw_data = None
@@ -182,9 +182,9 @@ class BaseClassData:
     def copy_raw_to_processed_data(self):
         self.processed_data = [np.array(np.copy(self.raw_data[x])) for x in self.get_columns()]
 
-    def prepare_data_for_plot(self, reload_data=False, refresh_filters=False, reload_from_file=False):
+    def prepare_data_for_plot(self, reload_data=False, refresh_filters=False, reload_from_file=False,linefrompopup=None):
         if not hasattr(self, 'raw_data') or reload_data:
-            self.load_and_reshape_data(reload_data, reload_from_file)
+            self.load_and_reshape_data(reload_data, reload_from_file, linefrompopup)
         if self.raw_data:
             self.copy_raw_to_processed_data()
             self.apply_all_filters()

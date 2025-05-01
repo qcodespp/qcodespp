@@ -765,7 +765,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         item.data.prepare_data_for_plot()
                     item.data.figure = self.figure
                     item.data.axes = item.data.figure.add_subplot(rows, cols, index+1)
-                    item.data.add_plot(dim=len(item.data.get_columns()))
+                    item.data.add_plot(dim=len(item.data.get_columns()),editor_window=self)
                     if hasattr(item.data, 'linecuts'):
                         for orientation in ['horizontal','vertical']:#,'diagonal','circular']:
                             if len(item.data.linecuts[orientation]['lines']) > 0:
