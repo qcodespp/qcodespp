@@ -1826,7 +1826,9 @@ class Popup1D(QtWidgets.QWidget):
                 for line in fit_lines:
                     if 'fit' in self.parent.plotted_lines[line].keys():
                         self.draw_fits(line)
-
+                        
+            if self.xmin_box.text() != '' or self.xmax_box.text() != '':
+                self.limits_edited()
             self.show()
                
     def clear_lines(self):
@@ -2000,6 +2002,7 @@ class Popup1D(QtWidgets.QWidget):
             self.parent.apply_plot_settings()
             self.parent.apply_axlim_settings()
             self.parent.apply_axscale_settings()
+        self.editor_window.figure.tight_layout()
         self.parent.canvas.draw()
 
     def draw_fits(self,line):

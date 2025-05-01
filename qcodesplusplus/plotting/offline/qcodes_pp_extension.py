@@ -78,18 +78,13 @@ class qcodesppData(main.BaseClassData):
 
 
     def isFinished(self):
-        set_x = self.data_dict[self.all_parameters[0]["array_id"]]
-        set_x = np.unique(set_x[~np.isnan(set_x)])
-        return len(set_x) == self.dims[0]
+        self.set_x = self.data_dict[self.all_parameters[0]["array_id"]]
+        self.set_x = np.unique(self.set_x[~np.isnan(self.set_x)])
+        return len(self.set_x) == self.dims[0]
     
-
     def finished_dimensions(self):
-        set_x = self.data_dict[self.all_parameters[0]["array_id"]]
-        set_x = np.unique(set_x[~np.isnan(set_x)])
-        self.dims = [len(set_x)-1, self.dims[1]]
-    
-
-    
+        self.dims = [len(self.set_x)-1, self.dims[1]]
+        
     def get_column_data(self, line=None):
         if line is not None:
             Xdataname = self.plotted_lines[line]['X data']
@@ -115,6 +110,11 @@ class qcodesppData(main.BaseClassData):
             else:
                 ydata = self.data_dict[self.dependent_parameters[self.index_dependent_parameter]["array_id"]]
                 self.settings["xlabel"] = "{} ({})".format(self.independent_parameters[0]["label"], self.independent_parameters[0]["unit"])
+
+            if not self.isFinished():
+                # Delete unfinished rows to enable plotting
+                xdata = xdata[:len(self.set_x)-1]
+                ydata = ydata[:len(self.set_x)-1]
             column_data = np.column_stack((xdata, ydata))
 
         elif len(self.independent_parameters) > 1: # data is 2D

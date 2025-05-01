@@ -776,8 +776,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     print(f'Could not plot {item.data.filepath}:', e)
                     raise
         self.show_current_all()
-        self.canvas.draw()
         self.figure.tight_layout()
+        self.canvas.draw()
         if hasattr(self, 'live_track_item') and self.live_track_item:
             if (self.live_track_item.checkState() and 
                 self.track_button.text() == 'Stop tracking' and 
@@ -1663,9 +1663,30 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if self.plot_in_focus:
                     data = self.plot_in_focus[0].data
                     data.selected_x, data.selected_y = x, y
-                    
-                    if ((event.button == 1 or event.button == 2) and 
+
+                    if (event.button == 1  and 
+                        len(data.get_columns()) == 2):
+                        # Set fit limits for 1D data.
+                        if hasattr(data, 'popup1D'):
+                            current_row=data.popup1D.cuts_table.currentRow()
+                            xdata,ydata=data.popup1D.get_line_data(int(data.popup1D.cuts_table.item(current_row,0).text()))
+                            # snap to data
+                            index=(np.abs(x-xdata)).argmin()
+                            x_value=xdata[index]
+                            if data.popup1D.xmin_box.text()=='':
+                                data.popup1D.xmin_box.setText(str(x_value))
+                            elif data.popup1D.xmax_box.text()=='':
+                                data.popup1D.xmax_box.setText(str(x_value))
+                            else:
+                                if np.abs(float(data.popup1D.xmin_box.text())-x_value)<np.abs(float(data.popup1D.xmax_box.text())-x_value):
+                                    data.popup1D.xmin_box.setText(str(x_value))
+                                else:
+                                    data.popup1D.xmax_box.setText(str(x_value))
+                            data.popup1D.limits_edited()
+
+                    elif ((event.button == 1 or event.button == 2) and 
                         len(data.get_columns()) == 3):
+                        # Opening linecut/fitting window for 2D data
                         index_x = np.argmin(np.abs(data.processed_data[0][:,0]-x))
                         index_y = np.argmin(np.abs(data.processed_data[1][0,:]-y))
                         data.selected_indices = [int(index_x), int(index_y)]
