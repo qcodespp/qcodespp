@@ -284,8 +284,9 @@ class qcodesppData(main.BaseClassData):
                                                     filt.settings[1])
         if update_color_limits:
             self.reset_view_settings()
-            if hasattr(self, 'image'):
-                self.apply_view_settings()
+            # The below was the cause of the NotImplmentedError. Seems to work fine without it.
+            # if hasattr(self, 'image'):
+            #     self.apply_view_settings()
 
     def add_plot(self, dim, editor_window=None):
         if self.processed_data:
@@ -333,7 +334,7 @@ class qcodesppData(main.BaseClassData):
                                                   norm=norm, cmap=cmap,
                                                   rasterized=self.settings['rasterized'])
                 if self.settings['colorbar'] == 'True':
-                    self.cbar = self.figure.colorbar(self.image, orientation='vertical')
+                    self.cbar = self.figure.colorbar(self.image,orientation='vertical')
             self.cursor = Cursor(self.axes, useblit=True, 
                                  color=self.settings['linecolor'], linewidth=0.5)
 

@@ -182,12 +182,13 @@ class BaseClassData:
     def copy_raw_to_processed_data(self):
         self.processed_data = [np.array(np.copy(self.raw_data[x])) for x in self.get_columns()]
 
-    def prepare_data_for_plot(self, reload_data=False, refresh_filters=False, reload_from_file=False,linefrompopup=None):
+    def prepare_data_for_plot(self, reload_data=False, refresh_filters=False, reload_from_file=False,
+                              linefrompopup=None,update_color_limits=True):
         if not hasattr(self, 'raw_data') or reload_data:
             self.load_and_reshape_data(reload_data, reload_from_file, linefrompopup)
         if self.raw_data:
             self.copy_raw_to_processed_data()
-            self.apply_all_filters()
+            self.apply_all_filters(update_color_limits=update_color_limits)
         else:
             self.processed_data = None
 
@@ -291,13 +292,17 @@ class BaseClassData:
             norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
                                      vmax=self.view_settings['Maximum'], 
                                      midpoint=self.view_settings['Midpoint'])
-            self.image.set_norm(norm)
-            if self.settings['colorbar'] == 'True':
+
+            self.image.norm=norm
+
+            if self.settings['colorbar'] == 'True' and hasattr(self, 'cbar'):
                 #self.cbar.update_normal(self.image)
-                self.cbar.ax.set_title(self.settings['clabel'], 
+                self.cbar.ax.set_title(self.settings['clabel'],
                                        size=self.settings['labelsize'])
-                self.cbar.ax.tick_params(labelsize=self.settings['ticksize'], 
+                self.cbar.ax.tick_params(labelsize=self.settings['ticksize'],
                                          color=rcParams['axes.edgecolor'])
+
+
 
     def apply_axlim_settings(self):
         self.axes.set_xlim(left=self.axlim_settings['Xmin'], 
@@ -348,8 +353,9 @@ class BaseClassData:
                                                     filt.settings[1])
         if update_color_limits:
             self.reset_view_settings()
-            if hasattr(self, 'image'):
-                self.apply_view_settings()
+            # The below was the cause of the NotImplmentedError. Seems to work fine without it.
+            # if hasattr(self, 'image'):
+            #     self.apply_view_settings()
        
     def extension_setting_edited(self, editor, setting_name):
         pass

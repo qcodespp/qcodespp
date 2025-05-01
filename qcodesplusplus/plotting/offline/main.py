@@ -18,8 +18,6 @@ import copy
 import io
 import tarfile
 from webbrowser import open as href_open
-from json import load as jsonload
-from json import dump as jsondump
 from csv import writer as csvwriter
 from stat import ST_CTIME
 import numpy as np
@@ -751,9 +749,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
 
     def update_plots(self, update_data=True):
-        #Clearing the figure is the source of the NotImplementedError. 
-        # Annoying but not sure what else to do than just ignore it for now.
-        # Think it might be due to the colourbar _already_ being removed beforehand!!
         self.figure.clf()
 
         checked_items = self.get_checked_items()
