@@ -1168,7 +1168,7 @@ class LineCutWindow(QtWidgets.QWidget):
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Fiting Result','', 'numpy dat file (*.dat)')
             if filename:
-                np.savetxt(filename, data, delimiter='\t', header='X,'+','.join(first_result.params.keys()), fmt='%s')
+                np.savetxt(filename, data, delimiter='\t', header='X'+'\t'.join(first_result.params.keys()), fmt='%s')
                 print('Saved!')
 
     def save_image(self):
@@ -1532,7 +1532,8 @@ class Popup1D(QtWidgets.QWidget):
                 'Y data': self.parent.dependent_parameter_names[1],
                 'linecolor': (1,0,0,1),
                 'linewidth': 1.5,
-                'linestyle': '-'}
+                'linestyle': '-',
+                'filters':[]}
             self.parent.plotted_lines[int(max_index+1)] = line
             self.parent.prepare_data_for_plot(reload_data=True,reload_from_file=False,linefrompopup=int(max_index+1))
             self.parent.plotted_lines[int(max_index+1)]['processed_data'] = [self.parent.processed_data[0],

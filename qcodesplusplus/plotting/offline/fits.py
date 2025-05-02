@@ -1,179 +1,8 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Nov 29 21:56:57 2017
-
-@author: Joeri de Bruijckere, Damon Carrad
-"""
-
 import numpy as np
 from lmfit import models as lmm
 from functools import partial
 
-# Dictionary for storing info about the fit functions used in this module.
-functions = {}
-functions['Polynomials and powers'] = {'Linear': {},
-                                    'Polynomial': {'inputs':'order', 
-                                                'default_inputs' : '2'
-                                                },
-                                    'Power law': {'inputs':'# of terms, use offset',
-                                                'default_inputs': '1,0',
-                                                'parameters': 'a_0,b_0,...,a_n,b_n,c'
-                                                },
-                                    'Exponentials': {'inputs':'# of terms, use offset',
-                                                'default_inputs': '1,0',
-                                                'parameters': 'a_0,b_0,...,a_n,b_n,c'
-                                                }
-                                    }
-
-# Give descriptions to help the user.
-functions['Polynomials and powers']['Linear']['description'] = 'Simple linear y = mx + b fit'
-functions['Polynomials and powers']['Polynomial']['description'] = ('Polynomial fit of order n, y = a_n*x^n + ... + a_1*x + a_0.\n'
-                                                                    'Provide n, the polynomial order.')
-functions['Polynomials and powers']['Power law']['description'] = ('Power law fit of the form y = a_0*x^b_0 + ... + a_n*x^b_n + c.\n'
-                                                                    'Provide inputs n,c, where n is the number of terms to include '
-                                                                    'and c is whether to include a constant offset; c=0: no offset, c=1: offset')
-functions['Polynomials and powers']['Exponentials']['description'] = ('Exponential fit of the form y = a_0*exp(-x/b_0) + ... + a_n*exp(-x/b_n) + c.\n'
-                                                                    'Provide inputs n,c, where n is the number of terms to include '
-                                                                    'and c is whether to include a constant offset; c=0: no offset, c=1: offset')
-
-# Add simple peaks that take amplitude, width and position as only arguments.
-functions['Peaks: 3 param']={}
-multipeak_description= ('Fit one or more {} peaks. The inputs are n,c, where n is the number of peaks and c is whether to '
-                        'include a constant offset in the fit. c=0 --> no offset, c=1 --> Offset.\n'
-                        'For exmaple, inputs of 4,0 will fit four peaks without a constant offset.\n'
-                        'By default, the fit assumes equally spaced peaks with heights approximately the max value of the data.\n'
-                        'To change this, provide an initial guess of the form {}\n'
-                        'If providing an intial guess, you must provide '
-                        'all parameters for all peaks.')
-lorgaussform=('w1 ... wn, a1 ... an, x1 ... xn, c where w = peak fwhm, a = peak height, '
-                        'x = peak position and c = constant offset value (if used). For example:\n'
-                        '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1\n'
-                        'for three peaks with no constant offset, and\n'
-                        '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1,5\n'
-                        'for three peaks with a constant offset of 5.\n')
-
-for peaktype in ['Lorentzian','Gaussian','Lognormal','StudentsT','DampedOscillator']:
-    functions['Peaks: 3 param'][peaktype] = {}
-    functions['Peaks: 3 param'][peaktype]['inputs']='# of peaks, use offset'
-    functions['Peaks: 3 param'][peaktype]['default_inputs']='1,0'
-    functions['Peaks: 3 param'][peaktype]['parameters']='fwhm(s), height(s), position(s), y_offset'
-    functions['Peaks: 3 param'][peaktype]['description'] = multipeak_description.format(peaktype,lorgaussform)
-
-functions['Peaks: 4 param']={}
-fourparamform=('w1 ... wn, a1 ... an, x1 ... xn, g1 ... gn, c where w = peak fwhm, a = peak height, '
-                        'x = peak position, g = gamma (see lmfit documentation for meaning in each case) '
-                        'and c = constant offset value (if used). For example:\n'
-                        '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001\n'
-                        'for three peaks with no constant offset, and\n'
-                        '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001,5\n'
-                        'for three peaks with a constant offset of 5.\n')
-
-for peaktype in ['Voigt','PseudoVoigt','BreitWigner/Fano','SplitLorentzian','ExpGaussian','SkewedGaussian','Moffat','Pearson7','DampedHarmOsc','Doniach']:
-    functions['Peaks: 4 param'][peaktype] = {}
-    functions['Peaks: 4 param'][peaktype]['inputs']='# of peaks, use offset'
-    functions['Peaks: 4 param'][peaktype]['default_inputs']='1,0'
-    functions['Peaks: 4 param'][peaktype]['parameters']='fwhm(s), height(s), position(s), gammas(s), y_offset'
-    functions['Peaks: 4 param'][peaktype]['description'] = multipeak_description.format(peaktype,fourparamform)
-
-functions['Peaks: skewed']={}
-fiveparamform=('w1 ... wn, a1 ... an, x1 ... xn, g1 ... gn, s1 ... sn, c where w = peak fwhm, a = peak height, '
-                        'x = peak position, g = gamma (see lmfit documentation for meaning in each case), '
-                        's = skew and c = constant offset value (if used). For example:\n'
-                        '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001, 0.1 0.12 0.14\n'
-                        'for three peaks with no constant offset, and\n'
-                        '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001, 0.1 0.12 0.14, 5\n'
-                        'for three peaks with a constant offset of 5.\n')
-for peaktype in ['Pearson4','SkewedVoigt']:
-    functions['Peaks: skewed'][peaktype] = {}
-    functions['Peaks: skewed'][peaktype]['inputs']='# of peaks, use offset'
-    functions['Peaks: skewed'][peaktype]['default_inputs']='1,0'
-    functions['Peaks: skewed'][peaktype]['parameters']='fwhm(s), height(s), position(s), gammas(s), skews(s), y_offset'
-    functions['Peaks: skewed'][peaktype]['description'] = multipeak_description.format(peaktype,fiveparamform)
-
-# Oscillating
-functions['Oscillating']={'Sine':{}
-                        # 'Sine w/exp decay':{},
-                        # 'Sine w/power decay':{}
-                        }
-functions['Oscillating']['Sine']['inputs']='# of waves, use offset'
-functions['Oscillating']['Sine']['default_inputs']='1,0'
-functions['Oscillating']['Sine']['parameters']='Amplitude(s), frequency(ies), phase(s), offset'
-functions['Oscillating']['Sine']['description']=('Fit a sine wave A*sin(f*x+phase) with optional + c if use offset == 1.\n'
-                                                'Specify # of waves > 1 to fit A_1*sin(f_1*x+ph_1) + ... + A_n*sin(f_n*x+ph_n) + c.\n'
-                                                'Initial guesses for more than one wave take the form\n'
-                                                'A_1 ... A_n, f_1 ... f_n, ph_1 ... ph_n, c\n'
-                                                'e.g., for three waves:\n'
-                                                '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001,5\n')
-
-
-# Thermal distributions
-functions['Thermal']={'Maxwell':{'fullname':'Maxwell-Boltzmann', 'equation':'1/A*exp((x-x0)/kT)'},
-                    'Fermi':{'fullname':'Fermi-Dirac', 'equation':'1/[A*exp((x-x0)/kT)+1]'},
-                    'Bose':{'fullname':'Bose-Einstein', 'equation':'1/[A*exp((x-x0)/kT)-1]'},
-                    }
-
-thermaldescription=('Fit to a {} distribution: y = {}. kT is considered a single fit parameter. Initial guesses '
-                    'for kT should be in units of x, usually either eV or J.')
-for key in functions['Thermal'].keys():
-    functions['Thermal'][key]['parameters']=['A, x0, kT']
-    functions['Thermal'][key]['description']=thermaldescription.format(functions['Thermal'][key]['fullname'], functions['Thermal'][key]['equation'])
-
-#Step functions
-functions['Step']={'Linear':{},'Arctan':{},'ErrorFunction':{},'Logistic':{}}
-stepdescription=('Fit a single step function of type {} (see lmfit documentation for information). \n'
-                'The step function starts at 0 and ends with value +/- A. '
-                'The x-value where y=A/2 is given by x0, and sigma is the characteristic width of the step.\n'
-                'Use an offset filter on the data in the main panel to ensure your data starts at y=0.')
-for key in functions['Step'].keys():
-    functions['Step'][key]['parameters']=['A, x0, sigma']
-    functions['Step'][key]['description']=stepdescription.format(key)
-
-#Rectangle functions
-functions['Rectangle']={'Linear':{},'Arctan':{},'ErrorFunction':{},'Logistic':{}}
-rectdescription=('Fit a rectangle function of type {} (see lmfit documentation for information). \n'
-                'A rectangle function steps from 0 to +/- A, then back to 0. '
-                'The x-values where y=A/2 are given by x0_1, x0_2, and sigma_1 and sigma_2 are the characteristic widths of the steps.\n'
-                'Use an offset filter on the data in the main panel to ensure your data starts at y=0.')
-for key in functions['Rectangle'].keys():
-    functions['Rectangle'][key]['parameters']=['A, x0_1, x0_2, sigma_1, sigma_2']
-    functions['Rectangle'][key]['description']=rectdescription.format(key)
-
-#Wrap the ExpressionModel to allow arbitrary input.
-functions['User input']={'Expression':{}}
-functions['User input']['Expression']['inputs'] = 'Expression'
-functions['User input']['Expression']['parameters'] = 'all fit parameters'
-functions['User input']['Expression']['description'] =('Fit an arbitrary expression. Input any function you like. '
-                                            'x must be the independent variable. e.g.\n'
-                                            'C + A * exp(-x/x0) * sin(x*phase)\n'
-                                            'You must also provide initial guesses for each parameter in the form:\n'
-                                            'C=0.25, A=1.0, x0=2.0, phase=0.04')
-
-
-# functions to return different parts of the functions dictionary. Makes it easier to call in main
-def get_class_names():
-    return functions.keys()
-
-def get_function(function_class,function_name):
-    return functions[function_class][function_name]['function']
-
-def get_names(fitclass='Polynomials and powers'):
-    return functions[fitclass].keys()
-    
-def get_parameters(function_class,function_name):
-    return functions[function_class][function_name]['parameters']
-
-def get_description(function_class,function_name):
-    return functions[function_class][function_name]['description']
-
-# Entry point for fitting the data. Passes info along to relevant functions and returns the fit result
-def fit_data(function_class,function_name, xdata, ydata, p0=None, inputinfo=None):
-    # all fit functions get called through the dictionary
-    f = functions[function_class][function_name]['function']
-    result = f(xdata,ydata,p0,inputinfo)
-    return result
-
-
-# The rest of this code is the definition of the actual fit functions, and referencing them from the functions dictionary
+# Fit functions
 
 # Polynomials and powers
 def linear(xdata,ydata,p0,inputinfo):
@@ -181,7 +10,6 @@ def linear(xdata,ydata,p0,inputinfo):
     params=model.guess(ydata, x=xdata)
     result = model.fit(ydata, params, x=xdata)
     return result
-functions['Polynomials and powers']['Linear']['function'] = linear
 
 def polynomial(xdata,ydata,p0,inputinfo):
     degree = int(inputinfo[0]) or int(inputinfo)
@@ -189,7 +17,6 @@ def polynomial(xdata,ydata,p0,inputinfo):
     params=model.guess(ydata, x=xdata)
     result = model.fit(ydata, params, x=xdata)
     return result
-functions['Polynomials and powers']['Polynomial']['function'] = polynomial
 
 def fit_powerlaw(xdata,ydata, p0,inputinfo):
     order=inputinfo[0]
@@ -222,7 +49,6 @@ def fit_powerlaw(xdata,ydata, p0,inputinfo):
     result = model.fit(ydata, params, x=xdata)
     #components = result.eval_components()
     return result
-functions['Polynomials and powers']['Power law']['function'] = fit_powerlaw
 
 def fit_exponentials(xdata,ydata, p0,inputinfo):
     order=inputinfo[0]
@@ -259,7 +85,7 @@ def fit_exponentials(xdata,ydata, p0,inputinfo):
     result = model.fit(ydata, params, x=xdata)
     #components = result.eval_components()
     return result
-functions['Polynomials and powers']['Exponentials']['function'] = fit_exponentials
+
 
 #Peak fitting
 def fit_lorgausstype(modeltype,xdata,ydata,p0,inputinfo):
@@ -327,12 +153,6 @@ def fit_lorgausstype(modeltype,xdata,ydata,p0,inputinfo):
     result = model.fit(ydata, params, x=xdata)
     return result
 
-# Any lmfit built-in function taking only amplitude, sigma and position can use the above function.
-functions['Peaks: 3 param']['Lorentzian']['function'] = partial(fit_lorgausstype, lmm.LorentzianModel)
-functions['Peaks: 3 param']['Gaussian']['function'] = partial(fit_lorgausstype,lmm.GaussianModel)
-functions['Peaks: 3 param']['StudentsT']['function'] = partial(fit_lorgausstype,lmm.StudentsTModel)
-functions['Peaks: 3 param']['Lognormal']['function'] = partial(fit_lorgausstype,lmm.LognormalModel)
-functions['Peaks: 3 param']['DampedOscillator']['function'] = partial(fit_lorgausstype,lmm.DampedOscillatorModel)
 
 # Function for lmfit peaks with four parameters.
 def fit_voigttype(modeltype,xdata,ydata,p0,inputinfo):
@@ -415,17 +235,6 @@ def fit_voigttype(modeltype,xdata,ydata,p0,inputinfo):
 
     result = model.fit(ydata, params, x=xdata)
     return result
-
-functions['Peaks: 4 param']['Voigt']['function'] = partial(fit_voigttype, lmm.VoigtModel)
-functions['Peaks: 4 param']['PseudoVoigt']['function'] = partial(fit_voigttype, lmm.PseudoVoigtModel)
-functions['Peaks: 4 param']['BreitWigner/Fano']['function'] = partial(fit_voigttype, lmm.BreitWignerModel)
-functions['Peaks: 4 param']['SplitLorentzian']['function'] = partial(fit_voigttype, lmm.SplitLorentzianModel)
-functions['Peaks: 4 param']['ExpGaussian']['function'] = partial(fit_voigttype, lmm.ExponentialGaussianModel)
-functions['Peaks: 4 param']['SkewedGaussian']['function'] = partial(fit_voigttype, lmm.SkewedGaussianModel)
-functions['Peaks: 4 param']['Moffat']['function'] = partial(fit_voigttype, lmm.MoffatModel)
-functions['Peaks: 4 param']['Pearson7']['function'] = partial(fit_voigttype, lmm.Pearson7Model)
-functions['Peaks: 4 param']['DampedHarmOsc']['function'] = partial(fit_voigttype, lmm.DampedHarmonicOscillatorModel)
-functions['Peaks: 4 param']['Doniach']['function'] = partial(fit_voigttype, lmm.DoniachModel)
 
 # Function for lmfit peaks with five parameters.
 def fit_skewedpeaks(modeltype,xdata,ydata,p0,inputinfo):
@@ -512,9 +321,6 @@ def fit_skewedpeaks(modeltype,xdata,ydata,p0,inputinfo):
     result = model.fit(ydata, params, x=xdata)
     return result
 
-functions['Peaks: skewed']['Pearson4']['function'] = partial(fit_skewedpeaks, lmm.Pearson4Model)
-functions['Peaks: skewed']['SkewedVoigt']['function'] = partial(fit_skewedpeaks,lmm.SkewedVoigtModel)
-
 #Multiple sine wave fitting
 def fit_sines(xdata,ydata,p0,inputinfo):
     modeltype=lmm.SineModel
@@ -580,7 +386,7 @@ def fit_sines(xdata,ydata,p0,inputinfo):
 
     result = model.fit(ydata, params, x=xdata)
     return result
-functions['Oscillating']['Sine']['function']=fit_sines
+
 
 #Fit a thermal distribution of MB, FD or BE type.
 def thermal_fit(modeltype,xdata,ydata,p0,inputinfo):
@@ -595,9 +401,6 @@ def thermal_fit(modeltype,xdata,ydata,p0,inputinfo):
     result=model.fit(ydata,params,x=xdata)
     return result
 
-functions['Thermal']['Maxwell']['function'] = partial(thermal_fit, 'maxwell')
-functions['Thermal']['Bose']['function'] = partial(thermal_fit, 'bose')
-functions['Thermal']['Fermi']['function'] = partial(thermal_fit, 'fermi')
 
 #Fit a step function.
 def step_fit(modeltype,xdata,ydata,p0,inputinfo):
@@ -619,11 +422,6 @@ def step_fit(modeltype,xdata,ydata,p0,inputinfo):
 
     result=model.fit(ydata,params,x=xdata)
     return result
-
-functions['Step']['Linear']['function'] = partial(step_fit, 'linear')
-functions['Step']['Arctan']['function'] = partial(step_fit, 'arctan')
-functions['Step']['ErrorFunction']['function'] = partial(step_fit, 'erf')
-functions['Step']['Logistic']['function'] = partial(step_fit, 'logistic')
 
 #Fit a rectangle function.
 def rectangle_fit(modeltype,xdata,ydata,p0,inputinfo):
@@ -648,10 +446,6 @@ def rectangle_fit(modeltype,xdata,ydata,p0,inputinfo):
     result=model.fit(ydata,params,x=xdata)
     return result
 
-functions['Rectangle']['Linear']['function'] = partial(rectangle_fit, 'linear')
-functions['Rectangle']['Arctan']['function'] = partial(rectangle_fit, 'arctan')
-functions['Rectangle']['ErrorFunction']['function'] = partial(rectangle_fit, 'erf')
-functions['Rectangle']['Logistic']['function'] = partial(rectangle_fit, 'logistic')
 
 # Arbitrary expressions get fitted using the below:
 def expression_fit(xdata,ydata,p0,inputinfo):
@@ -665,4 +459,196 @@ def expression_fit(xdata,ydata,p0,inputinfo):
     result=model.fit(ydata,params,x=xdata)
     return result
 
+
+
+# Dictionary for storing info about the fit functions used in this module.
+functions = {}
+functions['Polynomials and powers'] = {'Linear': {'function': linear},
+                                    'Polynomial': {'inputs':'order', 
+                                                'default_inputs' : '2',
+                                                'function': polynomial},
+                                    'Power law': {'inputs':'# of terms, use offset',
+                                                'default_inputs': '1,0',
+                                                'parameters': 'a_0,b_0,...,a_n,b_n,c',
+                                                'function': fit_powerlaw},
+                                    'Exponentials': {'inputs':'# of terms, use offset',
+                                                'default_inputs': '1,0',
+                                                'parameters': 'a_0,b_0,...,a_n,b_n,c',
+                                                'function': fit_exponentials}
+                                    }
+
+# Give descriptions to help the user.
+functions['Polynomials and powers']['Linear']['description'] = 'Simple linear y = mx + b fit'
+functions['Polynomials and powers']['Polynomial']['description'] = ('Polynomial fit of order n, y = a_n*x^n + ... + a_1*x + a_0.\n'
+                                                                    'Provide n, the polynomial order.')
+functions['Polynomials and powers']['Power law']['description'] = ('Power law fit of the form y = a_0*x^b_0 + ... + a_n*x^b_n + c.\n'
+                                                                    'Provide inputs n,c, where n is the number of terms to include '
+                                                                    'and c is whether to include a constant offset; c=0: no offset, c=1: offset')
+functions['Polynomials and powers']['Exponentials']['description'] = ('Exponential fit of the form y = a_0*exp(-x/b_0) + ... + a_n*exp(-x/b_n) + c.\n'
+                                                                    'Provide inputs n,c, where n is the number of terms to include '
+                                                                    'and c is whether to include a constant offset; c=0: no offset, c=1: offset')
+
+# Add simple peaks that take amplitude, width and position as only arguments.
+functions['Peaks: 3 param']={}
+multipeak_description= ('Fit one or more {} peaks. The inputs are n,c, where n is the number of peaks and c is whether to '
+                        'include a constant offset in the fit. c=0 --> no offset, c=1 --> Offset.\n'
+                        'For exmaple, inputs of 4,0 will fit four peaks without a constant offset.\n'
+                        'By default, the fit assumes equally spaced peaks with heights approximately the max value of the data.\n'
+                        'To change this, provide an initial guess of the form {}\n'
+                        'If providing an intial guess, you must provide '
+                        'all parameters for all peaks.')
+lorgaussform=('w1 ... wn, a1 ... an, x1 ... xn, c where w = peak fwhm, a = peak height, '
+                        'x = peak position and c = constant offset value (if used). For example:\n'
+                        '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1\n'
+                        'for three peaks with no constant offset, and\n'
+                        '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1,5\n'
+                        'for three peaks with a constant offset of 5.\n')
+
+for peaktype in ['Lorentzian','Gaussian','Lognormal','StudentsT','DampedOscillator']:
+    functions['Peaks: 3 param'][peaktype] = {}
+    functions['Peaks: 3 param'][peaktype]['inputs']='# of peaks, use offset'
+    functions['Peaks: 3 param'][peaktype]['default_inputs']='1,0'
+    functions['Peaks: 3 param'][peaktype]['parameters']='fwhm(s), height(s), position(s), y_offset'
+    functions['Peaks: 3 param'][peaktype]['description'] = multipeak_description.format(peaktype,lorgaussform)
+functions['Peaks: 3 param']['Lorentzian']['function'] = partial(fit_lorgausstype, lmm.LorentzianModel)
+functions['Peaks: 3 param']['Gaussian']['function'] = partial(fit_lorgausstype,lmm.GaussianModel)
+functions['Peaks: 3 param']['StudentsT']['function'] = partial(fit_lorgausstype,lmm.StudentsTModel)
+functions['Peaks: 3 param']['Lognormal']['function'] = partial(fit_lorgausstype,lmm.LognormalModel)
+functions['Peaks: 3 param']['DampedOscillator']['function'] = partial(fit_lorgausstype,lmm.DampedOscillatorModel)
+
+
+functions['Peaks: 4 param']={}
+fourparamform=('w1 ... wn, a1 ... an, x1 ... xn, g1 ... gn, c where w = peak fwhm, a = peak height, '
+                        'x = peak position, g = gamma (see lmfit documentation for meaning in each case) '
+                        'and c = constant offset value (if used). For example:\n'
+                        '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001\n'
+                        'for three peaks with no constant offset, and\n'
+                        '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001,5\n'
+                        'for three peaks with a constant offset of 5.\n')
+
+for peaktype in ['Voigt','PseudoVoigt','BreitWigner/Fano','SplitLorentzian','ExpGaussian','SkewedGaussian','Moffat','Pearson7','DampedHarmOsc','Doniach']:
+    functions['Peaks: 4 param'][peaktype] = {}
+    functions['Peaks: 4 param'][peaktype]['inputs']='# of peaks, use offset'
+    functions['Peaks: 4 param'][peaktype]['default_inputs']='1,0'
+    functions['Peaks: 4 param'][peaktype]['parameters']='fwhm(s), height(s), position(s), gammas(s), y_offset'
+    functions['Peaks: 4 param'][peaktype]['description'] = multipeak_description.format(peaktype,fourparamform)
+functions['Peaks: 4 param']['Voigt']['function'] = partial(fit_voigttype, lmm.VoigtModel)
+functions['Peaks: 4 param']['PseudoVoigt']['function'] = partial(fit_voigttype, lmm.PseudoVoigtModel)
+functions['Peaks: 4 param']['BreitWigner/Fano']['function'] = partial(fit_voigttype, lmm.BreitWignerModel)
+functions['Peaks: 4 param']['SplitLorentzian']['function'] = partial(fit_voigttype, lmm.SplitLorentzianModel)
+functions['Peaks: 4 param']['ExpGaussian']['function'] = partial(fit_voigttype, lmm.ExponentialGaussianModel)
+functions['Peaks: 4 param']['SkewedGaussian']['function'] = partial(fit_voigttype, lmm.SkewedGaussianModel)
+functions['Peaks: 4 param']['Moffat']['function'] = partial(fit_voigttype, lmm.MoffatModel)
+functions['Peaks: 4 param']['Pearson7']['function'] = partial(fit_voigttype, lmm.Pearson7Model)
+functions['Peaks: 4 param']['DampedHarmOsc']['function'] = partial(fit_voigttype, lmm.DampedHarmonicOscillatorModel)
+functions['Peaks: 4 param']['Doniach']['function'] = partial(fit_voigttype, lmm.DoniachModel)
+
+functions['Peaks: skewed']={}
+fiveparamform=('w1 ... wn, a1 ... an, x1 ... xn, g1 ... gn, s1 ... sn, c where w = peak fwhm, a = peak height, '
+                        'x = peak position, g = gamma (see lmfit documentation for meaning in each case), '
+                        's = skew and c = constant offset value (if used). For example:\n'
+                        '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001, 0.1 0.12 0.14\n'
+                        'for three peaks with no constant offset, and\n'
+                        '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001, 0.1 0.12 0.14, 5\n'
+                        'for three peaks with a constant offset of 5.\n')
+for peaktype in ['Pearson4','SkewedVoigt']:
+    functions['Peaks: skewed'][peaktype] = {}
+    functions['Peaks: skewed'][peaktype]['inputs']='# of peaks, use offset'
+    functions['Peaks: skewed'][peaktype]['default_inputs']='1,0'
+    functions['Peaks: skewed'][peaktype]['parameters']='fwhm(s), height(s), position(s), gammas(s), skews(s), y_offset'
+    functions['Peaks: skewed'][peaktype]['description'] = multipeak_description.format(peaktype,fiveparamform)
+functions['Peaks: skewed']['Pearson4']['function'] = partial(fit_skewedpeaks, lmm.Pearson4Model)
+functions['Peaks: skewed']['SkewedVoigt']['function'] = partial(fit_skewedpeaks,lmm.SkewedVoigtModel)
+
+# Oscillating
+functions['Oscillating']={'Sine':{'function':fit_sines}
+                        # 'Sine w/exp decay':{},
+                        # 'Sine w/power decay':{}
+                        }
+functions['Oscillating']['Sine']['inputs']='# of waves, use offset'
+functions['Oscillating']['Sine']['default_inputs']='1,0'
+functions['Oscillating']['Sine']['parameters']='Amplitude(s), frequency(ies), phase(s), offset'
+functions['Oscillating']['Sine']['description']=('Fit a sine wave A*sin(f*x+phase) with optional + c if use offset == 1.\n'
+                                                'Specify # of waves > 1 to fit A_1*sin(f_1*x+ph_1) + ... + A_n*sin(f_n*x+ph_n) + c.\n'
+                                                'Initial guesses for more than one wave take the form\n'
+                                                'A_1 ... A_n, f_1 ... f_n, ph_1 ... ph_n, c\n'
+                                                'e.g., for three waves:\n'
+                                                '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001,5\n')
+
+# Thermal distributions
+functions['Thermal']={'Maxwell':{'fullname':'Maxwell-Boltzmann', 'equation':'1/A*exp((x-x0)/kT)','function':partial(thermal_fit, 'maxwell')},
+                    'Fermi':{'fullname':'Fermi-Dirac', 'equation':'1/[A*exp((x-x0)/kT)+1]','function':partial(thermal_fit, 'fermi')},
+                    'Bose':{'fullname':'Bose-Einstein', 'equation':'1/[A*exp((x-x0)/kT)-1]','function':partial(thermal_fit, 'bose')},
+                    }
+
+thermaldescription=('Fit to a {} distribution: y = {}. kT is considered a single fit parameter. Initial guesses '
+                    'for kT should be in units of x, usually either eV or J.')
+for key in functions['Thermal'].keys():
+    functions['Thermal'][key]['parameters']=['A, x0, kT']
+    functions['Thermal'][key]['description']=thermaldescription.format(functions['Thermal'][key]['fullname'], functions['Thermal'][key]['equation'])
+
+
+
+#Step functions
+functions['Step']={'Linear':{},'Arctan':{},'ErrorFunction':{},'Logistic':{}}
+stepdescription=('Fit a single step function of type {} (see lmfit documentation for information). \n'
+                'The step function starts at 0 and ends with value +/- A. '
+                'The x-value where y=A/2 is given by x0, and sigma is the characteristic width of the step.\n'
+                'Use an offset filter on the data in the main panel to ensure your data starts at y=0.')
+for key in functions['Step'].keys():
+    functions['Step'][key]['parameters']=['A, x0, sigma']
+    functions['Step'][key]['description']=stepdescription.format(key)
+functions['Step']['Linear']['function'] = partial(step_fit, 'linear')
+functions['Step']['Arctan']['function'] = partial(step_fit, 'arctan')
+functions['Step']['ErrorFunction']['function'] = partial(step_fit, 'erf')
+functions['Step']['Logistic']['function'] = partial(step_fit, 'logistic')
+
+#Rectangle functions
+functions['Rectangle']={'Linear':{},'Arctan':{},'ErrorFunction':{},'Logistic':{}}
+rectdescription=('Fit a rectangle function of type {} (see lmfit documentation for information). \n'
+                'A rectangle function steps from 0 to +/- A, then back to 0. '
+                'The x-values where y=A/2 are given by x0_1, x0_2, and sigma_1 and sigma_2 are the characteristic widths of the steps.\n'
+                'Use an offset filter on the data in the main panel to ensure your data starts at y=0.')
+for key in functions['Rectangle'].keys():
+    functions['Rectangle'][key]['parameters']=['A, x0_1, x0_2, sigma_1, sigma_2']
+    functions['Rectangle'][key]['description']=rectdescription.format(key)
+
+functions['Rectangle']['Linear']['function'] = partial(rectangle_fit, 'linear')
+functions['Rectangle']['Arctan']['function'] = partial(rectangle_fit, 'arctan')
+functions['Rectangle']['ErrorFunction']['function'] = partial(rectangle_fit, 'erf')
+functions['Rectangle']['Logistic']['function'] = partial(rectangle_fit, 'logistic')
+
+#Wrap the ExpressionModel to allow arbitrary input.
+functions['User input']={'Expression':{}}
+functions['User input']['Expression']['inputs'] = 'Expression'
+functions['User input']['Expression']['parameters'] = 'all fit parameters'
+functions['User input']['Expression']['description'] =('Fit an arbitrary expression. Input any function you like. '
+                                            'x must be the independent variable. e.g.\n'
+                                            'C + A * exp(-x/x0) * sin(x*freq+phase)\n'
+                                            'You must also provide initial guesses for each parameter in the form:\n'
+                                            'C=0.25, A=1.0, x0=2.0, freq=0.04, phase=0')
 functions['User input']['Expression']['function']=expression_fit
+
+
+# functions to return different parts of the functions dictionary. Makes it easier to call in main
+def get_class_names():
+    return functions.keys()
+
+def get_function(function_class,function_name):
+    return functions[function_class][function_name]['function']
+
+def get_names(fitclass='Polynomials and powers'):
+    return functions[fitclass].keys()
+    
+def get_parameters(function_class,function_name):
+    return functions[function_class][function_name]['parameters']
+
+def get_description(function_class,function_name):
+    return functions[function_class][function_name]['description']
+
+# Entry point for fitting the data. Passes info along to relevant functions and returns the fit result
+def fit_data(function_class,function_name, xdata, ydata, p0=None, inputinfo=None):
+    # all fit functions get called through the dictionary
+    f = functions[function_class][function_name]['function']
+    result = f(xdata,ydata,p0,inputinfo)
+    return result

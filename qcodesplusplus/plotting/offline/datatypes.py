@@ -192,7 +192,7 @@ class BaseClassData:
         else:
             self.processed_data = None
 
-    def add_plot(self, dim):
+    def add_plot(self, dim, editor_window=None):
         if self.processed_data:
             cmap_str = self.view_settings['Colormap']
             if self.view_settings['Reverse']:

@@ -1497,7 +1497,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current_item = self.file_list.currentItem()
         if current_item:
             filt = Filter(self.filters_combobox.currentText())
-            current_item.data.filters.append(filt)
+            if hasattr(current_item.data, 'popup1D'): # Then it's 1D data and we apply the filter only to the selected line
+                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
+                current_line = current_item.data.popup1D.cuts_table.item(current_1D_row,0).text()
+                current_item.data.plotted_lines[current_line]['filters'].append(filt)
+            else:
+                current_item.data.filters.append(filt)
             if current_item.checkState() and filt.checkstate:
                 self.update_plots()
             else:
@@ -1512,7 +1517,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current_item = self.file_list.currentItem()
         if current_item:
             row = self.filters_table.rowCount()
-            filt = current_item.data.filters[row]
+            if hasattr(current_item.data, 'popup1D'):
+                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
+                current_line = current_item.data.popup1D.cuts_table.item(current_1D_row,0).text()
+                filt = current_item.data.plotted_lines[current_line]['filters'][row]
+            else:
+                filt = current_item.data.filters[row]
             self.filters_table.itemChanged.disconnect(self.filters_table_edited)
             self.filters_table.insertRow(row) 
             filter_item = QtWidgets.QTableWidgetItem(filt.name)

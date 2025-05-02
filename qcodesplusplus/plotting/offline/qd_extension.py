@@ -327,7 +327,7 @@ class QdData(main.BaseClassData):
                 self.processed_data[data_index] = (self.raw_data[bias_index] / 
                                                    self.raw_data[curr_index])
     
-    def add_plot(self, dim):
+    def add_plot(self, dim, editor_window=None):
         super().add_plot(dim)
         if dim == 2:
             if self.settings['showsettings'] == 'True':

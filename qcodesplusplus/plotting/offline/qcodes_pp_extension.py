@@ -307,7 +307,8 @@ class qcodesppData(main.BaseClassData):
                                                                     self.processed_data[1]],
                                                 'linecolor': (0.1, 0.5, 0.8, 1),
                                                 'linewidth': 1.5,
-                                                'linestyle': '-'}}
+                                                'linestyle': '-',
+                                                'filters': []}}
                 if not hasattr(self, 'popup1D'):
                     self.popup1D = Popup1D(self,editor_window=editor_window)
                     self.popup1D.running = True
