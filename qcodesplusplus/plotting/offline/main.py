@@ -1079,7 +1079,16 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.filters_table.setRowCount(0)
         current_item = self.file_list.currentItem()
         if current_item:
-            for _ in current_item.data.filters:
+            if hasattr(current_item.data, 'popup1D'):
+                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
+                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+                try:
+                    filters= current_item.data.plotted_lines[current_line]['filters']
+                except:
+                    filters=[]
+            else:
+                filters = current_item.data.filters
+            for _ in filters:
                 self.append_filter_to_table()
     
     def plot_setting_edited(self,setting_name=None):
@@ -1236,10 +1245,16 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def filters_table_edited(self, item):
         current_item = self.file_list.currentItem()
         current_item.data.old_filters = copy.deepcopy(current_item.data.filters)
-        if current_item:   
+        if current_item:
+            if hasattr(current_item.data, 'popup1D'):
+                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
+                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+                filters= current_item.data.plotted_lines[current_line]['filters']
+            else:
+                filters = current_item.data.filters
             try:
                 row = item.row()
-                filt = current_item.data.filters[row]
+                filt = filters[row]
                 filter_item = self.filters_table.item(row, 0)
                 filt.method = self.filters_table.cellWidget(row, 1).currentText()
                 filt.settings = [self.filters_table.item(row, 2).text(), 
@@ -1265,7 +1280,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def copy_filters(self):
         current_item = self.file_list.currentItem()
         if current_item:
-            self.copied_filters = copy.deepcopy(current_item.data.filters)
+            if hasattr(current_item.data, 'popup1D'):
+                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
+                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+                filters= current_item.data.plotted_lines[current_line]['filters']
+            else:
+                filters = current_item.data.filters
+            self.copied_filters = copy.deepcopy(filters)
             
     def copy_view_settings(self):
         current_item = self.file_list.currentItem()
@@ -1295,11 +1316,17 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def paste_filters(self, which='copied'):
         current_item = self.file_list.currentItem()
         if current_item:
+            if hasattr(current_item.data, 'popup1D'):
+                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
+                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+                filters= current_item.data.plotted_lines[current_line]['filters']
+            else:
+                filters = current_item.data.filters
             if which == 'copied':
                 if self.copied_filters:
-                    current_item.data.filters = copy.deepcopy(self.copied_filters)
+                    filters = copy.deepcopy(self.copied_filters)
             elif which == 'old':
-                current_item.data.filters = copy.deepcopy(current_item.data.old_filters)
+                filters = copy.deepcopy(current_item.data.old_filters)
             self.show_current_filters()
             current_item.data.apply_all_filters()
             self.show_current_view_settings()
@@ -1499,7 +1526,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             filt = Filter(self.filters_combobox.currentText())
             if hasattr(current_item.data, 'popup1D'): # Then it's 1D data and we apply the filter only to the selected line
                 current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
-                current_line = current_item.data.popup1D.cuts_table.item(current_1D_row,0).text()
+                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
                 current_item.data.plotted_lines[current_line]['filters'].append(filt)
             else:
                 current_item.data.filters.append(filt)
@@ -1519,7 +1546,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             row = self.filters_table.rowCount()
             if hasattr(current_item.data, 'popup1D'):
                 current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
-                current_line = current_item.data.popup1D.cuts_table.item(current_1D_row,0).text()
+                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
                 filt = current_item.data.plotted_lines[current_line]['filters'][row]
             else:
                 filt = current_item.data.filters[row]
@@ -1551,16 +1578,22 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def remove_filters(self, which='current'):
         current_item = self.file_list.currentItem()
         if current_item:
+            if hasattr(current_item.data, 'popup1D'):
+                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
+                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+                filters= current_item.data.plotted_lines[current_line]['filters']
+            else:
+                filters = current_item.data.filters
             if which == 'current':
                 filter_row = self.filters_table.currentRow()
                 if filter_row != -1:
                     self.filters_table.removeRow(filter_row)
-                    del current_item.data.filters[filter_row]
+                    del filters[filter_row]
                     current_item.data.apply_all_filters()
                     current_item.data.reset_view_settings()
             elif which == 'all':
                 self.filters_table.setRowCount(0)
-                current_item.data.filters = []
+                filters = []
                 current_item.data.apply_all_filters()
                 current_item.data.reset_view_settings()
             if current_item.checkState():
@@ -1571,7 +1604,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def move_filter(self, to):
         current_item = self.file_list.currentItem()
         if current_item:
-            filters = current_item.data.filters
+            if hasattr(current_item.data, 'popup1D'):
+                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
+                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+                filters= current_item.data.plotted_lines[current_line]['filters']
+            else:
+                filters = current_item.data.filters
             row = self.filters_table.currentRow()
             if ((row > 0 and to == -1) or
                 (row < self.filters_table.rowCount()-1 and to == 1)):
@@ -1643,17 +1681,29 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def save_filters(self):
         current_item = self.file_list.currentItem()
         if current_item:
+            if hasattr(current_item.data, 'popup1D'):
+                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
+                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+                filters= current_item.data.plotted_lines[current_line]['filters']
+            else:
+                filters = current_item.data.filters
             filename, _ = QtWidgets.QFileDialog.getSaveFileName(
                     self, 'Save Filters As...', '', '.npy')
-            np.save(filename, current_item.data.filters)
+            np.save(filename, filters)
             
     def load_filters(self):
         current_item = self.file_list.currentItem()
         if current_item:
+            if hasattr(current_item.data, 'popup1D'):
+                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
+                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+                filters= current_item.data.plotted_lines[current_line]['filters']
+            else:
+                filters = current_item.data.filters
             filename, _ = QtWidgets.QFileDialog.getOpenFileNames(
                     self, 'Open Filters File...', '', '*.npy')
             loaded_filters = list(np.load(filename[0], allow_pickle=True))
-            current_item.data.filters += copy.deepcopy(loaded_filters)
+            filters += copy.deepcopy(loaded_filters)
             current_item.data.apply_all_filters()
             self.update_plots()
             self.show_current_view_settings()

@@ -1505,6 +1505,9 @@ class Popup1D(QtWidgets.QWidget):
             fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
             self.output_window.setText('Information about selected fit type:\n'+
                                    fit_function['description'])
+            
+        # and the current filters in the main window
+        self.editor_window.show_current_filters()
 
     def get_checked_items(self, return_indices = False, cuts_or_fits='cuts'):
         # Note this is a bit different to the main window, where the entire item is returned.
