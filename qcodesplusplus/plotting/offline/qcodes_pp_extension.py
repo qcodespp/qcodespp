@@ -205,7 +205,12 @@ class qcodesppData(main.BaseClassData):
                 
             self.settings['columns'] = ','.join([str(i) for i in columns])
     
-
+    def copy_raw_to_processed_data(self,line=None):
+        if line is not None:
+            self.plotted_lines[line]['raw_data'] = self.raw_data
+            self.plotted_lines[line]['processed_data'] = [np.array(np.copy(self.raw_data[x])) for x in self.get_columns()]
+        else:
+            self.processed_data = [np.array(np.copy(self.raw_data[x])) for x in self.get_columns()]
 
     def identify_independent_vars(self):        
         for chan in self.channels.keys():
@@ -315,8 +320,8 @@ class qcodesppData(main.BaseClassData):
                     self.plotted_lines = {0: {'checkstate': 2,
                                                 'X data': self.independent_parameter_names[0],
                                                 'Y data': self.dependent_parameter_names[self.index_dependent_parameter],
-                                                'processed_data': [self.processed_data[0],
-                                                                    self.processed_data[1]],
+                                                'raw_data': self.raw_data,
+                                                'processed_data': self.processed_data,
                                                 'linecolor': (0.1, 0.5, 0.8, 1),
                                                 'linewidth': 1.5,
                                                 'linestyle': '-',

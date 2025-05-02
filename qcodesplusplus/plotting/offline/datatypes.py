@@ -179,7 +179,7 @@ class BaseClassData:
             # else:
             #     self.settings.pop('Z data', None)
                    
-    def copy_raw_to_processed_data(self):
+    def copy_raw_to_processed_data(self,line=None):
         self.processed_data = [np.array(np.copy(self.raw_data[x])) for x in self.get_columns()]
 
     def prepare_data_for_plot(self, reload_data=False, refresh_filters=False, reload_from_file=False,
@@ -187,7 +187,7 @@ class BaseClassData:
         if not hasattr(self, 'raw_data') or reload_data:
             self.load_and_reshape_data(reload_data, reload_from_file, linefrompopup)
         if self.raw_data:
-            self.copy_raw_to_processed_data()
+            self.copy_raw_to_processed_data(linefrompopup)
             self.apply_all_filters(update_color_limits=update_color_limits)
         else:
             self.processed_data = None

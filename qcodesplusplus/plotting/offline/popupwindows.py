@@ -1539,8 +1539,8 @@ class Popup1D(QtWidgets.QWidget):
                 'filters':[]}
             self.parent.plotted_lines[int(max_index+1)] = line
             self.parent.prepare_data_for_plot(reload_data=True,reload_from_file=False,linefrompopup=int(max_index+1))
-            self.parent.plotted_lines[int(max_index+1)]['processed_data'] = [self.parent.processed_data[0],
-                                                    self.parent.processed_data[1]]
+            self.parent.plotted_lines[int(max_index+1)]['processed_data'] = self.parent.processed_data
+            self.parent.plotted_lines[int(max_index+1)]['raw_data'] = self.parent.raw_data
             self.append_cut_to_table(int(max_index+1))
             self.editor_window.show_current_plot_settings()
         except Exception as e:
@@ -1987,6 +1987,7 @@ class Popup1D(QtWidgets.QWidget):
 
     def get_line_data(self,line):
         # Returns the processed x,y data for a particular entry in the plotted lines dictionary
+        self.parent.prepare_data_for_plot(reload_data=True,reload_from_file=False,linefrompopup=line)
         x=self.parent.plotted_lines[line]['processed_data'][0]
         y=self.parent.plotted_lines[line]['processed_data'][1]
         return (x,y)
@@ -1997,13 +1998,14 @@ class Popup1D(QtWidgets.QWidget):
         if len(lines) > 0:
             for line in lines:
                 x,y= self.get_line_data(line)
-                self.parent.image = self.parent.axes.plot(x, y,
+                #self.parent.image = 
+                self.parent.axes.plot(x, y,
                                     self.parent.plotted_lines[line]['linestyle'],
                                     linewidth=self.parent.plotted_lines[line]['linewidth'],
                                     markersize=self.parent.plotted_lines[line]['linewidth'],
                                     color=self.parent.plotted_lines[line]['linecolor'])
             self.parent.apply_plot_settings()
-            self.parent.apply_axlim_settings()
+            #self.parent.apply_axlim_settings()
             self.parent.apply_axscale_settings()
         self.editor_window.figure.tight_layout()
         self.parent.canvas.draw()
