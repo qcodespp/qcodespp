@@ -1863,7 +1863,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             current_item = self.file_list.currentItem()
             if current_item:
                 filt = Filter('Offset',method=axis, settings=[str(value),''], checkstate=2)
-                current_item.data.filters.append(filt)
+                if hasattr(current_item.data, 'popup1D'):
+                    current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
+                    current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+                    current_item.data.plotted_lines[current_line]['filters'].append(filt)
+                else:
+                    current_item.data.filters.append(filt)
             if current_item.checkState() and filt.checkstate:
                 self.update_plots()
                 self.reset_axlim_settings()
