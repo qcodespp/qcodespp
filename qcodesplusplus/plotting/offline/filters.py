@@ -230,7 +230,7 @@ def offset(data, method, setting1, setting2, array=None):
                     data[axis[method]][i][j] += value
         elif len(data) == 2 and axis[method] < 2:
             for j,val in enumerate(data[axis[method]]):
-                data[axis[method]] += value
+                data[axis[method]][j] += value
     return data
     
 def absolute(data, method, setting1, setting2):
@@ -270,7 +270,7 @@ def multiply(data, method, setting1, setting2, array=None):
                     data[axis[method]][i][j] *= value
         elif len(data) == 2 and axis[method] < 2:
             for j,val in enumerate(data[axis[method]]):
-                data[axis[method]] *= value
+                data[axis[method]][j] *= value
     return data
 
 # def divide(data, method, setting1, setting2):
@@ -297,7 +297,7 @@ def divide(data, method, setting1, setting2, array=None):
                     data[axis[method]][i][j] /= value
         elif len(data) == 2 and axis[method] < 2:
             for j,val in enumerate(data[axis[method]]):
-                data[axis[method]] /= value
+                data[axis[method]][j] /= value
     return data
 
 
@@ -331,7 +331,7 @@ def power(data, method, setting1, setting2):
                 data[axis[method]][i][j] = data[axis[method]][i][j]**value
     elif len(data) == 2 and axis[method] < 2:
         for j,val in enumerate(data[axis[method]]):
-            data[axis[method]] = data[axis[method]]**value
+            data[axis[method]][j] = data[axis[method]][j]**value
     return data
 
 def root(data, method, setting1, setting2):
@@ -344,7 +344,7 @@ def root(data, method, setting1, setting2):
                     data[axis[method]][i][j] = np.abs(data[axis[method]][i][j])**(1/root)
         elif len(data) == 2 and axis[method] < 2:
             for j,val in enumerate(data[axis[method]]):
-                data[axis[method]] = np.abs(data[axis[method]])**(1/float(setting1))
+                data[axis[method]][j] = np.abs(data[axis[method]][j])**(1/float(setting1))
     return data
 
 def interpolate(data, method, n_x, n_y):
@@ -434,6 +434,10 @@ class Filter:
                                       'Settings': ['0', ''],
                                       'Function': offset_line_by_line,
                                       'Checkstate': 2},
+                        'Subtract trace': {'Method': ['Ver', 'Hor'],
+                                     'Settings': ['0', ''],
+                                     'Function': subtract_trace,
+                                     'Checkstate': 0},
                         'Logarithm': {'Method': ['Mask','Shift','Abs'],
                                       'Settings': ['10', ''],
                                       'Function': logarithm,
@@ -486,10 +490,6 @@ class Filter:
                                     'Settings': ['', ''],
                                     'Function': swap_xy,
                                     'Checkstate': 2}, 
-                        'Subtract trace': {'Method': ['Ver', 'Hor'],
-                                     'Settings': ['0', ''],
-                                     'Function': subtract_trace,
-                                     'Checkstate': 0}
                                    } 
     
     def __init__(self, name, method=None, settings=None, checkstate=None):
