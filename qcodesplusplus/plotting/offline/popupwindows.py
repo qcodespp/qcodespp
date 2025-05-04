@@ -191,7 +191,8 @@ class LineCutWindow(QtWidgets.QWidget):
 
         self.move_buttons_layout.addWidget(self.move_up_button)
         self.move_buttons_layout.addWidget(self.move_down_button)
-        self.move_buttons_layout.addWidget(self.reorder_by_index_button)
+        #self.move_buttons_layout.addWidget(self.reorder_by_index_button)
+        #self.move_buttons_layout.addStretch()
 
         self.generate_layout.addWidget(self.generate_label)
         self.generate_layout.addWidget(self.generate_line_edit)
@@ -258,8 +259,8 @@ class LineCutWindow(QtWidgets.QWidget):
         self.fit_buttons_layout.addStretch()
         self.fit_buttons_layout.addWidget(self.fit_checked_button)
         self.fit_buttons_layout.addWidget(self.save_all_fits_button)
-        self.fit_buttons_layout.addWidget(self.save_parameters_dependency_button)
         self.fit_buttons_layout.addWidget(self.clear_all_fits_button)
+        self.fit_buttons_layout.addWidget(self.save_parameters_dependency_button)
 
 
     def set_main_layout(self):
