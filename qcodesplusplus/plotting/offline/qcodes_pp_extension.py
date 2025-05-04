@@ -8,7 +8,8 @@ from qcodesplusplus.data.data_set import load_data
 import qcodesplusplus.plotting.offline.main as main
 
 from .helpers import MidpointNormalize
-from .popupwindows import FFTWindow, Popup1D
+from .popupwindows import FFTWindow
+from .sidebar1D import Sidebar1D
 
 
 class qcodesppData(main.BaseClassData):
@@ -256,9 +257,9 @@ class qcodesppData(main.BaseClassData):
         
     # Redefine apply_all_filters so that data from other columns can be sent to the filters.
     def apply_all_filters(self, update_color_limits=True):
-        if hasattr(self, 'popup1D'):
-            current_1D_row = self.popup1D.cuts_table.currentRow()
-            current_line = int(self.popup1D.cuts_table.item(current_1D_row,0).text())
+        if hasattr(self, 'sidebar1D'):
+            current_1D_row = self.sidebar1D.trace_table.currentRow()
+            current_line = int(self.sidebar1D.trace_table.item(current_1D_row,0).text())
             filters= self.plotted_lines[current_line]['filters']
             processed_data = self.plotted_lines[current_line]['processed_data']
         else:
@@ -295,7 +296,7 @@ class qcodesppData(main.BaseClassData):
                                                     filt.method,
                                                     filt.settings[0],
                                                     filt.settings[1])
-        if hasattr(self, 'popup1D'):
+        if hasattr(self, 'sidebar1D'):
             self.plotted_lines[current_line]['processed_data'] = processed_data
         else:
             self.processed_data = processed_data
@@ -326,13 +327,13 @@ class qcodesppData(main.BaseClassData):
                                                 'linewidth': 1.5,
                                                 'linestyle': '-',
                                                 'filters': []}}
-                if not hasattr(self, 'popup1D'):
-                    self.popup1D = Popup1D(self,editor_window=editor_window)
-                    self.popup1D.running = True
-                    self.popup1D.append_cut_to_table(0)
-                    self.popup1D.activateWindow()
+                if not hasattr(self, 'sidebar1D'):
+                    self.sidebar1D = Sidebar1D(self,editor_window=editor_window)
+                    self.sidebar1D.running = True
+                    self.sidebar1D.append_trace_to_table(0)
+                    #self.sidebar1D.activateWindow()
 
-                self.popup1D.update()
+                self.sidebar1D.update()
 
                 # This is horrible, but I need to get rid of these. Ideally I would re-write the extension so they're
                 # not used at all in the 1D case. Will try later.

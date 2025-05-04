@@ -4,7 +4,8 @@ import os
 from matplotlib.widgets import Cursor
 from matplotlib import cm, rcParams
 from .helpers import MidpointNormalize
-from .popupwindows import FFTWindow, Popup1D
+from .popupwindows import FFTWindow
+from .sidebar1D import Sidebar1D
 
 class DataItem(QtWidgets.QListWidgetItem):
     def __init__(self, data):
@@ -115,7 +116,7 @@ class BaseClassData:
     def get_columns(self):
         return [int(col) for col in self.settings['columns'].split(',')]
     
-    def load_and_reshape_data(self,reload=False,reload_from_file=False, fromPopup1D=False):
+    def load_and_reshape_data(self,reload=False,reload_from_file=False):
         column_data = self.get_column_data()
         if column_data.ndim == 1: # if empty array or single-row array
             self.raw_data = None

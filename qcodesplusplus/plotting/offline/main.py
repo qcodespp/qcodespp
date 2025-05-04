@@ -717,8 +717,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def file_clicked(self):
         self.show_current_all()
         current_item = self.file_list.currentItem()
-        if hasattr(current_item.data,'popup1D'):
-            current_item.data.popup1D.show()
+        for i in reversed(range(self.oneD_layout.count())): 
+            widgetToRemove = self.oneD_layout.itemAt(i).widget()
+            # remove it from the layout list
+            self.oneD_layout.removeWidget(widgetToRemove)
+            # remove it from the gui
+            widgetToRemove.setParent(None)
+        if hasattr(current_item.data,'sidebar1D'):
+            self.oneD_layout.addWidget(current_item.data.sidebar1D)
             
     def file_double_clicked(self, item):
         self.file_list.itemChanged.disconnect(self.file_checked)
@@ -1079,9 +1085,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.filters_table.setRowCount(0)
         current_item = self.file_list.currentItem()
         if current_item:
-            if hasattr(current_item.data, 'popup1D'):
-                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
-                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+            if hasattr(current_item.data, 'sidebar1D'):
+                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
+                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
                 try:
                     filters= current_item.data.plotted_lines[current_line]['filters']
                 except:
@@ -1246,9 +1252,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current_item = self.file_list.currentItem()
         current_item.data.old_filters = copy.deepcopy(current_item.data.filters)
         if current_item:
-            if hasattr(current_item.data, 'popup1D'):
-                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
-                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+            if hasattr(current_item.data, 'sidebar1D'):
+                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
+                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
                 filters= current_item.data.plotted_lines[current_line]['filters']
             else:
                 filters = current_item.data.filters
@@ -1280,9 +1286,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def copy_filters(self):
         current_item = self.file_list.currentItem()
         if current_item:
-            if hasattr(current_item.data, 'popup1D'):
-                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
-                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+            if hasattr(current_item.data, 'sidebar1D'):
+                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
+                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
                 filters= current_item.data.plotted_lines[current_line]['filters']
             else:
                 filters = current_item.data.filters
@@ -1316,9 +1322,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def paste_filters(self, which='copied'):
         current_item = self.file_list.currentItem()
         if current_item:
-            if hasattr(current_item.data, 'popup1D'):
-                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
-                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+            if hasattr(current_item.data, 'sidebar1D'):
+                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
+                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
                 filters= current_item.data.plotted_lines[current_line]['filters']
             else:
                 filters = current_item.data.filters
@@ -1524,9 +1530,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current_item = self.file_list.currentItem()
         if current_item:
             filt = Filter(self.filters_combobox.currentText())
-            if hasattr(current_item.data, 'popup1D'): # Then it's 1D data and we apply the filter only to the selected line
-                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
-                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+            if hasattr(current_item.data, 'sidebar1D'): # Then it's 1D data and we apply the filter only to the selected line
+                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
+                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
                 current_item.data.plotted_lines[current_line]['filters'].append(filt)
             else:
                 current_item.data.filters.append(filt)
@@ -1544,9 +1550,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current_item = self.file_list.currentItem()
         if current_item:
             row = self.filters_table.rowCount()
-            if hasattr(current_item.data, 'popup1D'):
-                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
-                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+            if hasattr(current_item.data, 'sidebar1D'):
+                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
+                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
                 filt = current_item.data.plotted_lines[current_line]['filters'][row]
             else:
                 filt = current_item.data.filters[row]
@@ -1578,9 +1584,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def remove_filters(self, which='current'):
         current_item = self.file_list.currentItem()
         if current_item:
-            if hasattr(current_item.data, 'popup1D'):
-                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
-                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+            if hasattr(current_item.data, 'sidebar1D'):
+                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
+                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
                 filters= current_item.data.plotted_lines[current_line]['filters']
             else:
                 filters = current_item.data.filters
@@ -1604,9 +1610,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def move_filter(self, to):
         current_item = self.file_list.currentItem()
         if current_item:
-            if hasattr(current_item.data, 'popup1D'):
-                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
-                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+            if hasattr(current_item.data, 'sidebar1D'):
+                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
+                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
                 filters= current_item.data.plotted_lines[current_line]['filters']
             else:
                 filters = current_item.data.filters
@@ -1681,9 +1687,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def save_filters(self):
         current_item = self.file_list.currentItem()
         if current_item:
-            if hasattr(current_item.data, 'popup1D'):
-                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
-                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+            if hasattr(current_item.data, 'sidebar1D'):
+                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
+                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
                 filters= current_item.data.plotted_lines[current_line]['filters']
             else:
                 filters = current_item.data.filters
@@ -1694,9 +1700,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def load_filters(self):
         current_item = self.file_list.currentItem()
         if current_item:
-            if hasattr(current_item.data, 'popup1D'):
-                current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
-                current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+            if hasattr(current_item.data, 'sidebar1D'):
+                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
+                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
                 filters= current_item.data.plotted_lines[current_line]['filters']
             else:
                 filters = current_item.data.filters
@@ -1722,22 +1728,22 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     if (event.button == 1  and 
                         len(data.get_columns()) == 2):
                         # Set fit limits for 1D data.
-                        if hasattr(data, 'popup1D'):
-                            current_row=data.popup1D.cuts_table.currentRow()
-                            xdata,ydata=data.popup1D.get_line_data(int(data.popup1D.cuts_table.item(current_row,0).text()))
+                        if hasattr(data, 'sidebar1D'):
+                            current_row=data.sidebar1D.trace_table.currentRow()
+                            xdata,ydata=data.sidebar1D.get_line_data(int(data.sidebar1D.trace_table.item(current_row,0).text()))
                             # snap to data
                             index=(np.abs(x-xdata)).argmin()
                             x_value=xdata[index]
-                            if data.popup1D.xmin_box.text()=='':
-                                data.popup1D.xmin_box.setText(str(x_value))
-                            elif data.popup1D.xmax_box.text()=='':
-                                data.popup1D.xmax_box.setText(str(x_value))
+                            if data.sidebar1D.xmin_box.text()=='':
+                                data.sidebar1D.xmin_box.setText(str(x_value))
+                            elif data.sidebar1D.xmax_box.text()=='':
+                                data.sidebar1D.xmax_box.setText(str(x_value))
                             else:
-                                if np.abs(float(data.popup1D.xmin_box.text())-x_value)<np.abs(float(data.popup1D.xmax_box.text())-x_value):
-                                    data.popup1D.xmin_box.setText(str(x_value))
+                                if np.abs(float(data.sidebar1D.xmin_box.text())-x_value)<np.abs(float(data.sidebar1D.xmax_box.text())-x_value):
+                                    data.sidebar1D.xmin_box.setText(str(x_value))
                                 else:
-                                    data.popup1D.xmax_box.setText(str(x_value))
-                            data.popup1D.limits_edited()
+                                    data.sidebar1D.xmax_box.setText(str(x_value))
+                            data.sidebar1D.limits_edited()
 
                     elif ((event.button == 1 or event.button == 2) and 
                         len(data.get_columns()) == 3):
@@ -1863,9 +1869,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             current_item = self.file_list.currentItem()
             if current_item:
                 filt = Filter('Offset',method=axis, settings=[str(value),''], checkstate=2)
-                if hasattr(current_item.data, 'popup1D'):
-                    current_1D_row = current_item.data.popup1D.cuts_table.currentRow()
-                    current_line = int(current_item.data.popup1D.cuts_table.item(current_1D_row,0).text())
+                if hasattr(current_item.data, 'sidebar1D'):
+                    current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
+                    current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
                     current_item.data.plotted_lines[current_line]['filters'].append(filt)
                 else:
                     current_item.data.filters.append(filt)
