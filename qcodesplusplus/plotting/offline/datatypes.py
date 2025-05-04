@@ -183,7 +183,7 @@ class BaseClassData:
     def copy_raw_to_processed_data(self,line=None):
         self.processed_data = [np.array(np.copy(self.raw_data[x])) for x in self.get_columns()]
 
-    def prepare_data_for_plot(self, reload_data=False, refresh_filters=False, reload_from_file=False,
+    def prepare_data_for_plot(self, reload_data=False, reload_from_file=False,
                               linefrompopup=None,update_color_limits=True):
         if not hasattr(self, 'raw_data') or reload_data:
             self.load_and_reshape_data(reload_data, reload_from_file, linefrompopup)

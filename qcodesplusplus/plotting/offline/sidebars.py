@@ -96,8 +96,8 @@ class Sidebar1D(QtWidgets.QWidget):
         self.fit_checked_button = QtWidgets.QPushButton('Fit checked')
         self.save_all_fits_button = QtWidgets.QPushButton('Save all fits')
         self.clear_all_fits_button = QtWidgets.QPushButton('Clear all fits')
-        self.save_preset_button = QtWidgets.QPushButton('Save preset')
-        self.load_preset_button = QtWidgets.QPushButton('Load preset')
+        self.save_preset_button = QtWidgets.QPushButton('Save fit preset')
+        self.load_preset_button = QtWidgets.QPushButton('Load fit preset')
 
     def init_connections(self):
         self.add_trace_button.clicked.connect(self.add_trace_manually)
@@ -198,7 +198,7 @@ class Sidebar1D(QtWidgets.QWidget):
     def set_main_layout(self):
         self.main_layout = QtWidgets.QVBoxLayout()
 
-        self.tablebox=QtWidgets.QGroupBox('Traces list')
+        self.tablebox=QtWidgets.QGroupBox('1D traces')
         self.table_layout = QtWidgets.QVBoxLayout()
         self.table_layout.addLayout(self.table_buttons_layout_top)
         self.table_layout.addLayout(self.table_buttons_layout_bot)
@@ -578,6 +578,8 @@ class Sidebar1D(QtWidgets.QWidget):
                         
             if self.xmin_box.text() != '' or self.xmax_box.text() != '':
                 self.limits_edited()
+        
+        self.parent.canvas.draw()
                
     def clear_lines(self):
         self.output_window.clear()
@@ -677,7 +679,6 @@ class Sidebar1D(QtWidgets.QWidget):
             # Still need to find the 'current row' to put a checkbox there later
             labels=[int(self.trace_table.item(row,0).text()) for row in range(self.trace_table.rowCount())]
             current_row=labels.index(line)
-            print(current_row)
         x,y=self.get_line_data(line)
         x_forfit, y_forfit = self.collect_fit_data(x,y)
         function_class = self.fit_class_box.currentText()
@@ -754,7 +755,6 @@ class Sidebar1D(QtWidgets.QWidget):
             #self.parent.apply_axlim_settings()
             self.parent.apply_axscale_settings()
         self.editor_window.figure.tight_layout()
-        self.parent.canvas.draw()
 
     def draw_fits(self,line):
         try:
@@ -773,7 +773,6 @@ class Sidebar1D(QtWidgets.QWidget):
                 self.parent.axes.plot(x_forfit, fit_components[key], '--', color=line_colors[i],alpha=0.75, linewidth=self.parent.plotted_lines[line]['linewidth'])
         except Exception as e:
             self.output_window.setText(f'Could not plot fit components: {e}')
-        self.parent.canvas.draw()
 
     def save_fit_result(self):
         current_row = self.trace_table.currentRow()

@@ -255,53 +255,58 @@ class qcodesppData(main.BaseClassData):
                                     'Divide': self.all_parameter_names,
                                     'Offset': self.all_parameter_names}
         
+    def apply_single_filter(self, processed_data, filt):
+        if filt.name in ['Multiply', 'Divide', 'Offset']:
+            if filt.settings[0][0]=='-':
+                arrayname=filt.settings[0][1:]
+                setting2='-'
+            else:
+                arrayname=filt.settings[0]
+                setting2='+'
+            if arrayname in self.all_parameter_names:
+                if len(self.independent_parameters) > 1:
+                    array=self.data_dict[arrayname][:self.dims[0]][:self.dims[1]]
+                else:
+                    array=self.data_dict[arrayname][:self.dims[0]]
+                if hasattr(self,'udflipped'):
+                    array=np.flipud(array)
+                if hasattr(self,'lrflipped'):
+                    array=np.fliplr(array)
+            else:
+                array=None
+            processed_data = filt.function(processed_data,
+                                            filt.method,
+                                            filt.settings[0], 
+                                            setting2,
+                                            array)
+        else:
+            processed_data = filt.function(processed_data,
+                                            filt.method,
+                                            filt.settings[0],
+                                            filt.settings[1])
+            
+        return processed_data
+        
     # Redefine apply_all_filters so that data from other columns can be sent to the filters.
     def apply_all_filters(self, update_color_limits=True):
         if hasattr(self, 'sidebar1D'):
-            current_1D_row = self.sidebar1D.trace_table.currentRow()
-            current_line = int(self.sidebar1D.trace_table.item(current_1D_row,0).text())
-            filters= self.plotted_lines[current_line]['filters']
-            processed_data = self.plotted_lines[current_line]['processed_data']
+            for line in self.plotted_lines.keys():
+                filters = self.plotted_lines[line]['filters']
+                processed_data = self.plotted_lines[line]['processed_data']
+                for filt in filters:
+                    if filt.checkstate:
+                        processed_data = self.apply_single_filter(processed_data, filt)
+                self.plotted_lines[line]['processed_data'] = processed_data
+
         else:
             filters=self.filters
             processed_data = self.processed_data
-        for filt in filters:
-            if filt.checkstate:
-                if filt.name in ['Multiply', 'Divide', 'Offset']:
-                    if filt.settings[0][0]=='-':
-                        arrayname=filt.settings[0][1:]
-                        setting2='-'
-                    else:
-                        arrayname=filt.settings[0]
-                        setting2='+'
-                    if arrayname in self.all_parameter_names:
-                        if len(self.independent_parameters) > 1:
-                            array=self.data_dict[arrayname][:self.dims[0]][:self.dims[1]]
-                        else:
-                            array=self.data_dict[arrayname][:self.dims[0]]
-                        if hasattr(self,'udflipped'): # If the calculated column data got flipped.
-                            array=np.flipud(array)
-                        if hasattr(self,'lrflipped'):
-                            array=np.fliplr(array)
-                    else:
-                        array=None
-                    
-                    processed_data = filt.function(processed_data, 
-                                                filt.method,
-                                                filt.settings[0], 
-                                                setting2,
-                                                array)
-                else:
-                    processed_data = filt.function(processed_data,
-                                                    filt.method,
-                                                    filt.settings[0],
-                                                    filt.settings[1])
-        if hasattr(self, 'sidebar1D'):
-            self.plotted_lines[current_line]['processed_data'] = processed_data
-        else:
+            for filt in filters:
+                if filt.checkstate:
+                    processed_data = self.apply_single_filter(processed_data, filt)
             self.processed_data = processed_data
-        if update_color_limits:
-            self.reset_view_settings()
+            if update_color_limits:
+                self.reset_view_settings()
             # The below was the cause of the NotImplmentedError. Seems to work fine without it.
             # if hasattr(self, 'image'):
             #     self.apply_view_settings()
