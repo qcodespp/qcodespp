@@ -770,9 +770,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 item.data.vertmarkers.append(item.data.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymin=0.9,
                     color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
 
-    def update_plots(self, update_data=True):
+    def update_plots(self, item=None,update_data=True):
         self.figure.clf()
-
+        
         checked_items = self.get_checked_items()
         if checked_items:
             rows, cols = self.subplot_grid[len(checked_items)-1]
@@ -1878,11 +1878,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         self.show_current_view_settings()
     
     def popup_canvas(self, signal):
+        current_item = self.plot_in_focus[0]
         data = self.plot_in_focus[0].data
         if 'Offset' in signal.text():
             axis=signal.text().split()[1]
             value=-float(signal.text().split()[3])
-            current_item = self.file_list.currentItem()
             if current_item:
                 filt = Filter('Offset',method=axis, settings=[str(value),''], checkstate=2)
                 if hasattr(current_item.data, 'sidebar1D'):
