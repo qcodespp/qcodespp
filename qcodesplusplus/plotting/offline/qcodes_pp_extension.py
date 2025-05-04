@@ -9,7 +9,7 @@ import qcodesplusplus.plotting.offline.main as main
 
 from .helpers import MidpointNormalize
 from .popupwindows import FFTWindow
-from .sidebar1D import Sidebar1D
+from .sidebars import Sidebar1D
 
 
 class qcodesppData(main.BaseClassData):

@@ -5,7 +5,7 @@ from matplotlib.widgets import Cursor
 from matplotlib import cm, rcParams
 from .helpers import MidpointNormalize
 from .popupwindows import FFTWindow
-from .sidebar1D import Sidebar1D
+from .sidebars import Sidebar1D
 
 class DataItem(QtWidgets.QListWidgetItem):
     def __init__(self, data):

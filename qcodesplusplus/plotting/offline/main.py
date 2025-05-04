@@ -39,6 +39,7 @@ from lmfit.model import save_modelresult, load_modelresult
 
 import qcodesplusplus.plotting.offline.design as design
 from .popupwindows import LineCutWindow, FFTWindow
+from .sidebars import Sidebar1D
 from .helpers import (cmaps, MidpointNormalize,NavigationToolbarMod,
                       rcParams_to_dark_theme,rcParams_to_light_theme,
                       NoScrollQComboBox,DraggablePoint)
@@ -405,11 +406,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         for attr in attr_dicts[i]:
                             if attr not in ['filename','checkState']:
                                 setattr(item.data,attr,attr_dicts[i][attr])
+                            
                             elif attr=='checkState':
                                 item.setCheckState(attr_dicts[i][attr])
                                 if attr_dicts[i][attr]==2:
                                     self.file_checked(item)
                                     overrideautocheck=True #If any item is checked, override autochecking. But if NONE of them are checked, let autocheck do it's thing.
+                            
                             if hasattr(item.data,'linecuts'):
                                 for orientation in item.data.linecuts.keys():
                                     if len(item.data.linecuts[orientation]['lines']) > 0:
@@ -425,7 +428,17 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                         item.data.linecuts[orientation]['linecut_window'].update()
                                         item.data.linecuts[orientation]['linecut_window'].show()
                             
-
+                            if hasattr(item.data,'plotted_lines'):
+                                if len(item.data.plotted_lines) > 0:
+                                    item.data.sidebar1D = Sidebar1D(item.data,self)
+                                    item.data.sidebar1D.running = True
+                                    for line in item.data.plotted_lines.keys():
+                                        if 'fit' in item.data.plotted_lines[line].keys():
+                                            item.data.plotted_lines[line]['fit']['fit_result'] = load_modelresult(dirpath+'/igtemp/'+item.data.plotted_lines[line]['fit']['fit_result']+'.sav')
+                                    for line in item.data.plotted_lines:
+                                        item.data.sidebar1D.append_trace_to_table(line)
+                                    item.data.sidebar1D.update()
+                            
                 except Exception as e:
                     print(f'Failed to open {filepath}:', e)
 
@@ -576,12 +589,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     for attribute in attributes:
                         if hasattr(item.data,attribute):
                             item_dictionary[attribute]=getattr(item.data,attribute)
-                    if hasattr(item.data,'linecuts'):
-                        self.i=0
-                        item_dictionary['linecuts'] = self.remove_linecutwindows_and_fits(item.data.linecuts,dirpath)
-                        self.i=0
-                    dictionary_list.append(item_dictionary)
 
+                    self.i=0
+                    if hasattr(item.data,'linecuts'):
+                        item_dictionary['linecuts'] = self.remove_linecutwindows_and_fits(item.data.linecuts,dirpath)
+
+                    if hasattr(item.data,'plotted_lines'):
+                        item_dictionary['plotted_lines'] = self.remove_linecutwindows_and_fits(item.data.plotted_lines,dirpath)
+                    
+                    dictionary_list.append(item_dictionary)
 
                 # Save all needed files to a temperorary directory and add them to the tarball
                 np.save(dirpath+'/igtemp/numpyfile.npy', dictionary_list)
@@ -629,8 +645,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         filepath, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open Session', '', 'Inspectra Gadget session (*.igs)')
         if filepath:
             dirpath = os.path.dirname(filepath)
-            self.remove_files('all')
-            print(filepath)
+            if self.file_list.count() > 0:
+                self.remove_files('all')
             with tarfile.open(filepath, 'r') as tar:
                 tar.extractall(dirpath)
             try:

@@ -149,7 +149,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.clear_fit_button.clicked.connect(self.clear_fit)
         self.fit_class_box.currentIndexChanged.connect(self.fit_class_changed)
         self.fit_box.currentIndexChanged.connect(self.fit_type_changed)
-        self.fit_button.clicked.connect(self.start_fitting)
+        self.fit_button.clicked.connect(lambda: self.start_fitting(line='manual'))
         self.save_result_button.clicked.connect(self.save_fit_result)
         self.fit_checked_button.clicked.connect(self.fit_checked)
         self.save_all_fits_button.clicked.connect(self.save_all_fits)
@@ -848,8 +848,8 @@ class LineCutWindow(QtWidgets.QWidget):
             p0 = None
         return p0
 
-    def start_fitting(self,line=None,multilinefit=False):
-        if not line:
+    def start_fitting(self,line='manual',multilinefit=False):
+        if line=='manual':
             current_row = self.cuts_table.currentRow()
             line = int(self.cuts_table.item(current_row,0).text())
         else: # We are being passed the line from fit_checked
