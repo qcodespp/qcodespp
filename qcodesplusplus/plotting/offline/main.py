@@ -1903,6 +1903,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             
             orientation=signal.text().split()[1]
 
+            if data.linecuts[orientation]['linecut_window']==None:
+                if self.colormap_box.currentText() == 'viridis':
+                    selected_colormap = cm.get_cmap('plasma')
+                else:
+                    selected_colormap = cm.get_cmap('viridis')
+                data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,init_cmap=selected_colormap.name)
+
             # For diagonal/circular linecuts, need to make a new line each time. For hori/vert just open the window.
             if orientation == 'diagonal':
                 x,y=data.selected_x, data.selected_y
@@ -1918,23 +1925,20 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     max_index=np.max(list(data.linecuts[orientation]['lines'].keys()))
                 except ValueError:
                     max_index=-1
-                data.linecuts[orientation]['lines'][int(max_index+1)]={'points':[DraggablePoint(data, x, y),
-                                                                                DraggablePoint(data, x_mid, y_mid,draw_line=True)],
-                                                                    'checkstate':2,
-                                                                    'offset':0,
-                                                                    'linecolor':line_colors[int(max_index+1)]}
-
-            if data.linecuts[orientation]['linecut_window']==None:
-                if self.colormap_box.currentText() == 'viridis':
-                    selected_colormap = cm.get_cmap('plasma')
-                else:
-                    selected_colormap = cm.get_cmap('viridis')
-                data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,init_cmap=selected_colormap.name)
+                data.linecuts[orientation]['lines'][int(max_index+1)]={'points':[(x, y),(x_mid, y_mid)],
+                                                            'checkstate':2,
+                                                            'offset':0,
+                                                            'linecolor':line_colors[int(max_index+1)]}
+                data.linecuts[orientation]['lines'][int(max_index+1)]['draggable_points']=[DraggablePoint(data, x, y,int(max_index+1),orientation),
+                                            DraggablePoint(data, x_mid, y_mid,int(max_index+1),orientation,draw_line=True)]
+                data.linecuts[orientation]['linecut_window'].append_cut_to_table(int(max_index+1))
 
             data.linecuts[orientation]['linecut_window'].running = True
             data.linecuts[orientation]['linecut_window'].activateWindow()
             if len(data.linecuts[orientation]['lines']) > 0:
+                print(3)
                 data.linecuts[orientation]['linecut_window'].update()
+            print(4)
             data.linecuts[orientation]['linecut_window'].show()
 
         # elif signal.text() == 'Draw diagonal linecut':

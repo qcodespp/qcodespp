@@ -28,7 +28,7 @@ except ModuleNotFoundError:
 
 DARK_THEME = True
 
-from .helpers import rcParams_to_dark_theme, rcParams_to_light_theme, cmaps
+from .helpers import rcParams_to_dark_theme, rcParams_to_light_theme, cmaps,DraggablePoint
 
 class LineCutWindow(QtWidgets.QWidget):
     def __init__(self, parent, orientation, init_cmap='viridis',init_canvas=True):
@@ -270,7 +270,8 @@ class LineCutWindow(QtWidgets.QWidget):
         self.tablebox=QtWidgets.QGroupBox('Linecut list')
         self.table_layout = QtWidgets.QVBoxLayout()
         self.table_layout.addLayout(self.table_buttons_layout)
-        self.table_layout.addLayout(self.generate_layout)
+        if self.orientation in ['horizontal','vertical']:
+            self.table_layout.addLayout(self.generate_layout)
         self.table_layout.addWidget(self.cuts_table)
         self.table_layout.addLayout(self.move_buttons_layout)
         self.table_layout.addLayout(self.colormap_layout)
@@ -308,7 +309,10 @@ class LineCutWindow(QtWidgets.QWidget):
         h.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
         for col in range(6):
             h.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeToContents)
-        self.cuts_table.setHorizontalHeaderLabels(['cut #','index','value','offset','color','show fit'])
+        headerlabels={'vertical':['cut #','index','value','offset','color','show fit'],
+                    'horizontal':['cut #','index','value','offset','color','show fit'],
+                    'diagonal':['cut #','point A','point B','offset','color','show fit']}
+        self.cuts_table.setHorizontalHeaderLabels(headerlabels[self.orientation])
         v=self.cuts_table.verticalHeader()
         v.setVisible(False)
 
@@ -355,24 +359,54 @@ class LineCutWindow(QtWidgets.QWidget):
         for rownum in range(int(row+1)):
             v.setSectionResizeMode(rownum, QtWidgets.QHeaderView.ResizeToContents)
 
+        # First column is the linecut identifier and checkbox
         linecut_item = QtWidgets.QTableWidgetItem(str(linecut_name))
         linecut_item.setFlags(QtCore.Qt.ItemIsSelectable | 
                                  QtCore.Qt.ItemIsEnabled | 
                                  QtCore.Qt.ItemIsUserCheckable)
         linecut_item.setText(str(linecut_name))
         linecut_item.setCheckState(linecut['checkstate'])
-        index_box=QtWidgets.QSpinBox()
-        if self.orientation=='horizontal':
-            index_box.setRange(0,np.shape(self.parent.processed_data[-1])[1]-1)
-        elif self.orientation=='vertical':
-            index_box.setRange(0,np.shape(self.parent.processed_data[-1])[0]-1)
-        index_box.setSingleStep(1)
-        index_box.setValue(linecut['data_index'])
-        index_box.valueChanged[int].connect(lambda: self.cuts_table_edited('index'))
-        value_box=QtWidgets.QTableWidgetItem(f'{linecut['cut_axis_value']:6g}')
+
+        self.cuts_table.setItem(row,0,linecut_item)
+
+        # Second and third line for horizontal and vertical is the index spin box and the value on the cut axis.
+        if self.orientation in ['horizontal','vertical']:
+            index_box=QtWidgets.QSpinBox()
+            if self.orientation=='horizontal':
+                index_box.setRange(0,np.shape(self.parent.processed_data[-1])[1]-1)
+            elif self.orientation=='vertical':
+                index_box.setRange(0,np.shape(self.parent.processed_data[-1])[0]-1)
+            index_box.setSingleStep(1)
+            index_box.setValue(linecut['data_index'])
+            index_box.valueChanged[int].connect(lambda: self.cuts_table_edited('index'))
+
+            value_box=QtWidgets.QTableWidgetItem(f'{linecut['cut_axis_value']:6g}')
+
+            self.cuts_table.setCellWidget(row,1,index_box)
+            self.cuts_table.setItem(row,2,value_box)
+            self.cuts_table.item(row, 2).setTextAlignment(int(QtCore.Qt.AlignRight) | 
+                                                    int(QtCore.Qt.AlignVCenter))
+
+        elif self.orientation == 'diagonal':
+            pointA_box=QtWidgets.QTableWidgetItem(f'{linecut['points'][0][0]:6g}, {linecut['points'][0][1]:6g}')
+            pointB_box=QtWidgets.QTableWidgetItem(f'{linecut['points'][1][0]:6g}, {linecut['points'][1][1]:6g}')
+
+            self.cuts_table.setItem(row,1,pointA_box)
+            self.cuts_table.setItem(row,2,pointB_box)
+
+        # All types; y-offset, color, and fit checkbox
         offset_box=QtWidgets.QTableWidgetItem(f'{linecut['offset']:6g}')
+
+        self.cuts_table.setItem(row,3,offset_box)
+        self.cuts_table.item(row, 3).setTextAlignment(int(QtCore.Qt.AlignRight) | 
+                                                    int(QtCore.Qt.AlignVCenter))
+        
         color_box=QtWidgets.QTableWidgetItem('')
         rgbavalue = [int(linecut['linecolor'][0]*255), int(linecut['linecolor'][1]*255), int(linecut['linecolor'][2]*255),int(linecut['linecolor'][3]*255)]
+        
+        self.cuts_table.setItem(row,4,color_box)
+        self.cuts_table.item(row,4).setBackground(QtGui.QColor(*rgbavalue))
+        
         plot_fit_item = QtWidgets.QTableWidgetItem('')
         if 'fit' in linecut.keys():
             plot_fit_item.setFlags(QtCore.Qt.ItemIsSelectable | 
@@ -380,16 +414,6 @@ class LineCutWindow(QtWidgets.QWidget):
                             QtCore.Qt.ItemIsUserCheckable)
             plot_fit_item.setCheckState(linecut['fit']['fit_checkstate'])
 
-        self.cuts_table.setItem(row,0,linecut_item)
-        self.cuts_table.setCellWidget(row,1,index_box)
-        self.cuts_table.setItem(row,2,value_box)
-        self.cuts_table.item(row, 2).setTextAlignment(int(QtCore.Qt.AlignRight) | 
-                                                    int(QtCore.Qt.AlignVCenter))
-        self.cuts_table.setItem(row,3,offset_box)
-        self.cuts_table.item(row, 3).setTextAlignment(int(QtCore.Qt.AlignRight) | 
-                                                    int(QtCore.Qt.AlignVCenter))
-        self.cuts_table.setItem(row,4,color_box)
-        self.cuts_table.item(row,4).setBackground(QtGui.QColor(*rgbavalue))
 
         self.cuts_table.setItem(row,5,plot_fit_item)
 
@@ -406,7 +430,7 @@ class LineCutWindow(QtWidgets.QWidget):
             current_col = self.cuts_table.currentColumn()
             current_row = self.cuts_table.currentRow()
 
-            if current_col == 2: # The user is trying to edit the value of the data. Let's find a new index for them.
+            if current_col == 2 and self.orientation in ['horizontal','vertical']: # The user is trying to edit the value of the data. Let's find a new index for them.
                 linecut = self.cuts_table.item(current_row,0).text()
                 linecut = int(linecut)
                 inputval = float(current_item.text())
@@ -464,17 +488,34 @@ class LineCutWindow(QtWidgets.QWidget):
             selected_colormap = cm.get_cmap(self.colormap_box.currentText())
             if self.orientation == 'horizontal':
                 line_colors = selected_colormap(np.linspace(0.1,0.9,len(self.parent.processed_data[1][0,:])))
-                linecut={'data_index':data_index, 'checkstate':QtCore.Qt.Checked,
+                self.parent.linecuts[self.orientation]['lines'][int(max_index+1)]={'data_index':data_index, 
+                        'checkstate':QtCore.Qt.Checked,
                         'cut_axis_value':self.parent.processed_data[1][0,data_index],
                         'offset':offset,
                         'linecolor':line_colors[data_index]}
             elif self.orientation == 'vertical':
                 line_colors = selected_colormap(np.linspace(0.1,0.9,len(self.parent.processed_data[0][:,0])))
-                linecut={'data_index':data_index, 'checkstate':QtCore.Qt.Checked,
+                self.parent.linecuts[self.orientation]['lines'][int(max_index+1)]={'data_index':data_index, 
+                        'checkstate':QtCore.Qt.Checked,
                         'cut_axis_value':self.parent.processed_data[0][data_index,0],
                         'offset':offset,
                         'linecolor':line_colors[data_index]}
-            self.parent.linecuts[self.orientation]['lines'][int(max_index+1)] = linecut
+                
+            elif self.orientation == 'diagonal':
+                line_colors = selected_colormap(np.linspace(0.1,0.9,len(self.parent.processed_data[1][0,:])))
+                left,right= self.parent.axes.get_xlim()
+                bottom,top= self.parent.axes.get_ylim()
+                x_0=left+(right-left)/10
+                x_1=right-(right-left)/10
+                y_0=bottom+(top-bottom)/10
+                y_1=top-(top-bottom)/10
+                self.parent.linecuts[self.orientation]['lines'][int(max_index+1)]={'points':[(x_0, y_0),(x_1, y_1)],
+                            'checkstate':2,
+                            'offset':0,
+                            'linecolor':line_colors[int(max_index+1)]
+                            }
+                self.parent.linecuts[self.orientation]['lines'][int(max_index+1)]['draggable_points']=[DraggablePoint(self.parent,x_0,y_0,int(max_index+1),self.orientation),
+                                                DraggablePoint(self.parent,x_1,y_1,int(max_index+1),self.orientation,draw_line=True)]
             self.append_cut_to_table(int(max_index+1))
         except IndexError:
             print('Index out of range.')
@@ -530,13 +571,14 @@ class LineCutWindow(QtWidgets.QWidget):
             if delta in [-1,1]:
                 current_col = self.cuts_table.currentColumn()
                 items = [self.cuts_table.takeItem(current_row, c) for c in range(self.cuts_table.columnCount())]
-                oldSpinBox = self.cuts_table.cellWidget(current_row, 1)
+                if self.orientation in ['horizontal','vertical']:
+                    oldSpinBox = self.cuts_table.cellWidget(current_row, 1)
                 self.cuts_table.removeRow(current_row)
                 new_row = current_row + delta
                 self.cuts_table.insertRow(new_row)
                 for i, item in enumerate(items):
                     self.cuts_table.setItem(new_row, i, item)
-                if isinstance(oldSpinBox, QtWidgets.QAbstractSpinBox):
+                if self.orientation in ['horizontal','vertical'] and isinstance(oldSpinBox, QtWidgets.QAbstractSpinBox):
                     newSpinBox = QtWidgets.QSpinBox()
                     newSpinBox.setValue(oldSpinBox.value())
                     newSpinBox.setRange(0,oldSpinBox.maximum())
@@ -912,13 +954,7 @@ class LineCutWindow(QtWidgets.QWidget):
             self.output_window.setText('Could not print fit parameters:', e)
 
     def get_line_data(self,line):
-        # Returns the actual x,y,z data for a particular entry in the linecuts/orientation/lines dictionary
-        if self.orientation == '1D':
-            x = self.parent.processed_data[0]
-            y = self.parent.processed_data[1]
-            z = None
-        
-        elif self.orientation == 'horizontal':
+        if self.orientation == 'horizontal':
             x = self.parent.processed_data[0][:,self.parent.linecuts[self.orientation]['lines'][line]['data_index']]
             y = self.parent.processed_data[2][:,self.parent.linecuts[self.orientation]['lines'][line]['data_index']]
             z = self.parent.processed_data[1][0,self.parent.linecuts[self.orientation]['lines'][line]['data_index']]
@@ -928,6 +964,38 @@ class LineCutWindow(QtWidgets.QWidget):
             x = self.parent.processed_data[1][self.parent.linecuts[self.orientation]['lines'][line]['data_index'],:]
             y = self.parent.processed_data[2][self.parent.linecuts[self.orientation]['lines'][line]['data_index'],:]
             z = self.parent.processed_data[0][self.parent.linecuts[self.orientation]['lines'][line]['data_index'],0]
+        
+        elif self.orientation in ['diagonal', 'circular']:
+            x0 = self.parent.linecuts[self.orientation]['lines'][line]['draggable_points'][0].x
+            y0 = self.parent.linecuts[self.orientation]['lines'][line]['draggable_points'][0].y
+            x1 = self.parent.linecuts[self.orientation]['lines'][line]['draggable_points'][1].x
+            y1 = self.parent.linecuts[self.orientation]['lines'][line]['draggable_points'][1].y
+            l_x, l_y = self.parent.processed_data[0].shape
+            x_min = np.amin(self.parent.processed_data[0][:,0])
+            x_max = np.amax(self.parent.processed_data[0][:,0])
+            y_min = np.amin(self.parent.processed_data[1][0,:])
+            y_max = np.amax(self.parent.processed_data[1][0,:])
+            i_x0 = (l_x-1)*(x0-x_min)/(x_max-x_min)
+            i_y0 = (l_y-1)*(y0-y_min)/(y_max-y_min)
+            i_x1 = (l_x-1)*(x1-x_min)/(x_max-x_min)
+            i_y1 = (l_y-1)*(y1-y_min)/(y_max-y_min)
+            if self.orientation == 'diagonal':
+                n = int(np.sqrt((i_x1-i_x0)**2+(i_y1-i_y0)**2))
+                x_diag = np.linspace(i_x0, i_x1, n), 
+                y_diag = np.linspace(i_y0, i_y1, n)
+                y = map_coordinates(self.parent.processed_data[-1], 
+                                        np.vstack((x_diag, y_diag)))
+                x = map_coordinates(self.parent.processed_data[0],
+                                        np.vstack((x_diag, y_diag)))
+            if self.orientation == 'circular':
+                n = int(8*np.sqrt((i_x0-i_x1)**2+(i_y0-i_y1)**2))
+                theta = np.linspace(0, 2*np.pi, n)
+                i_x_circ = i_x0+(i_x1-i_x0)*np.cos(theta) 
+                i_y_circ = i_y0+(i_y1-i_y0)*np.sin(theta)
+                y = map_coordinates(self.parent.processed_data[-1], 
+                                        np.vstack((i_x_circ, i_y_circ)))
+                x = theta
+            z=0
         return (x,y,z)
 
     def draw_plot(self,parent_marker=True):
@@ -953,7 +1021,7 @@ class LineCutWindow(QtWidgets.QWidget):
                                                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
                     self.parent.horimarkers.append(self.parent.axes.axhline(y=z, linestyle='dashed', linewidth=1.5, xmin=0.9,
                                                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
-                self.ylabel = self.parent.settings['clabel']
+                #self.ylabel = self.parent.settings['clabel']
                 offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
                 self.axes.plot(x, y+offset, linewidth=1.5,
                                 color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
@@ -973,47 +1041,25 @@ class LineCutWindow(QtWidgets.QWidget):
                                                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
                     self.parent.vertmarkers.append(self.parent.axes.axvline(x=z, linestyle='dashed', linewidth=1.5, ymin=0.9,
                                                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
-                self.ylabel = self.parent.settings['clabel']
+                #self.ylabel = self.parent.settings['clabel']
                 offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
                 self.axes.plot(x, y+offset, linewidth=1.5,
                                 color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
 
         elif self.orientation == 'diagonal' or self.orientation == 'circular':
-            x0 = self.parent.linecut_points[0].x 
-            y0 = self.parent.linecut_points[0].y
-            x1 = self.parent.linecut_points[1].x 
-            y1 = self.parent.linecut_points[1].y                
-            l_x, l_y = self.parent.processed_data[0].shape
-            x_min = np.amin(self.parent.processed_data[0][:,0])
-            x_max = np.amax(self.parent.processed_data[0][:,0])
-            y_min = np.amin(self.parent.processed_data[1][0,:])
-            y_max = np.amax(self.parent.processed_data[1][0,:])
-            i_x0 = (l_x-1)*(x0-x_min)/(x_max-x_min)
-            i_y0 = (l_y-1)*(y0-y_min)/(y_max-y_min)
-            i_x1 = (l_x-1)*(x1-x_min)/(x_max-x_min)
-            i_y1 = (l_y-1)*(y1-y_min)/(y_max-y_min)
-            if self.orientation == 'diagonal':
-                n = int(np.sqrt((i_x1-i_x0)**2+(i_y1-i_y0)**2))
-                x_diag = np.linspace(i_x0, i_x1, n), 
-                y_diag = np.linspace(i_y0, i_y1, n)
-                self.y = map_coordinates(self.parent.processed_data[-1], 
-                                        np.vstack((x_diag, y_diag)))
-                self.x = map_coordinates(self.parent.processed_data[0],
-                                        np.vstack((x_diag, y_diag)))                
-                self.xlabel = self.parent.settings['xlabel']
-                self.title = f'({x0:5g},{y0:5g}) : ({x1:5g},{y1:5g})'
-            elif self.orientation == 'circular':
-                n = int(8*np.sqrt((i_x0-i_x1)**2+(i_y0-i_y1)**2))
-                theta = np.linspace(0, 2*np.pi, n)
-                i_x_circ = i_x0+(i_x1-i_x0)*np.cos(theta) 
-                i_y_circ = i_y0+(i_y1-i_y0)*np.sin(theta)
-                self.y = map_coordinates(self.parent.processed_data[-1], 
-                                        np.vstack((i_x_circ, i_y_circ)))
-                self.x = theta
-                self.xlabel = 'Angle (rad)'
-                self.title = ''
-            self.ylabel = self.parent.settings['clabel']
-            self.axes.plot(x, y, linewidth=1.5)
+            for line in lines:
+                x,y,z = self.get_line_data(line)
+                if self.orientation == 'diagonal':
+                    self.xlabel = self.parent.settings['xlabel']
+                    #self.title = f'({x0:5g},{y0:5g}) : ({x1:5g},{y1:5g})'
+                elif self.orientation == 'circular':
+                    self.xlabel = 'Angle (rad)'
+
+                offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
+                self.axes.plot(x, y+offset, linewidth=1.5,
+                                color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
+
+        self.ylabel = self.parent.settings['clabel']
         self.cursor = Cursor(self.axes, useblit=True, color='grey', linewidth=0.5)
         self.axes.set_xlabel(self.xlabel, size='x-large')
         self.axes.set_ylabel(self.ylabel, size='x-large')
@@ -1041,7 +1087,7 @@ class LineCutWindow(QtWidgets.QWidget):
             for i,key in enumerate(fit_components.keys()):
                 self.axes.plot(x_forfit, fit_components[key]+offset, '--', color=line_colors[i],alpha=0.75, linewidth=1.5)
         except Exception as e:
-            self.output_window.setText(f'Could not plot fit components: {e}')
+            self.output_window.setText(f'Could not plot fit: {e}')
         self.canvas.draw()
 
     def autoscale_axes(self):
