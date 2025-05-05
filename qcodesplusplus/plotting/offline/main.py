@@ -1874,6 +1874,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         # Actions for right-click menu on the plot(s)
         current_item = self.plot_in_focus[0]
         data = self.plot_in_focus[0].data
+
+        # Easy offset
         if 'Offset' in signal.text():
             axis=signal.text().split()[1]
             value=-float(signal.text().split()[3])
@@ -1889,7 +1891,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.update_plots()
                 self.reset_axlim_settings()
         
+        # Making linecuts
         elif 'linecut' in signal.text():
+            # Make dictionary if it doesn't exist
             if not hasattr(data,'linecuts'):
                 data.linecuts={'horizontal':{'linecut_window':None,'lines':{}},
                                'vertical':{'linecut_window':None,'lines':{}},
@@ -1899,6 +1903,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             
             orientation=signal.text().split()[1]
 
+            # For diagonal/circular linecuts, need to make a new line each time. For hori/vert just open the window.
             if orientation == 'diagonal':
                 x,y=data.selected_x, data.selected_y
                 left,right= data.axes.get_xlim()
