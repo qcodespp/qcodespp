@@ -500,7 +500,8 @@ class LineCutWindow(QtWidgets.QWidget):
             newpoints=self.parent.linecuts[self.orientation]['lines'][linecut]['points']
             self.parent.linecuts[self.orientation]['lines'][linecut]['draggable_points']=[DraggablePoint(self.parent,newpoints[0][0],newpoints[0][1],linecut,self.orientation),
                                         DraggablePoint(self.parent,newpoints[1][0],newpoints[1][1],linecut,self.orientation,draw_line=True)]
-
+            for point in self.parent.linecuts[self.orientation]['lines'][linecut]['draggable_points']:
+                point.color = self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor']
 
     def index_changed(self,row):
         index_box = self.cuts_table.cellWidget(row,1)
@@ -572,11 +573,16 @@ class LineCutWindow(QtWidgets.QWidget):
                 row = self.cuts_table.currentRow()
                 linecut = self.cuts_table.item(row,0).text()
                 linecut = int(linecut)
+                if 'draggable_points' in self.parent.linecuts[self.orientation]['lines'][linecut].keys():
+                    self.update_draggable_points(linecut,replot=False)
                 self.parent.linecuts[self.orientation]['lines'].pop(linecut)
                 self.cuts_table.removeRow(row)
             except Exception as e:
                 print(e)
         elif which=='all':
+            for linecut in self.parent.linecuts[self.orientation]['lines'].keys():
+                if 'draggable_points' in self.parent.linecuts[self.orientation]['lines'][linecut].keys():
+                    self.update_draggable_points(linecut,replot=False)
             self.parent.linecuts[self.orientation]['lines'] = {}
             self.cuts_table.setRowCount(0)
 
@@ -671,6 +677,8 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor'] = line_colors[row]
                 rgbavalue = [int(line_colors[linecut][0]*255), int(line_colors[linecut][1]*255), int(line_colors[linecut][2]*255),int(line_colors[linecut][3]*255)]
                 self.cuts_table.item(row,4).setBackground(QtGui.QColor(*rgbavalue))
+                if 'draggable_points' in self.parent.linecuts[self.orientation]['lines'][linecut].keys():
+                    self.update_draggable_points(linecut,replot=True)
         elif applymethod == 'All by ind':
             for row in range(self.cuts_table.rowCount()):
                 index = int(self.cuts_table.cellWidget(row,1).value())
@@ -693,6 +701,8 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor'] = line_colors[linecut]
                 rgbavalue = [int(line_colors[linecut][0]*255), int(line_colors[linecut][1]*255), int(line_colors[linecut][2]*255),int(line_colors[linecut][3]*255)]
                 self.cuts_table.item(linecut,4).setBackground(QtGui.QColor(*rgbavalue))
+                if 'draggable_points' in self.parent.linecuts[self.orientation]['lines'][linecut].keys():
+                    self.update_draggable_points(linecut,replot=True)
         elif applymethod == 'Chkd by ind':
             checked_items = self.get_checked_items(cuts_or_fits='cuts')
             for linecut in checked_items:
@@ -735,6 +745,8 @@ class LineCutWindow(QtWidgets.QWidget):
                         linecut=int(self.cuts_table.item(self.cuts_table.currentRow(),0).text())
                         self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor'] = color.name()
                         self.cuts_table.setCurrentItem(self.cuts_table.item(row,0)) # Otherwise the cell stays blue since it's selected.
+                        if 'draggable_points' in self.parent.linecuts[self.orientation]['lines'][linecut].keys():
+                            self.update_draggable_points(linecut,replot=True)
                         self.update()
         
         elif column==0:
@@ -1239,11 +1251,23 @@ class LineCutWindow(QtWidgets.QWidget):
         try:
             fit_lines = self.get_checked_items(cuts_or_fits='fits')
             first_result = self.parent.linecuts[self.orientation]['lines'][fit_lines[0]]['fit']['fit_result']
-            data=np.zeros((len(fit_lines),len(first_result.params.keys())+1))
-            for i,line in enumerate(fit_lines):
-                data[i,0] = self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value']
-                for j,param in enumerate(first_result.params.keys()):
-                    data[i,j+1] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].value
+            if self.orientation in ['horizontal', 'vertical']:
+                data=np.zeros((len(fit_lines),len(first_result.params.keys())+1))
+                for i,line in enumerate(fit_lines):
+                    data[i,0] = self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value']
+                    for j,param in enumerate(first_result.params.keys()):
+                        data[i,j+1] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].value
+                header='X\t'+'\t'.join(first_result.params.keys())
+            elif self.orientation in ['diagonal', 'circular']:
+                data=np.zeros((len(fit_lines),len(first_result.params.keys())+4))
+                for i,line in enumerate(fit_lines):
+                    data[i,0] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][0]
+                    data[i,1] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][1]
+                    data[i,2] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][0]
+                    data[i,3] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][1]
+                    for j,param in enumerate(first_result.params.keys()):
+                        data[i,j+4] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].value
+                header='X_1\tY_1\tX_2\tY_2\t'+'\t'.join(first_result.params.keys())
             success=True
         except Exception as e:
             print('Could not compile array: {e}')
@@ -1252,7 +1276,7 @@ class LineCutWindow(QtWidgets.QWidget):
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Fiting Result','', 'numpy dat file (*.dat)')
             if filename:
-                np.savetxt(filename, data, delimiter='\t', header='X'+'\t'.join(first_result.params.keys()), fmt='%s')
+                np.savetxt(filename, data, delimiter='\t', header=header, fmt='%s')
                 print('Saved!')
 
     def save_image(self):
