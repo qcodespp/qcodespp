@@ -419,6 +419,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                         for line in item.data.linecuts[orientation]['lines'].keys():
                                             if 'fit' in item.data.linecuts[orientation]['lines'][line].keys():
                                                 item.data.linecuts[orientation]['lines'][line]['fit']['fit_result'] = load_modelresult(dirpath+'/igtemp/'+item.data.linecuts[orientation]['lines'][line]['fit']['fit_result']+'.sav')
+                                            if 'draggable_points' in item.data.linecuts[orientation]['lines'][line].keys():
+                                                points=item.data.linecuts[orientation]['lines'][line]['points']
+                                                item.data.linecuts[orientation]['lines'][line]['draggable_points'] = [DraggablePoint(item.data,points[0][0],points[0][1],line,orientation),
+                                                DraggablePoint(item.data,points[1][0],points[1][1],line,orientation,draw_line=True)]
                                     #Then make the linecut window
                                         item.data.linecuts[orientation]['linecut_window'] = LineCutWindow(item.data,orientation=orientation,init_cmap='plasma')
                                         item.data.linecuts[orientation]['linecut_window'].running = True
@@ -612,9 +616,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     file_path = os.path.join(dirpath+'/igtemp', filename)
                     os.remove(file_path)
                 os.rmdir(dirpath+'/igtemp')
-                del dictionary_list,lmfit_names
+                del dictionary_list
 
-    def remove_linecutwindows_and_fits(self,d,dirpath,exclude_key='linecut_window',exclude_key2='fit_result'):
+    def remove_linecutwindows_and_fits(self,d,dirpath,exclude_key='linecut_window',exclude_key2='fit_result',exclude_key3='draggable_points'):
     # Remove linecut window object and lmfit object from the dictionary. Neither can be pickled. lmfit fit results are saved to
     # file, added to the tarball, and loaded again when the session is loaded.
         new_dict = {}
@@ -628,10 +632,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         if exclude_key in new_dict:
             new_dict[exclude_key] = None  # Remove the linecut window object
-            # if new_dict[exclude_key] is not None:
-            #     new_dict[exclude_key]=True
-            # else:
-            #     new_dict[exclude_key]=False
+        if exclude_key3 in new_dict:
+            new_dict[exclude_key3] = None # Remove the draggable points object
+
         if exclude_key2 in new_dict:
             try:
                 save_modelresult(new_dict[exclude_key2], dirpath+'/igtemp/lmfit_result'+str(self.i).zfill(4)+'.sav') # Save the lmfit object to a file
