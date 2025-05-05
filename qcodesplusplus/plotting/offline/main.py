@@ -1729,6 +1729,19 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             current_item.data.apply_all_filters()
             self.update_plots()
             self.show_current_view_settings()
+
+    def draggable_point_selected(self, x,y,data):
+        selected=False
+        if hasattr(data,'linecuts'):
+            # Define window the same size as the draggable points
+            delta_x = np.abs(data.axes.get_xlim()[1]-data.axes.get_xlim()[0])*0.02
+            delta_y = np.abs(data.axes.get_ylim()[1]-data.axes.get_ylim()[0])*0.02
+            for orientation in ['diagonal','circular']:
+                for line in data.linecuts[orientation]['lines'].keys():
+                    for point in data.linecuts[orientation]['lines'][line]['points']:
+                        if (np.abs(point[0]-x)<delta_x and np.abs(point[1]-y)<delta_y):
+                            selected=True
+        return selected
     
     def mouse_click_canvas(self, event):
         if self.navi_toolbar.mode == '': # If not using the navigation toolbar tools
@@ -1741,9 +1754,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     data = self.plot_in_focus[0].data
                     data.selected_x, data.selected_y = x, y
 
+                    # For 1D data left mouse click sets the fit limits.
                     if (event.button == 1  and 
                         len(data.get_columns()) == 2):
-                        # Set fit limits for 1D data.
                         if hasattr(data, 'sidebar1D'):
                             current_row=data.sidebar1D.trace_table.currentRow()
                             xdata,ydata=data.sidebar1D.get_line_data(int(data.sidebar1D.trace_table.item(current_row,0).text()))
@@ -1761,8 +1774,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                     data.sidebar1D.xmax_box.setText(str(x_value))
                             data.sidebar1D.limits_edited()
 
+                    # For 2D data, left and middle mouse click generate horizontal or vertical linecut, UNLESS the
+                    # mouse is in the vicinity of a pre-existing diagonal or circular linecut point.
+
                     elif ((event.button == 1 or event.button == 2) and 
-                        len(data.get_columns()) == 3):
+                        len(data.get_columns()) == 3 and not self.draggable_point_selected(x,y,data)):
                         # Opening linecut/fitting window for 2D data
                         index_x = np.argmin(np.abs(data.processed_data[0][:,0]-x))
                         index_y = np.argmin(np.abs(data.processed_data[1][0,:]-y))
@@ -1936,29 +1952,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             data.linecuts[orientation]['linecut_window'].running = True
             data.linecuts[orientation]['linecut_window'].activateWindow()
             if len(data.linecuts[orientation]['lines']) > 0:
-                print(3)
                 data.linecuts[orientation]['linecut_window'].update()
-            print(4)
             data.linecuts[orientation]['linecut_window'].show()
 
-        # elif signal.text() == 'Draw diagonal linecut':
-        #     if hasattr(data, 'linecut_points'):
-        #         data.hide_linecuts()
-        #     x, y = data.selected_x, data.selected_y
-        #     data.linecut_points = [DraggablePoint(data, x, y)]            
-        #     left, right = data.axes.get_xlim() 
-        #     bottom, top = data.axes.get_ylim()
-        #     x_mid, y_mid = 0.5*(left+right), 0.5*(top+bottom)
-        #     data.linecut_points.append(DraggablePoint(data, x_mid, y_mid, 
-        #                                               draw_line=True))
-        #     if not hasattr(data, 'linecut_window'):
-        #         data.linecut_window = LineCutWindow(data,orientation='diagonal')
-        #     else:
-        #         data.linecut_window.orientation='diagonal'
-        #     data.linecut_window.running = True
-        #     data.linecut_window.update()
-        #     self.canvas.draw()
-        #     data.linecut_window.activateWindow()
         elif signal.text() == 'Draw circular linecut':
             if hasattr(data, 'linecut_points'):
                 data.hide_linecuts()

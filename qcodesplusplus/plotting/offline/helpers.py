@@ -98,7 +98,7 @@ class DraggablePoint:
                                         alpha=1, edgecolor=self.color)
             self.x = x
             self.y = y
-            self.parent.axes.add_patch(self.point)
+            self.point_on_plot=self.parent.axes.add_patch(self.point)
             self.press = None
             self.background = None
             self.connect()
@@ -109,7 +109,7 @@ class DraggablePoint:
                 self.line = Line2D(line_x, line_y, 
                                 color=self.color, 
                                 alpha=1.0, linestyle='dashed', linewidth=1.5)
-                self.parent.axes.add_line(self.line)
+                self.line_on_plot=self.parent.axes.add_line(self.line)
         except Exception as e:
             print(f"Error in DraggablePoint: {e}")
         # if draw_circle:
@@ -252,6 +252,7 @@ class DraggablePoint:
             self.parent.linecuts[self.orientation]['lines'][self.linecut]['points'][1] = (self.x, self.y)
         else:
             self.parent.linecuts[self.orientation]['lines'][self.linecut]['points'][0] = (self.x, self.y)
+        self.parent.linecuts[self.orientation]['linecut_window'].points_dragged(self.linecut)
         self.parent.linecuts[self.orientation]['linecut_window'].update()
         self.parent.linecuts[self.orientation]['linecut_window'].activateWindow()
 

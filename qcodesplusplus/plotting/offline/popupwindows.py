@@ -388,8 +388,8 @@ class LineCutWindow(QtWidgets.QWidget):
                                                     int(QtCore.Qt.AlignVCenter))
 
         elif self.orientation == 'diagonal':
-            pointA_box=QtWidgets.QTableWidgetItem(f'{linecut['points'][0][0]:6g}, {linecut['points'][0][1]:6g}')
-            pointB_box=QtWidgets.QTableWidgetItem(f'{linecut['points'][1][0]:6g}, {linecut['points'][1][1]:6g}')
+            pointA_box=QtWidgets.QTableWidgetItem(f'{linecut['points'][0][0]:.4g}, {linecut['points'][0][1]:.4g}')
+            pointB_box=QtWidgets.QTableWidgetItem(f'{linecut['points'][1][0]:.4g}, {linecut['points'][1][1]:.4g}')
 
             self.cuts_table.setItem(row,1,pointA_box)
             self.cuts_table.setItem(row,2,pointB_box)
@@ -420,6 +420,16 @@ class LineCutWindow(QtWidgets.QWidget):
         self.cuts_table.setCurrentCell(row,0)
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
 
+    def points_dragged(self,line):
+        # This is called when the points are dragged in the plot. It updates the table.
+        self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+        line = int(line)
+        row = [row for row in range(self.cuts_table.rowCount()) if int(self.cuts_table.item(row,0).text()) == line][0]
+        linecut=self.parent.linecuts[self.orientation]['lines'][line]
+        self.cuts_table.item(row, 1).setText(f'{linecut['points'][0][0]:.4g}, {linecut['points'][0][1]:.4g}')
+        self.cuts_table.item(row, 2).setText(f'{linecut['points'][1][0]:.4g}, {linecut['points'][1][1]:.4g}')
+        self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+
     def cuts_table_edited(self,setting=None):
         if setting=='index':
             current_row = self.cuts_table.currentRow()
@@ -441,6 +451,19 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.cuts_table.cellWidget(current_row,1).setValue(new_index)
                 self.index_changed(current_row)
 
+            elif current_col in [1,2] and self.orientation in ['diagonal','circular']:
+                linecut = self.cuts_table.item(current_row,0).text()
+                linecut = int(linecut)
+                x= float(current_item.text().split(',')[0])
+                y= float(current_item.text().split(',')[1])
+
+                if current_col == 1:
+                    self.parent.linecuts[self.orientation]['lines'][linecut]['points'][0] = (x,y)
+                elif current_col == 2:
+                    self.parent.linecuts[self.orientation]['lines'][linecut]['points'][1] = (x,y)
+                self.update_draggable_points(linecut)
+                self.update()
+
             elif current_col == 3: #Change the offset in the dictionary and then replot.
                 linecut = self.cuts_table.item(current_row,0).text()
                 linecut = int(linecut)
@@ -451,12 +474,32 @@ class LineCutWindow(QtWidgets.QWidget):
             elif current_col == 0: # It's the checkstate, so need to replot and update dictionary
                 linecut = int(self.cuts_table.item(current_row,0).text())
                 self.parent.linecuts[self.orientation]['lines'][linecut]['checkstate'] = current_item.checkState()
+                if self.orientation in ['diagonal','circular']:
+                    if current_item.checkState() in [2,QtCore.Qt.Checked]:
+                        replot=True
+                    else:
+                        replot=False
+                    self.update_draggable_points(linecut,replot=replot)
                 self.update()
 
             elif current_col == 5: # It's the checkstate for the fit.
                 linecut = int(self.cuts_table.item(current_row,0).text())
                 self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_checkstate'] = current_item.checkState()
                 self.update()
+
+    def update_draggable_points(self,linecut,replot=True):
+        try:
+            if 'draggable_points' in self.parent.linecuts[self.orientation]['lines'][linecut].keys():
+                self.parent.linecuts[self.orientation]['lines'][linecut]['draggable_points'][0].point_on_plot.remove()
+                self.parent.linecuts[self.orientation]['lines'][linecut]['draggable_points'][1].point_on_plot.remove()
+                self.parent.linecuts[self.orientation]['lines'][linecut]['draggable_points'][1].line_on_plot.remove()
+                self.parent.linecuts[self.orientation]['lines'][linecut]['draggable_points'].pop()
+        except Exception as e:
+            pass
+        if replot:
+            newpoints=self.parent.linecuts[self.orientation]['lines'][linecut]['points']
+            self.parent.linecuts[self.orientation]['lines'][linecut]['draggable_points']=[DraggablePoint(self.parent,newpoints[0][0],newpoints[0][1],linecut,self.orientation),
+                                        DraggablePoint(self.parent,newpoints[1][0],newpoints[1][1],linecut,self.orientation,draw_line=True)]
 
 
     def index_changed(self,row):
@@ -834,7 +877,7 @@ class LineCutWindow(QtWidgets.QWidget):
                                    fit_function['description'])
     def collect_fit_data(self,x,y):
         # If diagonal or circular, setting limits doesn't work; however, one can easily change the range during linecut definition anyway
-        if self.orientation in ['horizontal','vertical','1D']:
+        try:
             if self.xmin_box.text() != '':
                 xmin = float(self.xmin_box.text())
                 min_ind=(np.abs(x - xmin)).argmin()
@@ -852,7 +895,7 @@ class LineCutWindow(QtWidgets.QWidget):
             else:
                 x_forfit=x[min_ind:max_ind]
                 y_forfit=y[min_ind:max_ind]
-        else:
+        except:
             x_forfit = x
             y_forfit = y
         return x_forfit, y_forfit
