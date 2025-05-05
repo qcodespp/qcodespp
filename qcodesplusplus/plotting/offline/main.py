@@ -1774,7 +1774,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         #Make entry to store linecuts in
                         if not hasattr(data,'linecuts'):
                             data.linecuts={'horizontal':{'linecut_window':None,'lines':{}},
-                                           'vertical':{'linecut_window':None,'lines':{}}
+                                           'vertical':{'linecut_window':None,'lines':{}},
+                                           'diagonal':{'linecut_window':None,'lines':{}},
+                                           'circular':{'linecut_window':None,'lines':{}}
                                             }
                         if event.button == 1:
                             line_colors = selected_colormap(np.linspace(0.1,0.9,len(data.processed_data[1][0,:])))
@@ -1809,6 +1811,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         self.canvas.draw()
                         
                     elif event.button == 3:
+                        # Open right-click menu
                         rightclick_menu = QtWidgets.QMenu(self)
 
                         index_x = np.argmin(np.abs(data.processed_data[0]-x))
@@ -1840,7 +1843,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         actions=[]
                         if len(data.get_columns()) == 3:
                             actions.append(QtWidgets.QAction('Draw diagonal linecut', self))
-                            #data.linecut_from = [x, y]
                             actions.append(QtWidgets.QAction('Draw circular linecut', self))
                             actions.append(QtWidgets.QAction('Plot vertical linecuts', self))
                             actions.append(QtWidgets.QAction('Plot horizontal linecuts', self))
@@ -1851,15 +1853,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         rightclick_menu.triggered[QtWidgets.QAction].connect(self.popup_canvas)
                         rightclick_menu.popup(QtGui.QCursor.pos())
                     
-                    elif event.button == 1 and len(data.get_columns()) == 2:
-                        # Opening linecut/fitting window for 1D data
-                        if not hasattr(data, 'linecut_window'):
-                            data.linecut_window = LineCutWindow(data,orientation='1D')
-                        data.linecut_window.running = True
-                        data.linecut_window.update()
-                        self.canvas.draw()
-                        data.linecut_window.activateWindow()
-                
                 else: # if colorbar in focus
                     self.cbar_in_focus = [checked_item for checked_item in checked_items
                                           if checked_item.data.cbar.ax == event.inaxes]
@@ -1878,6 +1871,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         self.show_current_view_settings()
     
     def popup_canvas(self, signal):
+        # Actions for right-click menu on the plot(s)
         current_item = self.plot_in_focus[0]
         data = self.plot_in_focus[0].data
         if 'Offset' in signal.text():
@@ -1894,16 +1888,37 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if current_item.checkState() and filt.checkstate:
                 self.update_plots()
                 self.reset_axlim_settings()
-        elif (signal.text() == 'Plot horizontal linecuts' or
-            signal.text() == 'Plot vertical linecuts'):
+        
+        elif 'linecut' in signal.text():
             if not hasattr(data,'linecuts'):
                 data.linecuts={'horizontal':{'linecut_window':None,'lines':{}},
-                                'vertical':{'linecut_window':None,'lines':{}}
+                               'vertical':{'linecut_window':None,'lines':{}},
+                               'diagonal':{'linecut_window':None,'lines':{}},
+                               'circular':{'linecut_window':None,'lines':{}}
                                 }
-            if signal.text() == 'Plot horizontal linecuts':
-                orientation='horizontal'
-            elif signal.text() == 'Plot vertical linecuts':
-                orientation='vertical'
+            
+            orientation=signal.text().split()[1]
+
+            if orientation == 'diagonal':
+                x,y=data.selected_x, data.selected_y
+                left,right= data.axes.get_xlim()
+                bottom,top= data.axes.get_ylim()
+                x_mid, y_mid = 0.5*(left+right), 0.5*(top+bottom)
+                if self.colormap_box.currentText() == 'viridis':
+                    selected_colormap = cm.get_cmap('plasma')
+                else:
+                    selected_colormap = cm.get_cmap('viridis')
+                line_colors = selected_colormap(np.linspace(0.1,0.9,len(data.processed_data[1][0,:])))
+                try:
+                    max_index=np.max(list(data.linecuts[orientation]['lines'].keys()))
+                except ValueError:
+                    max_index=-1
+                data.linecuts[orientation]['lines'][int(max_index+1)]={'points':[DraggablePoint(data, x, y),
+                                                                                DraggablePoint(data, x_mid, y_mid,draw_line=True)],
+                                                                    'checkstate':2,
+                                                                    'offset':0,
+                                                                    'linecolor':line_colors[int(max_index+1)]}
+
             if data.linecuts[orientation]['linecut_window']==None:
                 if self.colormap_box.currentText() == 'viridis':
                     selected_colormap = cm.get_cmap('plasma')
@@ -1917,24 +1932,24 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 data.linecuts[orientation]['linecut_window'].update()
             data.linecuts[orientation]['linecut_window'].show()
 
-        elif signal.text() == 'Draw diagonal linecut':
-            if hasattr(data, 'linecut_points'):
-                data.hide_linecuts()
-            x, y = data.selected_x, data.selected_y
-            data.linecut_points = [DraggablePoint(data, x, y)]            
-            left, right = data.axes.get_xlim() 
-            bottom, top = data.axes.get_ylim()
-            x_mid, y_mid = 0.5*(left+right), 0.5*(top+bottom)
-            data.linecut_points.append(DraggablePoint(data, x_mid, y_mid, 
-                                                      draw_line=True))
-            if not hasattr(data, 'linecut_window'):
-                data.linecut_window = LineCutWindow(data,orientation='diagonal')
-            else:
-                data.linecut_window.orientation='diagonal'
-            data.linecut_window.running = True
-            data.linecut_window.update()
-            self.canvas.draw()
-            data.linecut_window.activateWindow()
+        # elif signal.text() == 'Draw diagonal linecut':
+        #     if hasattr(data, 'linecut_points'):
+        #         data.hide_linecuts()
+        #     x, y = data.selected_x, data.selected_y
+        #     data.linecut_points = [DraggablePoint(data, x, y)]            
+        #     left, right = data.axes.get_xlim() 
+        #     bottom, top = data.axes.get_ylim()
+        #     x_mid, y_mid = 0.5*(left+right), 0.5*(top+bottom)
+        #     data.linecut_points.append(DraggablePoint(data, x_mid, y_mid, 
+        #                                               draw_line=True))
+        #     if not hasattr(data, 'linecut_window'):
+        #         data.linecut_window = LineCutWindow(data,orientation='diagonal')
+        #     else:
+        #         data.linecut_window.orientation='diagonal'
+        #     data.linecut_window.running = True
+        #     data.linecut_window.update()
+        #     self.canvas.draw()
+        #     data.linecut_window.activateWindow()
         elif signal.text() == 'Draw circular linecut':
             if hasattr(data, 'linecut_points'):
                 data.hide_linecuts()

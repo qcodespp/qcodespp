@@ -484,7 +484,7 @@
      </layout>
     </item>
     <item>
-     <layout class="QVBoxLayout" name="oneD_layout">
+     <layout class="QVBoxLayout" name="oneD_layout" stretch="">
       <property name="sizeConstraint">
        <enum>QLayout::SetDefaultConstraint</enum>
       </property>
