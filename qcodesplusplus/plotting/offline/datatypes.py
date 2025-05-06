@@ -64,6 +64,8 @@ class BaseClassData:
         self.filepath = filepath
         self.canvas = canvas
         self.label = os.path.basename(self.filepath)
+
+        self.data=None
         
         self.settings = self.DEFAULT_PLOT_SETTINGS.copy()
         self.view_settings = self.DEFAULT_VIEW_SETTINGS.copy()
@@ -77,15 +79,12 @@ class BaseClassData:
                 self.creation_time = os.stat(filepath).st_birthtime
             except Exception:
                 self.creation_time = None
-        
-    def get_column_data(self):
-        try:
-            column_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'])
-        except ValueError: # Can occur if python doesn't recognise a header
-            column_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'],skip_header=1)
 
-        # if column_data.shape[0]<column_data.shape[1]: # Should be getting three columns and many more rows. If not the case, try to transpose.
-        #     column_data=column_data.transpose()
+    def prepare_dataset(self):
+        try:
+            self.data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'])
+        except ValueError: # Can occur if python doesn't recognise a header
+            self.data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'],skip_header=1)
         
         try: # to get column names if there is a header. Importing like this completely screws the data formatting for some reason, so use this to just load the header
             namedata=np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'],names=True)
@@ -97,11 +96,8 @@ class BaseClassData:
         except:
             pass
 
-        # This whole column names thing is incomplete... Will finish at some point, just not priority.
-        # The way that data is loaded is completely opaque to me. I have no idea where the columns are first defined.
-
         if not hasattr(self,'column_dict'):
-            self.column_array=[i for i in range(column_data.shape[1])]
+            self.column_array=[i for i in range(self.data.shape[1])]
             self.column_dict={}
             for i in self.column_array:
                 self.column_dict[f'{i}']=i
@@ -110,13 +106,34 @@ class BaseClassData:
                                       'Y data': self.column_array,
                                       'Z data': self.column_array}
 
-        self.measured_data_points = column_data.shape[0]
+        self.measured_data_points = self.data.shape[0]
+
+        self.settings['X data'] = self.column_array[0]
+        self.settings['Y data'] = self.column_array[1]
+        self.settings['xlabel'] = self.column_array[0]
+        self.settings['ylabel'] = self.column_array[1]
+
+        if self.data[1,0] == self.data[0,0] and len(self.column_array) > 2:
+            self.settings['Z data'] = self.column_array[2]
+            self.settings['clabel'] = self.column_array[2]
+
+    def get_column_data(self):
+        # Should do something here to check column names array length against data dimension.
+        x=self.data[:,self.column_dict[self.settings['X data']]]
+        y=self.data[:,self.column_dict[self.settings['Y data']]]
+        if 'Z data' in self.settings.keys():
+            z=self.data[self.column_dict[:,self.settings['Z data']]]
+            column_data=np.column_stack((x,y,z))
+        else:
+            column_data=np.column_stack((x,y))
         return column_data
     
     def get_columns(self):
         return [int(col) for col in self.settings['columns'].split(',')]
     
-    def load_and_reshape_data(self,reload=False,reload_from_file=False):
+    def load_and_reshape_data(self,reload=False,reload_from_file=False,linefrompopup=None):
+        if reload_from_file or self.data is None:
+            self.prepare_dataset()
         column_data = self.get_column_data()
         if column_data.ndim == 1: # if empty array or single-row array
             self.raw_data = None
