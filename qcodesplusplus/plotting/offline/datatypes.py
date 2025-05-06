@@ -82,29 +82,32 @@ class BaseClassData:
 
     def prepare_dataset(self):
         try:
-            self.data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'])
+            self.data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter']).T
         except ValueError: # Can occur if python doesn't recognise a header
-            self.data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'],skip_header=1)
+            self.data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'],skip_header=1).T
         
-        try: # to get column names if there is a header. Importing like this completely screws the data formatting for some reason, so use this to just load the header
-            namedata=np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'],names=True)
-            if namedata.dtype.names:
-                self.all_parameter_names=namedata.dtype.names
+        try: # to get column names if there is a header. Avoid using genfromtxt as it doesn't have enough options to work all the time.
+            with open(self.filepath, 'r') as f:
+                header = f.readline()
+            if header.startswith('#'):
+                header = header[1:]
+                if self.settings['delimiter']:
+                    self.all_parameter_names = header.split(self.settings['delimiter'])
+                else:
+                    self.all_parameter_names = header.split()
                 self.param_name_dict={}
-                for i,name in enumerate(namedata.dtype.names):
+                for i,name in enumerate(self.all_parameter_names):
                     self.param_name_dict[name]=i
-        except:
+        except Exception as e:
+            print(f'Could not read column names: {e}\n'
+                'Using integers instead')
             pass
 
-        if hasattr(self, 'all_parameter_names') and len(list(self.all_parameter_names)) != self.data.shape[0] and len(list(self.all_parameter_names)) == self.data.shape[1]:
-            # genfromtxt is a bit random with the shape of the data, so if it is transposed, transpose it back to original shape
-            self.data=self.data.T
-
         if not hasattr(self,'param_name_dict'):
-            self.all_parameter_names=[i for i in range(self.data.shape[0])]
+            self.all_parameter_names=[f"column_{i}" for i in range(self.data.shape[0])]
             self.param_name_dict={}
-            for i in self.all_parameter_names:
-                self.param_name_dict[f'{i}']=i
+            for i,name in enumerate(self.all_parameter_names):
+                self.param_name_dict[name]=i
 
         self.measured_data_points = self.data.shape[0]
 

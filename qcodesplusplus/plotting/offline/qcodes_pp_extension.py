@@ -2,14 +2,8 @@ from PyQt5 import QtWidgets
 import numpy as np
 import os
 import json
-from matplotlib import cm
-from matplotlib.widgets import Cursor
 from qcodesplusplus.data.data_set import load_data
 import qcodesplusplus.plotting.offline.main as main
-
-from .helpers import MidpointNormalize
-from .popupwindows import FFTWindow
-from .sidebars import Sidebar1D
 
 
 class qcodesppData(main.BaseClassData):
@@ -196,10 +190,7 @@ class qcodesppData(main.BaseClassData):
                         
             elif data_shape[0] == 1: # if first two sweeps are not finished -> duplicate data of first sweep to enable 3D plotting
                 self.raw_data = [np.tile(column_data[:data_shape[1],x], (2,1)) for x in range(column_data.shape[1])]    
-                # if len(unique_values) > 1: # if first sweep is finished -> set second x-column to second x-value
-                #     self.raw_data[columns[0]][0,:] = unique_values[0]
-                #     self.raw_data[columns[0]][1,:] = unique_values[1]
-                # else: # if first sweep is not finished -> set duplicate x-columns to +1 and -1 of actual value
+
                 self.raw_data[columns[0]][0,:] = columns[0]-1
                 self.raw_data[columns[0]][1,:] = columns[0]+1
             else:
@@ -308,68 +299,3 @@ class qcodesppData(main.BaseClassData):
             self.processed_data = processed_data
             if update_color_limits:
                 self.reset_view_settings()
-            # The below was the cause of the NotImplmentedError. Seems to work fine without it.
-            # if hasattr(self, 'image'):
-            #     self.apply_view_settings()
-
-    # def add_plot(self, editor_window=None):
-    #     if self.processed_data:
-    #         cmap_str = self.view_settings['Colormap']
-    #         if self.view_settings['Reverse']:
-    #             cmap_str += '_r'
-    #         cmap = cm.get_cmap(cmap_str, lut=int(self.settings['lut']))
-    #         cmap.set_bad(self.settings['maskcolor'])
-    #         if self.dim == 2:
-    #             if not hasattr(self, 'plotted_lines'):
-    #                 self.plotted_lines = {0: {'checkstate': 2,
-    #                                             'X data': self.independent_parameter_names[0],
-    #                                             'Y data': self.dependent_parameter_names[self.index_dependent_parameter],
-    #                                             'raw_data': self.raw_data,
-    #                                             'processed_data': self.processed_data,
-    #                                             'linecolor': (0.1, 0.5, 0.8, 1),
-    #                                             'linewidth': 1.5,
-    #                                             'linestyle': '-',
-    #                                             'filters': []}}
-    #             if not hasattr(self, 'sidebar1D'):
-    #                 self.sidebar1D = Sidebar1D(self,editor_window=editor_window)
-    #                 self.sidebar1D.running = True
-    #                 self.sidebar1D.append_trace_to_table(0)
-    #                 editor_window.oneD_layout.addWidget(self.sidebar1D)
-
-    #             self.sidebar1D.update()
-
-    #             # This is horrible, but I need to get rid of these. Ideally I would re-write the extension so they're
-    #             # not used at all in the 1D case. Will try later.
-    #             if 'X data' in self.settings.keys():
-    #                 self.settings.pop('X data')
-    #             if 'Y data' in self.settings.keys():
-    #                 self.settings.pop('Y data')
-
-    #         elif self.dim == 3:
-    #             norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
-    #                                      vmax=self.view_settings['Maximum'], 
-    #                                      midpoint=self.view_settings['Midpoint'])
-    #             self.image = self.axes.pcolormesh(self.processed_data[0], 
-    #                                               self.processed_data[1], 
-    #                                               self.processed_data[2], 
-    #                                               shading=self.settings['shading'], 
-    #                                               norm=norm, cmap=cmap,
-    #                                               rasterized=self.settings['rasterized'])
-    #             if self.settings['colorbar'] == 'True':
-    #                 self.cbar = self.figure.colorbar(self.image,orientation='vertical')
-
-    #             # Remove sidebar1D if it exists
-    #             for i in reversed(range(editor_window.oneD_layout.count())): 
-    #                 widgetToRemove = editor_window.oneD_layout.itemAt(i).widget()
-    #                 # remove it from the layout list
-    #                 editor_window.oneD_layout.removeWidget(widgetToRemove)
-    #                 # remove it from the gui
-    #                 widgetToRemove.setParent(None)
-
-    #         self.cursor = Cursor(self.axes, useblit=True, 
-    #                              color=self.settings['linecolor'], linewidth=0.5)
-
-
-    #         self.apply_plot_settings()
-    #         self.apply_axlim_settings()
-    #         self.apply_axscale_settings()

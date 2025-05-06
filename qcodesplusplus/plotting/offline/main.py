@@ -46,10 +46,6 @@ from .helpers import (cmaps, MidpointNormalize,NavigationToolbarMod,
 from .filters import Filter
 from .datatypes import DataItem, BaseClassData, NumpyData
 from .qcodes_pp_extension import qcodesppData
-from .qcodes_extension import QCodesData
-from .qd_extension import QdData
-
-from qcodes import initialise_or_create_database_at, load_last_experiment
 
 # UI settings
 DARK_THEME = True
@@ -368,23 +364,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 return item
             except Exception as e:
                 print(f'Failed to add qcodes++ dataset {filepath}:', e)
-        
-        elif extension == '.db': # QCoDeS files
-            initialise_or_create_database_at(filepath)
-            datasets = load_last_experiment().data_sets()
-            for dataset in datasets:
-                try:
-                    item = DataItem(QCodesData(filepath, self.canvas, dataset))
-                    return item
-                except Exception as e:
-                    print(f'Failed to add QCoDes dataset '
-                            f'#{dataset.captured_run_id}:', e)
-        
-        elif (os.path.basename(filepath) == 'data.dat' and # Matlab qd files
-                os.path.isfile(os.path.dirname(filepath)+'/meta.json')):
-            metapath = os.path.dirname(filepath)+'/meta.json'
-            item = DataItem(QdData(filepath, self.canvas, metapath))
-            return item
         
         else: # bare column-based data file
             item = DataItem(BaseClassData(filepath, self.canvas))
