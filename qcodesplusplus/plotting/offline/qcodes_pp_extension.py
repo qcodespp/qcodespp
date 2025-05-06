@@ -1,4 +1,3 @@
-from PyQt5 import QtWidgets
 import numpy as np
 import os
 import json
@@ -27,8 +26,6 @@ class qcodesppData(main.BaseClassData):
         self.dependent_parameter_names = []
         self.all_parameters = []
         self.all_parameter_names = []
-        
-        
         
         self.channels = self.meta['arrays']
 
@@ -198,13 +195,6 @@ class qcodesppData(main.BaseClassData):
                 
             self.settings['columns'] = ','.join([str(i) for i in columns])
     
-    def copy_raw_to_processed_data(self,line=None):
-        if line is not None:
-            self.plotted_lines[line]['raw_data'] = self.raw_data
-            self.plotted_lines[line]['processed_data'] = [np.array(np.copy(self.raw_data[x])) for x in self.get_columns()]
-        else:
-            self.processed_data = [np.array(np.copy(self.raw_data[x])) for x in self.get_columns()]
-
     def identify_independent_vars(self):        
         for chan in self.channels.keys():
             if self.channels[chan]["array_id"] not in self.all_parameter_names:
@@ -247,6 +237,7 @@ class qcodesppData(main.BaseClassData):
                                     'Divide': self.all_parameter_names,
                                     'Offset': self.all_parameter_names}
         
+
     def apply_single_filter(self, processed_data, filt):
         if filt.name in ['Multiply', 'Divide', 'Offset']:
             if filt.settings[0][0]=='-':
@@ -256,7 +247,7 @@ class qcodesppData(main.BaseClassData):
                 arrayname=filt.settings[0]
                 setting2='+'
             if arrayname in self.all_parameter_names:
-                if len(self.independent_parameters) > 1:
+                if self.dim==3:
                     array=self.data_dict[arrayname][:self.dims[0]][:self.dims[1]]
                 else:
                     array=self.data_dict[arrayname][:self.dims[0]]
@@ -278,24 +269,3 @@ class qcodesppData(main.BaseClassData):
                                             filt.settings[1])
             
         return processed_data
-        
-    # Redefine apply_all_filters so that data from other columns can be sent to the filters.
-    def apply_all_filters(self, update_color_limits=True):
-        if hasattr(self, 'sidebar1D'):
-            for line in self.plotted_lines.keys():
-                filters = self.plotted_lines[line]['filters']
-                processed_data = self.plotted_lines[line]['processed_data']
-                for filt in filters:
-                    if filt.checkstate:
-                        processed_data = self.apply_single_filter(processed_data, filt)
-                self.plotted_lines[line]['processed_data'] = processed_data
-
-        else:
-            filters=self.filters
-            processed_data = self.processed_data
-            for filt in filters:
-                if filt.checkstate:
-                    processed_data = self.apply_single_filter(processed_data, filt)
-            self.processed_data = processed_data
-            if update_color_limits:
-                self.reset_view_settings()

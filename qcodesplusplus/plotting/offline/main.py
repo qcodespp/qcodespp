@@ -1443,15 +1443,16 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 new_item.setText(new_label)
                 new_item.data.label = new_label
                 new_item.data.settings['title']=f'{new_item.data.dataset_id}-{duplicate_index}'
-                if new_plot_button:
-                    new_item.data.settings['X data'] = X
-                    new_item.data.settings['Y data'] = Y
-                    if 'Z data' in new_item.data.settings.keys():
-                        new_item.data.settings['Z data'] = Z
 
             else:
                 new_item.setText(f'[DUPLICATE] {new_item.data.label}')
                 new_item.data.label = f'[DUPLICATE] {new_item.data.label}'
+
+            if new_plot_button:
+                new_item.data.settings['X data'] = X
+                new_item.data.settings['Y data'] = Y
+                if 'Z data' in new_item.data.settings.keys():
+                    new_item.data.settings['Z data'] = Z
                 
             new_item.setCheckState(QtCore.Qt.Checked)
             self.update_plots()
@@ -1512,6 +1513,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     menu.addAction(action)
                 menu.triggered[QtWidgets.QAction].connect(self.replace_filter_setting)
                 menu.popup(QtGui.QCursor.pos())
+        elif filter_name == 'Logarithm' and column ==2:
+            menu = QtWidgets.QMenu(self)
+            settings=['10','2','e']
+            for entry in settings:
+                action = QtWidgets.QAction(entry, self)
+                menu.addAction(action)
+            menu.triggered[QtWidgets.QAction].connect(self.replace_filter_setting)
+            menu.popup(QtGui.QCursor.pos())
 
     def replace_filter_setting(self,signal):
         item = self.filters_table.currentItem()

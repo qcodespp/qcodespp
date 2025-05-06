@@ -13,12 +13,7 @@ from matplotlib.widgets import Cursor
 from matplotlib import rcParams
 from matplotlib import colormaps as cm
 import numpy as np
-try: # lmfit is used for fitting the evolution of the properties of multiple peaks 
-    from lmfit.model import save_modelresult
-    lmfit_imported = True
-except ModuleNotFoundError:
-    lmfit_imported = False
-
+from lmfit.model import save_modelresult
 
 try:
     import qdarkstyle # pip install qdarkstyle

@@ -1,4 +1,4 @@
-from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt5 import QtWidgets, QtCore
 import numpy as np
 import os
 from matplotlib.widgets import Cursor
@@ -126,6 +126,9 @@ class BaseClassData:
         self.settings_menu_options = {'X data': self.all_parameter_names,
                                 'Y data': self.all_parameter_names,
                                 'Z data': self.all_parameter_names}
+        self.filter_menu_options = {'Multiply': self.all_parameter_names,
+                                    'Divide': self.all_parameter_names,
+                                    'Offset': self.all_parameter_names}
 
     def get_column_data(self,line=None):
         if line is not None:
@@ -205,13 +208,6 @@ class BaseClassData:
                     self.raw_data[columns[0]][1,:] = unique_values[0]+1
             self.settings['columns'] = ','.join([str(i) for i in columns])
 
-            # self.settings['X data']=self.all_parameter_names[columns[0]]
-            # self.settings['Y data']=self.all_parameter_names[columns[1]]
-            # if len(self.get_columns())>2:
-            #     self.settings['Z data']=self.all_parameter_names[columns[2]]
-            # else:
-            #     self.settings.pop('Z data', None)
-                   
     def copy_raw_to_processed_data(self,line=None):
         if line is not None:
             self.plotted_lines[line]['raw_data'] = self.raw_data
@@ -369,8 +365,6 @@ class BaseClassData:
                 self.cbar.ax.tick_params(labelsize=self.settings['ticksize'],
                                          color=rcParams['axes.edgecolor'])
 
-
-
     def apply_axlim_settings(self):
         self.axes.set_xlim(left=self.axlim_settings['Xmin'], 
                              right=self.axlim_settings['Xmax'])
@@ -399,30 +393,55 @@ class BaseClassData:
         else:
             self.image[0].set_color(cmap(0.5))            
 
-    # The below function seems to NOT be used by anything!!
-    def apply_filter(self, filt, update_color_limits=True):
-        if filt.checkstate:
-            self.processed_data = filt.function(self.processed_data, 
-                                                filt.method,
-                                                filt.settings[0], 
-                                                filt.settings[1]) 
+    def apply_single_filter(self, processed_data, filt):
+        if filt.name in ['Multiply', 'Divide', 'Offset']:
+            if filt.settings[0][0]=='-':
+                arrayname=filt.settings[0][1:]
+                setting2='-'
+            else:
+                arrayname=filt.settings[0]
+                setting2='+'
+            if arrayname in self.all_parameter_names:
+                if self.dim==2:
+                    array=self.data[self.param_name_dict[arrayname]]
+                if hasattr(self,'udflipped'):
+                    array=np.flipud(array)
+                if hasattr(self,'lrflipped'):
+                    array=np.fliplr(array)
+            else:
+                array=None
+            processed_data = filt.function(processed_data,
+                                            filt.method,
+                                            filt.settings[0], 
+                                            setting2,
+                                            array)
+        else:
+            processed_data = filt.function(processed_data,
+                                            filt.method,
+                                            filt.settings[0],
+                                            filt.settings[1])
+            
+        return processed_data
+        
+    def apply_all_filters(self, update_color_limits=True):
+        if hasattr(self, 'sidebar1D'):
+            for line in self.plotted_lines.keys():
+                filters = self.plotted_lines[line]['filters']
+                processed_data = self.plotted_lines[line]['processed_data']
+                for filt in filters:
+                    if filt.checkstate:
+                        processed_data = self.apply_single_filter(processed_data, filt)
+                self.plotted_lines[line]['processed_data'] = processed_data
+
+        else:
+            filters=self.filters
+            processed_data = self.processed_data
+            for filt in filters:
+                if filt.checkstate:
+                    processed_data = self.apply_single_filter(processed_data, filt)
+            self.processed_data = processed_data
             if update_color_limits:
                 self.reset_view_settings()
-                self.apply_view_settings()
-                
-    def apply_all_filters(self, update_color_limits=True):
-        # Note to Damon (i.e. self): Don't forget this is redefined in the qcpp wrapper.
-        for filt in self.filters:
-            if filt.checkstate:
-                self.processed_data = filt.function(self.processed_data, 
-                                                    filt.method,
-                                                    filt.settings[0], 
-                                                    filt.settings[1])
-        if update_color_limits:
-            self.reset_view_settings()
-            # The below was the cause of the NotImplmentedError. Seems to work fine without it.
-            # if hasattr(self, 'image'):
-            #     self.apply_view_settings()
        
     def extension_setting_edited(self, editor, setting_name):
         pass

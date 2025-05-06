@@ -15,6 +15,9 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1400, 700)
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap("iconGadget.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        MainWindow.setWindowIcon(icon)
         self.central_widget = QtWidgets.QWidget(MainWindow)
         self.central_widget.setObjectName("central_widget")
         self.horizontalLayout = QtWidgets.QHBoxLayout(self.central_widget)

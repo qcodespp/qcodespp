@@ -1,23 +1,12 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
-import io
 from json import load as jsonload
 from json import dump as jsondump
-from csv import writer as csvwriter
+
 import qcodesplusplus.plotting.offline.fits as fits
-from scipy.ndimage import map_coordinates
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
-from matplotlib.figure import Figure
-from matplotlib.colors import LogNorm
-from matplotlib.widgets import Cursor
-from matplotlib import rcParams
+
 from matplotlib import colormaps as cm
 import numpy as np
-try: # lmfit is used for fitting the evolution of the properties of multiple peaks 
-    from lmfit.model import save_modelresult
-    lmfit_imported = True
-except ModuleNotFoundError:
-    lmfit_imported = False
+from lmfit.model import save_modelresult
 
 from .helpers import cmaps
 

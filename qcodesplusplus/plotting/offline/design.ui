@@ -13,6 +13,10 @@
   <property name="windowTitle">
    <string>InSpectra Gadget</string>
   </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>iconGadget.png</normaloff>iconGadget.png</iconset>
+  </property>
   <widget class="QWidget" name="central_widget">
    <layout class="QHBoxLayout" name="horizontalLayout">
     <item>
@@ -484,7 +488,7 @@
      </layout>
     </item>
     <item>
-     <layout class="QVBoxLayout" name="oneD_layout" stretch="">
+     <layout class="QVBoxLayout" name="oneD_layout">
       <property name="sizeConstraint">
        <enum>QLayout::SetDefaultConstraint</enum>
       </property>
