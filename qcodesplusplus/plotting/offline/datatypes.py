@@ -89,40 +89,52 @@ class BaseClassData:
         try: # to get column names if there is a header. Importing like this completely screws the data formatting for some reason, so use this to just load the header
             namedata=np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'],names=True)
             if namedata.dtype.names:
-                self.column_array=namedata.dtype.names
-                self.column_dict={}
+                self.all_parameter_names=namedata.dtype.names
+                self.param_name_dict={}
                 for i,name in enumerate(namedata.dtype.names):
-                    self.column_dict[name]=i
+                    self.param_name_dict[name]=i
         except:
             pass
 
-        if not hasattr(self,'column_dict'):
-            self.column_array=[i for i in range(self.data.shape[1])]
-            self.column_dict={}
-            for i in self.column_array:
-                self.column_dict[f'{i}']=i
+        if hasattr(self, 'all_parameter_names') and len(list(self.all_parameter_names)) != self.data.shape[0] and len(list(self.all_parameter_names)) == self.data.shape[1]:
+            # genfromtxt is a bit random with the shape of the data, so if it is transposed, transpose it back to original shape
+            self.data=self.data.T
 
-        self.settings_menu_options = {'X data': self.column_array,
-                                      'Y data': self.column_array,
-                                      'Z data': self.column_array}
+        if not hasattr(self,'param_name_dict'):
+            self.all_parameter_names=[i for i in range(self.data.shape[0])]
+            self.param_name_dict={}
+            for i in self.all_parameter_names:
+                self.param_name_dict[f'{i}']=i
 
         self.measured_data_points = self.data.shape[0]
 
-        self.settings['X data'] = self.column_array[0]
-        self.settings['Y data'] = self.column_array[1]
-        self.settings['xlabel'] = self.column_array[0]
-        self.settings['ylabel'] = self.column_array[1]
+        self.settings['X data'] = self.all_parameter_names[0]
+        self.settings['Y data'] = self.all_parameter_names[1]
+        self.settings['xlabel'] = self.all_parameter_names[0]
+        self.settings['ylabel'] = self.all_parameter_names[1]
 
-        if self.data[1,0] == self.data[0,0] and len(self.column_array) > 2:
-            self.settings['Z data'] = self.column_array[2]
-            self.settings['clabel'] = self.column_array[2]
+        if self.data[0,1] == self.data[0,0] and len(self.all_parameter_names) > 2:
+            self.settings['Z data'] = self.all_parameter_names[2]
+            self.settings['clabel'] = self.all_parameter_names[2]
+            self.dim=3
+        else:
+            self.dim=2
 
-    def get_column_data(self):
-        # Should do something here to check column names array length against data dimension.
-        x=self.data[:,self.column_dict[self.settings['X data']]]
-        y=self.data[:,self.column_dict[self.settings['Y data']]]
+        self.settings_menu_options = {'X data': self.all_parameter_names,
+                                'Y data': self.all_parameter_names,
+                                'Z data': self.all_parameter_names}
+
+    def get_column_data(self,line=None):
+        if line is not None:
+            names = [self.plotted_lines[line]['X data'],
+                     self.plotted_lines[line]['Y data']]
+        else:
+            names = [self.settings['X data'], self.settings['Y data']]
+
+        x=self.data[self.param_name_dict[names[0]]]
+        y=self.data[self.param_name_dict[names[1]]]
         if 'Z data' in self.settings.keys():
-            z=self.data[self.column_dict[:,self.settings['Z data']]]
+            z=self.data[self.param_name_dict[self.settings['Z data']]]
             column_data=np.column_stack((x,y,z))
         else:
             column_data=np.column_stack((x,y))
@@ -134,7 +146,7 @@ class BaseClassData:
     def load_and_reshape_data(self,reload=False,reload_from_file=False,linefrompopup=None):
         if reload_from_file or self.data is None:
             self.prepare_dataset()
-        column_data = self.get_column_data()
+        column_data = self.get_column_data(linefrompopup)
         if column_data.ndim == 1: # if empty array or single-row array
             self.raw_data = None
         else:
@@ -190,15 +202,19 @@ class BaseClassData:
                     self.raw_data[columns[0]][1,:] = unique_values[0]+1
             self.settings['columns'] = ','.join([str(i) for i in columns])
 
-            # self.settings['X data']=self.column_array[columns[0]]
-            # self.settings['Y data']=self.column_array[columns[1]]
+            # self.settings['X data']=self.all_parameter_names[columns[0]]
+            # self.settings['Y data']=self.all_parameter_names[columns[1]]
             # if len(self.get_columns())>2:
-            #     self.settings['Z data']=self.column_array[columns[2]]
+            #     self.settings['Z data']=self.all_parameter_names[columns[2]]
             # else:
             #     self.settings.pop('Z data', None)
                    
     def copy_raw_to_processed_data(self,line=None):
-        self.processed_data = [np.array(np.copy(self.raw_data[x])) for x in self.get_columns()]
+        if line is not None:
+            self.plotted_lines[line]['raw_data'] = self.raw_data
+            self.plotted_lines[line]['processed_data'] = [np.array(np.copy(self.raw_data[x])) for x in self.get_columns()]
+        else:
+            self.processed_data = [np.array(np.copy(self.raw_data[x])) for x in self.get_columns()]
 
     def prepare_data_for_plot(self, reload_data=False, reload_from_file=False,
                               linefrompopup=None,update_color_limits=True):
@@ -210,18 +226,40 @@ class BaseClassData:
         else:
             self.processed_data = None
 
-    def add_plot(self, dim, editor_window=None):
+    def add_plot(self, editor_window=None):
         if self.processed_data:
             cmap_str = self.view_settings['Colormap']
             if self.view_settings['Reverse']:
                 cmap_str += '_r'
             cmap = cm.get_cmap(cmap_str, lut=int(self.settings['lut']))
             cmap.set_bad(self.settings['maskcolor'])
-            if dim == 2:
-                self.image = self.axes.plot(self.processed_data[0], 
-                                            self.processed_data[1], color=cmap(0.5))
+            if self.dim == 2:
+                if not hasattr(self, 'plotted_lines'):
+                    self.plotted_lines = {0: {'checkstate': 2,
+                                                'X data': self.all_parameter_names[0],
+                                                'Y data': self.all_parameter_names[1],
+                                                'raw_data': self.raw_data,
+                                                'processed_data': self.processed_data,
+                                                'linecolor': (0.1, 0.5, 0.8, 1),
+                                                'linewidth': 1.5,
+                                                'linestyle': '-',
+                                                'filters': []}}
+                if not hasattr(self, 'sidebar1D'):
+                    self.sidebar1D = Sidebar1D(self,editor_window=editor_window)
+                    self.sidebar1D.running = True
+                    self.sidebar1D.append_trace_to_table(0)
+                    editor_window.oneD_layout.addWidget(self.sidebar1D)
 
-            elif dim == 3:
+                self.sidebar1D.update()
+
+                # This is horrible, but I need to get rid of these. Ideally I would re-write the extension so they're
+                # not used at all in the 1D case. Will try later.
+                if 'X data' in self.settings.keys():
+                    self.settings.pop('X data')
+                if 'Y data' in self.settings.keys():
+                    self.settings.pop('Y data')
+
+            elif self.dim == 3:
                 norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
                                          vmax=self.view_settings['Maximum'], 
                                          midpoint=self.view_settings['Midpoint'])
@@ -233,6 +271,14 @@ class BaseClassData:
                                                   rasterized=self.settings['rasterized'])
                 if self.settings['colorbar'] == 'True':
                     self.cbar = self.figure.colorbar(self.image, orientation='vertical')
+                
+                # Remove sidebar1D if it exists
+                for i in reversed(range(editor_window.oneD_layout.count())): 
+                    widgetToRemove = editor_window.oneD_layout.itemAt(i).widget()
+                    # remove it from the layout list
+                    editor_window.oneD_layout.removeWidget(widgetToRemove)
+                    # remove it from the gui
+                    widgetToRemove.setParent(None)
             self.cursor = Cursor(self.axes, useblit=True, 
                                  color=self.settings['linecolor'], linewidth=0.5)
 

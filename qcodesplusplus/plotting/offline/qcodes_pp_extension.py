@@ -65,18 +65,19 @@ class qcodesppData(main.BaseClassData):
 
 
     def prepare_dataset(self):
-        
         self.data_dict = self.dataset.arrays
         pars = list(self.data_dict.keys())
         self.dims = self.data_dict[pars[1]].shape
-
 
         if len(self.independent_parameters) > 1:
             pars = list(self.data_dict.keys())
             self.dims = self.data_dict[pars[1]].shape
             if len(self.data_dict[self.all_parameters[0]["array_id"]]) < self.dims[0]*self.dims[1]:
                 self.data_dict[self.all_parameters[0]["array_id"]] = np.repeat(self.data_dict[self.all_parameters[0]["array_id"]], self.dims[1])
-
+            self.dim=3
+        
+        else:
+            self.dim=2
 
     def isFinished(self):
         self.set_x = self.data_dict[self.all_parameters[0]["array_id"]]
@@ -311,67 +312,64 @@ class qcodesppData(main.BaseClassData):
             # if hasattr(self, 'image'):
             #     self.apply_view_settings()
 
-    def add_plot(self, dim, editor_window=None):
-        if self.processed_data:
-            cmap_str = self.view_settings['Colormap']
-            if self.view_settings['Reverse']:
-                cmap_str += '_r'
-            cmap = cm.get_cmap(cmap_str, lut=int(self.settings['lut']))
-            cmap.set_bad(self.settings['maskcolor'])
-            if dim == 2:
-                # self.image = self.axes.plot(self.processed_data[0], 
-                #                             self.processed_data[1], color=cmap(0.5))
-                
-                if not hasattr(self, 'plotted_lines'):
-                    self.plotted_lines = {0: {'checkstate': 2,
-                                                'X data': self.independent_parameter_names[0],
-                                                'Y data': self.dependent_parameter_names[self.index_dependent_parameter],
-                                                'raw_data': self.raw_data,
-                                                'processed_data': self.processed_data,
-                                                'linecolor': (0.1, 0.5, 0.8, 1),
-                                                'linewidth': 1.5,
-                                                'linestyle': '-',
-                                                'filters': []}}
-                if not hasattr(self, 'sidebar1D'):
-                    self.sidebar1D = Sidebar1D(self,editor_window=editor_window)
-                    self.sidebar1D.running = True
-                    self.sidebar1D.append_trace_to_table(0)
-                    #self.sidebar1D.activateWindow()
+    # def add_plot(self, editor_window=None):
+    #     if self.processed_data:
+    #         cmap_str = self.view_settings['Colormap']
+    #         if self.view_settings['Reverse']:
+    #             cmap_str += '_r'
+    #         cmap = cm.get_cmap(cmap_str, lut=int(self.settings['lut']))
+    #         cmap.set_bad(self.settings['maskcolor'])
+    #         if self.dim == 2:
+    #             if not hasattr(self, 'plotted_lines'):
+    #                 self.plotted_lines = {0: {'checkstate': 2,
+    #                                             'X data': self.independent_parameter_names[0],
+    #                                             'Y data': self.dependent_parameter_names[self.index_dependent_parameter],
+    #                                             'raw_data': self.raw_data,
+    #                                             'processed_data': self.processed_data,
+    #                                             'linecolor': (0.1, 0.5, 0.8, 1),
+    #                                             'linewidth': 1.5,
+    #                                             'linestyle': '-',
+    #                                             'filters': []}}
+    #             if not hasattr(self, 'sidebar1D'):
+    #                 self.sidebar1D = Sidebar1D(self,editor_window=editor_window)
+    #                 self.sidebar1D.running = True
+    #                 self.sidebar1D.append_trace_to_table(0)
+    #                 editor_window.oneD_layout.addWidget(self.sidebar1D)
 
-                self.sidebar1D.update()
+    #             self.sidebar1D.update()
 
-                # This is horrible, but I need to get rid of these. Ideally I would re-write the extension so they're
-                # not used at all in the 1D case. Will try later.
-                if 'X data' in self.settings.keys():
-                    self.settings.pop('X data')
-                if 'Y data' in self.settings.keys():
-                    self.settings.pop('Y data')
+    #             # This is horrible, but I need to get rid of these. Ideally I would re-write the extension so they're
+    #             # not used at all in the 1D case. Will try later.
+    #             if 'X data' in self.settings.keys():
+    #                 self.settings.pop('X data')
+    #             if 'Y data' in self.settings.keys():
+    #                 self.settings.pop('Y data')
 
-            elif dim == 3:
-                norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
-                                         vmax=self.view_settings['Maximum'], 
-                                         midpoint=self.view_settings['Midpoint'])
-                self.image = self.axes.pcolormesh(self.processed_data[0], 
-                                                  self.processed_data[1], 
-                                                  self.processed_data[2], 
-                                                  shading=self.settings['shading'], 
-                                                  norm=norm, cmap=cmap,
-                                                  rasterized=self.settings['rasterized'])
-                if self.settings['colorbar'] == 'True':
-                    self.cbar = self.figure.colorbar(self.image,orientation='vertical')
-            self.cursor = Cursor(self.axes, useblit=True, 
-                                 color=self.settings['linecolor'], linewidth=0.5)
+    #         elif self.dim == 3:
+    #             norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
+    #                                      vmax=self.view_settings['Maximum'], 
+    #                                      midpoint=self.view_settings['Midpoint'])
+    #             self.image = self.axes.pcolormesh(self.processed_data[0], 
+    #                                               self.processed_data[1], 
+    #                                               self.processed_data[2], 
+    #                                               shading=self.settings['shading'], 
+    #                                               norm=norm, cmap=cmap,
+    #                                               rasterized=self.settings['rasterized'])
+    #             if self.settings['colorbar'] == 'True':
+    #                 self.cbar = self.figure.colorbar(self.image,orientation='vertical')
 
-            # Below removes data options for data types where selecting
-            # axes data from the settings menu isn't implemented.
-            # Remove if implemented for all data types one day.
-            if 'X data' in self.settings.keys() and self.settings['X data'] == '':
-                self.settings.pop('X data')
-            if 'Y data' in self.settings.keys() and self.settings['Y data'] == '':
-                self.settings.pop('Y data')
-            if 'Z data' in self.settings.keys() and self.settings['Z data'] == '':
-                self.settings.pop('Z data')
+    #             # Remove sidebar1D if it exists
+    #             for i in reversed(range(editor_window.oneD_layout.count())): 
+    #                 widgetToRemove = editor_window.oneD_layout.itemAt(i).widget()
+    #                 # remove it from the layout list
+    #                 editor_window.oneD_layout.removeWidget(widgetToRemove)
+    #                 # remove it from the gui
+    #                 widgetToRemove.setParent(None)
 
-            self.apply_plot_settings()
-            self.apply_axlim_settings()
-            self.apply_axscale_settings()
+    #         self.cursor = Cursor(self.axes, useblit=True, 
+    #                              color=self.settings['linecolor'], linewidth=0.5)
+
+
+    #         self.apply_plot_settings()
+    #         self.apply_axlim_settings()
+    #         self.apply_axscale_settings()

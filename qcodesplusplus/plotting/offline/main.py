@@ -791,7 +791,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         item.data.prepare_data_for_plot()
                     item.data.figure = self.figure
                     item.data.axes = item.data.figure.add_subplot(rows, cols, index+1)
-                    item.data.add_plot(dim=len(item.data.get_columns()),editor_window=self)
+                    item.data.add_plot(editor_window=self)
                     if hasattr(item.data, 'linecuts'):
                         for orientation in ['horizontal','vertical']:#,'diagonal','circular']:
                             if len(item.data.linecuts[orientation]['lines']) > 0:
@@ -1000,7 +1000,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         current_item = self.file_list.currentItem()
         if current_item:
-            if isinstance(current_item.data, qcodesppData): #Currently only supports qcodespp data
+            if hasattr(current_item.data, 'all_parameter_names'):
                 dim = len(current_item.data.get_columns())
                 if dim == 2:
                     boxes= [self.new_plot_X_box, self.new_plot_Y_box]
@@ -1440,12 +1440,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         original_item = self.file_list.currentItem()
         if original_item:
             if new_plot_button:
-                if not isinstance(original_item.data, qcodesppData):
-                    print('Feature not available for this data type')
-                else:
-                    X = self.new_plot_X_box.currentText()
-                    Y = self.new_plot_Y_box.currentText()
-                    Z = self.new_plot_Z_box.currentText()
+                X = self.new_plot_X_box.currentText()
+                Y = self.new_plot_Y_box.currentText()
+                Z = self.new_plot_Z_box.currentText()
             self.open_files(filepaths=[original_item.data.filepath],overrideautocheck=True)
             new_item = self.file_list.currentItem()
             new_item.duplicate = True
@@ -1692,7 +1689,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         item.data.prepare_data_for_plot()
                         item.data.figure = self.figure
                         item.data.axes = self.figure.add_subplot(1, 1, 1)
-                        item.data.add_plot(dim=len(item.data.get_columns()))
+                        item.data.add_plot(editor_window=self)
                         if item.data.settings['dpi'] == 'figure':
                             dpi = 'figure'
                         else:

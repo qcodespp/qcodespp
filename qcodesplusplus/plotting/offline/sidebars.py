@@ -276,8 +276,8 @@ class Sidebar1D(QtWidgets.QWidget):
             max_index=-1
         try:
             line={'checkstate': 2,
-                'X data': self.parent.independent_parameter_names[0],
-                'Y data': self.parent.dependent_parameter_names[1],
+                'X data': self.parent.all_parameter_names[0],
+                'Y data': self.parent.all_parameter_names[1],
                 'linecolor': (1,0,0,1),
                 'linewidth': 1.5,
                 'linestyle': '-',
