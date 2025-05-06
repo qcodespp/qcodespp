@@ -222,11 +222,6 @@ class DraggablePoint:
         DraggablePoint.lock = None
         self.point.set_animated(False)
         draggable_points = self.parent.linecuts[self.orientation]['lines'][self.linecut]['draggable_points']    
-        if hasattr(draggable_points[1], 'line'):
-            if self == draggable_points[1]:
-                self.line.set_animated(False)
-            else:
-                draggable_points[1].line.set_animated(False)
 
         # if (len(self.draggable_points) > 2 and 
         #     hasattr(self.draggable_points[2], 'circle')):
@@ -245,9 +240,37 @@ class DraggablePoint:
         #         self.draggable_points[2].x = self.draggable_points[2].point.center[0]
         #         self.draggable_points[2].y = self.draggable_points[2].point.center[1]
         self.background = None
-        self.point.figure.canvas.draw()
+
+        # Snap to data.
+        index_x=(np.abs(self.point.center[0]-self.parent.processed_data[0][:,0])).argmin()
+        x_value = self.parent.processed_data[0][index_x,0]
+        index_y=(np.abs(self.point.center[1]-self.parent.processed_data[1][0,:])).argmin()
+        y_value = self.parent.processed_data[1][0,index_y]
+
+        self.point.center = (x_value, y_value)
+
         self.x = self.point.center[0]
         self.y = self.point.center[1]
+
+        # Snap line to data
+        if hasattr(draggable_points[1], 'line'):
+            if self == draggable_points[1]:
+                self.line.set_animated(True)
+                self.point.axes.draw_artist(self.line)
+                line_x = [draggable_points[0].x, self.x]
+                line_y = [draggable_points[0].y, self.y]
+                self.line.set_data(line_x, line_y)
+                self.line.set_animated(False)
+            else:
+                draggable_points[1].line.set_animated(True)
+                self.point.axes.draw_artist(draggable_points[1].line)
+                line_x = [self.x, draggable_points[1].x]
+                line_y = [self.y, draggable_points[1].y]
+                draggable_points[1].line.set_data(line_x, line_y)
+                draggable_points[1].line.set_animated(False)
+
+        self.point.figure.canvas.draw()
+
         if self == draggable_points[1]:
             self.parent.linecuts[self.orientation]['lines'][self.linecut]['points'][1] = (self.x, self.y)
         else:

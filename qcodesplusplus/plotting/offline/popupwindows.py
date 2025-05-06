@@ -82,6 +82,9 @@ class LineCutWindow(QtWidgets.QWidget):
 
         # Plotting widgets
         self.reset_plot_limits_button = QtWidgets.QPushButton('Autoscale axes')
+        self.plot_against_label = QtWidgets.QLabel('Plot against:')
+        self.plot_against_box = QtWidgets.QComboBox() #For diagonal linecuts
+        self.plot_against_box.addItems([f'X: {self.parent.settings['xlabel']}',f'Y: {self.parent.settings['ylabel']}','sqrt((x-x0)^2+(y-y0)^2)'])
         self.save_button = QtWidgets.QPushButton('Save Data')
         self.save_image_button = QtWidgets.QPushButton('Save Image')
         self.copy_image_button = QtWidgets.QPushButton('Copy Image')
@@ -143,6 +146,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.cuts_table.itemClicked.connect(self.item_clicked)
 
         self.reset_plot_limits_button.clicked.connect(self.autoscale_axes)
+        self.plot_against_box.currentIndexChanged.connect(self.update)
         self.save_button.clicked.connect(self.save_data)
         self.save_image_button.clicked.connect(self.save_image)
         self.copy_image_button.clicked.connect(self.copy_image)
@@ -209,6 +213,9 @@ class LineCutWindow(QtWidgets.QWidget):
         # Populating
         #self.top_buttons_layout.addWidget(self.navi_toolbar)
         self.top_buttons_layout.addWidget(self.reset_plot_limits_button)
+        if self.orientation =='diagonal':
+            self.top_buttons_layout.addWidget(self.plot_against_label)
+            self.top_buttons_layout.addWidget(self.plot_against_box)
         self.top_buttons_layout.addStretch()
         self.top_buttons_layout.addWidget(self.save_button)
         self.top_buttons_layout.addWidget(self.save_image_button)
@@ -1040,8 +1047,19 @@ class LineCutWindow(QtWidgets.QWidget):
                 y_diag = np.linspace(i_y0, i_y1, n)
                 y = map_coordinates(self.parent.processed_data[-1], 
                                         np.vstack((x_diag, y_diag)))
-                x = map_coordinates(self.parent.processed_data[0],
+                if self.plot_against_box.currentText().split(':')[0] == 'X':
+                    x = map_coordinates(self.parent.processed_data[0],
                                         np.vstack((x_diag, y_diag)))
+                elif self.plot_against_box.currentText().split(':')[0] == 'Y':
+                    x = map_coordinates(self.parent.processed_data[1],
+                                        np.vstack((x_diag, y_diag)))
+                else:
+                    x_dummy=map_coordinates(self.parent.processed_data[0],
+                                        np.vstack((x_diag, y_diag)))
+                    y_dummy=map_coordinates(self.parent.processed_data[1],
+                                        np.vstack((x_diag, y_diag)))
+                    x = np.sqrt((x_dummy-x0)**2+(y_dummy-y0)**2)
+
             if self.orientation == 'circular':
                 n = int(8*np.sqrt((i_x0-i_x1)**2+(i_y0-i_y1)**2))
                 theta = np.linspace(0, 2*np.pi, n)
@@ -1103,16 +1121,24 @@ class LineCutWindow(QtWidgets.QWidget):
 
         elif self.orientation == 'diagonal' or self.orientation == 'circular':
             for line in lines:
-                x,y,z = self.get_line_data(line)
-                if self.orientation == 'diagonal':
-                    self.xlabel = self.parent.settings['xlabel']
-                    #self.title = f'({x0:5g},{y0:5g}) : ({x1:5g},{y1:5g})'
-                elif self.orientation == 'circular':
-                    self.xlabel = 'Angle (rad)'
+                try:
+                    x,y,z = self.get_line_data(line)
+                    if self.orientation == 'diagonal':
+                        if self.plot_against_box.currentText().split(':')[0] == 'X':
+                            self.xlabel = self.parent.settings['xlabel']
+                        elif self.plot_against_box.currentText().split(':')[0] == 'Y':
+                            self.xlabel = self.parent.settings['ylabel']
+                        else:
+                            self.xlabel = '$\sqrt{(x-x_0)^2+(y-y_0)^2}$'
+                        #self.title = f'({x0:5g},{y0:5g}) : ({x1:5g},{y1:5g})'
+                    elif self.orientation == 'circular':
+                        self.xlabel = 'Angle (rad)'
 
-                offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
-                self.axes.plot(x, y+offset, linewidth=1.5,
-                                color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
+                    offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
+                    self.axes.plot(x, y+offset, linewidth=1.5,
+                                    color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
+                except Exception as e:
+                    print(e)
 
         self.ylabel = self.parent.settings['clabel']
         self.cursor = Cursor(self.axes, useblit=True, color='grey', linewidth=0.5)
