@@ -465,7 +465,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             elif which == 'unchecked':
                 items = self.get_unchecked_items()
             update_plots = any([item.checkState() == 2 for item in items]) # only update plots if any of the items are checked
-            for item in items: 
+            for item in items:
+                if hasattr(item.data,'sidebar1D'):
+                    item.data.sidebar1D.close()
+                if hasattr(item.data, 'linecuts'):
+                    for orientation in item.data.linecuts.keys():
+                        if item.data.linecuts[orientation]['linecut_window']:
+                            item.data.linecuts[orientation]['linecut_window'].close()
                 if (item.data.filepath in self.linked_files
                     and not hasattr(item, 'duplicate')):
                     self.linked_files.remove(item.data.filepath)
