@@ -565,6 +565,11 @@ class InternalData(BaseClassData):
             column_data=[x,y]
         return column_data
     
+    def copy(self):
+        # Copy the data to a new object.
+        new_data = InternalData(self.canvas, self.loaded_data, self.label, self.all_parameter_names,self.dim)
+        return new_data
+    
 # class MixedInternalData(BaseClassData):
 #     # Class for combination of a single 2D dataset and various 1D datasets.
 #     def __init__(self, canvas, twoDdataset, oneDdatasets,  label_name, all_2d_parameter_names, all_1d_parameter_names):

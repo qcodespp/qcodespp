@@ -1448,7 +1448,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 X = self.new_plot_X_box.currentText()
                 Y = self.new_plot_Y_box.currentText()
                 Z = self.new_plot_Z_box.currentText()
-            self.open_files(filepaths=[original_item.data.filepath],overrideautocheck=True)
+            if isinstance(original_item.data, InternalData):
+                try:
+                    self.add_internal_data(DataItem(original_item.data.copy()),check_item=False,uncheck_others=False)
+                except Exception as e:
+                    print('Cannot duplicate internal data:', e)
+            else:
+                self.open_files(filepaths=[original_item.data.filepath],overrideautocheck=True)
             new_item = self.file_list.currentItem()
             new_item.duplicate = True
             new_item.data.settings = original_item.data.settings.copy()
@@ -1477,7 +1483,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if new_plot_button:
                 new_item.data.settings['X data'] = X
                 new_item.data.settings['Y data'] = Y
-                if new_item.data.dim==3:
+                if original_item.data.dim==3:
                     new_item.data.settings['Z data'] = Z
                 else:
                     new_item.data.prepare_data_for_plot()
