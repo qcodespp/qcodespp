@@ -187,7 +187,7 @@ class Sidebar1D(QtWidgets.QWidget):
     def set_main_layout(self):
         self.main_layout = QtWidgets.QVBoxLayout()
 
-        self.tablebox=QtWidgets.QGroupBox('1D traces')
+        self.tablebox=QtWidgets.QGroupBox(f'1D traces: {self.parent.label}')
         self.table_layout = QtWidgets.QVBoxLayout()
         self.table_layout.addLayout(self.table_buttons_layout_top)
         self.table_layout.addLayout(self.table_buttons_layout_bot)

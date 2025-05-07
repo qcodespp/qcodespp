@@ -26,10 +26,12 @@ DARK_THEME = True
 from .helpers import rcParams_to_dark_theme, rcParams_to_light_theme, cmaps,DraggablePoint
 
 class LineCutWindow(QtWidgets.QWidget):
-    def __init__(self, parent, orientation, init_cmap='viridis',init_canvas=True):
+    def __init__(self, parent, orientation, init_cmap='viridis',init_canvas=True,editor_window=None):
         super().__init__()
         # The parent is the DATA object.
         self.parent = parent
+        # self.editor_window is the main window.
+        self.editor_window = editor_window
         self.running = True
         self.orientation = orientation
         self.init_cmap = init_cmap
@@ -1295,10 +1297,14 @@ class LineCutWindow(QtWidgets.QWidget):
             success=False
         if success:
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
-                self, 'Save Fiting Result','', 'numpy dat file (*.dat)')
+                self, 'Save dependency of fitted parameters','', 'numpy dat file (*.dat)')
             if filename:
                 np.savetxt(filename, data, delimiter='\t', header=header, fmt='%s')
-                print('Saved!')
+                print(f'Saved to {filename}')
+                try:
+                    self.editor_window.open_files([filename],overrideautocheck=True)
+                except Exception as e:
+                    print('Could not open dependency in editor:', e)
 
     def save_image(self):
         formats = 'Portable Network Graphic (*.png);;Adobe Acrobat (*.pdf)'

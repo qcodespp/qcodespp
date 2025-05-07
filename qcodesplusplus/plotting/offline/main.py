@@ -392,35 +392,35 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                     self.file_checked(item)
                                     overrideautocheck=True #If any item is checked, override autochecking. But if NONE of them are checked, let autocheck do it's thing.
                             
-                            if hasattr(item.data,'linecuts'):
-                                for orientation in item.data.linecuts.keys():
-                                    if len(item.data.linecuts[orientation]['lines']) > 0:
-                                        for line in item.data.linecuts[orientation]['lines'].keys():
-                                            if 'fit' in item.data.linecuts[orientation]['lines'][line].keys():
-                                                item.data.linecuts[orientation]['lines'][line]['fit']['fit_result'] = load_modelresult(dirpath+'/igtemp/'+item.data.linecuts[orientation]['lines'][line]['fit']['fit_result']+'.sav')
-                                            if 'draggable_points' in item.data.linecuts[orientation]['lines'][line].keys():
-                                                points=item.data.linecuts[orientation]['lines'][line]['points']
-                                                item.data.linecuts[orientation]['lines'][line]['draggable_points'] = [DraggablePoint(item.data,points[0][0],points[0][1],line,orientation),
-                                                DraggablePoint(item.data,points[1][0],points[1][1],line,orientation,draw_line=True)]
-                                    #Then make the linecut window
-                                        item.data.linecuts[orientation]['linecut_window'] = LineCutWindow(item.data,orientation=orientation,init_cmap='plasma')
-                                        item.data.linecuts[orientation]['linecut_window'].running = True
-                                        for line in item.data.linecuts[orientation]['lines']:
-                                            item.data.linecuts[orientation]['linecut_window'].append_cut_to_table(line)
-                                        item.data.linecuts[orientation]['linecut_window'].activateWindow()
-                                        item.data.linecuts[orientation]['linecut_window'].update()
-                                        item.data.linecuts[orientation]['linecut_window'].show()
-                            
-                            if hasattr(item.data,'plotted_lines'):
-                                if len(item.data.plotted_lines) > 0:
-                                    item.data.sidebar1D = Sidebar1D(item.data,self)
-                                    item.data.sidebar1D.running = True
-                                    for line in item.data.plotted_lines.keys():
-                                        if 'fit' in item.data.plotted_lines[line].keys():
-                                            item.data.plotted_lines[line]['fit']['fit_result'] = load_modelresult(dirpath+'/igtemp/'+item.data.plotted_lines[line]['fit']['fit_result']+'.sav')
-                                    for line in item.data.plotted_lines:
-                                        item.data.sidebar1D.append_trace_to_table(line)
-                                    item.data.sidebar1D.update()
+                        if hasattr(item.data,'linecuts'):
+                            for orientation in item.data.linecuts.keys():
+                                if len(item.data.linecuts[orientation]['lines']) > 0:
+                                    for line in item.data.linecuts[orientation]['lines'].keys():
+                                        if 'fit' in item.data.linecuts[orientation]['lines'][line].keys():
+                                            item.data.linecuts[orientation]['lines'][line]['fit']['fit_result'] = load_modelresult(dirpath+'/igtemp/'+item.data.linecuts[orientation]['lines'][line]['fit']['fit_result']+'.sav')
+                                        if 'draggable_points' in item.data.linecuts[orientation]['lines'][line].keys():
+                                            points=item.data.linecuts[orientation]['lines'][line]['points']
+                                            item.data.linecuts[orientation]['lines'][line]['draggable_points'] = [DraggablePoint(item.data,points[0][0],points[0][1],line,orientation),
+                                            DraggablePoint(item.data,points[1][0],points[1][1],line,orientation,draw_line=True)]
+                                #Then make the linecut window
+                                    item.data.linecuts[orientation]['linecut_window'] = LineCutWindow(item.data,orientation=orientation,init_cmap='plasma',editor_window=self)
+                                    item.data.linecuts[orientation]['linecut_window'].running = True
+                                    for line in item.data.linecuts[orientation]['lines']:
+                                        item.data.linecuts[orientation]['linecut_window'].append_cut_to_table(line)
+                                    item.data.linecuts[orientation]['linecut_window'].activateWindow()
+                                    item.data.linecuts[orientation]['linecut_window'].update()
+                                    item.data.linecuts[orientation]['linecut_window'].show()
+                        
+                        if hasattr(item.data,'plotted_lines'):
+                            if len(item.data.plotted_lines) > 0:
+                                item.data.sidebar1D = Sidebar1D(item.data,self)
+                                item.data.sidebar1D.running = True
+                                for line in item.data.plotted_lines.keys():
+                                    if 'fit' in item.data.plotted_lines[line].keys():
+                                        item.data.plotted_lines[line]['fit']['fit_result'] = load_modelresult(dirpath+'/igtemp/'+item.data.plotted_lines[line]['fit']['fit_result']+'.sav')
+                                for line in item.data.plotted_lines:
+                                    item.data.sidebar1D.append_trace_to_table(line)
+                                item.data.sidebar1D.update()
                             
                 except Exception as e:
                     print(f'Failed to open {filepath}:', e)
@@ -739,8 +739,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.update_plots()
     
     def file_clicked(self):
-        self.show_current_all()
         current_item = self.file_list.currentItem()
+        self.show_current_all()
         for i in reversed(range(self.oneD_layout.count())): 
             widgetToRemove = self.oneD_layout.itemAt(i).widget()
             # remove it from the layout list
@@ -1449,10 +1449,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 Y = self.new_plot_Y_box.currentText()
                 Z = self.new_plot_Z_box.currentText()
             if isinstance(original_item.data, InternalData):
-                try:
-                    self.add_internal_data(DataItem(original_item.data.copy()),check_item=False,uncheck_others=False)
-                except Exception as e:
-                    print('Cannot duplicate internal data:', e)
+                self.add_internal_data(DataItem(original_item.data.copy()),check_item=False,uncheck_others=False)
             else:
                 self.open_files(filepaths=[original_item.data.filepath],overrideautocheck=True)
             new_item = self.file_list.currentItem()
@@ -1945,7 +1942,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                                                                 'offset':0,
                                                                                 'linecolor':line_colors[int(index_x)]}
                         if data.linecuts[orientation]['linecut_window']==None:
-                            data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,init_cmap=selected_colormap.name)
+                            data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,init_cmap=selected_colormap.name,editor_window=self)
                         data.linecuts[orientation]['linecut_window'].running = True
                         data.linecuts[orientation]['linecut_window'].append_cut_to_table(int(max_index+1))
                         data.linecuts[orientation]['linecut_window'].update()
@@ -2050,7 +2047,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     selected_colormap = cm.get_cmap('plasma')
                 else:
                     selected_colormap = cm.get_cmap('viridis')
-                data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,init_cmap=selected_colormap.name)
+                data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,init_cmap=selected_colormap.name,editor_window=self)
 
             # For diagonal/circular linecuts, need to make a new line each time. For hori/vert just open the window.
             if orientation == 'diagonal':
@@ -2093,7 +2090,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             data.linecut_points.append(DraggablePoint(data, x, y+data.yr,
                                                       draw_circle=True))
             if not hasattr(data, 'linecut_window'):
-                data.linecut_window = LineCutWindow(data,orientation='circular')
+                data.linecut_window = LineCutWindow(data,orientation='circular',editor_window=self)
             else:
                 data.linecut_window.orientation='circular'
             data.linecut_window.running = True
