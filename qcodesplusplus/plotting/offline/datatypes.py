@@ -504,3 +504,41 @@ class NumpyData(BaseClassData):
     def prepare_data_for_plot(self, reload_data=False):
         self.copy_raw_to_processed_data()
         self.apply_all_filters()
+
+
+
+class InternalData(BaseClassData):
+    # Class for datasets that are not saved to file, but are created in the program.
+    # Combined files, fitting results....
+    def __init__(self, canvas, dataset, name, all_parameter_names):
+        super().__init__(filepath='internal_data', canvas=canvas)
+
+        self.loaded_data = dataset
+        self.canvas = canvas
+        self.all_parameter_names = all_parameter_names
+        self.param_name_dict={}
+        for i,name in enumerate(self.all_parameter_names):
+            self.param_name_dict[name]=i
+        self.label = name
+
+        self.prepare_dataset()
+
+    def prepare_dataset(self):
+        # prepare_dataset usually loads the data; here we have already loaded it, just need to set the names.
+
+        self.settings['X data'] = self.all_parameter_names[0]
+        self.settings['Y data'] = self.all_parameter_names[1]
+        self.settings['xlabel'] = self.all_parameter_names[0]
+        self.settings['ylabel'] = self.all_parameter_names[1]
+        if self.loaded_data[0][0,1] == self.loaded_data[0][0,0] and len(self.all_parameter_names) > 2:
+            self.settings['Z data'] = self.all_parameter_names[2]
+            self.settings['clabel'] = self.all_parameter_names[2]
+            self.dim=3
+        else:
+            self.dim=2
+        self.settings_menu_options = {'X data': self.all_parameter_names,
+                                'Y data': self.all_parameter_names,
+                                'Z data': self.all_parameter_names}
+        self.filter_menu_options = {'Multiply': self.all_parameter_names,
+                                    'Divide': self.all_parameter_names,
+                                    'Offset': self.all_parameter_names}

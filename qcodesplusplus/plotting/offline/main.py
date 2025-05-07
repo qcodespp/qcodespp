@@ -44,7 +44,7 @@ from .helpers import (cmaps, MidpointNormalize,NavigationToolbarMod,
                       rcParams_to_dark_theme,rcParams_to_light_theme,
                       NoScrollQComboBox,DraggablePoint)
 from .filters import Filter
-from .datatypes import DataItem, BaseClassData, NumpyData
+from .datatypes import DataItem, BaseClassData, NumpyData, InternalData
 from .qcodes_pp_extension import qcodesppData
 
 # UI settings
@@ -434,6 +434,20 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     last_item.setCheckState(QtCore.Qt.Checked)
                     self.file_checked(last_item)
         self.file_list.itemChanged.connect(self.file_checked)
+
+    def add_internal_data(self,item,check_item=True,uncheck_others=True):
+        # Add internal data to the file list (from combined plots/files, fitting dependency, etc)
+        self.file_list.itemChanged.disconnect(self.file_checked)
+        self.file_list.addItem(item)
+        self.file_list.setCurrentItem(item)
+        if uncheck_others:
+            for item_index in range(self.file_list.count()-1):
+                self.file_list.item(item_index).setCheckState(QtCore.Qt.Unchecked)
+        if check_item:
+            item.setCheckState(QtCore.Qt.Checked)
+            self.file_checked(item)
+        self.file_list.itemChanged.connect(self.file_checked)
+
     
     def remove_files(self, which='current'):
         if self.file_list.count() > 0:
@@ -1378,7 +1392,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             menu = QtWidgets.QMenu(self)
             actions = ['Duplicate (Ctrl+D)','Remove file','Check all','Uncheck all','Clear list','Remove unchecked']
             if len(checked_items) > 1:
-                actions.append('Combine plots')
+                actions.append('Combine checked files')
             for entry in actions:
                 action = QtWidgets.QAction(entry, self)
                 menu.addAction(action)
@@ -1409,7 +1423,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.remove_files(which='all')
             elif signal.text() == 'Remove unchecked':
                 self.remove_files(which='unchecked')
-            elif signal.text() == 'Combine plots':
+            elif signal.text() == 'Combine checked files':
                 try:
                     self.combine_plots()
                 except Exception as e:
@@ -1462,17 +1476,43 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if checked_items:
             try:
                 data_list = []
-                three_dimensional_data = False
+                name=f'Combined: '
                 for item in checked_items:
                     data_list.append(item.data)
-                    if len(item.data.get_columns()) != 2:
-                         three_dimensional_data = True
+                    name+=item.data.label[:15]+'..., '
+
+                # If sets of 2D datasets, stack them along the x-axis. Requires y axis has same dimension for all datasets
+                if all([len(item.get_columns()) == 3 for item in data_list]):
+                    if not all(item.all_parameter_names == data_list[0].all_parameter_names for item in data_list):
+                        raise ValueError('Cannot combine 2D datasets with different parameters.')
+                    elif not all(item.get_columns()[1] == data_list[0].get_columns()[1] for item in data_list):
+                        raise ValueError('Cannot combine 2D datasets with different y axes.')
+                    else:
+                        combined_data=[]
+                        for i,array in enumerate(data_list[0].loaded_data):
+                            try:
+                                combined_data.append(np.vstack([data_list[j].loaded_data[i] for j in range(len(data_list))]))
+                            except ValueError:
+                                try:
+                                    combined_data.append(np.hstack([data_list[j].loaded_data[i] for j in range(len(data_list))]))
+                                except ValueError:
+                                    print(f'Error combining data for {data_list[0].all_parameter_names[i]}: Check data dimensions.')
+                        # for qcodespp data, the X axis is often '1D', so need to tile it out.
+                        if len(combined_data[0].shape) == 1:
+                            combined_data[0]=np.tile(combined_data[0],(combined_data[1].shape[1],1)).T
+                    combined_item=DataItem(InternalData(self.canvas,combined_data,name,data_list[0].all_parameter_names))
+                    self.add_internal_data(combined_item)
+
+                elif all([len(item.get_columns()) == 2 for item in data_list]):
+                    0
                 # if not three_dimensional_data:
                     #self.multi_plot_window = MultiPlotWindow(data_list)
                     #self.multi_plot_window.draw_plot()
                     #self.multi_plot_window.show()
                 # else:
                 #     print('Cannot combine three-dimensional data')
+
+                
             except Exception as e:
                 print('Cannot combine data:', e)
     

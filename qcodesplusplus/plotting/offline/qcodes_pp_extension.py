@@ -34,6 +34,7 @@ class qcodesppData(main.BaseClassData):
                 self.dataset=load_data(os.path.dirname(filepath))
             else:
                 self.dataset=load_data(filepath)
+            self.loaded_data = [self.dataset.arrays[array] for array in self.dataset.arrays]
 
             self.identify_independent_vars()
 
@@ -152,6 +153,7 @@ class qcodesppData(main.BaseClassData):
                 self.dataset=load_data(os.path.dirname(self.filepath))
             else:
                 self.dataset=load_data(self.filepath)
+            self.loaded_data = [self.dataset.arrays[array] for array in self.dataset.arrays]
 
             self.identify_independent_vars()
 
