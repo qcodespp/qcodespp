@@ -65,7 +65,7 @@ class BaseClassData:
         self.canvas = canvas
         self.label = os.path.basename(self.filepath)
 
-        self.data=None
+        self.loaded_data=None
         
         self.settings = self.DEFAULT_PLOT_SETTINGS.copy()
         self.view_settings = self.DEFAULT_VIEW_SETTINGS.copy()
@@ -82,9 +82,9 @@ class BaseClassData:
 
     def prepare_dataset(self):
         try:
-            self.data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter']).T
+            self.loaded_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter']).T
         except ValueError: # Can occur if python doesn't recognise a header
-            self.data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'],skip_header=1).T
+            self.loaded_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'],skip_header=1).T
         
         try: # to get column names if there is a header. Avoid using genfromtxt as it doesn't have enough options to work all the time.
             with open(self.filepath, 'r') as f:
@@ -104,19 +104,19 @@ class BaseClassData:
             pass
 
         if not hasattr(self,'param_name_dict'):
-            self.all_parameter_names=[f"column_{i}" for i in range(self.data.shape[0])]
+            self.all_parameter_names=[f"column_{i}" for i in range(self.loaded_data.shape[0])]
             self.param_name_dict={}
             for i,name in enumerate(self.all_parameter_names):
                 self.param_name_dict[name]=i
 
-        self.measured_data_points = self.data.shape[0]
+        self.measured_data_points = self.loaded_data.shape[0]
 
         self.settings['X data'] = self.all_parameter_names[0]
         self.settings['Y data'] = self.all_parameter_names[1]
         self.settings['xlabel'] = self.all_parameter_names[0]
         self.settings['ylabel'] = self.all_parameter_names[1]
 
-        if self.data[0,1] == self.data[0,0] and len(self.all_parameter_names) > 2:
+        if self.loaded_data[0,1] == self.loaded_data[0,0] and len(self.all_parameter_names) > 2:
             self.settings['Z data'] = self.all_parameter_names[2]
             self.settings['clabel'] = self.all_parameter_names[2]
             self.dim=3
@@ -137,10 +137,10 @@ class BaseClassData:
         else:
             names = [self.settings['X data'], self.settings['Y data']]
 
-        x=self.data[self.param_name_dict[names[0]]]
-        y=self.data[self.param_name_dict[names[1]]]
+        x=self.loaded_data[self.param_name_dict[names[0]]]
+        y=self.loaded_data[self.param_name_dict[names[1]]]
         if 'Z data' in self.settings.keys():
-            z=self.data[self.param_name_dict[self.settings['Z data']]]
+            z=self.loaded_data[self.param_name_dict[self.settings['Z data']]]
             column_data=np.column_stack((x,y,z))
         else:
             column_data=np.column_stack((x,y))
@@ -150,7 +150,7 @@ class BaseClassData:
         return [int(col) for col in self.settings['columns'].split(',')]
     
     def load_and_reshape_data(self,reload=False,reload_from_file=False,linefrompopup=None):
-        if reload_from_file or self.data is None:
+        if reload_from_file or self.loaded_data is None:
             self.prepare_dataset()
         column_data = self.get_column_data(linefrompopup)
         if column_data.ndim == 1: # if empty array or single-row array
@@ -186,17 +186,19 @@ class BaseClassData:
                 
                 # Determine if file is 2D or 3D by checking if first two values in first column are repeated
                 if column_data[1,columns[0]] != column_data[0,columns[0]] or len(columns) == 2:
-                    self.raw_data = [column_data[:,x] for x in range(column_data.shape[1])]            
+                    self.raw_data = [column_data[:,x] for x in range(column_data.shape[1])]
                     columns = columns[:2]
                 else: 
                     # flip if first column is sorted from high to low 
                     if unique_values[1] < unique_values[0]: 
                         column_data = np.flipud(column_data)
+                        self.udflipped = True
                     self.raw_data = [np.reshape(column_data[:data_shape[0]*data_shape[1],x], data_shape) 
                                      for x in range(column_data.shape[1])]
                     # flip if second column is sorted from high to low
                     if self.raw_data[1][0,0] > self.raw_data[1][0,1]: 
                         self.raw_data = [np.fliplr(self.raw_data[x]) for x in range(column_data.shape[1])]
+                        self.lrflipped = True
                         
             elif data_shape[0] == 1: # if first two sweeps are not finished -> duplicate data of first sweep to enable 3D plotting
                 self.raw_data = [np.tile(column_data[:data_shape[1],x], (2,1)) for x in range(column_data.shape[1])]    
@@ -207,6 +209,19 @@ class BaseClassData:
                     self.raw_data[columns[0]][0,:] = unique_values[0]-1
                     self.raw_data[columns[0]][1,:] = unique_values[0]+1
             self.settings['columns'] = ','.join([str(i) for i in columns])
+
+    def shape_single_array(self,array): # Needed to reshape arrays of 2D data that do not get added to raw_data
+        if self.dim == 2: # i.e. do nothing.
+            return array
+        elif self.dim == 3:
+            data_shape = self.raw_data[-1].shape
+            array = np.reshape(array, data_shape) 
+            if hasattr(self,'udflipped'):
+                array = np.flipud(array)
+            if hasattr(self,'lrflipped'):
+                array = np.fliplr(array)
+            return array
+
 
     def copy_raw_to_processed_data(self,line=None):
         if line is not None:
@@ -402,12 +417,8 @@ class BaseClassData:
                 arrayname=filt.settings[0]
                 setting2='+'
             if arrayname in self.all_parameter_names:
-                if self.dim==2:
-                    array=self.data[self.param_name_dict[arrayname]]
-                if hasattr(self,'udflipped'):
-                    array=np.flipud(array)
-                if hasattr(self,'lrflipped'):
-                    array=np.fliplr(array)
+                array=self.shape_single_array(self.loaded_data[self.param_name_dict[arrayname]])
+
             else:
                 array=None
             processed_data = filt.function(processed_data,
