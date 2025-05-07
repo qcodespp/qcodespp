@@ -1346,17 +1346,18 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def paste_filters(self, which='copied'):
         current_item = self.file_list.currentItem()
         if current_item:
-            if hasattr(current_item.data, 'sidebar1D'):
-                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
-                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
-                filters= current_item.data.plotted_lines[current_line]['filters']
-            else:
-                filters = current_item.data.filters
             if which == 'copied':
                 if self.copied_filters:
                     filters = copy.deepcopy(self.copied_filters)
             elif which == 'old':
                 filters = copy.deepcopy(current_item.data.old_filters)
+            if hasattr(current_item.data, 'sidebar1D'):
+                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
+                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
+                current_item.data.plotted_lines[current_line]['filters']=filters
+            else:
+                current_item.data.filters=filters
+
             self.show_current_filters()
             current_item.data.apply_all_filters()
             self.show_current_view_settings()

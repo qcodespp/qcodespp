@@ -2,6 +2,8 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 from json import load as jsonload
 from json import dump as jsondump
 
+import copy
+
 import qcodesplusplus.plotting.offline.fits as fits
 
 from matplotlib import colormaps as cm
@@ -35,6 +37,7 @@ class Sidebar1D(QtWidgets.QWidget):
 
         self.trace_table = QtWidgets.QTableWidget()
 
+        self.duplicate_trace_button = QtWidgets.QPushButton('Duplicate')
         self.move_up_button = QtWidgets.QPushButton('Move Up')
         self.move_down_button = QtWidgets.QPushButton('Move Down')
 
@@ -92,6 +95,7 @@ class Sidebar1D(QtWidgets.QWidget):
         self.add_trace_button.clicked.connect(self.add_trace_manually)
         self.remove_trace_button.clicked.connect(lambda: self.remove_trace('selected'))
         self.clear_traces_button.clicked.connect(lambda: self.remove_trace('all'))
+        self.duplicate_trace_button.clicked.connect(self.duplicate_trace)
         self.move_up_button.clicked.connect(lambda: self.move_trace('up'))
         self.move_down_button.clicked.connect(lambda: self.move_trace('down'))
         self.apply_button.clicked.connect(self.apply_colormap)
@@ -127,6 +131,7 @@ class Sidebar1D(QtWidgets.QWidget):
         self.table_buttons_layout_top.addWidget(self.clear_traces_button)
         self.table_buttons_layout_top.addStretch()
 
+        self.table_buttons_layout_bot.addWidget(self.duplicate_trace_button)
         self.table_buttons_layout_bot.addWidget(self.move_up_button)
         self.table_buttons_layout_bot.addWidget(self.move_down_button)
         self.table_buttons_layout_bot.addStretch()
@@ -257,7 +262,22 @@ class Sidebar1D(QtWidgets.QWidget):
             return checked_items, indices
         else:
             return checked_items
-
+        
+    def duplicate_trace(self):
+        try:
+            max_index=np.max(list(self.parent.plotted_lines.keys()))
+        except ValueError:
+            max_index=-1
+        current_row = self.trace_table.currentRow()
+        try:
+            line = int(self.trace_table.item(current_row,0).text())
+            new_line = int(max_index+1)
+            self.parent.plotted_lines[new_line] = copy.deepcopy(self.parent.plotted_lines[line])
+            self.append_trace_to_table(new_line)
+            self.editor_window.show_current_plot_settings()
+            self.update()
+        except Exception as e:
+            print('Cannot duplicate data: '+e)
     def add_trace_manually(self): # When 'add' button pressed
         try:
             max_index=np.max(list(self.parent.plotted_lines.keys()))

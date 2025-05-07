@@ -241,9 +241,11 @@ class qcodesppData(main.BaseClassData):
                                       'Y data': self.all_parameter_names,
                                       'Z data': self.all_parameter_names}
         
-        self.filter_menu_options = {'Multiply': self.all_parameter_names,
-                                    'Divide': self.all_parameter_names,
-                                    'Offset': self.all_parameter_names}
+        negparamnames=[f'-{name}' for name in self.all_parameter_names]
+        allnames=np.hstack((self.all_parameter_names,negparamnames))
+        self.filter_menu_options = {'Multiply': allnames,
+                                    'Divide': allnames,
+                                    'Offset': allnames}
         
 
     def apply_single_filter(self, processed_data, filt):

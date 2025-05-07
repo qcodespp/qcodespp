@@ -126,9 +126,11 @@ class BaseClassData:
         self.settings_menu_options = {'X data': self.all_parameter_names,
                                 'Y data': self.all_parameter_names,
                                 'Z data': self.all_parameter_names}
-        self.filter_menu_options = {'Multiply': self.all_parameter_names,
-                                    'Divide': self.all_parameter_names,
-                                    'Offset': self.all_parameter_names}
+        negparamnames=[f'-{name}' for name in self.all_parameter_names]
+        allnames=np.hstack((self.all_parameter_names,negparamnames))
+        self.filter_menu_options = {'Multiply': allnames,
+                                    'Divide': allnames,
+                                    'Offset': allnames}
 
     def get_column_data(self,line=None):
         if line is not None:
@@ -537,11 +539,11 @@ class InternalData(BaseClassData):
         self.settings_menu_options = {'X data': self.all_parameter_names,
                                 'Y data': self.all_parameter_names,
                                 'Z data': self.all_parameter_names}
-        self.filter_menu_options = {'Multiply': self.all_parameter_names,
-                                    'Divide': self.all_parameter_names,
-                                    'Offset': self.all_parameter_names}
-        
-        # In the case of 1D data, we should add an initial line and open the sidebar
+        negparamnames=[f'-{name}' for name in self.all_parameter_names]
+        allnames=np.hstack((self.all_parameter_names,negparamnames))
+        self.filter_menu_options = {'Multiply': allnames,
+                                    'Divide': allnames,
+                                    'Offset': allnames}
         
     def load_and_reshape_data(self,reload=False,reload_from_file=False,linefrompopup=None):
         # For combined files, the data is already loaded and reshaped.
@@ -558,7 +560,8 @@ class InternalData(BaseClassData):
 
         x=self.loaded_data[self.param_name_dict[names[0]]]
         y=self.loaded_data[self.param_name_dict[names[1]]]
-        if 'Z data' in self.settings.keys():
+
+        if line is None and 'Z data' in self.settings.keys():
             z=self.loaded_data[self.param_name_dict[self.settings['Z data']]]
             column_data=[x,y,z]
         else:
@@ -570,18 +573,28 @@ class InternalData(BaseClassData):
         new_data = InternalData(self.canvas, self.loaded_data, self.label, self.all_parameter_names,self.dim)
         return new_data
     
-# class MixedInternalData(BaseClassData):
-#     # Class for combination of a single 2D dataset and various 1D datasets.
-#     def __init__(self, canvas, twoDdataset, oneDdatasets,  label_name, all_2d_parameter_names, all_1d_parameter_names):
-#         super().__init__(filepath='internal_data', canvas=canvas)
+class MixedInternalData(InternalData):
+    # Class for combination of a single 2D dataset and various 1D datasets.
+    def __init__(self, canvas, dataset2d, dataset1d,  label_name, all_parameter_names_2d, all_parameter_names_1d):
+        super().__init__(filepath='internal_data', canvas=canvas)
 
-#         self.loaded_data = dataset
-#         self.canvas = canvas
-#         self.all_parameter_names = all_parameter_names
-#         self.param_name_dict={}
-#         for i,name in enumerate(self.all_parameter_names):
-#             self.param_name_dict[name]=i
-#         self.label = label_name
-#         self.dim = dimension
+        self.loaded_data_2d = dataset2d
+        self.loaded_data_1d = dataset1d
+        self.canvas = canvas
+        self.all_parameter_names_2d = all_parameter_names_2d
+        self.all_parameter_names_1d = all_parameter_names_1d
+        self.param_name_dict_2d={}
+        self.param_name_dict_1d={}
+        for i,name in enumerate(self.all_parameter_names_2d):
+            self.param_name_dict_2d[name]=i
+        for i,name in enumerate(self.all_parameter_names_1d):
+            self.param_name_dict_1d[name]=i
+        self.label = label_name
+        self.dim = 'mixed'
 
-#         self.prepare_dataset()
+        self.prepare_dataset()
+
+    def copy(self):
+        # Copy the data to a new object.
+        new_data = MixedInternalData(self.canvas, self.loaded_data_2d, self.loaded_data_1d, self.label, self.all_parameter_names_2d, self.all_parameter_names_1d)
+        return new_data
