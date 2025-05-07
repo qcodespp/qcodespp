@@ -509,7 +509,7 @@ class NumpyData(BaseClassData):
 class InternalData(BaseClassData):
     # Class for datasets that are not saved to file, but are created in the program.
     # Combined files, fitting results....
-    def __init__(self, canvas, dataset, label_name, all_parameter_names):
+    def __init__(self, canvas, dataset, label_name, all_parameter_names,dimension):
         super().__init__(filepath='internal_data', canvas=canvas)
 
         self.loaded_data = dataset
@@ -519,6 +519,7 @@ class InternalData(BaseClassData):
         for i,name in enumerate(self.all_parameter_names):
             self.param_name_dict[name]=i
         self.label = label_name
+        self.dim = dimension
 
         self.prepare_dataset()
 
@@ -529,12 +530,10 @@ class InternalData(BaseClassData):
         self.settings['Y data'] = self.all_parameter_names[1]
         self.settings['xlabel'] = self.all_parameter_names[0]
         self.settings['ylabel'] = self.all_parameter_names[1]
-        if self.loaded_data[0][0,1] == self.loaded_data[0][0,0] and len(self.all_parameter_names) > 2:
+        if self.dim==3:
             self.settings['Z data'] = self.all_parameter_names[2]
             self.settings['clabel'] = self.all_parameter_names[2]
-            self.dim=3
-        else:
-            self.dim=2
+
         self.settings_menu_options = {'X data': self.all_parameter_names,
                                 'Y data': self.all_parameter_names,
                                 'Z data': self.all_parameter_names}
@@ -542,10 +541,13 @@ class InternalData(BaseClassData):
                                     'Divide': self.all_parameter_names,
                                     'Offset': self.all_parameter_names}
         
+        # In the case of 1D data, we should add an initial line and open the sidebar
+        
     def load_and_reshape_data(self,reload=False,reload_from_file=False,linefrompopup=None):
         # For combined files, the data is already loaded and reshaped.
         # Just need to set the raw_data
         self.raw_data = self.get_column_data(linefrompopup)
+        self.settings['columns'] = ','.join([str(i) for i in range(self.dim)])
     
     def get_column_data(self,line=None):
         if line is not None:

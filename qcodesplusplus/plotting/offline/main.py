@@ -1506,7 +1506,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 except ValueError:
                                     print(f'Error combining data for {parameter_name}: Check data dimensions.')
                     else:
-                        # Should be BaseClassData or some mix.
+                        # Should be BaseClassData or some mix. THIS IS NOT WELL TESTED!!!
                         combined_data=[]
                         combined_parameter_names=[]
                         for parameter_name in data_list[0].all_parameter_names:
@@ -1524,11 +1524,26 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         # If the X axis is '1D', tile it out.
                         if len(combined_data[0].shape) == 1:
                             combined_data[0]=np.tile(combined_data[0],(combined_data[1].shape[1],1)).T
-                    combined_item=DataItem(InternalData(self.canvas,combined_data,label_name,combined_parameter_names))
+                    combined_item=DataItem(InternalData(self.canvas,combined_data,label_name,combined_parameter_names,dimension=3))
                     self.add_internal_data(combined_item)
 
                 elif all([len(item.get_columns()) == 2 for item in data_list]):
-                    0
+                    # For only 1D data, it's the absolute wild west; anything goes.
+                    combined_data=[]
+                    combined_parameter_names=[]
+                    for data in data_list:
+                        for parameter_name in data.all_parameter_names:
+                            i=data.param_name_dict[parameter_name]
+                            combined_data.append(data.loaded_data[i])
+                            combined_parameter_names.append(f'{data.label[:4]}: {parameter_name}')
+                    combined_item=DataItem(InternalData(self.canvas,combined_data,label_name,combined_parameter_names,dimension=2))
+                    self.add_internal_data(combined_item)
+
+                else:
+                    print('Could not combine data. Three combinations are possible: \n'
+                          '1. All datasets are 1D'
+                          '2. All datasets are 2D with same y axis'
+                          '3. A single 2D dataset with a number of 1D datasets')
                 # if not three_dimensional_data:
                     #self.multi_plot_window = MultiPlotWindow(data_list)
                     #self.multi_plot_window.draw_plot()
