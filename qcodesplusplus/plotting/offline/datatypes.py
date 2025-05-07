@@ -285,7 +285,6 @@ class BaseClassData:
                                                   rasterized=self.settings['rasterized'])
                 if self.settings['colorbar'] == 'True':
                     self.cbar = self.figure.colorbar(self.image, orientation='vertical')
-                
                 # Remove sidebar1D if it exists
                 for i in reversed(range(editor_window.oneD_layout.count())): 
                     widgetToRemove = editor_window.oneD_layout.itemAt(i).widget()
@@ -542,3 +541,24 @@ class InternalData(BaseClassData):
         self.filter_menu_options = {'Multiply': self.all_parameter_names,
                                     'Divide': self.all_parameter_names,
                                     'Offset': self.all_parameter_names}
+        
+    def load_and_reshape_data(self,reload=False,reload_from_file=False,linefrompopup=None):
+        # For combined files, the data is already loaded and reshaped.
+        # Just need to set the raw_data
+        self.raw_data = self.get_column_data(linefrompopup)
+    
+    def get_column_data(self,line=None):
+        if line is not None:
+            names = [self.plotted_lines[line]['X data'],
+                     self.plotted_lines[line]['Y data']]
+        else:
+            names = [self.settings['X data'], self.settings['Y data']]
+
+        x=self.loaded_data[self.param_name_dict[names[0]]]
+        y=self.loaded_data[self.param_name_dict[names[1]]]
+        if 'Z data' in self.settings.keys():
+            z=self.loaded_data[self.param_name_dict[self.settings['Z data']]]
+            column_data=[x,y,z]
+        else:
+            column_data=[x,y]
+        return column_data

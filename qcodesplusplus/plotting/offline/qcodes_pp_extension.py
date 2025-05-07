@@ -35,6 +35,7 @@ class qcodesppData(main.BaseClassData):
             else:
                 self.dataset=load_data(filepath)
             self.loaded_data = [self.dataset.arrays[array] for array in self.dataset.arrays]
+            #print(self.loaded_data)
 
             self.identify_independent_vars()
 
@@ -154,6 +155,7 @@ class qcodesppData(main.BaseClassData):
             else:
                 self.dataset=load_data(self.filepath)
             self.loaded_data = [self.dataset.arrays[array] for array in self.dataset.arrays]
+            #print(self.loaded_data)
 
             self.identify_independent_vars()
 
@@ -230,6 +232,10 @@ class qcodesppData(main.BaseClassData):
             self.settings['Y data'] = self.dependent_parameter_names[self.index_dependent_parameter]
 
             self.settings.pop('Z data', None)
+            
+        self.param_name_dict={}
+        for i,name in enumerate(self.all_parameter_names):
+            self.param_name_dict[name]=i
 
         self.settings_menu_options = {'X data': self.all_parameter_names,
                                       'Y data': self.all_parameter_names,

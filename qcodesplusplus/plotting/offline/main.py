@@ -1489,18 +1489,23 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         raise ValueError('Cannot combine 2D datasets with different y axes.')
                     else:
                         combined_data=[]
-                        for i,array in enumerate(data_list[0].loaded_data):
+                        combined_parameter_names=[]
+                        for name in data_list[0].all_parameter_names:
+                            i=data_list[0].param_name_dict[name]
+                            print(i,name)
                             try:
                                 combined_data.append(np.vstack([data_list[j].loaded_data[i] for j in range(len(data_list))]))
+                                combined_parameter_names.append(name)
                             except ValueError:
                                 try:
                                     combined_data.append(np.hstack([data_list[j].loaded_data[i] for j in range(len(data_list))]))
+                                    combined_parameter_names.append(name)
                                 except ValueError:
-                                    print(f'Error combining data for {data_list[0].all_parameter_names[i]}: Check data dimensions.')
+                                    print(f'Error combining data for {name}: Check data dimensions.')
                         # for qcodespp data, the X axis is often '1D', so need to tile it out.
                         if len(combined_data[0].shape) == 1:
                             combined_data[0]=np.tile(combined_data[0],(combined_data[1].shape[1],1)).T
-                    combined_item=DataItem(InternalData(self.canvas,combined_data,name,data_list[0].all_parameter_names))
+                    combined_item=DataItem(InternalData(self.canvas,combined_data,name,combined_parameter_names))
                     self.add_internal_data(combined_item)
 
                 elif all([len(item.get_columns()) == 2 for item in data_list]):
