@@ -239,7 +239,6 @@ class BaseClassData:
             self.apply_all_filters(update_color_limits=update_color_limits)
         else:
             self.processed_data = None
-
     def add_plot(self, editor_window=None):
         if self.processed_data:
             cmap_str = self.view_settings['Colormap']
@@ -247,6 +246,7 @@ class BaseClassData:
                 cmap_str += '_r'
             cmap = cm.get_cmap(cmap_str, lut=int(self.settings['lut']))
             cmap.set_bad(self.settings['maskcolor'])
+
             if self.dim == 2:
                 if not hasattr(self, 'plotted_lines'):
                     self.plotted_lines = {0: {'checkstate': 2,
@@ -509,7 +509,7 @@ class NumpyData(BaseClassData):
 class InternalData(BaseClassData):
     # Class for datasets that are not saved to file, but are created in the program.
     # Combined files, fitting results....
-    def __init__(self, canvas, dataset, name, all_parameter_names):
+    def __init__(self, canvas, dataset, label_name, all_parameter_names):
         super().__init__(filepath='internal_data', canvas=canvas)
 
         self.loaded_data = dataset
@@ -518,7 +518,7 @@ class InternalData(BaseClassData):
         self.param_name_dict={}
         for i,name in enumerate(self.all_parameter_names):
             self.param_name_dict[name]=i
-        self.label = name
+        self.label = label_name
 
         self.prepare_dataset()
 

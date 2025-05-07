@@ -1476,10 +1476,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if checked_items:
             try:
                 data_list = []
-                name=f'Combined: '
+                label_name=f'Combined: '
                 for item in checked_items:
                     data_list.append(item.data)
-                    name+=item.data.label[:15]+'..., '
+                    label_name+=item.data.label[:15]+'..., '
 
                 # If sets of 2D datasets, stack them along the x-axis. Requires y axis has same dimension for all datasets
                 if all([len(item.get_columns()) == 3 for item in data_list]):
@@ -1487,25 +1487,44 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         raise ValueError('Cannot combine 2D datasets with different parameters.')
                     elif not all(item.get_columns()[1] == data_list[0].get_columns()[1] for item in data_list):
                         raise ValueError('Cannot combine 2D datasets with different y axes.')
-                    else:
+                    if all(isinstance(item, qcodesppData) for item in data_list):
+                        # We will use special features of qcodes++
                         combined_data=[]
                         combined_parameter_names=[]
-                        for name in data_list[0].all_parameter_names:
-                            i=data_list[0].param_name_dict[name]
-                            print(i,name)
+                        parameter_names=list(data_list[0].dataset.arrays.keys())
+                        data_shape=data_list[0].dataset.arrays[parameter_names[1]].shape
+                        for i,parameter_name in enumerate(parameter_names):
+                            if i == 0:
+                                xdata=np.hstack([data_list[j].dataset.arrays[parameter_name] for j in range(len(data_list))])
+                                xdata=np.tile(xdata,(data_shape[1],1))
+                                combined_data.append(xdata.T)
+                                combined_parameter_names.append(parameter_name)
+                            else:
+                                try:
+                                    combined_data.append(np.vstack([data_list[j].dataset.arrays[parameter_name] for j in range(len(data_list))]))
+                                    combined_parameter_names.append(parameter_name)
+                                except ValueError:
+                                    print(f'Error combining data for {parameter_name}: Check data dimensions.')
+                    else:
+                        # Should be BaseClassData or some mix.
+                        combined_data=[]
+                        combined_parameter_names=[]
+                        for parameter_name in data_list[0].all_parameter_names:
+                            i=data_list[0].param_name_dict[parameter_name]
+                            print(i,parameter_name)
                             try:
                                 combined_data.append(np.vstack([data_list[j].loaded_data[i] for j in range(len(data_list))]))
-                                combined_parameter_names.append(name)
+                                combined_parameter_names.append(parameter_name)
                             except ValueError:
                                 try:
                                     combined_data.append(np.hstack([data_list[j].loaded_data[i] for j in range(len(data_list))]))
-                                    combined_parameter_names.append(name)
+                                    combined_parameter_names.append(parameter_name)
                                 except ValueError:
-                                    print(f'Error combining data for {name}: Check data dimensions.')
-                        # for qcodespp data, the X axis is often '1D', so need to tile it out.
+                                    print(f'Error combining data for {parameter_name}: Check data dimensions.')
+                        # If the X axis is '1D', tile it out.
                         if len(combined_data[0].shape) == 1:
                             combined_data[0]=np.tile(combined_data[0],(combined_data[1].shape[1],1)).T
-                    combined_item=DataItem(InternalData(self.canvas,combined_data,name,combined_parameter_names))
+                    combined_item=DataItem(InternalData(self.canvas,combined_data,label_name,combined_parameter_names))
                     self.add_internal_data(combined_item)
 
                 elif all([len(item.get_columns()) == 2 for item in data_list]):

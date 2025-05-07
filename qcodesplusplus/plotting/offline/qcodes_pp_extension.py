@@ -58,7 +58,7 @@ class qcodesppData(main.BaseClassData):
 
 
     def prepare_dataset(self):
-        self.data_dict = self.dataset.arrays
+        self.data_dict = self.dataset.arrays.copy()
         pars = list(self.data_dict.keys())
         self.dims = self.data_dict[pars[1]].shape
 
