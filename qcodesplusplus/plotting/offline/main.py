@@ -444,6 +444,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for item_index in range(self.file_list.count()-1):
                 self.file_list.item(item_index).setCheckState(QtCore.Qt.Unchecked)
         if check_item:
+            for i in reversed(range(self.oneD_layout.count())): 
+                widgetToRemove = self.oneD_layout.itemAt(i).widget()
+                # remove it from the layout list
+                self.oneD_layout.removeWidget(widgetToRemove)
+                # remove it from the gui
+                widgetToRemove.setParent(None)
             item.setCheckState(QtCore.Qt.Checked)
             self.file_checked(item)
         self.file_list.itemChanged.connect(self.file_checked)
@@ -1432,6 +1438,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def duplicate_item(self, new_plot_button=False):
         original_item = self.file_list.currentItem()
         if original_item:
+            for i in reversed(range(self.oneD_layout.count())): 
+                widgetToRemove = self.oneD_layout.itemAt(i).widget()
+                # remove it from the layout list
+                self.oneD_layout.removeWidget(widgetToRemove)
+                # remove it from the gui
+                widgetToRemove.setParent(None)
             if new_plot_button:
                 X = self.new_plot_X_box.currentText()
                 Y = self.new_plot_Y_box.currentText()
@@ -1459,15 +1471,44 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 new_item.data.settings['title']=f'{new_item.data.dataset_id}-{duplicate_index}'
 
             else:
-                new_item.setText(f'[DUPLICATE] {new_item.data.label}')
-                new_item.data.label = f'[DUPLICATE] {new_item.data.label}'
+                new_item.setText(f'Duplicate: {new_item.data.label}')
+                new_item.data.label = f'Duplicate: {new_item.data.label}'
 
             if new_plot_button:
                 new_item.data.settings['X data'] = X
                 new_item.data.settings['Y data'] = Y
-                if 'Z data' in new_item.data.settings.keys():
+                if new_item.data.dim==3:
                     new_item.data.settings['Z data'] = Z
-                
+                else:
+                    new_item.data.prepare_data_for_plot()
+                    new_item.data.sidebar1D = Sidebar1D(new_item.data,self)
+                    new_item.data.sidebar1D.running=True
+                    new_item.data.plotted_lines = {0: {'checkstate': 2,
+                                                'X data': X,
+                                                'Y data': Y,
+                                                'raw_data': new_item.data.raw_data,
+                                                'processed_data': new_item.data.processed_data,
+                                                'linecolor': (0.1, 0.5, 0.8, 1),
+                                                'linewidth': 1.5,
+                                                'linestyle': '-',
+                                                'filters': []}}
+                    new_item.data.sidebar1D.append_trace_to_table(0)
+                    self.oneD_layout.addWidget(new_item.data.sidebar1D)
+
+            elif original_item.data.dim==2:
+                # Next two lines basically fix a bug.
+                new_item.data.settings['X data'] = original_item.data.all_parameter_names[0]
+                new_item.data.settings['Y data'] = original_item.data.all_parameter_names[1]
+                new_item.data.prepare_data_for_plot()
+                # Populate trace table from original data.
+                if hasattr(original_item.data, 'plotted_lines'):
+                    new_item.data.sidebar1D = Sidebar1D(new_item.data,self)
+                    new_item.data.sidebar1D.running=True
+                    new_item.data.plotted_lines = {}
+                    for line in original_item.data.plotted_lines:
+                        new_item.data.plotted_lines[line] = copy.deepcopy(original_item.data.plotted_lines[line])
+                        new_item.data.sidebar1D.append_trace_to_table(line)
+                    self.oneD_layout.addWidget(new_item.data.sidebar1D)
             new_item.setCheckState(QtCore.Qt.Checked)
             self.update_plots()
                 
@@ -1482,7 +1523,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     label_name+=item.data.label[:15]+'..., '
 
                 # If sets of 2D datasets, stack them along the x-axis. Requires y axis has same dimension for all datasets
-                if all([len(item.get_columns()) == 3 for item in data_list]):
+                if all([item.dim == 3 for item in data_list]):
                     if not all(item.all_parameter_names == data_list[0].all_parameter_names for item in data_list):
                         raise ValueError('Cannot combine 2D datasets with different parameters.')
                     elif not all(item.get_columns()[1] == data_list[0].get_columns()[1] for item in data_list):
@@ -1527,7 +1568,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     combined_item=DataItem(InternalData(self.canvas,combined_data,label_name,combined_parameter_names,dimension=3))
                     self.add_internal_data(combined_item)
 
-                elif all([len(item.get_columns()) == 2 for item in data_list]):
+                elif all([item.dim == 2 for item in data_list]):
                     # For only 1D data, it's the absolute wild west; anything goes.
                     combined_data=[]
                     combined_parameter_names=[]
@@ -1540,10 +1581,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.add_internal_data(combined_item)
 
                 else:
+                    # combined_data=[]
+                    # for item in data_list:
+                    #     if item.dim ==3:
+
+
                     print('Could not combine data. Three combinations are possible: \n'
-                          '1. All datasets are 1D'
-                          '2. All datasets are 2D with same y axis'
-                          '3. A single 2D dataset with a number of 1D datasets')
+                          '1. All datasets are 1D with aribtrary dimension; all parameters available for plotting'
+                          '2. All datasets are 2D with same sets of parameters and y-axis length. The datasets are stacked along the x-axis. \n'
+                          '3. A single 2D dataset with a number of 1D datasets. Parameters from the 1D dataset can be plotted on the 2D data')
                 # if not three_dimensional_data:
                     #self.multi_plot_window = MultiPlotWindow(data_list)
                     #self.multi_plot_window.draw_plot()
@@ -1554,6 +1600,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 
             except Exception as e:
                 print('Cannot combine data:', e)
+
     
     def open_plot_settings_menu(self):
         row = self.settings_table.currentRow()

@@ -564,3 +564,19 @@ class InternalData(BaseClassData):
         else:
             column_data=[x,y]
         return column_data
+    
+# class MixedInternalData(BaseClassData):
+#     # Class for combination of a single 2D dataset and various 1D datasets.
+#     def __init__(self, canvas, twoDdataset, oneDdatasets,  label_name, all_2d_parameter_names, all_1d_parameter_names):
+#         super().__init__(filepath='internal_data', canvas=canvas)
+
+#         self.loaded_data = dataset
+#         self.canvas = canvas
+#         self.all_parameter_names = all_parameter_names
+#         self.param_name_dict={}
+#         for i,name in enumerate(self.all_parameter_names):
+#             self.param_name_dict[name]=i
+#         self.label = label_name
+#         self.dim = dimension
+
+#         self.prepare_dataset()

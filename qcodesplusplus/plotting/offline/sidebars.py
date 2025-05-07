@@ -558,7 +558,6 @@ class Sidebar1D(QtWidgets.QWidget):
     def update(self):
         if self.running:
             self.draw_plot()
-
             fit_lines = self.get_checked_items(traces_or_fits='fits')
             if len(fit_lines) > 0:
                 for line in fit_lines:
