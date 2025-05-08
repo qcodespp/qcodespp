@@ -85,6 +85,12 @@ class LineCutWindow(QtWidgets.QWidget):
         self.save_button = QtWidgets.QPushButton('Save Data')
         self.save_image_button = QtWidgets.QPushButton('Save Image')
         self.copy_image_button = QtWidgets.QPushButton('Copy Image')
+        self.xscale_label = QtWidgets.QLabel('x-axis:')
+        self.xscale_box = QtWidgets.QComboBox()
+        self.xscale_box.addItems(['linear', 'log', 'symlog', 'logit'])
+        self.yscale_label = QtWidgets.QLabel('y-axis:')
+        self.yscale_box = QtWidgets.QComboBox()
+        self.yscale_box.addItems(['linear', 'log', 'symlog', 'logit'])
 
         # Fitting widgets
         self.lims_label = QtWidgets.QLabel('Fit limits (left-click plot):')
@@ -147,6 +153,9 @@ class LineCutWindow(QtWidgets.QWidget):
         self.save_button.clicked.connect(self.save_data)
         self.save_image_button.clicked.connect(self.save_image)
         self.copy_image_button.clicked.connect(self.copy_image)
+        self.xscale_box.currentIndexChanged.connect(self.update)
+        self.yscale_box.currentIndexChanged.connect(self.update)
+
         self.clear_fit_button.clicked.connect(self.clear_fit)
         self.fit_class_box.currentIndexChanged.connect(self.fit_class_changed)
         self.fit_box.currentIndexChanged.connect(self.fit_type_changed)
@@ -206,6 +215,7 @@ class LineCutWindow(QtWidgets.QWidget):
 
         # Sublayout(s) in plotting box:
         self.top_buttons_layout = QtWidgets.QHBoxLayout()
+        self.bot_buttons_layout = QtWidgets.QHBoxLayout()
 
         # Populating
         #self.top_buttons_layout.addWidget(self.navi_toolbar)
@@ -222,6 +232,11 @@ class LineCutWindow(QtWidgets.QWidget):
         #     #self.top_buttons_layout.addWidget(self.orientation_button)
         #     self.top_buttons_layout.addWidget(self.down_button)
         #     self.top_buttons_layout.addWidget(self.up_button)
+        self.bot_buttons_layout.addWidget(self.xscale_label)
+        self.bot_buttons_layout.addWidget(self.xscale_box)
+        self.bot_buttons_layout.addWidget(self.yscale_label)
+        self.bot_buttons_layout.addWidget(self.yscale_box)
+        self.bot_buttons_layout.addStretch()
         
         # Sub-layouts(s) in fitting box
         self.lims_layout = QtWidgets.QHBoxLayout()
@@ -287,6 +302,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.plottinglayout.addLayout(self.top_buttons_layout)
         self.plottinglayout.addWidget(self.navi_toolbar)
         self.plottinglayout.addWidget(self.canvas)
+        self.plottinglayout.addLayout(self.bot_buttons_layout)
         self.plotbox.setLayout(self.plottinglayout)
 
         self.fittingbox=QtWidgets.QGroupBox('Curve Fitting')
@@ -1073,7 +1089,8 @@ class LineCutWindow(QtWidgets.QWidget):
         self.figure.clear()
 
         self.axes = self.figure.add_subplot(111)
-
+        self.axes.set_xscale(self.xscale_box.currentText())
+        self.axes.set_yscale(self.yscale_box.currentText())
         lines = self.get_checked_items()
 
         if self.orientation == 'horizontal':

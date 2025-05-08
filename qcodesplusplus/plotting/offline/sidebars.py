@@ -218,7 +218,7 @@ class Sidebar1D(QtWidgets.QWidget):
         self.setLayout(self.main_layout)
 
     def init_trace_table(self):
-        headerlabels=['#','X data','Y data','style','color', 'width','show fit']
+        headerlabels=['#','X data','Y data','style','color', 'width','show fit','Xerr','Yerr']
         self.trace_table.setColumnCount(len(headerlabels))
         self.trace_table.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked)
         h = self.trace_table.horizontalHeader()
@@ -287,6 +287,8 @@ class Sidebar1D(QtWidgets.QWidget):
             line={'checkstate': 2,
                 'X data': self.parent.all_parameter_names[0],
                 'Y data': self.parent.all_parameter_names[1],
+                'Xerr':0,
+                'Yerr':0,
                 'linecolor': (1,0,0,1),
                 'linewidth': 1.5,
                 'linestyle': '-',
@@ -337,7 +339,9 @@ class Sidebar1D(QtWidgets.QWidget):
                             QtCore.Qt.ItemIsEnabled | 
                             QtCore.Qt.ItemIsUserCheckable)
             plot_fit_item.setCheckState(line['fit']['fit_checkstate'])
-
+        
+        Xerr_item = QtWidgets.QTableWidgetItem(str(line['Xerr']))
+        Yerr_item = QtWidgets.QTableWidgetItem(str(line['Yerr']))
 
         self.trace_table.setItem(row,0,linetrace_item)
         self.trace_table.setItem(row,1,Xdata_item)
@@ -346,6 +350,8 @@ class Sidebar1D(QtWidgets.QWidget):
         self.trace_table.setItem(row,4,color_box)
         self.trace_table.setItem(row,5,width_item)
         self.trace_table.setItem(row,6,plot_fit_item)
+        self.trace_table.setItem(row,7,Xerr_item)
+        self.trace_table.setItem(row,8,Yerr_item)
 
         self.trace_table.itemChanged.connect(self.trace_table_edited)
         self.trace_table.setCurrentCell(row,0)
@@ -363,12 +369,12 @@ class Sidebar1D(QtWidgets.QWidget):
         elif current_col == 0: # It's the checkstate for the linetrace.
             self.parent.plotted_lines[line]['checkstate'] = current_item.checkState()
 
-        edit_dict={1:'X data',2:'Y data',3:'linestyle',5:'linewidth'}
+        edit_dict={1:'X data',2:'Y data',3:'linestyle',5:'linewidth',7:'Xerr',8:'Yerr'}
         if current_col in edit_dict.keys():
             self.parent.plotted_lines[line][edit_dict[current_col]] = current_item.text()
 
         # If the X or Y data is changed, we need to update the processed data.
-        if current_col == 1 or current_col == 2:
+        if current_col in [1,2,7,8]:
             self.parent.prepare_data_for_plot(reload_data=True,reload_from_file=False,linefrompopup=line)
             self.parent.plotted_lines[line]['processed_data'] = [self.parent.processed_data[0],
                                                                 self.parent.processed_data[1]]
@@ -492,7 +498,7 @@ class Sidebar1D(QtWidgets.QWidget):
                 self.trace_table.itemChanged.connect(self.trace_table_edited)
                 self.update()
 
-        elif column==1 or column==2:
+        elif column in [1,2,7,8]:
             menu = QtWidgets.QMenu(self)
             for entry in self.parent.all_parameter_names:
                 action = QtWidgets.QAction(entry, self)
@@ -747,6 +753,48 @@ class Sidebar1D(QtWidgets.QWidget):
         y=self.parent.plotted_lines[line]['processed_data'][1]
         return (x,y)
     
+    def plot_Yerr(self,x,y,error,line):
+        self.parent.axes.fill_between(x, y+error, y-error,
+                                    alpha=0.2, color=self.parent.plotted_lines[line]['linecolor'])
+    def plot_Xerr(self,x,y,error,line):
+        self.parent.axes.fill_betweenx(y, x+error, x-error,
+                                    alpha=0.2, color=self.parent.plotted_lines[line]['linecolor'])
+    
+    def process_uncertainties(self,line,x,y):
+        for axiserr in ['Xerr','Yerr']:
+            if axiserr !=0:
+                try: # if a single number
+                    error = float(self.parent.plotted_lines[line][axiserr])
+                except ValueError: # if name of array, value error is thrown
+                    # Get the error data from the loaded data
+                    errorname = self.parent.plotted_lines[line][axiserr]
+                    error = copy.deepcopy(self.parent.loaded_data[self.parent.all_parameter_names.index(errorname)])
+                # Only apply multiply or divide filters (and only if they are checked of course)
+                if 'filters' in self.parent.plotted_lines[line].keys():
+                    for filt in self.parent.plotted_lines[line]['filters']:
+                        if filt.checkstate and filt.name in ['Multiply','Divide'] and ((filt.method == 'X' and axiserr=='Xerr') 
+                                                                                    or (filt.method == 'Y' and axiserr=='Yerr')):
+                            if filt.name == 'Multiply':
+                                error = error * float(filt.settings[0])
+                            elif filt.name == 'Divide':
+                                error = error / float(filt.settings[0])
+                
+                if axiserr=='Yerr':
+                    self.plot_Yerr(x,y,error,line)
+                else:
+                    self.plot_Xerr(x,y,error,line)
+
+                    processed_data = [x,error] if axiserr=='Yerr' else [error,y]
+                    if 'filters' in self.parent.plotted_lines[line].keys():
+                        for filt in self.parent.plotted_lines[line]['filters']:
+                            if filt.checkstate and filt.name in ['Multiply','Divide']:
+                                processed_data = self.parent.apply_single_filter(processed_data, filt)
+                    if axiserr=='Yerr':
+                        self.plot_Yerr(x,y,processed_data[1],line)
+                    else:
+                        self.plot_Xerr(x,y,processed_data[0],line)
+
+
     def draw_plot(self,clearplot=True):
         if clearplot:
             self.parent.axes.clear()
@@ -760,6 +808,8 @@ class Sidebar1D(QtWidgets.QWidget):
                                     linewidth=self.parent.plotted_lines[line]['linewidth'],
                                     markersize=self.parent.plotted_lines[line]['linewidth'],
                                     color=self.parent.plotted_lines[line]['linecolor'])
+                if 'Xerr' !=0 or 'Yerr' !=0:
+                    self.process_uncertainties(line,x,y)
             self.parent.apply_plot_settings()
             #self.parent.apply_axlim_settings()
             self.parent.apply_axscale_settings()

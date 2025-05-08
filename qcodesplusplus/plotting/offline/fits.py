@@ -670,7 +670,7 @@ functions['Custom']['FET mobility']['description']=('Fit a FET mobility curve of
                                                 'If necessary, provide initial guesses for mu, x_0 and R_s in the form:\n'
                                                 '0.1,0.5,1e3\n'
                                                 'Note; all units in SI! i.e. S and m, not e2/h and cm.\n'
-                                                'See dx.doi.org/10.1088/0957-4484/26/21/215202')
+                                                'See doi.org/10.1088/0957-4484/26/21/215202')
 functions['Custom']['FET mobility']['function']=FET_mobility
 
 functions['Custom']['BCS/Dynes']['parameters']='G_N, gamma, delta'
@@ -679,7 +679,7 @@ functions['Custom']['BCS/Dynes']['description']=('Fit the BCS/Dynes model to a t
                                                  'dI/dV(V) = G_N*Re[(e*V-i*gamma)/sqrt((e*V-i*gamma)^2-(delta)^2)]\n'
                                                  'where G_N is the normal state conductance, gamma is broadening and '
                                                  'delta is the superconducting gap. Delta and gamma are in electronvolts\n'
-                                                 'see dx.doi.org/10.1103/PhysRevB.38.12378')
+                                                 'see doi.org/10.1103/PhysRevLett.41.1509\n or doi.org/10.1038/s41467-021-25100-w')
 functions['Custom']['BCS/Dynes']['function']=dynes_fit
 
 #Wrap the ExpressionModel to allow arbitrary input.
