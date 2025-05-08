@@ -575,9 +575,9 @@ class Sidebar1D(QtWidgets.QWidget):
 
         self.parent.canvas.draw()
   
-    def update(self):
+    def update(self,clearplot=True):
         if self.running:
-            self.draw_plot()
+            self.draw_plot(clearplot)
             fit_lines = self.get_checked_items(traces_or_fits='fits')
             if len(fit_lines) > 0:
                 for line in fit_lines:
@@ -747,8 +747,9 @@ class Sidebar1D(QtWidgets.QWidget):
         y=self.parent.plotted_lines[line]['processed_data'][1]
         return (x,y)
     
-    def draw_plot(self):
-        self.parent.axes.clear()
+    def draw_plot(self,clearplot=True):
+        if clearplot:
+            self.parent.axes.clear()
         lines = self.get_checked_items()
         if len(lines) > 0:
             for line in lines:

@@ -153,6 +153,7 @@ SETTINGS_MENU_OPTIONS['clabel'] = ['$I$ (A)',
                                    'log$^{10}$(d$I$/d$V$ $(e^{2}/h)$)', 
                                    'd$^2I$/d$V^2$ (a.u.)', 
                                    '|d$^2I$/d$V^2$| (a.u.)']
+SETTINGS_MENU_OPTIONS['transpose'] = ['True', 'False']
 SETTINGS_MENU_OPTIONS['titlesize'] = FONT_SIZES
 SETTINGS_MENU_OPTIONS['labelsize'] = FONT_SIZES
 SETTINGS_MENU_OPTIONS['ticksize'] = FONT_SIZES
@@ -1140,6 +1141,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     # changed an axis by mistake. It's also the case for applying a filter.
                     self.update_plots()
                     self.reset_axlim_settings()
+                if setting_name == 'transpose':
+                    current_item.data.prepare_data_for_plot(reload_data=True,reload_from_file=True)
+                    self.update_plots()
                 if setting_name == 'columns' or setting_name == 'delimiter':
                     current_item.data.prepare_data_for_plot(reload_data=True,reload_from_file=False)
                     self.update_plots()
@@ -1590,18 +1594,26 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         dataset2d=None
                         combined_data=[]
                         combined_parameter_names=[]
-                        for data in data_list:
-                            if data.dim ==3 and dataset2d is None:
-                                dataset2d=data
-                            elif data.dim == 3 and dataset2d is not None:
-                                print(f'Multiple 2D datasets AND multiple 1D datasets found. Ignoring {data.label}\n'
-                                    'First, combine the 2D datasets into one, then combine the 1D datasets into the new 2D dataset.')
+                        if len(data_list)==2:
+                            if data_list[0].dim == 3:
+                                dataset2d=data_list[0]
+                                dataset1d=data_list[1]
                             else:
-                                for parameter_name in data.all_parameter_names:
-                                    i=data.param_name_dict[parameter_name]
-                                    combined_data.append(data.loaded_data[i])
-                                    combined_parameter_names.append(f'{data.label[:4]}: {parameter_name}')
-                        dataset1d=InternalData(self.canvas,combined_data,label_name,combined_parameter_names,dimension=2)
+                                dataset2d=data_list[1]
+                                dataset1d=data_list[0]
+                        else:
+                            for data in data_list:
+                                if data.dim ==3 and dataset2d is None:
+                                    dataset2d=data
+                                elif data.dim == 3 and dataset2d is not None:
+                                    print(f'Multiple 2D datasets AND multiple 1D datasets found. Ignoring {data.label}\n'
+                                        'First, combine the 2D datasets into one, then combine the 1D datasets into the new 2D dataset.')
+                                else:
+                                    for parameter_name in data.all_parameter_names:
+                                        i=data.param_name_dict[parameter_name]
+                                        combined_data.append(data.loaded_data[i])
+                                        combined_parameter_names.append(f'{data.label[:4]}: {parameter_name}')
+                            dataset1d=InternalData(self.canvas,combined_data,label_name,combined_parameter_names,dimension=2)
                         combined_item=DataItem(MixedInternalData(self.canvas,dataset2d,dataset1d,label_name))
                         print(4)
                         self.add_internal_data(combined_item)

@@ -23,6 +23,7 @@ class BaseClassData:
     DEFAULT_PLOT_SETTINGS['xlabel'] = ''
     DEFAULT_PLOT_SETTINGS['ylabel'] = ''
     DEFAULT_PLOT_SETTINGS['clabel'] = ''
+    DEFAULT_PLOT_SETTINGS['transpose'] = 'False'
     DEFAULT_PLOT_SETTINGS['titlesize'] = '14'
     DEFAULT_PLOT_SETTINGS['labelsize'] = '14' 
     DEFAULT_PLOT_SETTINGS['ticksize'] = '14'
@@ -82,10 +83,14 @@ class BaseClassData:
 
     def prepare_dataset(self):
         try:
-            self.loaded_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter']).T
+            self.loaded_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'])
         except ValueError: # Can occur if python doesn't recognise a header
-            self.loaded_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'],skip_header=1).T
+            self.loaded_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'],skip_header=1)
         
+        if self.settings['transpose'] == 'False':
+            self.loaded_data = np.transpose(self.loaded_data)
+        
+        self.param_name_dict={}
         try: # to get column names if there is a header. Avoid using genfromtxt as it doesn't have enough options to work all the time.
             with open(self.filepath, 'r') as f:
                 header = f.readline()
@@ -95,7 +100,6 @@ class BaseClassData:
                     self.all_parameter_names = header.split(self.settings['delimiter'])
                 else:
                     self.all_parameter_names = header.split()
-                self.param_name_dict={}
                 for i,name in enumerate(self.all_parameter_names):
                     self.param_name_dict[name]=i
         except Exception as e:
@@ -103,7 +107,7 @@ class BaseClassData:
                 'Using integers instead')
             pass
 
-        if not hasattr(self,'param_name_dict'):
+        if len(self.param_name_dict.keys()) == 0:
             self.all_parameter_names=[f"column_{i}" for i in range(self.loaded_data.shape[0])]
             self.param_name_dict={}
             for i,name in enumerate(self.all_parameter_names):
@@ -591,10 +595,23 @@ class MixedInternalData(InternalData):
         self.dim = 'mixed'
 
         #self.prepare_dataset()
+        self.settings = self.dataset2d.settings
+        self.axlim_settings = self.dataset2d.axlim_settings
+        self.view_settings = self.dataset2d.view_settings
     
-    def prepare_data_for_plot(self):
+    def prepare_data_for_plot(self, *args, **kwargs):
         self.dataset2d.prepare_data_for_plot()
         self.dataset1d.prepare_data_for_plot()
+
+    # def add_plot(self, editor_window=None):
+    #     # Add the 2D plot first, then the 1D plots.
+    #     self.dataset2d.axes=self.axes
+    #     self.dataset2d.figure=self.figure
+    #     self.dataset1d.axes=self.axes
+    #     self.dataset1d.figure=self.figure
+    #     self.figure.clf()
+    #     self.dataset2d.add_plot(editor_window=editor_window,clear_fig=False)
+    #     self.dataset1d.add_plot(editor_window=editor_window,clear_fig=False)
 
     def add_plot(self, editor_window=None):
         # Add the 2D plot first, then the 1D plots.
@@ -602,9 +619,49 @@ class MixedInternalData(InternalData):
         self.dataset2d.figure=self.figure
         self.dataset1d.axes=self.axes
         self.dataset1d.figure=self.figure
-        self.figure.clf()
-        self.dataset2d.add_plot(editor_window=editor_window,clear_fig=False)
-        self.dataset1d.add_plot(editor_window=editor_window,clear_fig=False)
+
+        cmap_str = self.view_settings['Colormap']
+        if self.view_settings['Reverse']:
+            cmap_str += '_r'
+        cmap = cm.get_cmap(cmap_str, lut=int(self.settings['lut']))
+        cmap.set_bad(self.settings['maskcolor'])
+
+        norm = MidpointNormalize(vmin=self.dataset2d.view_settings['Minimum'], 
+                                    vmax=self.dataset2d.view_settings['Maximum'], 
+                                    midpoint=self.dataset2d.view_settings['Midpoint'])
+        self.image = self.axes.pcolormesh(self.dataset2d.processed_data[0], 
+                                            self.dataset2d.processed_data[1], 
+                                            self.dataset2d.processed_data[2], 
+                                            shading=self.settings['shading'], 
+                                            norm=norm, cmap=cmap,
+                                            rasterized=self.settings['rasterized'])
+        if self.settings['colorbar'] == 'True':
+            self.cbar = self.figure.colorbar(self.image, orientation='vertical')
+
+        if not hasattr(self.dataset1d, 'plotted_lines'):
+            self.dataset1d.plotted_lines = {0: {'checkstate': 2,
+                                        'X data': self.dataset1d.all_parameter_names[0],
+                                        'Y data': self.dataset1d.all_parameter_names[1],
+                                        'raw_data': self.dataset1d.raw_data,
+                                        'processed_data': self.dataset1d.processed_data,
+                                        'linecolor': (0.1, 0.5, 0.8, 1),
+                                        'linewidth': 1.5,
+                                        'linestyle': '-',
+                                        'filters': []}}
+        if not hasattr(self.dataset1d, 'sidebar1D'):
+            self.dataset1d.sidebar1D = Sidebar1D(self.dataset1d,editor_window=editor_window)
+            self.dataset1d.sidebar1D.running = True
+            self.dataset1d.sidebar1D.append_trace_to_table(0)
+        editor_window.oneD_layout.addWidget(self.dataset1d.sidebar1D)
+
+        self.dataset1d.sidebar1D.update(clearplot=False)
+
+        self.cursor = Cursor(self.axes, useblit=True, 
+                                color=self.settings['linecolor'], linewidth=0.5)
+
+        self.dataset2d.apply_plot_settings()
+        self.dataset2d.apply_axlim_settings()
+        self.dataset2d.apply_axscale_settings()
 
     # def copy(self):
     #     # Copy the data to a new object.

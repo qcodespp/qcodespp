@@ -1,5 +1,6 @@
 import numpy as np
 from lmfit import models as lmm
+from lmfit import Model
 from functools import partial
 
 # Fit functions
@@ -459,7 +460,42 @@ def expression_fit(xdata,ydata,p0,inputinfo):
     result=model.fit(ydata,params,x=xdata)
     return result
 
+#Custom fits
+def FET_mobility(xdata,ydata,p0,inputinfo):
+    C=float(inputinfo[0])
+    L=float(inputinfo[1])
+    def FET_model(x, mu, V_th, R_s):
+        return 1/(R_s + L**2/(C*mu*(x-V_th)))
+    model=Model(FET_model)
+    params=model.make_params()
+    if p0:
+        params['mu'].set(value=float(p0[0]))
+        params['V_th'].set(value=float(p0[1]))
+        params['R_s'].set(value=float(p0[2]))
+    else:
+        params['mu'].set(L**2*(ydata.max()-ydata.min())/(C*(xdata.max()-xdata.min())))
+        params['V_th'].set(xdata.min())
+        params['R_s'].set(1/ydata.max())
 
+    result=model.fit(ydata,params,x=xdata)
+    return result
+
+def dynes_fit(xdata,ydata,p0,inputinfo):
+    electron=1.602e-19
+    def dynes_model(x, G_N, gamma, delta):
+        return np.abs(G_N*((electron*x-1j*gamma*electron)/np.sqrt((electron*x-1j*gamma*electron)**2-(delta*electron)**2)).real)
+    model=Model(dynes_model)
+    params=model.make_params()
+    if p0:
+        params['G_N'].set(value=float(p0[0]))
+        params['gamma'].set(value=float(p0[1]))
+        params['delta'].set(value=float(p0[2]))
+    else:
+        params['G_N'].set(value=(ydata.max()-ydata.min())/2)
+        params['gamma'].set(value=(xdata.max()-xdata.min())/200)
+        params['delta'].set(value=(xdata.max()-xdata.min())/2)
+    result=model.fit(ydata,params,x=xdata)
+    return result
 
 # Dictionary for storing info about the fit functions used in this module.
 functions = {}
@@ -617,6 +653,34 @@ functions['Rectangle']['Linear']['function'] = partial(rectangle_fit, 'linear')
 functions['Rectangle']['Arctan']['function'] = partial(rectangle_fit, 'arctan')
 functions['Rectangle']['ErrorFunction']['function'] = partial(rectangle_fit, 'erf')
 functions['Rectangle']['Logistic']['function'] = partial(rectangle_fit, 'logistic')
+
+# Custom fits based on expression fit
+functions['Custom']={'FET mobility':{},
+                     'BCS/Dynes':{}
+                     }
+functions['Custom']['FET mobility']['inputs']='C,L'
+functions['Custom']['FET mobility']['default_inputs']='5e-15,5e-6'
+functions['Custom']['FET mobility']['parameters']='mu, V_th, R_s'
+functions['Custom']['FET mobility']['description']=('Fit a FET mobility curve of the form:\n'
+                                                'G = 1/(R_s+L^2/(C*mu*(Vg-V_th)))\n'
+                                                'where R_s is the series resistance, L is the channel length, C is the capacitance, '
+                                                'mu is the mobility and V_th is the threshold voltage.\n'
+                                                'The data should be G, conductance, vs Vg, gate voltage.\n'
+                                                'You must provide calculated/measured values for C and L; these are not fitted.\n'
+                                                'If necessary, provide initial guesses for mu, x_0 and R_s in the form:\n'
+                                                '0.1,0.5,1e3\n'
+                                                'Note; all units in SI! i.e. S and m, not e2/h and cm.\n'
+                                                'See dx.doi.org/10.1088/0957-4484/26/21/215202')
+functions['Custom']['FET mobility']['function']=FET_mobility
+
+functions['Custom']['BCS/Dynes']['parameters']='G_N, gamma, delta'
+functions['Custom']['BCS/Dynes']['description']=('Fit the BCS/Dynes model to a tunnel spectrum of a superconducting gap. '
+                                                 'The Dynes model is given by:\n'
+                                                 'dI/dV(V) = G_N*Re[(e*V-i*gamma)/sqrt((e*V-i*gamma)^2-(delta)^2)]\n'
+                                                 'where G_N is the normal state conductance, gamma is broadening and '
+                                                 'delta is the superconducting gap. Delta and gamma are in electronvolts\n'
+                                                 'see dx.doi.org/10.1103/PhysRevB.38.12378')
+functions['Custom']['BCS/Dynes']['function']=dynes_fit
 
 #Wrap the ExpressionModel to allow arbitrary input.
 functions['User input']={'Expression':{}}
