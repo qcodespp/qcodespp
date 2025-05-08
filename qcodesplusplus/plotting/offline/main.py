@@ -44,7 +44,7 @@ from .helpers import (cmaps, MidpointNormalize,NavigationToolbarMod,
                       rcParams_to_dark_theme,rcParams_to_light_theme,
                       NoScrollQComboBox,DraggablePoint)
 from .filters import Filter
-from .datatypes import DataItem, BaseClassData, NumpyData, InternalData
+from .datatypes import DataItem, BaseClassData, NumpyData, InternalData, MixedInternalData
 from .qcodes_pp_extension import qcodesppData
 
 # UI settings
@@ -778,8 +778,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 item.data.vertmarkers.append(item.data.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymin=0.9,
                     color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
 
-    def update_plots(self, item=None,update_data=True):
-        self.figure.clf()
+    def update_plots(self, item=None,update_data=True,clear_figure=True):
+        if clear_figure:
+            self.figure.clf()
         
         checked_items = self.get_checked_items()
         if checked_items:
@@ -1585,13 +1586,31 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.add_internal_data(combined_item)
 
                 else:
-                    # combined_data=[]
-                    # for item in data_list:
-                    #     if item.dim ==3:
+                    try:
+                        dataset2d=None
+                        combined_data=[]
+                        combined_parameter_names=[]
+                        for data in data_list:
+                            if data.dim ==3 and dataset2d is None:
+                                dataset2d=data
+                            elif data.dim == 3 and dataset2d is not None:
+                                print(f'Multiple 2D datasets AND multiple 1D datasets found. Ignoring {data.label}\n'
+                                    'First, combine the 2D datasets into one, then combine the 1D datasets into the new 2D dataset.')
+                            else:
+                                for parameter_name in data.all_parameter_names:
+                                    i=data.param_name_dict[parameter_name]
+                                    combined_data.append(data.loaded_data[i])
+                                    combined_parameter_names.append(f'{data.label[:4]}: {parameter_name}')
+                        dataset1d=InternalData(self.canvas,combined_data,label_name,combined_parameter_names,dimension=2)
+                        combined_item=DataItem(MixedInternalData(self.canvas,dataset2d,dataset1d,label_name))
+                        print(4)
+                        self.add_internal_data(combined_item)
+                        print(5)
 
-
-                    print('Could not combine data. Three combinations are possible: \n'
-                          '1. All datasets are 1D with aribtrary dimension; all parameters available for plotting'
+                    except Exception as e:
+                        print(f'Could not combine data: {e}\n'
+                            'There are three ways to combine data/files: \n'
+                          '1. All datasets are 1D with aribtrary dimension; all parameters available for plotting\n'
                           '2. All datasets are 2D with same sets of parameters and y-axis length. The datasets are stacked along the x-axis. \n'
                           '3. A single 2D dataset with a number of 1D datasets. Parameters from the 1D dataset can be plotted on the 2D data')
                 # if not three_dimensional_data:

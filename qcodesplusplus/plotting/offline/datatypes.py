@@ -575,70 +575,38 @@ class InternalData(BaseClassData):
     
 class MixedInternalData(InternalData):
     # Class for combination of a single 2D dataset and various 1D datasets.
-    def __init__(self, canvas, dataset2d, dataset1d,  label_name, all_parameter_names_2d, all_parameter_names_1d):
-        super().__init__(filepath='internal_data', canvas=canvas)
+    def __init__(self, canvas, dataset2d, dataset1d, label_name):
+        super().__init__(canvas, dataset1d.loaded_data, label_name, dataset1d.all_parameter_names,dimension=3)
 
-        self.loaded_data_2d = dataset2d
-        self.loaded_data_1d = dataset1d
+        self.dataset2d = dataset2d
+        self.dataset1d = dataset1d
         self.canvas = canvas
-        self.all_parameter_names_2d = all_parameter_names_2d
-        self.all_parameter_names_1d = all_parameter_names_1d
-        self.param_name_dict_2d={}
-        self.param_name_dict_1d={}
-        for i,name in enumerate(self.all_parameter_names_2d):
-            self.param_name_dict_2d[name]=i
-        for i,name in enumerate(self.all_parameter_names_1d):
-            self.param_name_dict_1d[name]=i
+        # self.param_name_dict_2d={}
+        # self.param_name_dict_1d={}
+        # for i,name in enumerate(self.all_parameter_names_2d):
+        #     self.param_name_dict_2d[name]=i
+        # for i,name in enumerate(self.all_parameter_names_1d):
+        #     self.param_name_dict_1d[name]=i
         self.label = label_name
         self.dim = 'mixed'
 
-        self.prepare_dataset()
+        #self.prepare_dataset()
+    
+    def prepare_data_for_plot(self):
+        self.dataset2d.prepare_data_for_plot()
+        self.dataset1d.prepare_data_for_plot()
 
     def add_plot(self, editor_window=None):
-        if self.processed_data:
-            cmap_str = self.view_settings['Colormap']
-            if self.view_settings['Reverse']:
-                cmap_str += '_r'
-            cmap = cm.get_cmap(cmap_str, lut=int(self.settings['lut']))
-            cmap.set_bad(self.settings['maskcolor'])
+        # Add the 2D plot first, then the 1D plots.
+        self.dataset2d.axes=self.axes
+        self.dataset2d.figure=self.figure
+        self.dataset1d.axes=self.axes
+        self.dataset1d.figure=self.figure
+        self.figure.clf()
+        self.dataset2d.add_plot(editor_window=editor_window,clear_fig=False)
+        self.dataset1d.add_plot(editor_window=editor_window,clear_fig=False)
 
-            # First plot the 2d data
-            norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
-                                        vmax=self.view_settings['Maximum'], 
-                                        midpoint=self.view_settings['Midpoint'])
-            self.image = self.axes.pcolormesh(self.processed_data[0], 
-                                                self.processed_data[1], 
-                                                self.processed_data[2], 
-                                                shading=self.settings['shading'], 
-                                                norm=norm, cmap=cmap,
-                                                rasterized=self.settings['rasterized'])
-            if self.settings['colorbar'] == 'True':
-                self.cbar = self.figure.colorbar(self.image, orientation='vertical')
-            # Remove sidebar1D if it exists
-            for i in reversed(range(editor_window.oneD_layout.count())): 
-                widgetToRemove = editor_window.oneD_layout.itemAt(i).widget()
-                # remove it from the layout list
-                editor_window.oneD_layout.removeWidget(widgetToRemove)
-                # remove it from the gui
-                widgetToRemove.setParent(None)
-            self.cursor = Cursor(self.axes, useblit=True, 
-                                 color=self.settings['linecolor'], linewidth=0.5)
-
-            # Below removes data options for data types where selecting
-            # axes data from the settings menu isn't implemented.
-            # Remove if implemented for all data types one day.
-            if 'X data' in self.settings.keys() and self.settings['X data'] == '':
-                self.settings.pop('X data')
-            if 'Y data' in self.settings.keys() and self.settings['Y data'] == '':
-                self.settings.pop('Y data')
-            if 'Z data' in self.settings.keys() and self.settings['Z data'] == '':
-                self.settings.pop('Z data')
-
-            self.apply_plot_settings()
-            self.apply_axlim_settings()
-            self.apply_axscale_settings()
-
-    def copy(self):
-        # Copy the data to a new object.
-        new_data = MixedInternalData(self.canvas, self.loaded_data_2d, self.loaded_data_1d, self.label, self.all_parameter_names_2d, self.all_parameter_names_1d)
-        return new_data
+    # def copy(self):
+    #     # Copy the data to a new object.
+    #     new_data = MixedInternalData(self.canvas, self.loaded_data_2d, self.loaded_data_1d, self.label, self.all_parameter_names_2d, self.all_parameter_names_1d)
+    #     return new_data
