@@ -1631,7 +1631,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         row = self.filters_table.currentRow()
         column = self.filters_table.currentColumn()
         filter_name = self.filters_table.item(row, 0).text()
-        if filter_name in ['Multiply','Divide','Offset'] and column == 2:
+        if filter_name in ['Multiply','Divide','Add/Subtract'] and column == 2:
             menu = QtWidgets.QMenu(self)
             filter_settings={}
             current_item = self.file_list.currentItem()
@@ -2020,7 +2020,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             axis=signal.text().split()[1]
             value=-float(signal.text().split()[3])
             if current_item:
-                filt = Filter('Offset',method=axis, settings=[str(value),''], checkstate=2)
+                filt = Filter('Add/Subtract',method=axis, settings=[str(value),''], checkstate=2)
                 if hasattr(current_item.data, 'sidebar1D'):
                     current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
                     current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())

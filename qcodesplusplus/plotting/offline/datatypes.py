@@ -130,7 +130,7 @@ class BaseClassData:
         allnames=np.hstack((self.all_parameter_names,negparamnames))
         self.filter_menu_options = {'Multiply': allnames,
                                     'Divide': allnames,
-                                    'Offset': allnames}
+                                    'Add/Subtract': allnames}
 
     def get_column_data(self,line=None):
         if line is not None:
@@ -410,7 +410,7 @@ class BaseClassData:
             self.image[0].set_color(cmap(0.5))            
 
     def apply_single_filter(self, processed_data, filt):
-        if filt.name in ['Multiply', 'Divide', 'Offset']:
+        if filt.name in ['Multiply', 'Divide', 'Add/Subtract']:
             if filt.settings[0][0]=='-':
                 arrayname=filt.settings[0][1:]
                 setting2='-'
@@ -543,7 +543,7 @@ class InternalData(BaseClassData):
         allnames=np.hstack((self.all_parameter_names,negparamnames))
         self.filter_menu_options = {'Multiply': allnames,
                                     'Divide': allnames,
-                                    'Offset': allnames}
+                                    'Add/Subtract': allnames}
         
     def load_and_reshape_data(self,reload=False,reload_from_file=False,linefrompopup=None):
         # For combined files, the data is already loaded and reshaped.
@@ -593,6 +593,50 @@ class MixedInternalData(InternalData):
         self.dim = 'mixed'
 
         self.prepare_dataset()
+
+    def add_plot(self, editor_window=None):
+        if self.processed_data:
+            cmap_str = self.view_settings['Colormap']
+            if self.view_settings['Reverse']:
+                cmap_str += '_r'
+            cmap = cm.get_cmap(cmap_str, lut=int(self.settings['lut']))
+            cmap.set_bad(self.settings['maskcolor'])
+
+            # First plot the 2d data
+            norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
+                                        vmax=self.view_settings['Maximum'], 
+                                        midpoint=self.view_settings['Midpoint'])
+            self.image = self.axes.pcolormesh(self.processed_data[0], 
+                                                self.processed_data[1], 
+                                                self.processed_data[2], 
+                                                shading=self.settings['shading'], 
+                                                norm=norm, cmap=cmap,
+                                                rasterized=self.settings['rasterized'])
+            if self.settings['colorbar'] == 'True':
+                self.cbar = self.figure.colorbar(self.image, orientation='vertical')
+            # Remove sidebar1D if it exists
+            for i in reversed(range(editor_window.oneD_layout.count())): 
+                widgetToRemove = editor_window.oneD_layout.itemAt(i).widget()
+                # remove it from the layout list
+                editor_window.oneD_layout.removeWidget(widgetToRemove)
+                # remove it from the gui
+                widgetToRemove.setParent(None)
+            self.cursor = Cursor(self.axes, useblit=True, 
+                                 color=self.settings['linecolor'], linewidth=0.5)
+
+            # Below removes data options for data types where selecting
+            # axes data from the settings menu isn't implemented.
+            # Remove if implemented for all data types one day.
+            if 'X data' in self.settings.keys() and self.settings['X data'] == '':
+                self.settings.pop('X data')
+            if 'Y data' in self.settings.keys() and self.settings['Y data'] == '':
+                self.settings.pop('Y data')
+            if 'Z data' in self.settings.keys() and self.settings['Z data'] == '':
+                self.settings.pop('Z data')
+
+            self.apply_plot_settings()
+            self.apply_axlim_settings()
+            self.apply_axscale_settings()
 
     def copy(self):
         # Copy the data to a new object.

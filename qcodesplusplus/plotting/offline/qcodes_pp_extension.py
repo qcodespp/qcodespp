@@ -245,11 +245,11 @@ class qcodesppData(main.BaseClassData):
         allnames=np.hstack((self.all_parameter_names,negparamnames))
         self.filter_menu_options = {'Multiply': allnames,
                                     'Divide': allnames,
-                                    'Offset': allnames}
+                                    'Add/Subtract': allnames}
         
 
     def apply_single_filter(self, processed_data, filt):
-        if filt.name in ['Multiply', 'Divide', 'Offset']:
+        if filt.name in ['Multiply', 'Divide', 'Add/Subtract']:
             if filt.settings[0][0]=='-':
                 arrayname=filt.settings[0][1:]
                 setting2='-'

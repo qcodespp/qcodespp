@@ -406,7 +406,7 @@ class Filter:
                                     'Settings': ['7', '2'],
                                     'Function': sav_gol,
                                     'Checkstate': 2},                               
-                        'Offset': {'Method': ['X','Y','Z'],
+                        'Add/Subtract': {'Method': ['X','Y','Z'],
                                    'Settings': ['0', ''],
                                    'Function': offset,
                                    'Checkstate': 2},
