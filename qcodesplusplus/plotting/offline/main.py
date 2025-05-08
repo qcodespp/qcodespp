@@ -154,21 +154,21 @@ SETTINGS_MENU_OPTIONS['clabel'] = ['$I$ (A)',
                                    'd$^2I$/d$V^2$ (a.u.)', 
                                    '|d$^2I$/d$V^2$| (a.u.)']
 SETTINGS_MENU_OPTIONS['transpose'] = ['True', 'False']
+SETTINGS_MENU_OPTIONS['delimiter'] = [' ',',']
 SETTINGS_MENU_OPTIONS['titlesize'] = FONT_SIZES
 SETTINGS_MENU_OPTIONS['labelsize'] = FONT_SIZES
 SETTINGS_MENU_OPTIONS['ticksize'] = FONT_SIZES
 SETTINGS_MENU_OPTIONS['colorbar'] = ['True', 'False']
-SETTINGS_MENU_OPTIONS['columns'] = ['0,1,2','0,1,3','0,2,3','1,2,4']
 SETTINGS_MENU_OPTIONS['minorticks'] = ['True','False']
-SETTINGS_MENU_OPTIONS['delimiter'] = [' ',',']
 SETTINGS_MENU_OPTIONS['linecolor'] = ['black', 'red', 'white', 
                                         'blue', 'green']
 SETTINGS_MENU_OPTIONS['maskcolor'] = ['black','white']
-SETTINGS_MENU_OPTIONS['lut'] = ['128','256','512','1024']
+SETTINGS_MENU_OPTIONS['cmap levels'] = ['128','256','512','1024']
 SETTINGS_MENU_OPTIONS['rasterized'] = ['True','False']
 SETTINGS_MENU_OPTIONS['dpi'] = ['figure','300']
 SETTINGS_MENU_OPTIONS['transparent'] = ['True', 'False']
 SETTINGS_MENU_OPTIONS['shading'] = ['auto', 'flat', 'gouraud', 'nearest']
+SETTINGS_MENU_OPTIONS['columns'] = ['0,1,2','0,1,3','0,2,3','1,2,4']
 
 AXIS_SCALING_OPTIONS = ['linear', 'log', 'symlog', 'logit']
 
@@ -1152,7 +1152,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     for line in current_item.data.axes.get_lines():
                         line.set_color(value)
                     self.canvas.draw()
-                elif setting_name == 'maskcolor' or setting_name == 'lut':
+                elif setting_name == 'maskcolor' or setting_name == 'cmap levels':
                     current_item.data.apply_colormap()
                 elif (setting_name == 'rasterized' or setting_name == 'colorbar'
                       or setting_name == 'minorticks'):

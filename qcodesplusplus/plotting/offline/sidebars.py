@@ -784,17 +784,6 @@ class Sidebar1D(QtWidgets.QWidget):
                 else:
                     self.plot_Xerr(x,y,error,line)
 
-                    processed_data = [x,error] if axiserr=='Yerr' else [error,y]
-                    if 'filters' in self.parent.plotted_lines[line].keys():
-                        for filt in self.parent.plotted_lines[line]['filters']:
-                            if filt.checkstate and filt.name in ['Multiply','Divide']:
-                                processed_data = self.parent.apply_single_filter(processed_data, filt)
-                    if axiserr=='Yerr':
-                        self.plot_Yerr(x,y,processed_data[1],line)
-                    else:
-                        self.plot_Xerr(x,y,processed_data[0],line)
-
-
     def draw_plot(self,clearplot=True):
         if clearplot:
             self.parent.axes.clear()

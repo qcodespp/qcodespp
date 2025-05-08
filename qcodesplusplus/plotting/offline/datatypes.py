@@ -24,22 +24,21 @@ class BaseClassData:
     DEFAULT_PLOT_SETTINGS['ylabel'] = ''
     DEFAULT_PLOT_SETTINGS['clabel'] = ''
     DEFAULT_PLOT_SETTINGS['transpose'] = 'False'
+    DEFAULT_PLOT_SETTINGS['delimiter'] = ''
     DEFAULT_PLOT_SETTINGS['titlesize'] = '14'
     DEFAULT_PLOT_SETTINGS['labelsize'] = '14' 
     DEFAULT_PLOT_SETTINGS['ticksize'] = '14'
-    # DEFAULT_PLOT_SETTINGS['linewidth'] = '1.5'
     DEFAULT_PLOT_SETTINGS['spinewidth'] = '1'
-    DEFAULT_PLOT_SETTINGS['columns'] = '0,1,2'
     DEFAULT_PLOT_SETTINGS['colorbar'] = 'True'
     DEFAULT_PLOT_SETTINGS['minorticks'] = 'False'
-    DEFAULT_PLOT_SETTINGS['delimiter'] = ''
     DEFAULT_PLOT_SETTINGS['linecolor'] = 'black'
     DEFAULT_PLOT_SETTINGS['maskcolor'] = 'black'
-    DEFAULT_PLOT_SETTINGS['lut'] = '512'
+    DEFAULT_PLOT_SETTINGS['cmap levels'] = '512'
     DEFAULT_PLOT_SETTINGS['rasterized'] = 'True'
     DEFAULT_PLOT_SETTINGS['dpi'] = '300'
     DEFAULT_PLOT_SETTINGS['transparent'] = 'True'
     DEFAULT_PLOT_SETTINGS['shading'] = 'auto'
+    DEFAULT_PLOT_SETTINGS['columns'] = '0,1,2'
     
     # Set default view settings
     DEFAULT_VIEW_SETTINGS = {}
@@ -250,7 +249,7 @@ class BaseClassData:
             cmap_str = self.view_settings['Colormap']
             if self.view_settings['Reverse']:
                 cmap_str += '_r'
-            cmap = cm.get_cmap(cmap_str, lut=int(self.settings['lut']))
+            cmap = cm.get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
             cmap.set_bad(self.settings['maskcolor'])
 
             if self.dim == 2:
@@ -408,7 +407,7 @@ class BaseClassData:
         cmap_str = self.view_settings['Colormap']
         if self.view_settings['Reverse']:
             cmap_str += '_r'
-        cmap = cm.get_cmap(cmap_str, lut=int(self.settings['lut']))
+        cmap = cm.get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
         cmap.set_bad(self.settings['maskcolor'])
         if len(self.get_columns()) == 3:
             self.image.set_cmap(cmap)
@@ -625,7 +624,7 @@ class MixedInternalData(InternalData):
         cmap_str = self.view_settings['Colormap']
         if self.view_settings['Reverse']:
             cmap_str += '_r'
-        cmap = cm.get_cmap(cmap_str, lut=int(self.settings['lut']))
+        cmap = cm.get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
         cmap.set_bad(self.settings['maskcolor'])
 
         norm = MidpointNormalize(vmin=self.dataset2d.view_settings['Minimum'], 
