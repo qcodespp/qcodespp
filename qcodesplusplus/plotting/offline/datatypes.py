@@ -315,14 +315,6 @@ class BaseClassData:
                 if self.settings['colorbar'] == 'True':
                     self.cbar = self.figure.colorbar(self.image, orientation='vertical')
 
-                # if editor_window.file_list.currentItem().data() == self:
-                # # Remove sidebar1D if it exists
-                #     for i in reversed(range(editor_window.oneD_layout.count())):
-                #         widgetToRemove = editor_window.oneD_layout.itemAt(i).widget()
-                #         # remove it from the layout list
-                #         editor_window.oneD_layout.removeWidget(widgetToRemove)
-                #         # remove it from the gui
-                #         widgetToRemove.setParent(None)
             self.cursor = Cursor(self.axes, useblit=True, 
                                  color=self.settings['linecolor'], linewidth=0.5)
 
@@ -436,7 +428,7 @@ class BaseClassData:
         if len(self.get_columns()) == 3:
             self.image.set_cmap(cmap)
         else:
-            self.image[0].set_color(cmap(0.5))            
+            self.image[0].set_color(cmap(0.5))
 
     def apply_single_filter(self, processed_data, filt):
         if filt.name in ['Multiply', 'Divide', 'Add/Subtract']:
@@ -602,11 +594,10 @@ class InternalData(BaseClassData):
         new_data = InternalData(self.canvas, self.loaded_data, self.label, self.all_parameter_names,self.dim)
         return new_data
     
-class MixedInternalData(InternalData):
+class MixedInternalData(BaseClassData):
     # Class for combination of a single 2D dataset and various 1D datasets.
     def __init__(self, canvas, dataset2d, dataset1d, label_name):
-        super().__init__(canvas, dataset1d.loaded_data, label_name, dataset1d.all_parameter_names,dimension=3)
-
+        super().__init__(filepath='internal_data', canvas=canvas)
         self.dataset2d = dataset2d
         self.dataset1d = dataset1d
         self.canvas = canvas
@@ -619,31 +610,20 @@ class MixedInternalData(InternalData):
         self.view_settings = self.dataset2d.view_settings
     
     def prepare_data_for_plot(self, *args, **kwargs):
-        self.dataset2d.prepare_data_for_plot()
-        self.dataset1d.prepare_data_for_plot()
-
-    # def add_plot(self, editor_window=None):
-    #     # Add the 2D plot first, then the 1D plots.
-    #     self.dataset2d.axes=self.axes
-    #     self.dataset2d.figure=self.figure
-    #     self.dataset1d.axes=self.axes
-    #     self.dataset1d.figure=self.figure
-    #     self.figure.clf()
-    #     self.dataset2d.add_plot(editor_window=editor_window,clear_fig=False)
-    #     self.dataset1d.add_plot(editor_window=editor_window,clear_fig=False)
+        self.dataset2d.prepare_data_for_plot(*args, **kwargs)
+        self.dataset1d.prepare_data_for_plot(*args, **kwargs)
 
     def add_plot(self, editor_window=None):
-        # Add the 2D plot first, then the 1D plots.
         self.dataset2d.axes=self.axes
         self.dataset2d.figure=self.figure
         self.dataset1d.axes=self.axes
         self.dataset1d.figure=self.figure
 
-        cmap_str = self.view_settings['Colormap']
-        if self.view_settings['Reverse']:
+        cmap_str = self.dataset2d.view_settings['Colormap']
+        if self.dataset2d.view_settings['Reverse']:
             cmap_str += '_r'
-        cmap = cm.get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
-        cmap.set_bad(self.settings['maskcolor'])
+        cmap = cm.get_cmap(cmap_str, lut=int(self.dataset2d.settings['cmap levels']))
+        cmap.set_bad(self.dataset2d.settings['maskcolor'])
 
         norm = MidpointNormalize(vmin=self.dataset2d.view_settings['Minimum'], 
                                     vmax=self.dataset2d.view_settings['Maximum'], 
@@ -651,40 +631,76 @@ class MixedInternalData(InternalData):
         self.image = self.axes.pcolormesh(self.dataset2d.processed_data[0], 
                                             self.dataset2d.processed_data[1], 
                                             self.dataset2d.processed_data[2], 
-                                            shading=self.settings['shading'], 
+                                            shading=self.dataset2d.settings['shading'], 
                                             norm=norm, cmap=cmap,
-                                            rasterized=self.settings['rasterized'])
-        if self.settings['colorbar'] == 'True':
+                                            rasterized=self.dataset2d.settings['rasterized'])
+        if self.dataset2d.settings['colorbar'] == 'True':
             self.cbar = self.figure.colorbar(self.image, orientation='vertical')
 
+        # Transfer the sidebar upwards so it's accessible in the editor window.
+        if not hasattr(self, 'sidebar1D') and hasattr(self.dataset1d, 'sidebar1d'):
+            self.sidebar1D=self.dataset1d.sidebar1d
+        # or create one.
         if not hasattr(self.dataset1d, 'plotted_lines'):
-            self.dataset1d.plotted_lines = {0: {'checkstate': 2,
-                                        'X data': self.dataset1d.all_parameter_names[0],
-                                        'Y data': self.dataset1d.all_parameter_names[1],
-                                        'Xerr': 0,
-                                        'Yerr': 0,
-                                        'raw_data': self.dataset1d.raw_data,
-                                        'processed_data': self.dataset1d.processed_data,
-                                        'linecolor': (0.1, 0.5, 0.8, 1),
-                                        'linewidth': 1.5,
-                                        'linestyle': '-',
-                                        'filters': []}}
-        if not hasattr(self.dataset1d, 'sidebar1D'):
-            self.dataset1d.sidebar1D = Sidebar1D(self.dataset1d,editor_window=editor_window)
-            self.dataset1d.sidebar1D.running = True
-            self.dataset1d.sidebar1D.append_trace_to_table(0)
-        editor_window.oneD_layout.addWidget(self.dataset1d.sidebar1D)
-
-        self.dataset1d.sidebar1D.update(clearplot=False)
-
+            self.dataset1d.init_plotted_lines()
+        if not hasattr(self, 'sidebar1D'):
+            self.sidebar1D = Sidebar1D(self.dataset1d,editor_window=editor_window)
+            self.sidebar1D.running = True
+            self.sidebar1D.append_trace_to_table(0)
+            
+        self.sidebar1D.update(clearplot=False)
+        # Same for linecuts
+        if not hasattr(self, 'linecuts') and hasattr(self.dataset2d, 'linecuts'):
+            self.linecuts=self.dataset2d.linecuts
         self.cursor = Cursor(self.axes, useblit=True, 
                                 color=self.settings['linecolor'], linewidth=0.5)
+        self.apply_plot_settings()
+        self.apply_axlim_settings()
+        self.apply_axscale_settings()
 
-        self.dataset2d.apply_plot_settings()
-        self.dataset2d.apply_axlim_settings()
-        self.dataset2d.apply_axscale_settings()
 
-    # def copy(self):
-    #     # Copy the data to a new object.
-    #     new_data = MixedInternalData(self.canvas, self.loaded_data_2d, self.loaded_data_1d, self.label, self.all_parameter_names_2d, self.all_parameter_names_1d)
-    #     return new_data
+    # def apply_plot_settings(self):
+    #     self.dataset2d.apply_plot_settings()
+
+    # def apply_view_settings(self):
+    #     if len(self.get_columns()) == 3:
+    #         norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
+    #                                  vmax=self.view_settings['Maximum'], 
+    #                                  midpoint=self.view_settings['Midpoint'])
+
+    #         self.image.norm=norm
+
+    #         if self.settings['colorbar'] == 'True' and hasattr(self, 'cbar'):
+    #             #self.cbar.update_normal(self.image)
+    #             self.cbar.ax.set_title(self.settings['clabel'],
+    #                                    size=self.settings['labelsize'])
+    #             self.cbar.ax.tick_params(labelsize=self.settings['ticksize'],
+    #                                      color=rcParams['axes.edgecolor'])
+
+    # def apply_axlim_settings(self):
+    #     self.axes.set_xlim(left=self.axlim_settings['Xmin'], 
+    #                          right=self.axlim_settings['Xmax'])
+    #     self.axes.set_ylim(bottom=self.axlim_settings['Ymin'],
+    #                          top=self.axlim_settings['Ymax'])
+
+    # def apply_axscale_settings(self):
+    #     self.axes.set_xscale(self.axlim_settings['Xscale'])
+    #     self.axes.set_yscale(self.axlim_settings['Yscale'])
+        
+    # def reset_axlim_settings(self):
+    #     self.axes.autoscale()
+    #     self.axlim_settings['Xmin'] = self.axes.get_xlim()[0]
+    #     self.axlim_settings['Xmax'] = self.axes.get_xlim()[1]
+    #     self.axlim_settings['Ymin'] = self.axes.get_ylim()[0]
+    #     self.axlim_settings['Ymax'] = self.axes.get_ylim()[1]
+    
+    # def apply_colormap(self):
+    #     cmap_str = self.view_settings['Colormap']
+    #     if self.view_settings['Reverse']:
+    #         cmap_str += '_r'
+    #     cmap = cm.get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
+    #     cmap.set_bad(self.settings['maskcolor'])
+    #     if len(self.get_columns()) == 3:
+    #         self.image.set_cmap(cmap)
+    #     else:
+    #         self.image[0].set_color(cmap(0.5))

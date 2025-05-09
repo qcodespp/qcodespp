@@ -792,7 +792,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.figure.clf()
 
         self.clear_sidebar1D()
-        
+
         checked_items = self.get_checked_items()
         if checked_items:
             rows, cols = self.subplot_grid[len(checked_items)-1]
@@ -804,12 +804,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     item.data.axes = item.data.figure.add_subplot(rows, cols, index+1)
                     item.data.add_plot(editor_window=self)
                     if hasattr(item.data, 'linecuts'):
-                        for orientation in ['horizontal','vertical']:#,'diagonal','circular']:
+                        for orientation in ['horizontal','vertical','diagonal']:#,'circular']:
                             if len(item.data.linecuts[orientation]['lines']) > 0:
                                 self.reinstate_markers(item,orientation)
                             if item.data.linecuts[orientation]['linecut_window'] is not None:
                                 item.data.linecuts[orientation]['linecut_window'].update()
-
                     if hasattr(item.data, 'sidebar1D') and self.file_list.currentItem() == item:
                         self.oneD_layout.addWidget(item.data.sidebar1D)
                 except Exception as e:
@@ -1575,7 +1574,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.add_internal_data(combined_item)
 
                 elif all([item.dim == 2 for item in data_list]):
-                    # For only 1D data, it's the absolute wild west; anything goes.
+                    # For only 1D data, just pile all parameters into a new dataset.
                     combined_data=[]
                     combined_parameter_names=[]
                     for data in data_list:
@@ -1586,38 +1585,28 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.add_internal_data(combined_item)
 
                 else:
+                    finalerrormessage=('There are possibilities when combining datasets: \n'
+                          '1. Any number of 1D datasets with aribtrary dimension; all parameters available for plotting\n'
+                          '2. Any number of 2D datasets with same sets of parameters and y-axis length. The datasets are stacked along the x-axis. \n'
+                          '3. A single 2D dataset and a single 1D dataset. Pre-combine 1D and 2D datasets separately if necessary.')
+                    if len(data_list) > 2:
+                        raise ValueError('Could not combine data. When combining 2D and 1D data, use only one dataset of each type.\n{finalerrormes}')
                     try:
                         dataset2d=None
                         combined_data=[]
                         combined_parameter_names=[]
-                        if len(data_list)==2:
-                            if data_list[0].dim == 3:
-                                dataset2d=data_list[0]
-                                dataset1d=data_list[1]
-                            else:
-                                dataset2d=data_list[1]
-                                dataset1d=data_list[0]
+                        if data_list[0].dim == 3:
+                            dataset2d=data_list[0]
+                            dataset1d=data_list[1]
                         else:
-                            for data in data_list:
-                                if data.dim ==3 and dataset2d is None:
-                                    dataset2d=data
-                                elif data.dim == 3 and dataset2d is not None:
-                                    print(f'Multiple 2D datasets AND multiple 1D datasets found. Ignoring {data.label}\n'
-                                        'First, combine the 2D datasets into one, then combine the 1D datasets into the new 2D dataset.')
-                                else:
-                                    for parameter_name in data.all_parameter_names:
-                                        combined_data.append(data.data_dict[parameter_name])
-                                        combined_parameter_names.append(f'{data.label[:4]}: {parameter_name}')
-                            dataset1d=InternalData(self.canvas,combined_data,label_name,combined_parameter_names,dimension=2)
+                            dataset2d=data_list[1]
+                            dataset1d=data_list[0]
+
                         combined_item=DataItem(MixedInternalData(self.canvas,dataset2d,dataset1d,label_name))
                         self.add_internal_data(combined_item)
 
                     except Exception as e:
-                        print(f'Could not combine data: {e}\n'
-                            'There are three ways to combine data/files: \n'
-                          '1. All datasets are 1D with aribtrary dimension; all parameters available for plotting\n'
-                          '2. All datasets are 2D with same sets of parameters and y-axis length. The datasets are stacked along the x-axis. \n'
-                          '3. A single 2D dataset with a number of 1D datasets. Parameters from the 1D dataset can be plotted on the 2D data')
+                        print(f'Could not combine data: {e}\n{finalerrormessage}')
                 # if not three_dimensional_data:
                     #self.multi_plot_window = MultiPlotWindow(data_list)
                     #self.multi_plot_window.draw_plot()
