@@ -1550,42 +1550,27 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         raise ValueError('Cannot combine 2D datasets with different parameters.')
                     elif not all(item.get_columns()[1] == data_list[0].get_columns()[1] for item in data_list):
                         raise ValueError('Cannot combine 2D datasets with different y axes.')
-                    if all(isinstance(item, qcodesppData) for item in data_list):
-                        # We will use special features of qcodes++
-                        combined_data=[]
-                        combined_parameter_names=[]
-                        parameter_names=list(data_list[0].dataset.arrays.keys())
-                        data_shape=data_list[0].dataset.arrays[parameter_names[1]].shape
-                        for i,parameter_name in enumerate(parameter_names):
-                            if i == 0:
-                                xdata=np.hstack([data_list[j].dataset.arrays[parameter_name] for j in range(len(data_list))])
-                                xdata=np.tile(xdata,(data_shape[1],1))
-                                combined_data.append(xdata.T)
-                                combined_parameter_names.append(parameter_name)
-                            else:
-                                try:
-                                    combined_data.append(np.vstack([data_list[j].dataset.arrays[parameter_name] for j in range(len(data_list))]))
-                                    combined_parameter_names.append(parameter_name)
-                                except ValueError:
-                                    print(f'Error combining data for {parameter_name}: Check data dimensions.')
-                    else:
-                        # Should be BaseClassData or some mix. THIS IS NOT WELL TESTED!!!
-                        combined_data=[]
-                        combined_parameter_names=[]
-                        for parameter_name in data_list[0].all_parameter_names:
-                            i=data_list[0].param_name_dict[parameter_name]
+                    combined_data=[]
+                    combined_parameter_names=[]
+                    for i,parameter_name in enumerate(data_list[0].all_parameter_names):
+                        # The first parameter in qcodespp data is 1D, so we need to stack it differently.
+                        if i == 0 and all(isinstance(data_list[j],qcodesppData) for j in range(len(data_list))):
+                            xdata=np.hstack([data_list[j].dataset.arrays[parameter_name] for j in range(len(data_list))])
+                            combined_data.append(xdata.T)
+                            combined_parameter_names.append(parameter_name)
+                        # For all other datatypes and all other parameters, try both stacking methods.
+                        else:
                             try:
-                                combined_data.append(np.vstack([data_list[j].loaded_data[i] for j in range(len(data_list))]))
+                                combined_data.append(np.vstack([data_list[j].data_dict[parameter_name] for j in range(len(data_list))]))
                                 combined_parameter_names.append(parameter_name)
                             except ValueError:
                                 try:
-                                    combined_data.append(np.hstack([data_list[j].loaded_data[i] for j in range(len(data_list))]))
+                                    combined_data.append(np.hstack([data_list[j].data_dict[parameter_name] for j in range(len(data_list))]))
                                     combined_parameter_names.append(parameter_name)
                                 except ValueError:
                                     print(f'Error combining data for {parameter_name}: Check data dimensions.')
-                        # If the X axis is '1D', tile it out.
-                        if len(combined_data[0].shape) == 1:
-                            combined_data[0]=np.tile(combined_data[0],(combined_data[1].shape[1],1)).T
+                    if len(combined_data[0].shape) == 1: # Try to catch BaseClassData that also has a first independent param that is 1D, but this should never happen.
+                        combined_data[0]=np.tile(combined_data[0],(combined_data[1].shape[1],1)).T
                     combined_item=DataItem(InternalData(self.canvas,combined_data,label_name,combined_parameter_names,dimension=3))
                     self.add_internal_data(combined_item)
 
@@ -1595,8 +1580,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     combined_parameter_names=[]
                     for data in data_list:
                         for parameter_name in data.all_parameter_names:
-                            i=data.param_name_dict[parameter_name]
-                            combined_data.append(data.loaded_data[i])
+                            combined_data.append(data.data_dict[parameter_name])
                             combined_parameter_names.append(f'{data.label[:4]}: {parameter_name}')
                     combined_item=DataItem(InternalData(self.canvas,combined_data,label_name,combined_parameter_names,dimension=2))
                     self.add_internal_data(combined_item)
@@ -1622,14 +1606,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                         'First, combine the 2D datasets into one, then combine the 1D datasets into the new 2D dataset.')
                                 else:
                                     for parameter_name in data.all_parameter_names:
-                                        i=data.param_name_dict[parameter_name]
-                                        combined_data.append(data.loaded_data[i])
+                                        combined_data.append(data.data_dict[parameter_name])
                                         combined_parameter_names.append(f'{data.label[:4]}: {parameter_name}')
                             dataset1d=InternalData(self.canvas,combined_data,label_name,combined_parameter_names,dimension=2)
                         combined_item=DataItem(MixedInternalData(self.canvas,dataset2d,dataset1d,label_name))
-                        print(4)
                         self.add_internal_data(combined_item)
-                        print(5)
 
                     except Exception as e:
                         print(f'Could not combine data: {e}\n'
