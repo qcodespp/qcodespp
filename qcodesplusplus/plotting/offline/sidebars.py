@@ -17,7 +17,7 @@ class Sidebar1D(QtWidgets.QWidget):
         super().__init__()
 
         self.init_cmap='viridis'
-        self.setMaximumWidth(400)
+        self.setMaximumWidth(500)
         self.parent = parent
         self.running = True
         self.init_widgets()
@@ -796,7 +796,7 @@ class Sidebar1D(QtWidgets.QWidget):
                                     linewidth=self.parent.plotted_lines[line]['linewidth'],
                                     markersize=self.parent.plotted_lines[line]['linewidth'],
                                     color=self.parent.plotted_lines[line]['linecolor'])
-                if 'Xerr' !=0 or 'Yerr' !=0:
+                if self.parent.plotted_lines[line]['Xerr'] not in [0,'0'] or self.parent.plotted_lines[line]['Yerr'] not in [0,'0']:
                     self.process_uncertainties(line,x,y)
             self.parent.apply_plot_settings()
             #self.parent.apply_axlim_settings()
