@@ -181,13 +181,12 @@ class Sidebar1D(QtWidgets.QWidget):
         self.fit_buttons_layout.addWidget(self.save_result_button)
         self.fit_buttons_layout.addWidget(self.clear_fit_button)
         self.fit_buttons_layout.addStretch()
+        self.fit_buttons_layout.addWidget(self.save_preset_button)
         self.fit_all_buttons_layout.addWidget(self.fit_checked_button)
         self.fit_all_buttons_layout.addWidget(self.save_all_fits_button)
         self.fit_all_buttons_layout.addWidget(self.clear_all_fits_button)
         self.fit_all_buttons_layout.addStretch()
-        self.fit_presets_layout.addWidget(self.save_preset_button)
-        self.fit_presets_layout.addWidget(self.load_preset_button)
-        self.fit_presets_layout.addStretch()
+        self.fit_all_buttons_layout.addWidget(self.load_preset_button)
 
     def set_main_layout(self):
         self.main_layout = QtWidgets.QVBoxLayout()
@@ -210,7 +209,7 @@ class Sidebar1D(QtWidgets.QWidget):
         self.fittinglayout.addLayout(self.output_layout)
         self.fittinglayout.addLayout(self.fit_buttons_layout)
         self.fittinglayout.addLayout(self.fit_all_buttons_layout)
-        self.fittinglayout.addLayout(self.fit_presets_layout)
+        #self.fittinglayout.addLayout(self.fit_presets_layout)
         self.fittingbox.setLayout(self.fittinglayout)
 
         self.main_layout.addWidget(self.tablebox)

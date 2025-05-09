@@ -33,7 +33,7 @@ class BaseClassData:
     DEFAULT_PLOT_SETTINGS['minorticks'] = 'False'
     DEFAULT_PLOT_SETTINGS['linecolor'] = 'black'
     DEFAULT_PLOT_SETTINGS['maskcolor'] = 'black'
-    DEFAULT_PLOT_SETTINGS['cmap levels'] = '512'
+    DEFAULT_PLOT_SETTINGS['cmap levels'] = '128'
     DEFAULT_PLOT_SETTINGS['rasterized'] = 'True'
     DEFAULT_PLOT_SETTINGS['dpi'] = '300'
     DEFAULT_PLOT_SETTINGS['transparent'] = 'True'
@@ -89,7 +89,7 @@ class BaseClassData:
         if self.settings['transpose'] == 'False':
             self.loaded_data = np.transpose(self.loaded_data)
         
-        self.param_name_dict={}
+        self.data_dict={}
         try: # to get column names if there is a header. Avoid using genfromtxt as it doesn't have enough options to work all the time.
             with open(self.filepath, 'r') as f:
                 header = f.readline()
@@ -100,17 +100,16 @@ class BaseClassData:
                 else:
                     self.all_parameter_names = header.split()
                 for i,name in enumerate(self.all_parameter_names):
-                    self.param_name_dict[name]=i
+                    self.data_dict[name]=self.loaded_data[i]
         except Exception as e:
             print(f'Could not read column names: {e}\n'
                 'Using integers instead')
             pass
 
-        if len(self.param_name_dict.keys()) == 0:
+        if len(self.data_dict.keys()) == 0:
             self.all_parameter_names=[f"column_{i}" for i in range(self.loaded_data.shape[0])]
-            self.param_name_dict={}
             for i,name in enumerate(self.all_parameter_names):
-                self.param_name_dict[name]=i
+                self.data_dict[name]=self.loaded_data[i]
 
         self.measured_data_points = self.loaded_data.shape[0]
 
@@ -141,11 +140,10 @@ class BaseClassData:
                      self.plotted_lines[line]['Y data']]
         else:
             names = [self.settings['X data'], self.settings['Y data']]
-
-        x=self.loaded_data[self.param_name_dict[names[0]]]
-        y=self.loaded_data[self.param_name_dict[names[1]]]
+        x=self.data_dict[names[0]]
+        y=self.data_dict[names[1]]
         if 'Z data' in self.settings.keys():
-            z=self.loaded_data[self.param_name_dict[self.settings['Z data']]]
+            z=self.data_dict[self.settings['Z data']]
             column_data=np.column_stack((x,y,z))
         else:
             column_data=np.column_stack((x,y))
@@ -226,7 +224,27 @@ class BaseClassData:
             if hasattr(self,'lrflipped'):
                 array = np.fliplr(array)
             return array
+        
+    def filttocol(self, axis):
+        axes={'X': 0, 'Y': 1, 'Z': 2}
+        if hasattr(self, 'sidebar1D'):
+            current_1D_row = self.sidebar1D.trace_table.currentRow()
+            current_line = int(self.sidebar1D.trace_table.item(current_1D_row,0).text())
+            processed_data = self.plotted_lines[current_line]['processed_data'][axes[axis]]
+            self.all_parameter_names.append(f'Filtered: {self.plotted_lines[current_line][f'{axis} data']}')
+            self.data_dict[f'Filtered: {self.plotted_lines[current_line][f'{axis} data']}'] = processed_data
+        else:
+            processed_data = self.processed_data[axes[axis]]
+            self.all_parameter_names.append(f'Filtered: {self.settings[f'{axis} data']}')
+            self.data_dict[f'Filtered: {self.settings[f'{axis} data']}'] = processed_data.flatten()
 
+
+        for label in ['X data', 'Y data', 'Z data']:
+            self.settings_menu_options[label]= self.all_parameter_names
+        negparamnames=[f'-{name}' for name in self.all_parameter_names]
+        allnames=np.hstack((self.all_parameter_names,negparamnames))
+        for filtname in ['Multiply', 'Divide', 'Add/Subtract']:
+            self.filter_menu_options[filtname]=allnames
 
     def copy_raw_to_processed_data(self,line=None):
         if line is not None:
@@ -244,6 +262,20 @@ class BaseClassData:
             self.apply_all_filters(update_color_limits=update_color_limits)
         else:
             self.processed_data = None
+
+    def init_plotted_lines(self):
+        self.plotted_lines = {0: {'checkstate': 2,
+                        'X data': self.all_parameter_names[0],
+                        'Y data': self.all_parameter_names[1],
+                        'Xerr': 0,
+                        'Yerr': 0,
+                        'raw_data': self.raw_data,
+                        'processed_data': self.processed_data,
+                        'linecolor': (0.1, 0.5, 0.8, 1),
+                        'linewidth': 1.5,
+                        'linestyle': '-',
+                        'filters': []}}
+        
     def add_plot(self, editor_window=None):
         if self.processed_data:
             cmap_str = self.view_settings['Colormap']
@@ -254,22 +286,12 @@ class BaseClassData:
 
             if self.dim == 2:
                 if not hasattr(self, 'plotted_lines'):
-                    self.plotted_lines = {0: {'checkstate': 2,
-                                                'X data': self.all_parameter_names[0],
-                                                'Y data': self.all_parameter_names[1],
-                                                'Xerr': 0,
-                                                'Yerr': 0,
-                                                'raw_data': self.raw_data,
-                                                'processed_data': self.processed_data,
-                                                'linecolor': (0.1, 0.5, 0.8, 1),
-                                                'linewidth': 1.5,
-                                                'linestyle': '-',
-                                                'filters': []}}
+                    self.init_plotted_lines()
                 if not hasattr(self, 'sidebar1D'):
                     self.sidebar1D = Sidebar1D(self,editor_window=editor_window)
                     self.sidebar1D.running = True
                     self.sidebar1D.append_trace_to_table(0)
-                    editor_window.oneD_layout.addWidget(self.sidebar1D)
+                    #editor_window.oneD_layout.addWidget(self.sidebar1D)
 
                 self.sidebar1D.update()
 
@@ -292,13 +314,15 @@ class BaseClassData:
                                                   rasterized=self.settings['rasterized'])
                 if self.settings['colorbar'] == 'True':
                     self.cbar = self.figure.colorbar(self.image, orientation='vertical')
-                # Remove sidebar1D if it exists
-                for i in reversed(range(editor_window.oneD_layout.count())): 
-                    widgetToRemove = editor_window.oneD_layout.itemAt(i).widget()
-                    # remove it from the layout list
-                    editor_window.oneD_layout.removeWidget(widgetToRemove)
-                    # remove it from the gui
-                    widgetToRemove.setParent(None)
+
+                # if editor_window.file_list.currentItem().data() == self:
+                # # Remove sidebar1D if it exists
+                #     for i in reversed(range(editor_window.oneD_layout.count())):
+                #         widgetToRemove = editor_window.oneD_layout.itemAt(i).widget()
+                #         # remove it from the layout list
+                #         editor_window.oneD_layout.removeWidget(widgetToRemove)
+                #         # remove it from the gui
+                #         widgetToRemove.setParent(None)
             self.cursor = Cursor(self.axes, useblit=True, 
                                  color=self.settings['linecolor'], linewidth=0.5)
 
@@ -422,8 +446,8 @@ class BaseClassData:
             else:
                 arrayname=filt.settings[0]
                 setting2='+'
-            if arrayname in self.all_parameter_names:
-                array=self.shape_single_array(self.loaded_data[self.param_name_dict[arrayname]])
+            if arrayname in self.data_dict.keys():
+                array=self.shape_single_array(self.data_dict[arrayname])
 
             else:
                 array=None
@@ -522,9 +546,9 @@ class InternalData(BaseClassData):
         self.loaded_data = dataset
         self.canvas = canvas
         self.all_parameter_names = all_parameter_names
-        self.param_name_dict={}
+        self.data_dict={}
         for i,name in enumerate(self.all_parameter_names):
-            self.param_name_dict[name]=i
+            self.data_dict[name]=self.loaded_data[i]
         self.label = label_name
         self.dim = dimension
 
@@ -563,11 +587,11 @@ class InternalData(BaseClassData):
         else:
             names = [self.settings['X data'], self.settings['Y data']]
 
-        x=self.loaded_data[self.param_name_dict[names[0]]]
-        y=self.loaded_data[self.param_name_dict[names[1]]]
+        x=self.data_dict[names[0]]
+        y=self.data_dict[names[1]]
 
         if line is None and 'Z data' in self.settings.keys():
-            z=self.loaded_data[self.param_name_dict[self.settings['Z data']]]
+            z=self.data_dict[self.settings['Z data']]
             column_data=[x,y,z]
         else:
             column_data=[x,y]
@@ -586,12 +610,6 @@ class MixedInternalData(InternalData):
         self.dataset2d = dataset2d
         self.dataset1d = dataset1d
         self.canvas = canvas
-        # self.param_name_dict_2d={}
-        # self.param_name_dict_1d={}
-        # for i,name in enumerate(self.all_parameter_names_2d):
-        #     self.param_name_dict_2d[name]=i
-        # for i,name in enumerate(self.all_parameter_names_1d):
-        #     self.param_name_dict_1d[name]=i
         self.label = label_name
         self.dim = 'mixed'
 

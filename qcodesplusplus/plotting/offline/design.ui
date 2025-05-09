@@ -335,7 +335,7 @@
              </property>
             </widget>
            </item>
-           <item row="5" column="2">
+           <item row="6" column="2">
             <widget class="QPushButton" name="clear_filters_button">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -354,7 +354,7 @@
              </property>
             </widget>
            </item>
-           <item row="4" column="0">
+           <item row="5" column="0">
             <widget class="QPushButton" name="up_filters_button">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -410,14 +410,8 @@
              </attribute>
             </widget>
            </item>
-           <item row="4" column="1">
-            <widget class="QPushButton" name="down_filters_button">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
+           <item row="5" column="2">
+            <widget class="QPushButton" name="load_filters_button">
              <property name="minimumSize">
               <size>
                <width>130</width>
@@ -425,30 +419,11 @@
               </size>
              </property>
              <property name="text">
-              <string>Move Down</string>
+              <string>Load</string>
              </property>
             </widget>
            </item>
-           <item row="5" column="0">
-            <widget class="QPushButton" name="copy_filters_button">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>130</width>
-               <height>0</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>Copy Filters</string>
-             </property>
-            </widget>
-           </item>
-           <item row="5" column="1">
+           <item row="6" column="1">
             <widget class="QPushButton" name="paste_filters_button">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -467,8 +442,14 @@
              </property>
             </widget>
            </item>
-           <item row="4" column="2">
-            <widget class="QPushButton" name="load_filters_button">
+           <item row="5" column="1">
+            <widget class="QPushButton" name="down_filters_button">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
              <property name="minimumSize">
               <size>
                <width>130</width>
@@ -476,7 +457,47 @@
               </size>
              </property>
              <property name="text">
-              <string>Load</string>
+              <string>Move Down</string>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="0">
+            <widget class="QPushButton" name="copy_filters_button">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>130</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Copy Filters</string>
+             </property>
+            </widget>
+           </item>
+           <item row="7" column="0">
+            <widget class="QPushButton" name="filtXtocol_button">
+             <property name="text">
+              <string>Send X to data</string>
+             </property>
+            </widget>
+           </item>
+           <item row="7" column="1">
+            <widget class="QPushButton" name="filtYtocol_button">
+             <property name="text">
+              <string>Send Y to data</string>
+             </property>
+            </widget>
+           </item>
+           <item row="7" column="2">
+            <widget class="QPushButton" name="filtZtocol_button">
+             <property name="text">
+              <string>Send Z to data</string>
              </property>
             </widget>
            </item>
@@ -648,6 +669,13 @@
            </size>
           </property>
          </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="tight_layout_button">
+          <property name="text">
+           <string>Tight Layout</string>
+          </property>
+         </widget>
         </item>
         <item>
          <widget class="QPushButton" name="save_image_button">

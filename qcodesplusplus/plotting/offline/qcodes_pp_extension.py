@@ -34,8 +34,7 @@ class qcodesppData(main.BaseClassData):
                 self.dataset=load_data(os.path.dirname(filepath))
             else:
                 self.dataset=load_data(filepath)
-            self.loaded_data = [self.dataset.arrays[array] for array in self.dataset.arrays]
-            #print(self.loaded_data)
+            self.data_dict = self.dataset.arrays.copy()
 
             self.identify_independent_vars()
 
@@ -58,7 +57,6 @@ class qcodesppData(main.BaseClassData):
 
 
     def prepare_dataset(self):
-        self.data_dict = self.dataset.arrays.copy()
         pars = list(self.data_dict.keys())
         self.dims = self.data_dict[pars[1]].shape
 
@@ -154,8 +152,7 @@ class qcodesppData(main.BaseClassData):
                 self.dataset=load_data(os.path.dirname(self.filepath))
             else:
                 self.dataset=load_data(self.filepath)
-            self.loaded_data = [self.dataset.arrays[array] for array in self.dataset.arrays]
-            #print(self.loaded_data)
+            self.data_dict = self.dataset.arrays.copy()
 
             self.identify_independent_vars()
 
@@ -233,10 +230,6 @@ class qcodesppData(main.BaseClassData):
 
             self.settings.pop('Z data', None)
             
-        self.param_name_dict={}
-        for i,name in enumerate(self.all_parameter_names):
-            self.param_name_dict[name]=i
-
         self.settings_menu_options = {'X data': self.all_parameter_names,
                                       'Y data': self.all_parameter_names,
                                       'Z data': self.all_parameter_names}
@@ -246,6 +239,19 @@ class qcodesppData(main.BaseClassData):
         self.filter_menu_options = {'Multiply': allnames,
                                     'Divide': allnames,
                                     'Add/Subtract': allnames}
+        
+    def init_plotted_lines(self):
+        self.plotted_lines = {0: {'checkstate': 2,
+                        'X data': self.independent_parameter_names[0],
+                        'Y data': self.dependent_parameter_names[1],
+                        'Xerr': 0,
+                        'Yerr': 0,
+                        'raw_data': self.raw_data,
+                        'processed_data': self.processed_data,
+                        'linecolor': (0.1, 0.5, 0.8, 1),
+                        'linewidth': 1.5,
+                        'linestyle': '-',
+                        'filters': []}}
         
 
     def apply_single_filter(self, processed_data, filt):
@@ -279,3 +285,33 @@ class qcodesppData(main.BaseClassData):
                                             filt.settings[1])
             
         return processed_data
+    
+    def filttocol(self, axis):
+        axes={'X': 0, 'Y': 1, 'Z': 2}
+        if hasattr(self, 'sidebar1D'):
+            current_1D_row = self.sidebar1D.trace_table.currentRow()
+            current_line = int(self.sidebar1D.trace_table.item(current_1D_row,0).text())
+            processed_data = self.plotted_lines[current_line]['processed_data'][axes[axis]]
+            paramname = self.plotted_lines[current_line][f'{axis} data']
+            self.all_parameter_names.append(f'Filtered: {paramname}')
+            self.data_dict[f'Filtered: {paramname}'] = processed_data
+            self.channels[f'Filtered: {paramname}'] = {'label': f'Filtered: {paramname}',
+                                                                'unit': self.channels[paramname]['unit'],
+                                                                'array_id': f'Filtered: {paramname}',
+                                                                'is_setpoint': False}
+        else:
+            processed_data = self.processed_data[axes[axis]]
+            paramname = self.settings[f'{axis} data']
+            self.all_parameter_names.append(f'Filtered: {paramname}')
+            self.data_dict[f'Filtered: {paramname}'] = processed_data
+            self.channels[f'Filtered: {paramname}'] = {'label': f'Filtered: {paramname}',
+                                                                'unit': self.channels[paramname]['unit'],
+                                                                'array_id': f'Filtered: {paramname}',
+                                                                'is_setpoint': False}
+
+        for label in ['X data', 'Y data', 'Z data']:
+            self.settings_menu_options[label]= self.all_parameter_names
+        negparamnames=[f'-{name}' for name in self.all_parameter_names]
+        allnames=np.hstack((self.all_parameter_names,negparamnames))
+        for filtname in ['Multiply', 'Divide', 'Add/Subtract']:
+            self.filter_menu_options[filtname]=allnames

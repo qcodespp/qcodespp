@@ -252,6 +252,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.paste_filters_button.clicked.connect(lambda: self.paste_filters('copied'))
         self.up_filters_button.clicked.connect(lambda: self.move_filter(-1))
         self.down_filters_button.clicked.connect(lambda: self.move_filter(1))
+        self.filtXtocol_button.clicked.connect(lambda: self.filttocol_clicked('X'))
+        self.filtYtocol_button.clicked.connect(lambda: self.filttocol_clicked('Y'))
+        self.filtZtocol_button.clicked.connect(lambda: self.filttocol_clicked('Z'))
         # self.previous_button.clicked.connect(self.to_previous_file)
         # self.next_button.clicked.connect(self.to_next_file)
         self.new_plot_button.clicked.connect(lambda: self.duplicate_item(new_plot_button=True))
@@ -273,6 +276,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.lock_checkbox.clicked.connect(lambda: self.view_setting_edited('Locked'))
         self.mid_checkbox.clicked.connect(lambda: self.view_setting_edited('MidLock'))
         self.reset_limits_button.clicked.connect(self.reset_color_limits)
+        self.tight_layout_button.clicked.connect(self.tight_layout)
         self.save_image_button.clicked.connect(self.save_image)
         self.copy_image_button.clicked.connect(self.copy_canvas_to_clipboard)
         self.load_filters_button.clicked.connect(self.load_filters)
@@ -742,12 +746,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def file_clicked(self):
         current_item = self.file_list.currentItem()
         self.show_current_all()
-        for i in reversed(range(self.oneD_layout.count())): 
-            widgetToRemove = self.oneD_layout.itemAt(i).widget()
-            # remove it from the layout list
-            self.oneD_layout.removeWidget(widgetToRemove)
-            # remove it from the gui
-            widgetToRemove.setParent(None)
+        self.clear_sidebar1D()
         if hasattr(current_item.data,'sidebar1D'):
             self.oneD_layout.addWidget(current_item.data.sidebar1D)
             
@@ -778,10 +777,21 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
                 item.data.vertmarkers.append(item.data.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymin=0.9,
                     color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
+    
+    def clear_sidebar1D(self):
+        # clear the sidebar1D
+        for i in reversed(range(self.oneD_layout.count())):
+            widgetToRemove = self.oneD_layout.itemAt(i).widget()
+            # remove it from the layout list
+            self.oneD_layout.removeWidget(widgetToRemove)
+            # remove it from the gui
+            widgetToRemove.setParent(None)
 
     def update_plots(self, item=None,update_data=True,clear_figure=True):
         if clear_figure:
             self.figure.clf()
+
+        self.clear_sidebar1D()
         
         checked_items = self.get_checked_items()
         if checked_items:
@@ -799,6 +809,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 self.reinstate_markers(item,orientation)
                             if item.data.linecuts[orientation]['linecut_window'] is not None:
                                 item.data.linecuts[orientation]['linecut_window'].update()
+
+                    if hasattr(item.data, 'sidebar1D') and self.file_list.currentItem() == item:
+                        self.oneD_layout.addWidget(item.data.sidebar1D)
                 except Exception as e:
                     print(f'Could not plot {item.data.filepath}:', e)
                     raise
@@ -1561,7 +1574,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         combined_parameter_names=[]
                         for parameter_name in data_list[0].all_parameter_names:
                             i=data_list[0].param_name_dict[parameter_name]
-                            print(i,parameter_name)
                             try:
                                 combined_data.append(np.vstack([data_list[j].loaded_data[i] for j in range(len(data_list))]))
                                 combined_parameter_names.append(parameter_name)
@@ -1752,6 +1764,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.filters_table.setCurrentCell(row, 0)
             self.filters_table.itemChanged.connect(self.filters_table_edited)
     
+    def remove_single_filter(self,filter_row,filters):
+        self.filters_table.removeRow(filter_row)
+        del filters[filter_row]
+
     def remove_filters(self, which='current'):
         current_item = self.file_list.currentItem()
         if current_item:
@@ -1764,19 +1780,16 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if which == 'current':
                 filter_row = self.filters_table.currentRow()
                 if filter_row != -1:
-                    self.filters_table.removeRow(filter_row)
-                    del filters[filter_row]
-                    current_item.data.apply_all_filters()
-                    current_item.data.reset_view_settings()
+                    self.remove_single_filter(filter_row,filters)
             elif which == 'all':
-                self.filters_table.setRowCount(0)
-                filters = []
-                current_item.data.apply_all_filters()
-                current_item.data.reset_view_settings()
+                for filter_row in range(self.filters_table.rowCount()):
+                    self.remove_single_filter(filter_row,filters)
+            current_item.data.apply_all_filters()
+            current_item.data.reset_view_settings()
             if current_item.checkState():
                 current_item.data.apply_view_settings()
-                self.update_plots()
                 self.show_current_view_settings()
+            self.update_plots()
      
     def move_filter(self, to):
         current_item = self.file_list.currentItem()
@@ -1884,6 +1897,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             current_item.data.apply_all_filters()
             self.update_plots()
             self.show_current_view_settings()
+
+    def filttocol_clicked(self, axis):
+        current_item = self.file_list.currentItem()
+        if current_item:
+            current_item.data.filttocol(axis=axis)
 
     def draggable_point_selected(self, x,y,data):
         selected=False
@@ -2276,6 +2294,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         item.data.show_settings = preset_item[1]
             self.update_plots()
 
+    def tight_layout(self):
+        self.figure.tight_layout()
+        self.canvas.draw()
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
