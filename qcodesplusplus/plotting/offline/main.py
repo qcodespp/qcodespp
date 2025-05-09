@@ -188,6 +188,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.linked_folder = None
         self.linked_files = []
         self.resize(1400,1000)
+        self.mixeddata_filter_box.hide()
     
     def init_plot_settings(self):
         self.settings_table.setColumnCount(2)
@@ -244,7 +245,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.paste_settings_button.clicked.connect(lambda: self.paste_plot_settings('copied'))
         self.reset_settings_button.clicked.connect(lambda: self.paste_plot_settings('default'))
         self.filters_combobox.currentIndexChanged.connect(self.filters_box_changed)
-        self.mixeddata_filter_box.currentIndexChanged.connect(self.mixeddata_filter_box_changed)
+        self.mixeddata_filter_box.currentIndexChanged.connect(self.show_current_filters)
         self.xaxis_combobox.currentIndexChanged.connect(self.axis_scaling_changed)
         self.yaxis_combobox.currentIndexChanged.connect(self.axis_scaling_changed)
         self.delete_filters_button.clicked.connect(lambda: self.remove_filters('current'))
@@ -477,6 +478,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     for orientation in item.data.linecuts.keys():
                         if item.data.linecuts[orientation]['linecut_window']:
                             item.data.linecuts[orientation]['linecut_window'].close()
+                if isinstance(item.data, MixedInternalData):
+                    self.mixeddata_filter_box.hide()
                 if (item.data.filepath in self.linked_files
                     and not hasattr(item, 'duplicate')):
                     self.linked_files.remove(item.data.filepath)
@@ -741,6 +744,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def file_checked(self, item):
         if item.checkState() == 2:
             self.file_list.setCurrentItem(item)
+            if isinstance(item.data,MixedInternalData):
+                self.mixeddata_filter_box.clear()
+                self.mixeddata_filter_box.show()
+                self.mixeddata_filter_box.addItem(f'Applied to 2D data: {item.data.dataset2d.label}')
+                self.mixeddata_filter_box.addItem(f'Applied to 1D data: {item.data.dataset1d.label}')
+            else:
+                self.mixeddata_filter_box.clear()
+                self.mixeddata_filter_box.hide()
         self.update_plots()
     
     def file_clicked(self):
@@ -749,19 +760,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.clear_sidebar1D()
         if hasattr(current_item.data,'sidebar1D'):
             self.oneD_layout.addWidget(current_item.data.sidebar1D)
-        self.clear_mixeddata_filter_box()
         if isinstance(current_item.data,MixedInternalData):
-            self.mixeddata_filter_box.setVisible(True)
-            self.mixeddata_filter_box.setEnabled(True)
-            self.mixeddata_filter_box.setItemText(0,f'Applied to 2D data: {current_item.data.dataset2d.label}')
-            self.mixeddata_filter_box.setItemText(1,f'Applied to 1D data: {current_item.data.dataset1d.label}')
+            self.mixeddata_filter_box.clear()
+            self.mixeddata_filter_box.show()
+            self.mixeddata_filter_box.addItem(f'Applied to 2D data: {current_item.data.dataset2d.label}')
+            self.mixeddata_filter_box.addItem(f'Applied to 1D data: {current_item.data.dataset1d.label}')
         else:
-            self.mixeddata_filter_box.setVisible(False)
-            self.mixeddata_filter_box.setEnabled(False)
+            self.mixeddata_filter_box.clear()
+            self.mixeddata_filter_box.hide()
 
-    def mixeddata_filter_box_changed(self):
-        current_item = self.file_list.currentItem()
-        self.show_current_filters()
 
     def file_double_clicked(self, item):
         self.file_list.itemChanged.disconnect(self.file_checked)
@@ -1133,25 +1140,55 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.yaxis_combobox.setCurrentText(axlim_settings['Yscale'])
             self.yaxis_combobox.currentIndexChanged.connect(self.axis_scaling_changed)
             
+    def which_filters(self,item,filters=None,filt=None):
+        # This function works out which filters should be addressed based on the datatype (e.g. belonging to 1D line or 2D dataset)
+        # and either returns them, sets them, or appends to them.
+        if filters is None and filt is None:
+            # Return the filters to operate on
+            if isinstance(item.data,MixedInternalData) and self.mixeddata_filter_box.currentIndex() == 0:
+                filters = item.data.dataset2d.filters
+            elif hasattr(item.data, 'sidebar1D'):
+                current_1D_row = item.data.sidebar1D.trace_table.currentRow()
+                current_line = int(item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
+                if isinstance(item.data,MixedInternalData):
+                    filters= item.data.dataset1d.plotted_lines[current_line]['filters']
+                else:
+                    filters= item.data.plotted_lines[current_line]['filters']
+            else:
+                filters = item.data.filters
+            return filters
+        
+        elif filt is None: # The filters are being set.
+            if isinstance(item.data,MixedInternalData) and self.mixeddata_filter_box.currentIndex() == 0:
+                item.data.dataset2d.filters=filters
+            elif hasattr(item.data, 'sidebar1D'):
+                current_1D_row = item.data.sidebar1D.trace_table.currentRow()
+                current_line = int(item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
+                if isinstance(item.data,MixedInternalData):
+                    item.data.dataset1d.plotted_lines[current_line]['filters']=filters
+                else:
+                    item.data.plotted_lines[current_line]['filters']=filters
+            else:
+                item.data.filters = filters
+
+        else: # A filter is being appended
+            if isinstance(item.data,MixedInternalData) and self.mixeddata_filter_box.currentIndex() == 0:
+                item.data.dataset2d.filters.append(filt)
+            elif hasattr(item.data, 'sidebar1D'):
+                current_1D_row = item.data.sidebar1D.trace_table.currentRow()
+                current_line = int(item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
+                if isinstance(item.data,MixedInternalData):
+                    item.data.dataset1d.plotted_lines[current_line]['filters'].append(filt)
+                else:
+                    item.data.plotted_lines[current_line]['filters'].append(filt)
+            else:
+                item.data.filters.append(filt)
+
     def show_current_filters(self):
         self.filters_table.setRowCount(0)
         current_item = self.file_list.currentItem()
         if current_item:
-            if isinstance(current_item.data,MixedInternalData) and self.mixeddata_filter_box.currentIndex() == 0:
-                    filters = current_item.data.dataset2d.filters
-            elif hasattr(current_item.data, 'sidebar1D'):
-                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
-                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
-                try:
-                    if isinstance(current_item.data,MixedInternalData):
-                        filters= current_item.data.dataset1d.plotted_lines[current_line]['filters']
-                    else:
-                        filters= current_item.data.plotted_lines[current_line]['filters']
-                except:
-                    filters=[]
-            else:
-                filters = current_item.data.filters
-            for _ in filters:
+            for _ in self.which_filters(current_item):
                 self.append_filter_to_table()
     
     def plot_setting_edited(self,setting_name=None):
@@ -1313,17 +1350,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     
     def filters_table_edited(self, item):
         current_item = self.file_list.currentItem()
-        current_item.data.old_filters = copy.deepcopy(current_item.data.filters)
+        self.old_filters=copy.deepcopy(self.which_filters(current_item))
         if current_item:
-            if hasattr(current_item.data, 'sidebar1D'):
-                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
-                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
-                if isinstance(current_item.data,MixedInternalData):
-                    filters = current_item.data.dataset1d.plotted_lines[current_line]['filters']
-                else:
-                    filters= current_item.data.plotted_lines[current_line]['filters']
-            else:
-                filters = current_item.data.filters
+            filters=self.which_filters(current_item)
             try:
                 row = item.row()
                 filt = filters[row]
@@ -1333,8 +1362,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                  self.filters_table.item(row, 3).text()]
                 filt.checkstate = filter_item.checkState()
                 self.filters_table.clearFocus()
-                current_item.data.apply_all_filters()
-                current_item.data.reset_view_settings()
+                current_item.data.apply_all_filters(filter_box_index=self.mixeddata_filter_box.currentIndex())
                 if current_item.checkState():
                     self.update_plots()
                     self.show_current_filters()
@@ -1352,16 +1380,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def copy_filters(self):
         current_item = self.file_list.currentItem()
         if current_item:
-            if hasattr(current_item.data, 'sidebar1D'):
-                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
-                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
-                if isinstance(current_item.data,MixedInternalData):
-                    filters = current_item.data.dataset1d.plotted_lines[current_line]['filters']
-                else:
-                    filters= current_item.data.plotted_lines[current_line]['filters']
-            else:
-                filters = current_item.data.filters
-            self.copied_filters = copy.deepcopy(filters)
+            self.copied_filters = copy.deepcopy(self.which_filters(current_item))
             
     def copy_view_settings(self):
         current_item = self.file_list.currentItem()
@@ -1395,16 +1414,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if self.copied_filters:
                     filters = copy.deepcopy(self.copied_filters)
             elif which == 'old':
-                filters = copy.deepcopy(current_item.data.old_filters)
-            if hasattr(current_item.data, 'sidebar1D'):
-                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
-                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
-                if isinstance(current_item.data,MixedInternalData):
-                    current_item.data.dataset1d.plotted_lines[current_line]['filters']=filters
-                else:
-                    current_item.data.plotted_lines[current_line]['filters']=filters
-            else:
-                current_item.data.filters=filters
+                filters = copy.deepcopy(self.old_filters)
+            self.which_filters(current_item,filters=filters)
 
             self.show_current_filters()
             current_item.data.apply_all_filters()
@@ -1708,15 +1719,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current_item = self.file_list.currentItem()
         if current_item:
             filt = Filter(self.filters_combobox.currentText())
-            if hasattr(current_item.data, 'sidebar1D'): # Then it's 1D data and we apply the filter only to the selected line
-                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
-                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
-                if isinstance(current_item.data,MixedInternalData):
-                    current_item.data.dataset1d.plotted_lines[current_line]['filters'].append(filt)
-                else:
-                    current_item.data.plotted_lines[current_line]['filters'].append(filt)
-            else:
-                current_item.data.filters.append(filt)
+            try:
+                self.which_filters(current_item,filt=filt)
+            except Exception as e:
+                print('Error adding filter:', e)
             if current_item.checkState() and filt.checkstate:
                 self.update_plots()
             else:
@@ -1731,15 +1737,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current_item = self.file_list.currentItem()
         if current_item:
             row = self.filters_table.rowCount()
-            if hasattr(current_item.data, 'sidebar1D'):
-                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
-                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
-                if isinstance(current_item.data,MixedInternalData):
-                    filt = current_item.data.dataset1d.plotted_lines[current_line]['filters'][row]
-                else:
-                    filt = current_item.data.plotted_lines[current_line]['filters'][row]
-            else:
-                filt = current_item.data.filters[row]
+
+            filt = self.which_filters(current_item)[row]
+
             self.filters_table.itemChanged.disconnect(self.filters_table_edited)
             self.filters_table.insertRow(row) 
             filter_item = QtWidgets.QTableWidgetItem(filt.name)
@@ -1772,15 +1772,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def remove_filters(self, which='current'):
         current_item = self.file_list.currentItem()
         if current_item:
-            if hasattr(current_item.data, 'sidebar1D'):
-                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
-                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
-                if isinstance(current_item.data,MixedInternalData):
-                    filters = current_item.data.dataset1d.plotted_lines[current_line]['filters']
-                else:
-                    filters= current_item.data.plotted_lines[current_line]['filters']
-            else:
-                filters = current_item.data.filters
+            filters=self.which_filters(current_item)
             if which == 'current':
                 filter_row = self.filters_table.currentRow()
                 if filter_row != -1:
@@ -1798,15 +1790,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def move_filter(self, to):
         current_item = self.file_list.currentItem()
         if current_item:
-            if hasattr(current_item.data, 'sidebar1D'):
-                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
-                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
-                if isinstance(current_item.data,MixedInternalData):
-                    filters = current_item.data.dataset1d.plotted_lines[current_line]['filters']
-                else:
-                    filters= current_item.data.plotted_lines[current_line]['filters']
-            else:
-                filters = current_item.data.filters
+            filters=self.which_filters(current_item)
             row = self.filters_table.currentRow()
             if ((row > 0 and to == -1) or
                 (row < self.filters_table.rowCount()-1 and to == 1)):
@@ -1878,15 +1862,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def save_filters(self):
         current_item = self.file_list.currentItem()
         if current_item:
-            if hasattr(current_item.data, 'sidebar1D'):
-                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
-                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
-                if isinstance(current_item.data,MixedInternalData):
-                    filters = current_item.data.dataset1d.plotted_lines[current_line]['filters']
-                else:
-                    filters= current_item.data.plotted_lines[current_line]['filters']
-            else:
-                filters = current_item.data.filters
+            filters=self.which_filters(current_item)
             filename, _ = QtWidgets.QFileDialog.getSaveFileName(
                     self, 'Save Filters As...', '', '.npy')
             np.save(filename, filters)
@@ -1894,15 +1870,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def load_filters(self):
         current_item = self.file_list.currentItem()
         if current_item:
-            if hasattr(current_item.data, 'sidebar1D'):
-                current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
-                current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
-                if isinstance(current_item.data,MixedInternalData):
-                    filters = current_item.data.dataset1d.plotted_lines[current_line]['filters']
-                else:
-                    filters= current_item.data.plotted_lines[current_line]['filters']
-            else:
-                filters = current_item.data.filters
+            filters=self.which_filters(current_item)
             filename, _ = QtWidgets.QFileDialog.getOpenFileNames(
                     self, 'Open Filters File...', '', '*.npy')
             loaded_filters = list(np.load(filename[0], allow_pickle=True))
@@ -2090,12 +2058,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             value=-float(signal.text().split()[3])
             if current_item:
                 filt = Filter('Add/Subtract',method=axis, settings=[str(value),''], checkstate=2)
-                if hasattr(current_item.data, 'sidebar1D'):
-                    current_1D_row = current_item.data.sidebar1D.trace_table.currentRow()
-                    current_line = int(current_item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
-                    current_item.data.plotted_lines[current_line]['filters'].append(filt)
-                else:
-                    current_item.data.filters.append(filt)
+                self.which_filters(current_item,filt=filt)
             if current_item.checkState() and filt.checkstate:
                 self.update_plots()
                 self.reset_axlim_settings()
@@ -2195,7 +2158,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         buf.close()
         for item in checked_items:
             item.data.cursor.horizOn = True
-            item.data.cursor.vertOn = True                       
+            item.data.cursor.vertOn = True
         self.canvas.draw()
         if DARK_THEME and qdarkstyle_imported:
             rcParams_to_dark_theme()

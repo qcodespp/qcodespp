@@ -456,7 +456,7 @@ class BaseClassData:
             
         return processed_data
         
-    def apply_all_filters(self, update_color_limits=True):
+    def apply_all_filters(self, update_color_limits=True,filter_box_index=None):
         if hasattr(self, 'sidebar1D'):
             for line in self.plotted_lines.keys():
                 filters = self.plotted_lines[line]['filters']
@@ -623,6 +623,9 @@ class MixedInternalData(BaseClassData):
         self.dataset2d.prepare_data_for_plot(*args, **kwargs)
         self.dataset1d.prepare_data_for_plot(*args, **kwargs)
 
+    def reset_view_settings(self):
+        self.dataset2d.reset_view_settings()
+
     def add_plot(self, editor_window=None):
         self.dataset2d.axes=self.axes
         self.dataset2d.figure=self.figure
@@ -666,3 +669,23 @@ class MixedInternalData(BaseClassData):
         self.apply_plot_settings()
         self.apply_axlim_settings()
         self.apply_axscale_settings()
+
+    def apply_all_filters(self, update_color_limits=True,filter_box_index=None):
+        if filter_box_index ==1:
+            for line in self.dataset1d.plotted_lines.keys():
+                filters = self.dataset1d.plotted_lines[line]['filters']
+                processed_data = self.dataset1d.plotted_lines[line]['processed_data']
+                for filt in filters:
+                    if filt.checkstate:
+                        processed_data = self.dataset1d.apply_single_filter(processed_data, filt)
+                self.dataset1d.plotted_lines[line]['processed_data'] = processed_data
+
+        else:
+            filters=self.dataset2d.filters
+            processed_data = self.dataset2d.processed_data
+            for filt in filters:
+                if filt.checkstate:
+                    processed_data = self.dataset2d.apply_single_filter(processed_data, filt)
+            self.dataset2d.processed_data = processed_data
+            if update_color_limits:
+                self.reset_view_settings()
