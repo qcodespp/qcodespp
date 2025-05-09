@@ -675,8 +675,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 file_path = os.path.join(dirpath+'/igtemp', filename)
                 os.remove(file_path)
             os.rmdir(dirpath+'/igtemp')
-    
-
+   
     def save_processed_data(self, which='current'):
         current_item = self.file_list.currentItem()
         if current_item:
@@ -808,6 +807,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             if len(item.data.linecuts[orientation]['lines']) > 0:
                                 self.reinstate_markers(item,orientation)
                             if item.data.linecuts[orientation]['linecut_window'] is not None:
+                                # Is this circular?
                                 item.data.linecuts[orientation]['linecut_window'].update()
                     if hasattr(item.data, 'sidebar1D') and self.file_list.currentItem() == item:
                         self.oneD_layout.addWidget(item.data.sidebar1D)
@@ -1147,7 +1147,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.settings_table.clearFocus()
             try:
                 if setting_name == 'X data' or setting_name == 'Y data' or setting_name == 'Z data':
-                    current_item.data.prepare_data_for_plot(reload_data=True,reload_from_file=False)
+                    if isinstance(current_item.data,MixedInternalData):
+                        current_item.data.dataset2d.prepare_data_for_plot(reload_data=True,reload_from_file=False)
+                    else:
+                        current_item.data.prepare_data_for_plot(reload_data=True,reload_from_file=False)
                     # IF the plotted data has happened, all fits are likely to be irrelevant. Not sure whether to remove by force or not.
                     # I think keep the fits, because it's easy for the user to remove them, but could be a total pain to re-do if the user has
                     # changed an axis by mistake. It's also the case for applying a filter.
@@ -1543,6 +1546,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     data_list.append(item.data)
                     label_name+=item.data.label[:15]+'..., '
 
+                if any([isinstance(item,MixedInternalData) for item in data_list]):
+                    raise ValueError('Cannot combine mixed 1D and 2D datasets with other datasets.')
                 # If sets of 2D datasets, stack them along the x-axis. Requires y axis has same dimension for all datasets
                 if all([item.dim == 3 for item in data_list]):
                     if not all(item.all_parameter_names == data_list[0].all_parameter_names for item in data_list):
@@ -1596,11 +1601,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         combined_data=[]
                         combined_parameter_names=[]
                         if data_list[0].dim == 3:
-                            dataset2d=data_list[0]
-                            dataset1d=data_list[1]
+                            dataset2d=copy.copy(data_list[0])
+                            dataset1d=copy.copy(data_list[1])
                         else:
-                            dataset2d=data_list[1]
-                            dataset1d=data_list[0]
+                            dataset2d=copy.copy(data_list[1])
+                            dataset1d=copy.copy(data_list[0])
+
+                        if hasattr(dataset2d,'linecuts'): # The linecuts are super heavy resource-wise. I think I won't support combining them.
+                            del dataset2d.linecuts
 
                         combined_item=DataItem(MixedInternalData(self.canvas,dataset2d,dataset1d,label_name))
                         self.add_internal_data(combined_item)

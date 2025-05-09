@@ -608,7 +608,17 @@ class MixedInternalData(BaseClassData):
         self.settings = self.dataset2d.settings
         self.axlim_settings = self.dataset2d.axlim_settings
         self.view_settings = self.dataset2d.view_settings
-    
+        self.all_parameter_names = self.dataset2d.all_parameter_names
+
+        self.settings_menu_options = {'X data': self.all_parameter_names,
+                                'Y data': self.all_parameter_names,
+                                'Z data': self.all_parameter_names}
+        negparamnames=[f'-{name}' for name in self.all_parameter_names]
+        allnames=np.hstack((self.all_parameter_names,negparamnames))
+        self.filter_menu_options = {'Multiply': allnames,
+                                    'Divide': allnames,
+                                    'Add/Subtract': allnames}
+        
     def prepare_data_for_plot(self, *args, **kwargs):
         self.dataset2d.prepare_data_for_plot(*args, **kwargs)
         self.dataset1d.prepare_data_for_plot(*args, **kwargs)
@@ -640,6 +650,7 @@ class MixedInternalData(BaseClassData):
         # Transfer the sidebar upwards so it's accessible in the editor window.
         if not hasattr(self, 'sidebar1D') and hasattr(self.dataset1d, 'sidebar1d'):
             self.sidebar1D=self.dataset1d.sidebar1d
+            
         # or create one.
         if not hasattr(self.dataset1d, 'plotted_lines'):
             self.dataset1d.init_plotted_lines()
@@ -649,58 +660,9 @@ class MixedInternalData(BaseClassData):
             self.sidebar1D.append_trace_to_table(0)
             
         self.sidebar1D.update(clearplot=False)
-        # Same for linecuts
-        if not hasattr(self, 'linecuts') and hasattr(self.dataset2d, 'linecuts'):
-            self.linecuts=self.dataset2d.linecuts
+
         self.cursor = Cursor(self.axes, useblit=True, 
                                 color=self.settings['linecolor'], linewidth=0.5)
         self.apply_plot_settings()
         self.apply_axlim_settings()
         self.apply_axscale_settings()
-
-
-    # def apply_plot_settings(self):
-    #     self.dataset2d.apply_plot_settings()
-
-    # def apply_view_settings(self):
-    #     if len(self.get_columns()) == 3:
-    #         norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
-    #                                  vmax=self.view_settings['Maximum'], 
-    #                                  midpoint=self.view_settings['Midpoint'])
-
-    #         self.image.norm=norm
-
-    #         if self.settings['colorbar'] == 'True' and hasattr(self, 'cbar'):
-    #             #self.cbar.update_normal(self.image)
-    #             self.cbar.ax.set_title(self.settings['clabel'],
-    #                                    size=self.settings['labelsize'])
-    #             self.cbar.ax.tick_params(labelsize=self.settings['ticksize'],
-    #                                      color=rcParams['axes.edgecolor'])
-
-    # def apply_axlim_settings(self):
-    #     self.axes.set_xlim(left=self.axlim_settings['Xmin'], 
-    #                          right=self.axlim_settings['Xmax'])
-    #     self.axes.set_ylim(bottom=self.axlim_settings['Ymin'],
-    #                          top=self.axlim_settings['Ymax'])
-
-    # def apply_axscale_settings(self):
-    #     self.axes.set_xscale(self.axlim_settings['Xscale'])
-    #     self.axes.set_yscale(self.axlim_settings['Yscale'])
-        
-    # def reset_axlim_settings(self):
-    #     self.axes.autoscale()
-    #     self.axlim_settings['Xmin'] = self.axes.get_xlim()[0]
-    #     self.axlim_settings['Xmax'] = self.axes.get_xlim()[1]
-    #     self.axlim_settings['Ymin'] = self.axes.get_ylim()[0]
-    #     self.axlim_settings['Ymax'] = self.axes.get_ylim()[1]
-    
-    # def apply_colormap(self):
-    #     cmap_str = self.view_settings['Colormap']
-    #     if self.view_settings['Reverse']:
-    #         cmap_str += '_r'
-    #     cmap = cm.get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
-    #     cmap.set_bad(self.settings['maskcolor'])
-    #     if len(self.get_columns()) == 3:
-    #         self.image.set_cmap(cmap)
-    #     else:
-    #         self.image[0].set_color(cmap(0.5))

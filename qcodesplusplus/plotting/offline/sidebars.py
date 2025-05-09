@@ -17,7 +17,7 @@ class Sidebar1D(QtWidgets.QWidget):
         super().__init__()
 
         self.init_cmap='viridis'
-        self.setMaximumWidth(600)
+        self.setMaximumWidth(400)
         self.parent = parent
         self.running = True
         self.init_widgets()
@@ -274,7 +274,7 @@ class Sidebar1D(QtWidgets.QWidget):
             self.parent.plotted_lines[new_line] = copy.deepcopy(self.parent.plotted_lines[line])
             self.append_trace_to_table(new_line)
             self.editor_window.show_current_plot_settings()
-            self.update()
+            self.editor_window.update_plots()
         except Exception as e:
             print('Cannot duplicate data: '+e)
     def add_trace_manually(self): # When 'add' button pressed
@@ -300,7 +300,7 @@ class Sidebar1D(QtWidgets.QWidget):
             self.editor_window.show_current_plot_settings()
         except Exception as e:
             print('Cannot add data: '+e)
-        self.update()
+        self.editor_window.update_plots()
 
     def append_trace_to_table(self,index):
         row = self.trace_table.rowCount()
@@ -378,7 +378,7 @@ class Sidebar1D(QtWidgets.QWidget):
             self.parent.plotted_lines[line]['processed_data'] = [self.parent.processed_data[0],
                                                                 self.parent.processed_data[1]]
             self.editor_window.show_current_plot_settings()
-        self.update()
+        self.editor_window.update_plots()
 
     def remove_trace(self,which='selected'):
         # which = 'selected', 'all'
@@ -395,7 +395,7 @@ class Sidebar1D(QtWidgets.QWidget):
             self.parent.plotted_lines = {}
             self.trace_table.setRowCount(0)
 
-        self.update()
+        self.editor_window.update_plots()
 
     def move_trace(self, direction):
         self.trace_table.itemChanged.disconnect(self.trace_table_edited)
@@ -444,7 +444,7 @@ class Sidebar1D(QtWidgets.QWidget):
                 self.trace_table.item(linetrace,4).setBackground(QtGui.QColor(*rgbavalue))
 
         self.trace_table.itemChanged.connect(self.trace_table_edited)
-        self.update()
+        self.editor_window.update_plots()
 
     def colormap_type_edited(self):
         self.colormap_box.clear()
@@ -470,7 +470,7 @@ class Sidebar1D(QtWidgets.QWidget):
                         linetrace=int(self.trace_table.item(self.trace_table.currentRow(),0).text())
                         self.parent.plotted_lines[linetrace]['linecolor'] = color.name()
                         self.trace_table.setCurrentItem(self.trace_table.item(row,0)) # Otherwise the cell stays blue since it's selected.
-                        self.update()
+                        self.editor_window.update_plots()
         
         elif column==0:
             menu = QtWidgets.QMenu(self)
@@ -486,7 +486,7 @@ class Sidebar1D(QtWidgets.QWidget):
                     linetrace=int(self.trace_table.item(row,0).text())
                     self.parent.plotted_lines[linetrace]['checkstate'] = item.checkState()
                 self.trace_table.itemChanged.connect(self.trace_table_edited)
-                self.update()
+                self.editor_window.update_plots()
             elif action == uncheck_all_action:
                 self.trace_table.itemChanged.disconnect(self.trace_table_edited)
                 for row in range(self.trace_table.rowCount()):
@@ -495,7 +495,7 @@ class Sidebar1D(QtWidgets.QWidget):
                     linetrace=int(self.trace_table.item(row,0).text())
                     self.parent.plotted_lines[linetrace]['checkstate'] = item.checkState()
                 self.trace_table.itemChanged.connect(self.trace_table_edited)
-                self.update()
+                self.editor_window.update_plots()
 
         elif column in [1,2,7,8]:
             menu = QtWidgets.QMenu(self)
@@ -504,7 +504,7 @@ class Sidebar1D(QtWidgets.QWidget):
                 menu.addAction(action)
             menu.triggered[QtWidgets.QAction].connect(self.replace_table_entry)
             menu.popup(QtGui.QCursor.pos())
-            self.update()
+            #self.update()
             
         elif column==3:
             menu = QtWidgets.QMenu(self)
@@ -514,7 +514,7 @@ class Sidebar1D(QtWidgets.QWidget):
                 menu.addAction(action)
             menu.triggered[QtWidgets.QAction].connect(self.replace_table_entry)
             menu.popup(QtGui.QCursor.pos())
-            self.update()
+            #self.update()
 
         elif column==6:
             menu = QtWidgets.QMenu(self)
@@ -530,7 +530,7 @@ class Sidebar1D(QtWidgets.QWidget):
                     linetrace=int(self.trace_table.item(row,0).text())
                     self.parent.plotted_lines[linetrace]['fit']['fit_checkstate'] = item.checkState()
                 self.trace_table.itemChanged.connect(self.trace_table_edited)
-                self.update()
+                self.editor_window.update_plots()
             elif action == uncheck_all_action:
                 self.trace_table.itemChanged.disconnect(self.trace_table_edited)
                 for row in range(self.trace_table.rowCount()):
@@ -539,7 +539,7 @@ class Sidebar1D(QtWidgets.QWidget):
                     linetrace=int(self.trace_table.item(row,0).text())
                     self.parent.plotted_lines[linetrace]['fit']['fit_checkstate'] = item.checkState()
                 self.trace_table.itemChanged.connect(self.trace_table_edited)
-                self.update()
+                self.editor_window.update_plots()
     
     def replace_table_entry(self, signal):
         item = self.trace_table.currentItem()
@@ -727,7 +727,7 @@ class Sidebar1D(QtWidgets.QWidget):
         
         if not multilinefit:
             self.print_parameters(line)
-            self.update()
+            self.editor_window.update_plots()
 
     def fit_checked(self):
         # Fit all checked items in the table.
@@ -735,7 +735,7 @@ class Sidebar1D(QtWidgets.QWidget):
         for line in fit_lines:
             self.start_fitting(line,multilinefit=True)
         self.print_parameters(line)
-        self.update()
+        self.editor_window.update_plots()
     
     def print_parameters(self,line):
         self.output_window.clear()
@@ -851,7 +851,7 @@ class Sidebar1D(QtWidgets.QWidget):
             fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
             self.output_window.setText('Information about selected fit type:\n'+
                                    fit_function['description'])
-            self.update()
+            self.editor_window.update_plots()
 
     def clear_all_fits(self):
         fit_lines = self.get_checked_items(traces_or_fits='fits')
@@ -862,7 +862,7 @@ class Sidebar1D(QtWidgets.QWidget):
             self.trace_table.setItem(row,6,empty_box)
         fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
         self.output_window.setText('Information about selected fit type:\n'+fit_function['description'])
-        self.update()
+        self.editor_window.update_plots()
 
     def save_fit_preset(self):
         preset_dict={}
@@ -897,7 +897,7 @@ class Sidebar1D(QtWidgets.QWidget):
                 self.guess_checkbox.setCheckState(QtCore.Qt.Checked)
             else:
                 self.guess_checkbox.setCheckState(QtCore.Qt.UnChecked)
-            self.update()
+            self.editor_window.update_plots()
 
     def closeEvent(self, event):
         self.running = False
