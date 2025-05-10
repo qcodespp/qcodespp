@@ -230,6 +230,18 @@ class Sidebar1D(QtWidgets.QWidget):
         self.trace_table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.trace_table.customContextMenuRequested.connect(self.open_trace_table_menu)
 
+    def plot_type_changed(self):
+        # This is called when the data type is changed in the main window.
+        # It updates the trace table with the new data.
+        self.trace_table.setRowCount(0)
+        self.trace_table.clear()
+        if 'X' in self.editor_window.plot_type_box.currentText():
+            self.trace_table.setHorizontalHeaderLabels(['#','X data','Y data','style','color', 'width','show fit','Xerr','Yerr'])
+        elif 'Histogram' in self.editor_window.plot_type_box.currentText():
+            self.trace_table.setHorizontalHeaderLabels(['#','Bins','Data','style','color', 'width','show fit','Xerr','Yerr'])
+        for line in self.parent.plotted_lines.keys():
+            self.append_trace_to_table(line)
+
     def item_clicked(self, item):
         # displays the fit result and/or information.
         row = self.trace_table.currentRow()
@@ -286,6 +298,7 @@ class Sidebar1D(QtWidgets.QWidget):
             line={'checkstate': 2,
                 'X data': self.parent.all_parameter_names[0],
                 'Y data': self.parent.all_parameter_names[1],
+                'Bins': 100,
                 'Xerr':0,
                 'Yerr':0,
                 'linecolor': (1,0,0,1),
@@ -322,6 +335,7 @@ class Sidebar1D(QtWidgets.QWidget):
         linetrace_item.setCheckState(line['checkstate'])
 
         Xdata_item = QtWidgets.QTableWidgetItem(line['X data'])
+        bins_item = QtWidgets.QTableWidgetItem(line['Bins'])
         Ydata_item = QtWidgets.QTableWidgetItem(line['Y data'])
 
         style_item = QtWidgets.QTableWidgetItem(line['linestyle'])
@@ -343,7 +357,10 @@ class Sidebar1D(QtWidgets.QWidget):
         Yerr_item = QtWidgets.QTableWidgetItem(str(line['Yerr']))
 
         self.trace_table.setItem(row,0,linetrace_item)
-        self.trace_table.setItem(row,1,Xdata_item)
+        if 'Histogram' in self.editor_window.plot_type_box.currentText():
+            self.trace_table.setItem(row,1,bins_item)
+        else:
+            self.trace_table.setItem(row,1,Xdata_item)
         self.trace_table.setItem(row,2,Ydata_item)
         self.trace_table.setItem(row,3,style_item)
         self.trace_table.setItem(row,4,color_box)
@@ -368,7 +385,10 @@ class Sidebar1D(QtWidgets.QWidget):
         elif current_col == 0: # It's the checkstate for the linetrace.
             self.parent.plotted_lines[line]['checkstate'] = current_item.checkState()
 
-        edit_dict={1:'X data',2:'Y data',3:'linestyle',5:'linewidth',7:'Xerr',8:'Yerr'}
+        if 'istogram' in self.editor_window.plot_type_box.currentText():
+            edit_dict={1:'Bins',2:'Y data',3:'linestyle',4:'linecolor',7:'Xerr',8:'Yerr'}
+        else:
+            edit_dict={1:'X data',2:'Y data',3:'linestyle',5:'linewidth',7:'Xerr',8:'Yerr'}
         if current_col in edit_dict.keys():
             self.parent.plotted_lines[line][edit_dict[current_col]] = current_item.text()
 
@@ -749,6 +769,9 @@ class Sidebar1D(QtWidgets.QWidget):
         self.parent.prepare_data_for_plot(reload_data=True,reload_from_file=False,linefrompopup=line)
         x=self.parent.plotted_lines[line]['processed_data'][0]
         y=self.parent.plotted_lines[line]['processed_data'][1]
+        if 'Histogram' in self.editor_window.plot_type_box.currentText():
+            y,x=np.histogram(y, bins=int(self.parent.plotted_lines[line]['Bins']))
+            x=(x[:-1]+x[1:])/2
         return (x,y)
     
     def plot_Yerr(self,x,y,error,line):

@@ -267,6 +267,7 @@ class BaseClassData:
         self.plotted_lines = {0: {'checkstate': 2,
                         'X data': self.all_parameter_names[0],
                         'Y data': self.all_parameter_names[1],
+                        'Bins': 100,
                         'Xerr': 0,
                         'Yerr': 0,
                         'raw_data': self.raw_data,
@@ -292,7 +293,6 @@ class BaseClassData:
                     self.sidebar1D.running = True
                     self.sidebar1D.append_trace_to_table(0)
                     #editor_window.oneD_layout.addWidget(self.sidebar1D)
-
                 self.sidebar1D.update()
 
                 # This is horrible, but I need to get rid of these. Ideally I would re-write the extension so they're

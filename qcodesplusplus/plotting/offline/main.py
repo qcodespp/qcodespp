@@ -243,6 +243,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.file_list.itemChanged.connect(self.file_checked)
         self.file_list.itemClicked.connect(self.file_clicked)
         self.file_list.itemDoubleClicked.connect(self.file_double_clicked)
+        self.plot_type_box.currentIndexChanged.connect(self.plot_type_changed)
         self.settings_table.itemChanged.connect(self.plot_setting_edited)
         self.filters_table.itemChanged.connect(self.filters_table_edited)
         self.copy_settings_button.clicked.connect(self.copy_plot_settings)
@@ -757,6 +758,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.mixeddata_filter_box.hide()
         self.update_plots()
     
+    def plot_type_changed(self):
+        # Eventually will do other stuff but for the moment just...
+        print(1)
+        current_item = self.file_list.currentItem()
+        if hasattr(current_item.data,'sidebar1D'):
+            current_item.data.sidebar1D.plot_type_changed()
+
     def show_or_hide_view_settings(self):
         current_item = self.file_list.currentItem()
         if current_item:
