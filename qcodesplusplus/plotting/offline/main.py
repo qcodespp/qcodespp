@@ -1197,7 +1197,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if hasattr(filt, 'method_list') and 'Z' in filt.method_list:
                     filt.method_list=copy.copy(filt.method_list)
                     filt.method_list.remove('Z')
-                    filt.method=filt.method_list[0]
+                    if hasattr(filt, 'method') and filt.method == 'Z':
+                        filt.method=filt.method_list[0]
                 if isinstance(item.data,MixedInternalData):
                     item.data.dataset1d.plotted_lines[current_line]['filters'].append(filt)
                 else:
