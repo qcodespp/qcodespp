@@ -337,7 +337,7 @@ class Sidebar1D(QtWidgets.QWidget):
         linetrace_item.setCheckState(line['checkstate'])
 
         Xdata_item = QtWidgets.QTableWidgetItem(line['X data'])
-        bins_item = QtWidgets.QTableWidgetItem(line['Bins'])
+        bins_item = QtWidgets.QTableWidgetItem(str(line['Bins']))
         Ydata_item = QtWidgets.QTableWidgetItem(line['Y data'])
 
         style_item = QtWidgets.QTableWidgetItem(line['linestyle'])
@@ -815,12 +815,21 @@ class Sidebar1D(QtWidgets.QWidget):
         if len(lines) > 0:
             for line in lines:
                 x,y= self.get_line_data(line)
+                if 'istogram' in self.editor_window.plot_type_box.currentText():
+                    self.parent.settings['ylabel'] = 'Counts'
+                    if 'default_ylabel' in self.parent.settings.keys():
+                        self.parent.settings['xlabel'] = self.parent.settings['default_ylabel']
+                    drawstyle='steps-mid'
+                else:
+                    drawstyle='default'
                 #self.parent.image = 
                 self.parent.axes.plot(x, y,
                                     self.parent.plotted_lines[line]['linestyle'],
                                     linewidth=self.parent.plotted_lines[line]['linewidth'],
                                     markersize=self.parent.plotted_lines[line]['linewidth'],
-                                    color=self.parent.plotted_lines[line]['linecolor'])
+                                    color=self.parent.plotted_lines[line]['linecolor'],
+                                    drawstyle=drawstyle)
+
                 if self.parent.plotted_lines[line]['Xerr'] not in [0,'0'] or self.parent.plotted_lines[line]['Yerr'] not in [0,'0']:
                     self.process_uncertainties(line,x,y)
             self.parent.apply_plot_settings()

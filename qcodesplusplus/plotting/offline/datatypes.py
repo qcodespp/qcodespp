@@ -117,10 +117,13 @@ class BaseClassData:
         self.settings['Y data'] = self.all_parameter_names[1]
         self.settings['xlabel'] = self.all_parameter_names[0]
         self.settings['ylabel'] = self.all_parameter_names[1]
+        self.settings['default_xlabel'] = self.all_parameter_names[0]
+        self.settings['default_ylabel'] = self.all_parameter_names[1]
 
         if self.loaded_data[0,1] == self.loaded_data[0,0] and len(self.all_parameter_names) > 2:
             self.settings['Z data'] = self.all_parameter_names[2]
             self.settings['clabel'] = self.all_parameter_names[2]
+            self.settings['default_clabel'] = self.all_parameter_names[2]
             self.dim=3
         else:
             self.dim=2

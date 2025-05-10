@@ -761,9 +761,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def plot_type_changed(self):
         # Eventually will do other stuff but for the moment just...
         current_item = self.file_list.currentItem()
+        current_item.data.plot_type=self.plot_type_box.currentText()
+
         if hasattr(current_item.data,'sidebar1D'):
-            current_item.data.plot_type=self.plot_type_box.currentText()
+            # current_row = current_item.data.sidebar1D.trace_table.currentRow()
+            # line = int(current_item.data.sidebar1D.trace_table.item(current_row,0).text())
             current_item.data.sidebar1D.plot_type_changed()
+
+        self.update_plots()
 
     def show_or_hide_view_settings(self):
         current_item = self.file_list.currentItem()
@@ -1078,7 +1083,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.new_plot_Z_box.setCurrentIndex(2)
             
             if current_item.data.dim == 2:
-                plot_types=['X/Y', 'Histogram']
+                plot_types=['X/Y','Histogram']
             elif current_item.data.dim == 3:
                 plot_types=['X/Y/Z', 'Histogram Y', 'Histogram X', 'Histogram X/Y']
             self.plot_type_box.addItems(plot_types)
