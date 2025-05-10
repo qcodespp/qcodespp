@@ -1194,6 +1194,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             elif hasattr(item.data, 'sidebar1D'):
                 current_1D_row = item.data.sidebar1D.trace_table.currentRow()
                 current_line = int(item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
+                if hasattr(filt, 'method_list') and 'Z' in filt.method_list:
+                    filt.method_list=copy.copy(filt.method_list)
+                    filt.method_list.remove('Z')
+                    filt.method=filt.method_list[0]
                 if isinstance(item.data,MixedInternalData):
                     item.data.dataset1d.plotted_lines[current_line]['filters'].append(filt)
                 else:
@@ -1206,7 +1210,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current_item = self.file_list.currentItem()
         if current_item:
             for _ in self.which_filters(current_item):
-                self.append_filter_to_table()
+                try:
+                    self.append_filter_to_table()
+                except Exception as e:
+                    print('Error appending filter to table:', e)
     
     def plot_setting_edited(self,setting_name=None):
         current_item = self.file_list.currentItem()
