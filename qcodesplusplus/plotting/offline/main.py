@@ -753,6 +753,24 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.mixeddata_filter_box.hide()
         self.update_plots()
     
+    def show_or_hide_view_settings(self):
+        current_item = self.file_list.currentItem()
+        if current_item:
+            if any([current_item.data.dim==3,isinstance(current_item.data, MixedInternalData)]):
+                for i in range(self.view_layout.rowCount()):
+                    for j in range(self.view_layout.columnCount()):
+                        try:
+                            self.view_layout.itemAtPosition(i,j).widget().show()
+                        except:
+                            pass
+            else:
+                for i in range(self.view_layout.rowCount()):
+                    for j in range(self.view_layout.columnCount()):
+                        try:
+                            self.view_layout.itemAtPosition(i,j).widget().hide()
+                        except:
+                            pass
+
     def file_clicked(self):
         current_item = self.file_list.currentItem()
         self.show_current_all()
@@ -822,7 +840,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     item.data.axes = item.data.figure.add_subplot(rows, cols, index+1)
                     item.data.add_plot(editor_window=self)
                     if hasattr(item.data, 'linecuts'):
-                        for orientation in ['horizontal','vertical','diagonal']:#,'circular']:
+                        for orientation in ['horizontal','vertical']:#,'diagonal']:#,'circular']:
                             if len(item.data.linecuts[orientation]['lines']) > 0:
                                 self.reinstate_markers(item,orientation)
                             if item.data.linecuts[orientation]['linecut_window'] is not None and item==self.file_list.currentItem():
@@ -1012,6 +1030,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.show_current_filters()
         self.show_current_axscale_settings()
         self.show_current_axlim_settings()
+        self.show_or_hide_view_settings()
         self.populate_new_plot_settings()
         self.show_data_shape()
     
@@ -1708,7 +1727,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         item = self.filters_table.currentItem()
         item.setText(signal.text())
 
-
     def reset_color_limits(self):
         current_item = self.file_list.currentItem()
         if current_item:
@@ -1734,7 +1752,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.filters_combobox.setCurrentIndex(0)
         self.filters_combobox.clearFocus()
         self.filters_combobox.currentIndexChanged.connect(self.filters_box_changed)
-        
     
     def append_filter_to_table(self):
         current_item = self.file_list.currentItem()
@@ -1889,6 +1906,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def draggable_point_selected(self, x,y,data):
         selected=False
+        if isinstance(data, MixedInternalData):
+            data = data.dataset2d
         if hasattr(data,'linecuts'):
             # Define window the same size as the draggable points
             delta_x = np.abs(data.axes.get_xlim()[1]-data.axes.get_xlim()[0])*0.02
@@ -1935,8 +1954,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     # mouse is in the vicinity of a pre-existing diagonal or circular linecut point.
 
                     elif ((event.button == 1 or event.button == 2) and 
-                        data.dim == 3 and not self.draggable_point_selected(x,y,data)):
+                        (data.dim == 3 or isinstance(data,MixedInternalData)) and not self.draggable_point_selected(x,y,data)):
                         # Opening linecut/fitting window for 2D data
+                        if isinstance(data, MixedInternalData):
+                            data = data.dataset2d
                         index_x = np.argmin(np.abs(data.processed_data[0][:,0]-x))
                         index_y = np.argmin(np.abs(data.processed_data[1][0,:]-y))
                         data.selected_indices = [int(index_x), int(index_y)]
@@ -2021,7 +2042,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         data.add_extension_actions(self, rightclick_menu)
                         rightclick_menu.addSeparator()
                         actions=[]
-                        if data.dim == 3 and not isinstance(data, MixedInternalData):
+                        if data.dim == 3 or isinstance(data, MixedInternalData):
                             actions.append(QtWidgets.QAction('Draw diagonal linecut', self))
                             actions.append(QtWidgets.QAction('Draw circular linecut', self))
                             actions.append(QtWidgets.QAction('Plot vertical linecuts', self))
@@ -2068,6 +2089,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         
         # Making linecuts
         elif 'linecut' in signal.text():
+            if isinstance(data, MixedInternalData):
+                data = data.dataset2d
             # Make dictionary if it doesn't exist
             if not hasattr(data,'linecuts'):
                 data.linecuts={'horizontal':{'linecut_window':None,'lines':{}},
@@ -2075,7 +2098,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                'diagonal':{'linecut_window':None,'lines':{}},
                                'circular':{'linecut_window':None,'lines':{}}
                                 }
-            
             orientation=signal.text().split()[1]
 
             if data.linecuts[orientation]['linecut_window']==None:
@@ -2117,8 +2139,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         elif signal.text() == 'Draw circular linecut':
             if hasattr(data, 'linecut_points'):
                 data.hide_linecuts()
-            left, right = data.axes.get_xlim() 
-            bottom, top = data.axes.get_ylim()                
+            left, right = data.axes.get_xlim()
+            bottom, top = data.axes.get_ylim()
             x, y = data.selected_x, data.selected_y
             data.xr, data.yr = 0.1*(right-left), 0.1*(top-bottom)
             data.linecut_points = [DraggablePoint(data, x, y),
@@ -2134,9 +2156,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.canvas.draw()
             data.linecut_window.activateWindow()
         elif signal.text() == 'FFT vertical':
+            if isinstance(data, MixedInternalData):
+                data = data.dataset2d
             data.fft_orientation = 'vertical'
             data.open_fft_window()
         elif signal.text() == 'FFT horizontal':
+            if isinstance(data, MixedInternalData):
+                data = data.dataset2d
             data.fft_orientation = 'horizontal'
             data.open_fft_window()
         else:

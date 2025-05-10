@@ -661,6 +661,8 @@ class MixedInternalData(BaseClassData):
             self.sidebar1D.running = True
             newsidebar=True
 
+        self.sidebar1D.lims_label.setText('Fit limits')
+
         if not hasattr(self.dataset1d, 'plotted_lines'):
             # Should basically never happen; user should always have created a plot before.
             self.dataset1d.init_plotted_lines()
