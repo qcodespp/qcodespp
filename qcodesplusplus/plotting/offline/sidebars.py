@@ -118,7 +118,6 @@ class Sidebar1D(QtWidgets.QWidget):
         self.trace_table.itemChanged.connect(self.trace_table_edited)
         self.colormap_type_box.currentIndexChanged.connect(self.colormap_type_edited)
 
-
     def init_layouts(self):
         # Sub-layouts in Linetrace list box:
         self.table_buttons_layout_top = QtWidgets.QHBoxLayout()
@@ -277,6 +276,7 @@ class Sidebar1D(QtWidgets.QWidget):
             self.editor_window.update_plots()
         except Exception as e:
             print('Cannot duplicate data: '+e)
+
     def add_trace_manually(self): # When 'add' button pressed
         try:
             max_index=np.max(list(self.parent.plotted_lines.keys()))
@@ -669,7 +669,6 @@ class Sidebar1D(QtWidgets.QWidget):
             inputinfo=None
         return inputinfo
         
-
     def collect_init_guess(self,function_class, function_name):
         # Collect parameters/initial guess
         if self.guess_checkbox.checkState():
@@ -755,6 +754,7 @@ class Sidebar1D(QtWidgets.QWidget):
     def plot_Yerr(self,x,y,error,line):
         self.parent.axes.fill_between(x, y+error, y-error,
                                     alpha=0.2, color=self.parent.plotted_lines[line]['linecolor'])
+                                    
     def plot_Xerr(self,x,y,error,line):
         self.parent.axes.fill_betweenx(y, x+error, x-error,
                                     alpha=0.2, color=self.parent.plotted_lines[line]['linecolor'])

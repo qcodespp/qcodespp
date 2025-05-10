@@ -189,6 +189,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.linked_files = []
         self.resize(1400,1000)
         self.mixeddata_filter_box.hide()
+        self.track_button.hide()
+        self.refresh_label.hide()
+        self.refresh_line_edit.hide()
+        self.refreshunit_label.hide()
     
     def init_plot_settings(self):
         self.settings_table.setColumnCount(2)
@@ -1045,7 +1049,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.data_shape_label.setText('Data shape:')
    
     def populate_new_plot_settings(self):
-        boxes= [self.new_plot_X_box, self.new_plot_Y_box, self.new_plot_Z_box]
+        boxes= [self.new_plot_X_box, self.new_plot_Y_box, self.new_plot_Z_box, self.plot_type_box]
         for combobox in boxes:
             combobox.clear()
 
@@ -1063,6 +1067,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.new_plot_Y_box.setCurrentIndex(1)
                 if dim == 3:
                     self.new_plot_Z_box.setCurrentIndex(2)
+            
+            if current_item.data.dim == 2:
+                self.plot_type_box.addItem('X/Y')
+                self.plot_type_box.addItem('Histogram')
+            elif current_item.data.dim == 3:
+                self.plot_type_box.addItem('X/Y/Z')
+                self.plot_type_box.addItem('Histogram Y')
+                self.plot_type_box.addItem('Histogram X')
+                self.plot_type_box.addItem('Histogram X/Y')
     
     def show_current_plot_settings(self):
         self.settings_table.clear()

@@ -533,6 +533,38 @@
          <number>6</number>
         </property>
         <item>
+         <widget class="QLabel" name="plot_type_label">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>Plot type:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="plot_type_box">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>150</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="sizeAdjustPolicy">
+           <enum>QComboBox::AdjustToContents</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QPushButton" name="track_button">
           <property name="text">
            <string>Track data</string>
@@ -893,7 +925,7 @@
        </layout>
       </item>
       <item>
-       <layout class="QGridLayout" name="view_layout" rowstretch="0" columnstretch="0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0" columnminimumwidth="0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0">
+       <layout class="QGridLayout" name="view_layout" rowstretch="0" columnstretch="0,0,0,0,0,0,0,0,0,0,0,0,0,0,0" columnminimumwidth="0,0,0,0,0,0,0,0,0,0,0,0,0,0,0">
         <item row="0" column="4">
          <widget class="QCheckBox" name="mid_checkbox">
           <property name="text">
