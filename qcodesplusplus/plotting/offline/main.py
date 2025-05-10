@@ -461,7 +461,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.file_checked(item)
         self.file_list.itemChanged.connect(self.file_checked)
 
-    
     def remove_files(self, which='current'):
         if self.file_list.count() > 0:
             if which == 'current':
@@ -768,7 +767,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         else:
             self.mixeddata_filter_box.clear()
             self.mixeddata_filter_box.hide()
-
 
     def file_double_clicked(self, item):
         self.file_list.itemChanged.disconnect(self.file_checked)
@@ -1493,30 +1491,31 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 try:
                     self.combine_plots()
                 except Exception as e:
-                    print('Cannot combine these plots:', e)
+                    print('Cannot combine files:', e)
                     
     def duplicate_item(self, new_plot_button=False):
         original_item = self.file_list.currentItem()
         if original_item:
-            for i in reversed(range(self.oneD_layout.count())): 
-                widgetToRemove = self.oneD_layout.itemAt(i).widget()
-                # remove it from the layout list
-                self.oneD_layout.removeWidget(widgetToRemove)
-                # remove it from the gui
-                widgetToRemove.setParent(None)
-            if new_plot_button:
-                X = self.new_plot_X_box.currentText()
-                Y = self.new_plot_Y_box.currentText()
-                Z = self.new_plot_Z_box.currentText()
-            if isinstance(original_item.data, InternalData):
+            self.clear_sidebar1D()
+            # Copy over data if internal data, or else re-load it. 
+            # The advantage of keeping it this way is that the new data gets the correct data class; it won't be InternalData.
+            if any([isinstance(original_item.data, InternalData),isinstance(original_item.data, MixedInternalData)]):
                 self.add_internal_data(DataItem(original_item.data.copy()),check_item=False,uncheck_others=False)
             else:
                 self.open_files(filepaths=[original_item.data.filepath],overrideautocheck=True)
+
             new_item = self.file_list.currentItem()
             new_item.duplicate = True
+
+            # Copy over settings
             new_item.data.settings = original_item.data.settings.copy()
             new_item.data.view_settings = original_item.data.view_settings.copy()
-            new_item.data.filters = copy.deepcopy(original_item.data.filters)
+            new_item.data.axlim_settings = original_item.data.axlim_settings.copy()
+            # Copy filters to the correct location.
+            self.which_filters(new_item,filters=copy.deepcopy(original_item.data.filters))
+            #new_item.data.filters = copy.deepcopy(original_item.data.filters)
+
+            # Naming the new item in the file-list. qcpp gets special treatment, assuming the counter always comes first in the filename.
             if isinstance(original_item.data, qcodesppData):
                 original_label= original_item.data.label
                 if hasattr(original_item,'duplicate'):
@@ -1537,10 +1536,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 new_item.setText(f'Duplicate: {new_item.data.label}')
                 new_item.data.label = f'Duplicate: {new_item.data.label}'
 
+            # Making new plot if 'Add new plot' button was pressed
             if new_plot_button:
+                X = self.new_plot_X_box.currentText()
+                Y = self.new_plot_Y_box.currentText()
+                Z = self.new_plot_Z_box.currentText()
                 new_item.data.settings['X data'] = X
                 new_item.data.settings['Y data'] = Y
-                if original_item.data.dim==3:
+                if original_item.data.dim==3 or isinstance(original_item.data, MixedInternalData):
                     new_item.data.settings['Z data'] = Z
                 else:
                     new_item.data.prepare_data_for_plot()

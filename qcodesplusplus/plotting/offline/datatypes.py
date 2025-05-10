@@ -604,11 +604,12 @@ class MixedInternalData(BaseClassData):
         self.label = label_name
         self.dim = 'mixed'
 
-        #self.prepare_dataset()
         self.settings = self.dataset2d.settings
         self.axlim_settings = self.dataset2d.axlim_settings
         self.view_settings = self.dataset2d.view_settings
         self.all_parameter_names = self.dataset2d.all_parameter_names
+        if hasattr(self.dataset1d, 'linecuts'):
+            self.linecuts = self.dataset2d.linecuts
 
         self.settings_menu_options = {'X data': self.all_parameter_names,
                                 'Y data': self.all_parameter_names,
@@ -653,14 +654,20 @@ class MixedInternalData(BaseClassData):
         # Transfer the sidebar upwards so it's accessible in the editor window.
         if not hasattr(self, 'sidebar1D') and hasattr(self.dataset1d, 'sidebar1d'):
             self.sidebar1D=self.dataset1d.sidebar1d
-            
-        # or create one.
-        if not hasattr(self.dataset1d, 'plotted_lines'):
-            self.dataset1d.init_plotted_lines()
-        if not hasattr(self, 'sidebar1D'):
+            newsidebar=False
+        # Or create one
+        else:
             self.sidebar1D = Sidebar1D(self.dataset1d,editor_window=editor_window)
             self.sidebar1D.running = True
+            newsidebar=True
+
+        if not hasattr(self.dataset1d, 'plotted_lines'):
+            # Should basically never happen; user should always have created a plot before.
+            self.dataset1d.init_plotted_lines()
             self.sidebar1D.append_trace_to_table(0)
+        elif newsidebar:
+            for line in self.dataset1d.plotted_lines.keys():
+                self.sidebar1D.append_trace_to_table(line)
             
         self.sidebar1D.update(clearplot=False)
 
