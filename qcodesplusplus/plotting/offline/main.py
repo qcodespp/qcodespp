@@ -1710,6 +1710,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         row = self.filters_table.currentRow()
         column = self.filters_table.currentColumn()
         filter_name = self.filters_table.item(row, 0).text()
+        if column == 0:
+            menu = QtWidgets.QMenu(self)
+            menu.addAction(QtWidgets.QAction('Check all', self))
+            menu.addAction(QtWidgets.QAction('Uncheck all', self))
+            menu.triggered[QtWidgets.QAction].connect(self.check_all_filters)
+            menu.popup(QtGui.QCursor.pos())
         if filter_name in ['Multiply','Divide','Add/Subtract'] and column == 2:
             menu = QtWidgets.QMenu(self)
             filter_settings={}
@@ -1734,6 +1740,22 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def replace_filter_setting(self,signal):
         item = self.filters_table.currentItem()
         item.setText(signal.text())
+
+    def check_all_filters(self, signal):
+        current_item = self.file_list.currentItem()
+        self.filters_table.itemChanged.disconnect(self.filters_table_edited)
+        checkstates = {'Check all': QtCore.Qt.Checked,
+                       'Uncheck all': QtCore.Qt.Unchecked}
+        filters = self.which_filters(current_item)
+        for row in range(self.filters_table.rowCount()):
+            self.filters_table.item(row, 0).setCheckState(checkstates[signal.text()])
+            filters[row].checkstate = checkstates[signal.text()]
+        self.filters_table.itemChanged.connect(self.filters_table_edited)
+        if current_item.checkState():
+            self.update_plots()
+            self.show_current_filters()
+            self.show_current_view_settings()
+            self.reset_axlim_settings()
 
     def reset_color_limits(self):
         current_item = self.file_list.currentItem()
