@@ -117,10 +117,12 @@ def fit_lorgausstype(modeltype,xdata,ydata,p0,inputinfo):
     else:
         background=None
 
-    if amplitudes ==None: #Guess that the amplitudes will be close to the maximum value of the data
-        amplitudes=[ydata.max()-ydata.min() for i in range(int(numofpeaks))]
     if sigmas==None: #Sigma will be much smaller than the peak spacing unless peaks are overlapping. However, starting with a low value seems to work even if overlapping, but not the other way around.
         sigmas=[np.abs(xdata[-1]-xdata[0])/(12*numofpeaks) for i in range(int(numofpeaks))]
+    if amplitudes ==None: #Guess that the height will be close to the maximum value of the data: calculate amplitude based on gaussian.
+        height=ydata.max()-ydata.min()
+        amp=height*sigmas[0]*np.sqrt(2*np.pi)
+        amplitudes=[amp for i in range(int(numofpeaks))]
 
     peakpos0=rough_peak_positions[0]
     peakpositions=rough_peak_positions[1:]
@@ -533,7 +535,7 @@ multipeak_description= ('Fit one or more {} peaks. The inputs are n,c, where n i
                         'To change this, provide an initial guess of the form {}\n'
                         'If providing an intial guess, you must provide '
                         'all parameters for all peaks.')
-lorgaussform=('w1 ... wn, a1 ... an, x1 ... xn, c where w = peak fwhm, a = peak height, '
+lorgaussform=('w1 ... wn, a1 ... an, x1 ... xn, c where w = peak sigma a = peak amplitude, '
                         'x = peak position and c = constant offset value (if used). For example:\n'
                         '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1\n'
                         'for three peaks with no constant offset, and\n'
@@ -544,7 +546,7 @@ for peaktype in ['Lorentzian','Gaussian','Lognormal','StudentsT','DampedOscillat
     functions['Peaks: 3 param'][peaktype] = {}
     functions['Peaks: 3 param'][peaktype]['inputs']='# of peaks, use offset'
     functions['Peaks: 3 param'][peaktype]['default_inputs']='1,0'
-    functions['Peaks: 3 param'][peaktype]['parameters']='fwhm(s), height(s), position(s), y_offset'
+    functions['Peaks: 3 param'][peaktype]['parameters']='sigma(s), amplitudes(s), position(s), y_offset'
     functions['Peaks: 3 param'][peaktype]['description'] = multipeak_description.format(peaktype,lorgaussform)
 functions['Peaks: 3 param']['Lorentzian']['function'] = partial(fit_lorgausstype, lmm.LorentzianModel)
 functions['Peaks: 3 param']['Gaussian']['function'] = partial(fit_lorgausstype,lmm.GaussianModel)
@@ -554,7 +556,7 @@ functions['Peaks: 3 param']['DampedOscillator']['function'] = partial(fit_lorgau
 
 
 functions['Peaks: 4 param']={}
-fourparamform=('w1 ... wn, a1 ... an, x1 ... xn, g1 ... gn, c where w = peak fwhm, a = peak height, '
+fourparamform=('w1 ... wn, a1 ... an, x1 ... xn, g1 ... gn, c where w = peak sigma, a = peak amplitude, '
                         'x = peak position, g = gamma (see lmfit documentation for meaning in each case) '
                         'and c = constant offset value (if used). For example:\n'
                         '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001\n'
@@ -566,7 +568,7 @@ for peaktype in ['Voigt','PseudoVoigt','BreitWigner/Fano','SplitLorentzian','Exp
     functions['Peaks: 4 param'][peaktype] = {}
     functions['Peaks: 4 param'][peaktype]['inputs']='# of peaks, use offset'
     functions['Peaks: 4 param'][peaktype]['default_inputs']='1,0'
-    functions['Peaks: 4 param'][peaktype]['parameters']='fwhm(s), height(s), position(s), gammas(s), y_offset'
+    functions['Peaks: 4 param'][peaktype]['parameters']='sigmas(s), amplitudes(s), position(s), gammas(s), y_offset'
     functions['Peaks: 4 param'][peaktype]['description'] = multipeak_description.format(peaktype,fourparamform)
 functions['Peaks: 4 param']['Voigt']['function'] = partial(fit_voigttype, lmm.VoigtModel)
 functions['Peaks: 4 param']['PseudoVoigt']['function'] = partial(fit_voigttype, lmm.PseudoVoigtModel)
@@ -580,7 +582,7 @@ functions['Peaks: 4 param']['DampedHarmOsc']['function'] = partial(fit_voigttype
 functions['Peaks: 4 param']['Doniach']['function'] = partial(fit_voigttype, lmm.DoniachModel)
 
 functions['Peaks: skewed']={}
-fiveparamform=('w1 ... wn, a1 ... an, x1 ... xn, g1 ... gn, s1 ... sn, c where w = peak fwhm, a = peak height, '
+fiveparamform=('w1 ... wn, a1 ... an, x1 ... xn, g1 ... gn, s1 ... sn, c where w = peak sigma, a = peak amplitude, '
                         'x = peak position, g = gamma (see lmfit documentation for meaning in each case), '
                         's = skew and c = constant offset value (if used). For example:\n'
                         '0.01 0.014 0.005, 1.1 1.05 1.2, -0.1 0 0.1, 0.001 0.001 0.001, 0.1 0.12 0.14\n'
@@ -591,7 +593,7 @@ for peaktype in ['Pearson4','SkewedVoigt']:
     functions['Peaks: skewed'][peaktype] = {}
     functions['Peaks: skewed'][peaktype]['inputs']='# of peaks, use offset'
     functions['Peaks: skewed'][peaktype]['default_inputs']='1,0'
-    functions['Peaks: skewed'][peaktype]['parameters']='fwhm(s), height(s), position(s), gammas(s), skews(s), y_offset'
+    functions['Peaks: skewed'][peaktype]['parameters']='sigma(s), amplitude(s), position(s), gammas(s), skews(s), y_offset'
     functions['Peaks: skewed'][peaktype]['description'] = multipeak_description.format(peaktype,fiveparamform)
 functions['Peaks: skewed']['Pearson4']['function'] = partial(fit_skewedpeaks, lmm.Pearson4Model)
 functions['Peaks: skewed']['SkewedVoigt']['function'] = partial(fit_skewedpeaks,lmm.SkewedVoigtModel)
@@ -620,7 +622,7 @@ functions['Thermal']={'Maxwell':{'fullname':'Maxwell-Boltzmann', 'equation':'1/A
 thermaldescription=('Fit to a {} distribution: y = {}. kT is considered a single fit parameter. Initial guesses '
                     'for kT should be in units of x, usually either eV or J.')
 for key in functions['Thermal'].keys():
-    functions['Thermal'][key]['parameters']=['A, x0, kT']
+    functions['Thermal'][key]['parameters']='A, x0, kT'
     functions['Thermal'][key]['description']=thermaldescription.format(functions['Thermal'][key]['fullname'], functions['Thermal'][key]['equation'])
 
 
@@ -632,7 +634,7 @@ stepdescription=('Fit a single step function of type {} (see lmfit documentation
                 'The x-value where y=A/2 is given by x0, and sigma is the characteristic width of the step.\n'
                 'Use an offset filter on the data in the main panel to ensure your data starts at y=0.')
 for key in functions['Step'].keys():
-    functions['Step'][key]['parameters']=['A, x0, sigma']
+    functions['Step'][key]['parameters']='A, x0, sigma'
     functions['Step'][key]['description']=stepdescription.format(key)
 functions['Step']['Linear']['function'] = partial(step_fit, 'linear')
 functions['Step']['Arctan']['function'] = partial(step_fit, 'arctan')

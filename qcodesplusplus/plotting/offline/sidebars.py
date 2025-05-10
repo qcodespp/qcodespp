@@ -146,6 +146,7 @@ class Sidebar1D(QtWidgets.QWidget):
         self.fit_layout = QtWidgets.QHBoxLayout()
         self.inputs_layout = QtWidgets.QHBoxLayout()
         self.guess_layout = QtWidgets.QHBoxLayout()
+        self.guess_input_layout = QtWidgets.QHBoxLayout()
         self.output_layout = QtWidgets.QVBoxLayout()
         self.fit_buttons_layout = QtWidgets.QHBoxLayout()
         self.fit_all_buttons_layout = QtWidgets.QHBoxLayout()
@@ -171,7 +172,7 @@ class Sidebar1D(QtWidgets.QWidget):
         #self.inputs_layout.addStretch()
 
         self.guess_layout.addWidget(self.guess_checkbox)
-        self.guess_layout.addWidget(self.guess_edit)
+        self.guess_input_layout.addWidget(self.guess_edit)
         #self.guess_layout.addStretch()
 
         self.output_layout.addWidget(self.output_window)
@@ -205,6 +206,7 @@ class Sidebar1D(QtWidgets.QWidget):
         self.fittinglayout.addLayout(self.fit_layout)
         self.fittinglayout.addLayout(self.inputs_layout)
         self.fittinglayout.addLayout(self.guess_layout)
+        self.fittinglayout.addLayout(self.guess_input_layout)
         self.fittinglayout.addLayout(self.output_layout)
         self.fittinglayout.addLayout(self.fit_buttons_layout)
         self.fittinglayout.addLayout(self.fit_all_buttons_layout)

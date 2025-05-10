@@ -760,9 +760,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     
     def plot_type_changed(self):
         # Eventually will do other stuff but for the moment just...
-        print(1)
         current_item = self.file_list.currentItem()
         if hasattr(current_item.data,'sidebar1D'):
+            current_item.data.plot_type=self.plot_type_box.currentText()
             current_item.data.sidebar1D.plot_type_changed()
 
     def show_or_hide_view_settings(self):
@@ -1057,6 +1057,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.data_shape_label.setText('Data shape:')
    
     def populate_new_plot_settings(self):
+        self.plot_type_box.currentIndexChanged.disconnect(self.plot_type_changed)
         boxes= [self.new_plot_X_box, self.new_plot_Y_box, self.new_plot_Z_box, self.plot_type_box]
         for combobox in boxes:
             combobox.clear()
@@ -1077,13 +1078,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.new_plot_Z_box.setCurrentIndex(2)
             
             if current_item.data.dim == 2:
-                self.plot_type_box.addItem('X/Y')
-                self.plot_type_box.addItem('Histogram')
+                plot_types=['X/Y', 'Histogram']
             elif current_item.data.dim == 3:
-                self.plot_type_box.addItem('X/Y/Z')
-                self.plot_type_box.addItem('Histogram Y')
-                self.plot_type_box.addItem('Histogram X')
-                self.plot_type_box.addItem('Histogram X/Y')
+                plot_types=['X/Y/Z', 'Histogram Y', 'Histogram X', 'Histogram X/Y']
+            self.plot_type_box.addItems(plot_types)
+            if hasattr(current_item.data, 'plot_type'):
+                if current_item.data.plot_type in plot_types:
+                    self.plot_type_box.setCurrentText(current_item.data.plot_type)
+        self.plot_type_box.currentIndexChanged.connect(self.plot_type_changed)
+
     
     def show_current_plot_settings(self):
         self.settings_table.clear()
