@@ -29,6 +29,8 @@ class qcodesppData(main.BaseClassData):
         
         self.channels = self.meta['arrays']
 
+        self.plot_type=None
+
         if load_the_data:
             if '.dat' in filepath:
                 self.dataset=load_data(os.path.dirname(filepath))

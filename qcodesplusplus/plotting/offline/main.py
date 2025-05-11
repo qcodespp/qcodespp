@@ -756,6 +756,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             #             np.savetxt(filepath+'_'+str(i).zfill(2),item.data.processed_data)
                 
     def file_checked(self, item):
+
         if item.checkState() == 2:
             self.file_list.setCurrentItem(item)
             if isinstance(item.data,MixedInternalData):
@@ -909,7 +910,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         if item.data.dim == 2:
                             update_data = False # No matter what (except for the very first time, where the data gets its dim)
                     if update_data: # This should only be called when updating 2D data: updating 1D data is taken care of in the datatype and sidebar
-                        item.data.prepare_data_for_plot(plot_type=self.plot_type_box.currentText())
+                        item.data.prepare_data_for_plot(plot_type=item.data.plot_type)
                     item.data.figure = self.figure
                     item.data.axes = item.data.figure.add_subplot(rows, cols, index+1)
                     item.data.add_plot(editor_window=self)
@@ -1103,13 +1104,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.update_plots()
         
     def show_current_all(self):
+        self.populate_new_plot_settings()
         self.show_current_plot_settings()
         self.show_current_view_settings()
         self.show_current_filters()
         self.show_current_axscale_settings()
         self.show_current_axlim_settings()
         self.show_or_hide_view_settings()
-        self.populate_new_plot_settings()
         self.show_data_shape()
     
     def show_data_shape(self):

@@ -66,6 +66,7 @@ class BaseClassData:
         self.label = os.path.basename(self.filepath)
 
         self.loaded_data=None
+        self.plot_type=None
         
         self.settings = self.DEFAULT_PLOT_SETTINGS.copy()
         self.view_settings = self.DEFAULT_VIEW_SETTINGS.copy()

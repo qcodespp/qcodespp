@@ -769,7 +769,7 @@ class Sidebar1D(QtWidgets.QWidget):
     def get_line_data(self,line):
         # Returns the processed x,y data for a particular entry in the plotted lines dictionary
         self.parent.prepare_data_for_plot(reload_data=True,reload_from_file=False,
-                                          linefrompopup=line,plot_type=self.editor_window.plot_type_box.currentText())
+                                          linefrompopup=line,plot_type=self.parent.plot_type)
         x=self.parent.plotted_lines[line]['processed_data'][0]
         y=self.parent.plotted_lines[line]['processed_data'][1]
         return (x,y)
