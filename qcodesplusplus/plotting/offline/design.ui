@@ -1194,7 +1194,7 @@
      <string>Presets</string>
     </property>
     <addaction name="action_load_preset"/>
-    <addaction name="action_export_preset"/>
+    <addaction name="action_save_preset"/>
    </widget>
    <widget class="QMenu" name="menuCombine_Plots">
     <property name="title">
@@ -1413,9 +1413,9 @@
     <string>Load Preset</string>
    </property>
   </action>
-  <action name="action_export_preset">
+  <action name="action_save_preset">
    <property name="text">
-    <string>Export Preset</string>
+    <string>Save Preset</string>
    </property>
   </action>
   <action name="action_preset_2">

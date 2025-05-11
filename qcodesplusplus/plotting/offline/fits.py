@@ -98,9 +98,9 @@ def fit_lorgausstype(modeltype,xdata,ydata,p0,inputinfo):
     sigmas=None
     amplitudes=None
 
-    if xdata[0]>xdata[-1]:
-        xdata=xdata[::-1]
-        ydata=ydata[::-1]
+    # if xdata[0]>xdata[-1]:
+    #     xdata=xdata[::-1]
+    #     ydata=ydata[::-1]
     
     peakspacing=(xdata.max()-xdata.min())/numofpeaks
     rough_peak_positions=[i*peakspacing+peakspacing/2+xdata.min() for i in range(int(numofpeaks))]
@@ -122,7 +122,8 @@ def fit_lorgausstype(modeltype,xdata,ydata,p0,inputinfo):
     if amplitudes ==None: #Guess that the height will be close to the maximum value of the data: calculate amplitude based on gaussian.
         height=ydata.max()-ydata.min()
         amp=height*sigmas[0]*np.sqrt(2*np.pi)
-        amplitudes=[amp for i in range(int(numofpeaks))]
+        # but to be honest i get better results just using the height...doesn't make sense but whatever
+        amplitudes=[height for i in range(int(numofpeaks))]
 
     peakpos0=rough_peak_positions[0]
     peakpositions=rough_peak_positions[1:]
@@ -178,9 +179,12 @@ def fit_voigttype(modeltype,xdata,ydata,p0,inputinfo):
     amplitudes=None
     gammas=None
 
-    if xdata[0]>xdata[-1]:
-        xdata=xdata[::-1]
-        ydata=ydata[::-1]
+    # if xdata[0]>xdata[-1]:
+    #     xdata=xdata[::-1]
+    #     ydata=ydata[::-1]
+    #     flipped=True
+    # else:
+    #     flipped=False
     
     peakspacing=(xdata.max()-xdata.min())/numofpeaks
     rough_peak_positions=[i*peakspacing+peakspacing/2+xdata.min() for i in range(int(numofpeaks))]
@@ -258,9 +262,9 @@ def fit_skewedpeaks(modeltype,xdata,ydata,p0,inputinfo):
     gammas=None
     skews=None
 
-    if xdata[0]>xdata[-1]:
-        xdata=xdata[::-1]
-        ydata=ydata[::-1]
+    # if xdata[0]>xdata[-1]:
+    #     xdata=xdata[::-1]
+    #     ydata=ydata[::-1]
     
     peakspacing=(xdata.max()-xdata.min())/numofpeaks
     rough_peak_positions=[i*peakspacing+peakspacing/2+xdata.min() for i in range(int(numofpeaks))]
@@ -336,9 +340,9 @@ def fit_sines(xdata,ydata,p0,inputinfo):
     freqs=None
     phases=None
 
-    if xdata[0]>xdata[-1]:
-        xdata=xdata[::-1]
-        ydata=ydata[::-1]
+    # if xdata[0]>xdata[-1]:
+    #     xdata=xdata[::-1]
+    #     ydata=ydata[::-1]
 
     if p0: #Format should be list of strings: ['A A ... A','f f ... f','ph ph ... ph','c']
         amps=[float(par) for par in p0[0].split()]
@@ -407,9 +411,9 @@ def thermal_fit(modeltype,xdata,ydata,p0,inputinfo):
 
 #Fit a step function.
 def step_fit(modeltype,xdata,ydata,p0,inputinfo):
-    if xdata[0]>xdata[-1]:
-        xdata=xdata[::-1]
-        ydata=ydata[::-1]
+    # if xdata[0]>xdata[-1]:
+    #     xdata=xdata[::-1]
+    #     ydata=ydata[::-1]
     model=lmm.StepModel(form=modeltype)
     params=model.make_params()
     if p0:
@@ -428,9 +432,9 @@ def step_fit(modeltype,xdata,ydata,p0,inputinfo):
 
 #Fit a rectangle function.
 def rectangle_fit(modeltype,xdata,ydata,p0,inputinfo):
-    if xdata[0]>xdata[-1]:
-        xdata=xdata[::-1]
-        ydata=ydata[::-1]
+    # if xdata[0]>xdata[-1]:
+    #     xdata=xdata[::-1]
+    #     ydata=ydata[::-1]
     model=lmm.RectangleModel(form=modeltype)
     params=model.make_params()
     if p0:

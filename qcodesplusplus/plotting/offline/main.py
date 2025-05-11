@@ -19,6 +19,8 @@ import io
 import tarfile
 from webbrowser import open as href_open
 from csv import writer as csvwriter
+from json import load as jsonload
+from json import dump as jsondump
 from stat import ST_CTIME
 import numpy as np
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -317,6 +319,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         # self.action_preset_1.triggered.connect(lambda: self.apply_preset(1))
         # self.action_preset_2.triggered.connect(lambda: self.apply_preset(2))
         # self.action_preset_3.triggered.connect(lambda: self.apply_preset(3))
+        self.action_load_preset.triggered.connect(self.load_preset)
+        self.action_save_preset.triggered.connect(self.save_preset)
         self.action_refresh_stop.setEnabled(False)
         self.action_link_to_folder.triggered.connect(lambda: self.update_link_to_folder(new_folder=True))
         self.action_unlink_folder.triggered.connect(self.unlink_folder)
@@ -2436,20 +2440,77 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.stop_auto_refresh()
                 print('Stop live tracking...')
 
-                              
-    def apply_preset(self, preset_number):
+    def save_preset(self):
+        current_item = self.file_list.currentItem()
+        if current_item:
+            settings_to_save=['titlesize',
+            'labelsize',
+            'ticksize',
+            'spinewidth',
+            'colorbar',
+            'minortick',
+            'linecolor',
+            'maskcolor',
+            'cmap levels',
+            'rasterized',
+            'dpi',
+            'transparent',
+            'shading']
+            view_settings_to_save=['Colormap Type','Colormap']
+
+            presets={}
+            for setting in settings_to_save:
+                if setting in current_item.data.settings.keys():
+                    presets[setting]=current_item.data.settings[setting]
+            for setting in view_settings_to_save:
+                if setting in current_item.data.view_settings.keys():
+                    presets[setting]=current_item.data.view_settings[setting]
+
+            filename, _ = QtWidgets.QFileDialog.getSaveFileName(
+                    self, 'Save Preset As...', '', 'IG preset (*.igp)')
+            if filename:
+                try:
+                    with open(filename, 'w') as f:
+                        jsondump(presets, f)
+                    print('Saved preset as', filename)
+                except Exception as e:
+                    print('Could not save preset:', e)
+
+    def load_preset(self):
         checked_items = self.get_checked_items()
         if checked_items:
-            for item in checked_items:
-                for preset_item in PRESETS[preset_number].items():
-                    if preset_item[0] in item.data.settings.keys():
-                        item.data.settings[preset_item[0]] = preset_item[1]
-                    elif preset_item[0] == 'canvas_bounds':
-                        b = preset_item[1] # (left, bottom, right, top)
-                        item.data.figure.subplots_adjust(b[0], b[1], b[2], b[3])
-                    elif preset_item[0] == 'show_meta_settings':
-                        item.data.show_settings = preset_item[1]
-            self.update_plots()
+            filename, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self, 'Load Preset File...', '', '*.igp')
+            if filename:
+                try:
+                    for item in checked_items:
+                            with open(filename, 'r') as f:
+                                presets = jsonload(f)
+                            for setting in presets.keys():
+                                if setting in item.data.settings.keys():
+                                    item.data.settings[setting] = presets[setting]
+                                elif setting in item.data.view_settings.keys():
+                                    item.data.view_settings[setting] = presets[setting]
+                            item.data.apply_view_settings()
+                            self.update_plots()
+                    print('Loaded preset from', filename)
+                except Exception as e:
+                    print('Could not load preset:', e)
+
+# Old way of doing presets.                              
+    # def apply_preset(self, preset_number):
+    #     checked_items = self.get_checked_items()
+    #     if checked_items:
+    #         for item in checked_items:
+    #             for preset_item in PRESETS[preset_number].items():
+    #                 if preset_item[0] in item.data.settings.keys():
+    #                     item.data.settings[preset_item[0]] = preset_item[1]
+    #                 elif preset_item[0] == 'canvas_bounds':
+    #                     b = preset_item[1] # (left, bottom, right, top)
+    #                     item.data.figure.subplots_adjust(b[0], b[1], b[2], b[3])
+    #                 elif preset_item[0] == 'show_meta_settings':
+    #                     item.data.show_settings = preset_item[1]
+    #         self.update_plots()
 
     def tight_layout(self):
         self.figure.tight_layout()
