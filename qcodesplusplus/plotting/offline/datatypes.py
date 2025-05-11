@@ -258,43 +258,69 @@ class BaseClassData:
             self.processed_data = [np.array(np.copy(self.raw_data[x])) for x in self.get_columns()]
 
     def reshape_for_plot_type(self, plot_type=None, line=None):
-        if plot_type == 'Histogram':
-            y,x=np.histogram(self.plotted_lines[line]['processed_data'][1], bins=int(self.plotted_lines[line]['Bins']))
-            x=(x[:-1]+x[1:])/2
-            self.plotted_lines[line]['processed_data']=[x,y]
+        type_dict={'Histogram': lambda: self.plot_type_histogram(line),
+                   'FFT': lambda: self.plot_type_fft(line),
+                   'Histogram Y': self.plot_type_histogram_y,
+                   'Histogram X': self.plot_type_histogram_x,
+                   'FFT Y': self.plot_type_ffty,
+                   'FFT X': self.plot_type_fftx}
+        type_dict[plot_type]()
 
-        elif plot_type == 'FFT':
-            y=np.abs(np.fft.rfft(self.plotted_lines[line]['processed_data'][1],norm='ortho'))
-            x=np.fft.rfftfreq(self.plotted_lines[line]['processed_data'][1].shape[0], d=self.plotted_lines[line]['processed_data'][0][1]-self.plotted_lines[line]['processed_data'][0][0])
-            self.plotted_lines[line]['processed_data']=[x,y]
+    def plot_type_histogram(self,line):
+        y,x=np.histogram(self.plotted_lines[line]['processed_data'][1], bins=int(self.plotted_lines[line]['Bins']))
+        x=(x[:-1]+x[1:])/2
+        self.plotted_lines[line]['processed_data']=[x,y]
 
-        elif plot_type == 'Histogram Y':
-            bins=self.settings['binsY']
-            new_zdata=np.zeros((self.processed_data[-1].shape[0],bins))
-            new_ydata=np.zeros((self.processed_data[-1].shape[0],bins))
-            new_xdata=np.zeros((self.processed_data[-1].shape[0],bins))
+    def plot_type_fft(self,line):
+        y=np.abs(np.fft.rfft(self.plotted_lines[line]['processed_data'][1],norm='ortho'))
+        x=np.fft.rfftfreq(self.plotted_lines[line]['processed_data'][1].shape[0], d=np.abs(self.plotted_lines[line]['processed_data'][0][1]-self.plotted_lines[line]['processed_data'][0][0]))
+        self.plotted_lines[line]['processed_data']=[x,y]
 
-            for i in range(self.processed_data[-1].shape[0]):
-                new_zdata[i,:],y=np.histogram(self.processed_data[-1][i,:], bins=bins)
-                new_ydata[i,:]=(y[:-1]+y[1:])/2
-                new_indices=np.linspace(0,bins-1,bins)
-                old_indices=np.linspace(0,self.processed_data[0].shape[1]-1,self.processed_data[0].shape[1])
-                new_xdata[i,:]=np.interp(new_indices,old_indices,self.processed_data[0][i,:])
-            self.processed_data=[new_xdata,new_ydata,new_zdata]
+    def plot_type_histogram_y(self):
+        bins=self.settings['binsY']
+        new_zdata=np.zeros((self.processed_data[-1].shape[0],bins))
+        new_ydata=np.zeros((self.processed_data[-1].shape[0],bins))
+        new_xdata=np.zeros((self.processed_data[-1].shape[0],bins))
 
-        elif plot_type == 'Histogram X':
-            bins=self.settings['binsX']
-            new_zdata=np.zeros((bins,self.processed_data[-1].shape[1]))
-            new_ydata=np.zeros((bins,self.processed_data[-1].shape[1]))
-            new_xdata=np.zeros((bins,self.processed_data[-1].shape[1]))
+        for i in range(self.processed_data[-1].shape[0]):
+            new_zdata[i,:],y=np.histogram(self.processed_data[-1][i,:], bins=bins)
+            new_ydata[i,:]=(y[:-1]+y[1:])/2
+            new_indices=np.linspace(0,bins-1,bins)
+            old_indices=np.linspace(0,self.processed_data[0].shape[1]-1,self.processed_data[0].shape[1])
+            new_xdata[i,:]=np.interp(new_indices,old_indices,self.processed_data[0][i,:])
+        self.processed_data=[new_xdata,new_ydata,new_zdata]
 
-            for i in range(self.processed_data[-1].shape[1]):
-                new_zdata[:,i],x=np.histogram(self.processed_data[-1][:,i], bins=bins)
-                new_xdata[:,i]=(x[:-1]+x[1:])/2
-                new_indices=np.linspace(0,bins-1,bins)
-                old_indices=np.linspace(0,self.processed_data[1].shape[0]-1,self.processed_data[1].shape[0])
-                new_ydata[:,i]=np.interp(new_indices,old_indices,self.processed_data[1][:,i])
-            self.processed_data=[new_xdata,new_ydata,new_zdata]
+    def plot_type_histogram_x(self):
+        bins=self.settings['binsX']
+        new_zdata=np.zeros((bins,self.processed_data[-1].shape[1]))
+        new_ydata=np.zeros((bins,self.processed_data[-1].shape[1]))
+        new_xdata=np.zeros((bins,self.processed_data[-1].shape[1]))
+
+        for i in range(self.processed_data[-1].shape[1]):
+            new_zdata[:,i],x=np.histogram(self.processed_data[-1][:,i], bins=bins)
+            new_xdata[:,i]=(x[:-1]+x[1:])/2
+            new_indices=np.linspace(0,bins-1,bins)
+            old_indices=np.linspace(0,self.processed_data[1].shape[0]-1,self.processed_data[1].shape[0])
+            new_ydata[:,i]=np.interp(new_indices,old_indices,self.processed_data[1][:,i])
+        self.processed_data=[new_xdata,new_ydata,new_zdata]
+
+    def plot_type_ffty(self):
+        xdata = self.processed_data[0]
+        ydata = self.processed_data[1]
+        zdata = self.processed_data[-1]
+        zdata=np.abs(np.fft.rfft(zdata,norm='ortho',axis=1))
+        ydata=[np.fft.rfftfreq(len(ydata[i]),np.abs(ydata[i][1]-ydata[i][0])) for i in range(len(ydata))]
+        xdata=[np.interp(np.linspace(0,np.shape(zdata)[1]-1,np.shape(zdata)[1]),np.arange(np.shape(xdata)[1]),xdata[i]) for i in range(len(xdata))]
+        self.processed_data=[xdata,ydata,zdata]
+
+    def plot_type_fftx(self):
+        xdata = self.processed_data[0]
+        ydata = self.processed_data[1]
+        zdata = self.processed_data[-1]
+        zdata=np.abs(np.fft.rfft(zdata,norm='ortho',axis=0))
+        xdata=np.transpose([np.fft.rfftfreq(len(xdata[:,i]),np.abs(xdata[:,i][1]-xdata[:,i][0])) for i in range(np.shape(zdata)[1])])
+        ydata=np.transpose([np.interp(np.linspace(0,np.shape(zdata)[0]-1,np.shape(zdata)[0]),np.arange(np.shape(ydata)[0]),ydata[:,i]) for i in range(np.shape(zdata)[1])])
+        self.processed_data=[xdata,ydata,zdata]
 
     def prepare_data_for_plot(self, reload_data=False, reload_from_file=False,
                               linefrompopup=None,update_color_limits=True,plot_type=None):
@@ -302,7 +328,7 @@ class BaseClassData:
             self.load_and_reshape_data(reload_data, reload_from_file, linefrompopup)
         if self.raw_data:
             self.copy_raw_to_processed_data(linefrompopup)
-            if plot_type:
+            if plot_type and plot_type not in ['X,Y','X,Y,Z']:
                 self.reshape_for_plot_type(plot_type,linefrompopup)
             self.apply_all_filters(update_color_limits=update_color_limits)
         else:
