@@ -4,7 +4,6 @@ import os
 from matplotlib.widgets import Cursor
 from matplotlib import cm, rcParams
 from .helpers import MidpointNormalize
-from .popupwindows import FFTWindow
 from .sidebars import Sidebar1D
 
 class DataItem(QtWidgets.QListWidgetItem):
@@ -618,15 +617,6 @@ class BaseClassData:
         if hasattr(self, 'linecut_points'):
             del self.linecut_points
         self.canvas.draw()
-    
-    def open_fft_window(self):
-        if self.fft_orientation == 'vertical':
-            self.fft = np.fft.rfft(self.processed_data[-1], axis=1)
-        elif self.fft_orientation == 'horizontal':
-            self.fft = np.fft.rfft(self.processed_data[-1], axis=0)
-        self.fft_window = FFTWindow(self.fft)
-        self.fft_window.show()
-
 
 class NumpyData(BaseClassData):
     def __init__(self, filepath, canvas, dataset):

@@ -1435,25 +1435,3 @@ class LineCutWindow(QtWidgets.QWidget):
             else:
                 self.guess_checkbox.setCheckState(QtCore.Qt.UnChecked)
             self.update()
-
-
-
-class FFTWindow(QtWidgets.QWidget):
-    def __init__(self, fftdata):
-        super().__init__()
-        self.resize(600, 600)
-        self.vertical_layout = QtWidgets.QVBoxLayout()
-        self.figure = Figure()
-        self.axes = self.figure.add_subplot(111)
-        #zoom_factory(self.axes)
-        self.canvas = FigureCanvas(self.figure)
-        self.navi_toolbar = NavigationToolbar(self.canvas, self)
-        self.fft = np.absolute(fftdata).transpose()
-        self.image = self.axes.pcolormesh(self.fft, shading='auto', norm=LogNorm(vmin=self.fft.min(), vmax=self.fft.max()))
-        self.cbar = self.figure.colorbar(self.image, orientation='vertical')
-        self.figure.tight_layout(pad=2)
-        self.axes.tick_params(color=rcParams['axes.edgecolor'])
-        self.canvas.draw()
-        self.vertical_layout.addWidget(self.navi_toolbar)
-        self.vertical_layout.addWidget(self.canvas)
-        self.setLayout(self.vertical_layout)

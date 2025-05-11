@@ -40,7 +40,7 @@ except ModuleNotFoundError:
 from lmfit.model import save_modelresult, load_modelresult
 
 import qcodesplusplus.plotting.offline.design as design
-from .popupwindows import LineCutWindow, FFTWindow
+from .popupwindows import LineCutWindow
 from .sidebars import Sidebar1D
 from .helpers import (cmaps, MidpointNormalize,NavigationToolbarMod,
                       rcParams_to_dark_theme,rcParams_to_light_theme,
@@ -1351,7 +1351,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         current_item.data.prepare_data_for_plot(reload_data=True,reload_from_file=False)
                     # IF the plotted data has happened, all fits are likely to be irrelevant. Not sure whether to remove by force or not.
                     # I think keep the fits, because it's easy for the user to remove them, but could be a total pain to re-do if the user has
-                    # changed an axis by mistake. It's also the case for applying a filter.
+                    # changed an axis by mistake. It's also the case for applying a filter, but in this case we uncheck them.
+                    self.check_all_filters(signal=None,manual_signal='Uncheck all')
                     self.update_plots()
                     self.reset_axlim_settings()
                 if setting_name == 'transpose':
@@ -1854,15 +1855,19 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         item = self.filters_table.currentItem()
         item.setText(signal.text())
 
-    def check_all_filters(self, signal):
+    def check_all_filters(self, signal, manual_signal=None):
+        if manual_signal:
+            text=manual_signal
+        else:
+            text = signal.text()
         current_item = self.file_list.currentItem()
         self.filters_table.itemChanged.disconnect(self.filters_table_edited)
         checkstates = {'Check all': QtCore.Qt.Checked,
                        'Uncheck all': QtCore.Qt.Unchecked}
         filters = self.which_filters(current_item)
         for row in range(self.filters_table.rowCount()):
-            self.filters_table.item(row, 0).setCheckState(checkstates[signal.text()])
-            filters[row].checkstate = checkstates[signal.text()]
+            self.filters_table.item(row, 0).setCheckState(checkstates[text])
+            filters[row].checkstate = checkstates[text]
         self.filters_table.itemChanged.connect(self.filters_table_edited)
         if current_item.checkState():
             self.update_plots()
@@ -2187,11 +2192,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         actions=[]
                         if data.dim == 3 or isinstance(data, MixedInternalData):
                             actions.append(QtWidgets.QAction('Draw diagonal linecut', self))
-                            actions.append(QtWidgets.QAction('Draw circular linecut', self))
-                            actions.append(QtWidgets.QAction('Plot vertical linecuts', self))
-                            actions.append(QtWidgets.QAction('Plot horizontal linecuts', self))
-                            actions.append(QtWidgets.QAction('FFT vertical', self))
-                            actions.append(QtWidgets.QAction('FFT horizontal', self))
+                            #actions.append(QtWidgets.QAction('Draw circular linecut', self))
+                            actions.append(QtWidgets.QAction('Plot/show vertical linecuts', self))
+                            actions.append(QtWidgets.QAction('Plot/show horizontal linecuts', self))
                         for action in actions:
                             rightclick_menu.addAction(action)
                         rightclick_menu.triggered[QtWidgets.QAction].connect(self.popup_canvas)
@@ -2298,18 +2301,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             data.linecut_window.update()
             self.canvas.draw()
             data.linecut_window.activateWindow()
-        elif signal.text() == 'FFT vertical':
-            if isinstance(data, MixedInternalData):
-                data = data.dataset2d
-            data.fft_orientation = 'vertical'
-            data.open_fft_window()
-        elif signal.text() == 'FFT horizontal':
-            if isinstance(data, MixedInternalData):
-                data = data.dataset2d
-            data.fft_orientation = 'horizontal'
-            data.open_fft_window()
-        else:
-            data.do_extension_actions(self, signal)
             
     def copy_canvas_to_clipboard(self):
         checked_items = self.get_checked_items()
@@ -2489,21 +2480,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     print('Loaded preset from', filename)
                 except Exception as e:
                     print('Could not load preset:', e)
-
-# Old way of doing presets.                              
-    # def apply_preset(self, preset_number):
-    #     checked_items = self.get_checked_items()
-    #     if checked_items:
-    #         for item in checked_items:
-    #             for preset_item in PRESETS[preset_number].items():
-    #                 if preset_item[0] in item.data.settings.keys():
-    #                     item.data.settings[preset_item[0]] = preset_item[1]
-    #                 elif preset_item[0] == 'canvas_bounds':
-    #                     b = preset_item[1] # (left, bottom, right, top)
-    #                     item.data.figure.subplots_adjust(b[0], b[1], b[2], b[3])
-    #                 elif preset_item[0] == 'show_meta_settings':
-    #                     item.data.show_settings = preset_item[1]
-    #         self.update_plots()
 
     def tight_layout(self):
         self.figure.tight_layout()
