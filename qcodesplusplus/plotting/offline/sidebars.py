@@ -237,7 +237,7 @@ class Sidebar1D(QtWidgets.QWidget):
         # It updates the trace table with the new data.
         self.trace_table.setRowCount(0)
         self.trace_table.clear()
-        if 'Histogram' in self.editor_window.plot_type_box.currentText():
+        if self.parent.plot_type == 'Histogram':
             self.trace_table.setHorizontalHeaderLabels(['#','Bins','Data','style','color', 'width','show fit','Xerr','Yerr'])
         else:
             self.trace_table.setHorizontalHeaderLabels(['#','X data','Y data','style','color', 'width','show fit','Xerr','Yerr'])
@@ -359,7 +359,7 @@ class Sidebar1D(QtWidgets.QWidget):
         Yerr_item = QtWidgets.QTableWidgetItem(str(line['Yerr']))
 
         self.trace_table.setItem(row,0,linetrace_item)
-        if 'Histogram' in self.editor_window.plot_type_box.currentText():
+        if self.parent.plot_type == 'Histogram':
             self.trace_table.setItem(row,1,bins_item)
         else:
             self.trace_table.setItem(row,1,Xdata_item)
@@ -775,7 +775,7 @@ class Sidebar1D(QtWidgets.QWidget):
         return (x,y)
     
     def plot_Yerr(self,x,y,error,line):
-        if 'istogram' in self.editor_window.plot_type_box.currentText():
+        if self.parent.plot_type == 'Histogram':
             self.parent.axes.errorbar(x, y,
                                     yerr=error,
                                     fmt='none',
@@ -787,7 +787,7 @@ class Sidebar1D(QtWidgets.QWidget):
                                     alpha=0.2, color=self.parent.plotted_lines[line]['linecolor'])
                                     
     def plot_Xerr(self,x,y,error,line):
-        if 'istogram' in self.editor_window.plot_type_box.currentText():
+        if self.parent.plot_type == 'Histogram':
             self.parent.axes.errorbar(x, y,
                                     xerr=error,
                                     fmt='none',

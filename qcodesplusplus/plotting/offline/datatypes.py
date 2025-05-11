@@ -257,13 +257,17 @@ class BaseClassData:
         else:
             self.processed_data = [np.array(np.copy(self.raw_data[x])) for x in self.get_columns()]
 
+    # After the data has been reshaped into raw_data and copied to processed_data,
+    # first again reshape the data if it should be plotted as a histogram or FFT.
+    # After this step, it goes through the filters.
     def reshape_for_plot_type(self, plot_type=None, line=None):
         type_dict={'Histogram': lambda: self.plot_type_histogram(line),
                    'FFT': lambda: self.plot_type_fft(line),
                    'Histogram Y': self.plot_type_histogram_y,
                    'Histogram X': self.plot_type_histogram_x,
                    'FFT Y': self.plot_type_ffty,
-                   'FFT X': self.plot_type_fftx}
+                   'FFT X': self.plot_type_fftx,
+                   'FFT X/Y': self.plot_type_fftxy}
         type_dict[plot_type]()
 
     def plot_type_histogram(self,line):
@@ -320,6 +324,16 @@ class BaseClassData:
         zdata=np.abs(np.fft.rfft(zdata,norm='ortho',axis=0))
         xdata=np.transpose([np.fft.rfftfreq(len(xdata[:,i]),np.abs(xdata[:,i][1]-xdata[:,i][0])) for i in range(np.shape(zdata)[1])])
         ydata=np.transpose([np.interp(np.linspace(0,np.shape(zdata)[0]-1,np.shape(zdata)[0]),np.arange(np.shape(ydata)[0]),ydata[:,i]) for i in range(np.shape(zdata)[1])])
+        self.processed_data=[xdata,ydata,zdata]
+
+    def plot_type_fftxy(self):
+        xdata = self.processed_data[0]
+        ydata = self.processed_data[1]
+        zdata = self.processed_data[-1]
+        zdata=np.abs(np.fft.rfft2(zdata,norm='ortho'))
+        # It's actually simple... x and y data are the frequencies, which go between zero and Nyquist, i.e. 1/2 the sampling rate.
+        xdata=np.tile(np.linspace(0,1/(2*np.abs(xdata[:,0][1]-xdata[:,0][0])),zdata.shape[0]),(zdata.shape[1],1)).T
+        ydata=np.tile(np.linspace(0,1/(2*np.abs(ydata[0][1]-ydata[0][0])),zdata.shape[1]),(zdata.shape[0],1))
         self.processed_data=[xdata,ydata,zdata]
 
     def prepare_data_for_plot(self, reload_data=False, reload_from_file=False,

@@ -770,7 +770,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.update_plots()
     
     def plot_type_changed(self):
-        # Eventually will do other stuff but for the moment just...
         current_item = self.file_list.currentItem()
         plot_type = self.plot_type_box.currentText()
         current_item.data.plot_type=plot_type
@@ -1125,33 +1124,58 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
    
     def populate_new_plot_settings(self):
         self.plot_type_box.currentIndexChanged.disconnect(self.plot_type_changed)
-        boxes= [self.new_plot_X_box, self.new_plot_Y_box, self.new_plot_Z_box, self.plot_type_box]
-        for combobox in boxes:
-            combobox.clear()
+        try:
+            boxes= [self.new_plot_X_box, self.new_plot_Y_box, self.new_plot_Z_box, self.plot_type_box]
+            for combobox in boxes:
+                combobox.clear()
 
-        current_item = self.file_list.currentItem()
-        if current_item:
-            if hasattr(current_item.data, 'all_parameter_names'):
-                dim = len(current_item.data.get_columns())
-                if dim == 2:
-                    boxes= [self.new_plot_X_box, self.new_plot_Y_box]
-                else:
-                    boxes= [self.new_plot_X_box, self.new_plot_Y_box, self.new_plot_Z_box]
-                for combobox in boxes:
-                    combobox.addItems(current_item.data.all_parameter_names)
-                self.new_plot_X_box.setCurrentIndex(0)
-                self.new_plot_Y_box.setCurrentIndex(1)
-                if dim == 3:
-                    self.new_plot_Z_box.setCurrentIndex(2)
-            
-            if current_item.data.dim == 2:
-                plot_types=['X,Y','Histogram','FFT']
-            elif current_item.data.dim == 3:
-                plot_types=['X,Y,Z', 'Histogram Y', 'Histogram X', 'Histogram X/Y', 'FFT Y', 'FFT X', 'FFT X/Y']
-            self.plot_type_box.addItems(plot_types)
-            if hasattr(current_item.data, 'plot_type'):
-                if current_item.data.plot_type in plot_types:
-                    self.plot_type_box.setCurrentText(current_item.data.plot_type)
+            current_item = self.file_list.currentItem()
+            if current_item:
+                if hasattr(current_item.data, 'all_parameter_names'):
+                    dim = len(current_item.data.get_columns())
+                    if dim == 2:
+                        boxes= [self.new_plot_X_box, self.new_plot_Y_box]
+                    else:
+                        boxes= [self.new_plot_X_box, self.new_plot_Y_box, self.new_plot_Z_box]
+                    for combobox in boxes:
+                        combobox.addItems(current_item.data.all_parameter_names)
+                    self.new_plot_X_box.setCurrentIndex(0)
+                    self.new_plot_Y_box.setCurrentIndex(1)
+                    if dim == 3:
+                        self.new_plot_Z_box.setCurrentIndex(2)
+                
+                if current_item.data.dim == 2:
+                    plot_types=['X,Y','Histogram','FFT']
+                elif current_item.data.dim == 3:
+                    plot_types=['X,Y,Z', 'Histogram Y', 'Histogram X', 'FFT Y', 'FFT X', 'FFT X/Y']
+                self.plot_type_box.addItems(plot_types)
+                if hasattr(current_item.data, 'plot_type'):
+                    if current_item.data.plot_type in plot_types:
+                        self.plot_type_box.setCurrentText(current_item.data.plot_type)
+
+                lineedits={'X':[self.binsX_lineedit],
+                    'Y':[self.binsY_lineedit],
+                    'X/Y':[self.binsX_lineedit,self.binsY_lineedit]}
+                labels={'X':[self.binsX_label],
+                    'Y':[self.binsY_label],
+                    'X/Y':[self.binsX_label,self.binsY_label]}
+                
+                # Have to first hide to make sure the only correct one(s) shown
+                for label in labels['X/Y']:
+                    label.hide()
+                for lineedit in lineedits['X/Y']:
+                    lineedit.hide()
+                
+                if self.plot_type_box.currentText() in ['Histogram X', 'Histogram Y', 'Histogram X/Y']:
+                    which=self.plot_type_box.currentText().split(' ')[1]
+                    for label in labels[which]:
+                        label.show()
+                    for lineedit in lineedits[which]:
+                        lineedit.show()
+                 
+
+        except:
+            pass
         self.plot_type_box.currentIndexChanged.connect(self.plot_type_changed)
 
     
