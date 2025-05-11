@@ -2193,8 +2193,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         if data.dim == 3 or isinstance(data, MixedInternalData):
                             actions.append(QtWidgets.QAction('Draw diagonal linecut', self))
                             #actions.append(QtWidgets.QAction('Draw circular linecut', self))
-                            actions.append(QtWidgets.QAction('Plot/show vertical linecuts', self))
-                            actions.append(QtWidgets.QAction('Plot/show horizontal linecuts', self))
+                            actions.append(QtWidgets.QAction('Plot vertical linecuts (middle click on plot)', self))
+                            actions.append(QtWidgets.QAction('Plot horizontal linecuts (left click on plot)', self))
                         for action in actions:
                             rightclick_menu.addAction(action)
                         rightclick_menu.triggered[QtWidgets.QAction].connect(self.popup_canvas)
