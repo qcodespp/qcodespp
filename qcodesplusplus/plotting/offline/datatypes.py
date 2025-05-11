@@ -256,11 +256,19 @@ class BaseClassData:
         else:
             self.processed_data = [np.array(np.copy(self.raw_data[x])) for x in self.get_columns()]
 
+    def reshape_for_plot_type(self, plot_type=None, line=None):
+        if plot_type == 'Histogram':
+            y,x=np.histogram(self.raw_data[1], bins=int(self.plotted_lines[line]['Bins']))
+            x=(x[:-1]+x[1:])/2
+            self.raw_data=[x,y]
+
     def prepare_data_for_plot(self, reload_data=False, reload_from_file=False,
-                              linefrompopup=None,update_color_limits=True):
+                              linefrompopup=None,update_color_limits=True,plot_type=None):
         if not hasattr(self, 'raw_data') or reload_data:
             self.load_and_reshape_data(reload_data, reload_from_file, linefrompopup)
         if self.raw_data:
+            if plot_type:
+                self.reshape_for_plot_type(plot_type,linefrompopup)
             self.copy_raw_to_processed_data(linefrompopup)
             self.apply_all_filters(update_color_limits=update_color_limits)
         else:

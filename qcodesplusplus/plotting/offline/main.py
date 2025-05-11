@@ -767,8 +767,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             # current_row = current_item.data.sidebar1D.trace_table.currentRow()
             # line = int(current_item.data.sidebar1D.trace_table.item(current_row,0).text())
             current_item.data.sidebar1D.plot_type_changed()
-
-        self.update_plots()
+            self.update_plots(update_data=False)
 
     def show_or_hide_view_settings(self):
         current_item = self.file_list.currentItem()
@@ -851,8 +850,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             rows, cols = self.subplot_grid[len(checked_items)-1]
             for index, item in enumerate(checked_items):
                 try:
-                    if update_data:
-                        item.data.prepare_data_for_plot()
+                    if update_data: # This should only be called when updating 2D data: updating 1D data is taken care of in the datatype and sidebar
+                        item.data.prepare_data_for_plot(plot_type=self.plot_type_box.currentText())
                     item.data.figure = self.figure
                     item.data.axes = item.data.figure.add_subplot(rows, cols, index+1)
                     item.data.add_plot(editor_window=self)
