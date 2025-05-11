@@ -237,10 +237,10 @@ class Sidebar1D(QtWidgets.QWidget):
         # It updates the trace table with the new data.
         self.trace_table.setRowCount(0)
         self.trace_table.clear()
-        if 'X' in self.editor_window.plot_type_box.currentText():
-            self.trace_table.setHorizontalHeaderLabels(['#','X data','Y data','style','color', 'width','show fit','Xerr','Yerr'])
-        elif 'Histogram' in self.editor_window.plot_type_box.currentText():
+        if 'Histogram' in self.editor_window.plot_type_box.currentText():
             self.trace_table.setHorizontalHeaderLabels(['#','Bins','Data','style','color', 'width','show fit','Xerr','Yerr'])
+        else:
+            self.trace_table.setHorizontalHeaderLabels(['#','X data','Y data','style','color', 'width','show fit','Xerr','Yerr'])
         for line in self.parent.plotted_lines.keys():
             self.append_trace_to_table(line)
 
@@ -836,6 +836,9 @@ class Sidebar1D(QtWidgets.QWidget):
                     drawstyle='steps-mid'
                 else:
                     drawstyle='default'
+                if 'FFT' in self.editor_window.plot_type_box.currentText():
+                    self.parent.settings['ylabel'] = 'Amplitude (a.u.)'
+                    self.parent.settings['xlabel'] = 'Frequency'
                 #self.parent.image = 
                 self.parent.axes.plot(x, y,
                                     self.parent.plotted_lines[line]['linestyle'],

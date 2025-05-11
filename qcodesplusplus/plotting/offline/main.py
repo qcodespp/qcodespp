@@ -769,6 +769,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             current_item.data.sidebar1D.plot_type_changed()
             self.update_plots(update_data=False)
 
+        self.reset_axlim_settings()
+
     def show_or_hide_view_settings(self):
         current_item = self.file_list.currentItem()
         if current_item:
@@ -850,6 +852,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             rows, cols = self.subplot_grid[len(checked_items)-1]
             for index, item in enumerate(checked_items):
                 try:
+                    if hasattr(item.data, 'dim'):
+                        if item.data.dim == 2:
+                            update_data = False # No matter what (except for the very first time, where the data gets its dim)
                     if update_data: # This should only be called when updating 2D data: updating 1D data is taken care of in the datatype and sidebar
                         item.data.prepare_data_for_plot(plot_type=self.plot_type_box.currentText())
                     item.data.figure = self.figure
@@ -867,9 +872,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 except Exception as e:
                     print(f'Could not plot {item.data.filepath}:', e)
                     raise
-        self.show_current_all()
-        self.figure.tight_layout()
-        self.canvas.draw()
+        try:
+            self.show_current_all()
+            self.figure.tight_layout()
+            self.canvas.draw()
+        except Exception as e:
+            print('Error in update_plots:', e)
+
         if hasattr(self, 'live_track_item') and self.live_track_item:
             if (self.live_track_item.checkState() and 
                 self.track_button.text() == 'Stop tracking' and 
@@ -1082,9 +1091,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.new_plot_Z_box.setCurrentIndex(2)
             
             if current_item.data.dim == 2:
-                plot_types=['X/Y','Histogram']
+                plot_types=['X/Y','Histogram','FFT']
             elif current_item.data.dim == 3:
-                plot_types=['X/Y/Z', 'Histogram Y', 'Histogram X', 'Histogram X/Y']
+                plot_types=['X/Y/Z', 'Histogram Y', 'Histogram X', 'Histogram X/Y', 'FFT Y', 'FFT X', 'FFT X/Y']
             self.plot_type_box.addItems(plot_types)
             if hasattr(current_item.data, 'plot_type'):
                 if current_item.data.plot_type in plot_types:

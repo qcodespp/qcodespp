@@ -262,6 +262,11 @@ class BaseClassData:
             x=(x[:-1]+x[1:])/2
             self.raw_data=[x,y]
 
+        elif plot_type == 'FFT':
+            y=np.abs(np.fft.rfft(self.raw_data[1],norm='ortho'))
+            x=np.fft.rfftfreq(self.raw_data[1].shape[0], d=self.raw_data[0][1]-self.raw_data[0][0])
+            self.raw_data=[x,y]
+
     def prepare_data_for_plot(self, reload_data=False, reload_from_file=False,
                               linefrompopup=None,update_color_limits=True,plot_type=None):
         if not hasattr(self, 'raw_data') or reload_data:
