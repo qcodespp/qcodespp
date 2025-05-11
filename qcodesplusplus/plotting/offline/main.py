@@ -162,8 +162,6 @@ SETTINGS_MENU_OPTIONS['labelsize'] = FONT_SIZES
 SETTINGS_MENU_OPTIONS['ticksize'] = FONT_SIZES
 SETTINGS_MENU_OPTIONS['colorbar'] = ['True', 'False']
 SETTINGS_MENU_OPTIONS['minorticks'] = ['True','False']
-SETTINGS_MENU_OPTIONS['linecolor'] = ['black', 'red', 'white', 
-                                        'blue', 'green']
 SETTINGS_MENU_OPTIONS['maskcolor'] = ['black','white']
 SETTINGS_MENU_OPTIONS['cmap levels'] = ['128','256','512','1024']
 SETTINGS_MENU_OPTIONS['rasterized'] = ['True','False']
@@ -1363,10 +1361,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     current_item.data.prepare_data_for_plot(reload_data=True,reload_from_file=False)
                     self.update_plots()
                     self.reset_axlim_settings()
-                elif setting_name == 'linecolor':
-                    for line in current_item.data.axes.get_lines():
-                        line.set_color(value)
-                    self.canvas.draw()
                 elif setting_name == 'maskcolor' or setting_name == 'cmap levels':
                     current_item.data.apply_colormap()
                 elif (setting_name == 'rasterized' or setting_name == 'colorbar'
@@ -2449,7 +2443,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             'spinewidth',
             'colorbar',
             'minortick',
-            'linecolor',
             'maskcolor',
             'cmap levels',
             'rasterized',

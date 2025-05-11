@@ -31,7 +31,6 @@ class BaseClassData:
     DEFAULT_PLOT_SETTINGS['spinewidth'] = '1'
     DEFAULT_PLOT_SETTINGS['colorbar'] = 'True'
     DEFAULT_PLOT_SETTINGS['minorticks'] = 'False'
-    DEFAULT_PLOT_SETTINGS['linecolor'] = 'black'
     DEFAULT_PLOT_SETTINGS['maskcolor'] = 'black'
     DEFAULT_PLOT_SETTINGS['cmap levels'] = '128'
     DEFAULT_PLOT_SETTINGS['rasterized'] = 'True'
@@ -404,7 +403,7 @@ class BaseClassData:
                     self.apply_default_lables()
 
             self.cursor = Cursor(self.axes, useblit=True, 
-                                 color=self.settings['linecolor'], linewidth=0.5)
+                                 color='black', linewidth=0.5)
 
             # Below removes data options for data types where selecting
             # axes data from the settings menu isn't implemented.
@@ -793,7 +792,7 @@ class MixedInternalData(BaseClassData):
         self.sidebar1D.update(clearplot=False)
 
         self.cursor = Cursor(self.axes, useblit=True, 
-                                color=self.settings['linecolor'], linewidth=0.5)
+                                color='black', linewidth=0.5)
         self.apply_plot_settings()
         self.apply_axlim_settings()
         self.apply_axscale_settings()
