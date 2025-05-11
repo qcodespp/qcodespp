@@ -387,7 +387,7 @@ class Sidebar1D(QtWidgets.QWidget):
         elif current_col == 0: # It's the checkstate for the linetrace.
             self.parent.plotted_lines[line]['checkstate'] = current_item.checkState()
 
-        if 'istogram' in self.editor_window.plot_type_box.currentText():
+        if self.parent.plot_type == 'Histogram':
             edit_dict={1:'Bins',2:'Y data',3:'linestyle',5:'linewidth',7:'Xerr',8:'Yerr'}
         else:
             edit_dict={1:'X data',2:'Y data',3:'linestyle',5:'linewidth',7:'Xerr',8:'Yerr'}
@@ -829,7 +829,7 @@ class Sidebar1D(QtWidgets.QWidget):
         if len(lines) > 0:
             for line in lines:
                 x,y= self.get_line_data(line)
-                if 'istogram' in self.editor_window.plot_type_box.currentText():
+                if self.parent.plot_type == 'Histogram':
                     self.parent.settings['ylabel'] = 'Counts'
                     if 'default_ylabel' in self.parent.settings.keys():
                         self.parent.settings['xlabel'] = self.parent.settings['default_ylabel']

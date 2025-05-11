@@ -362,7 +362,7 @@ class BaseClassData:
                         'linestyle': '-',
                         'filters': []}}
         
-    def add_plot(self, editor_window=None):
+    def add_plot(self, editor_window=None, apply_default_labels=True):
         if self.processed_data:
             cmap_str = self.view_settings['Colormap']
             if self.view_settings['Reverse']:
@@ -400,6 +400,9 @@ class BaseClassData:
                 if self.settings['colorbar'] == 'True':
                     self.cbar = self.figure.colorbar(self.image, orientation='vertical')
 
+                if apply_default_labels:
+                    self.apply_default_lables()
+
             self.cursor = Cursor(self.axes, useblit=True, 
                                  color=self.settings['linecolor'], linewidth=0.5)
 
@@ -416,6 +419,37 @@ class BaseClassData:
             self.apply_plot_settings()
             self.apply_axlim_settings()
             self.apply_axscale_settings()
+
+    def apply_default_lables(self):
+        if 'default_xlabel' in self.settings.keys():
+            self.settings['xlabel'] = self.settings['default_xlabel']
+        if 'default_ylabel' in self.settings.keys():
+            self.settings['ylabel'] = self.settings['default_ylabel']
+        if 'default_clabel' in self.settings.keys():
+            self.settings['clabel'] = self.settings['default_clabel']
+
+        if self.plot_type == 'Histogram Y':
+            self.settings['clabel'] = 'Counts'
+            if 'default_clabel' in self.settings.keys():
+                self.settings['ylabel'] = self.settings['default_clabel']
+        elif self.plot_type == 'Histogram X':
+            self.settings['clabel'] = 'Counts'
+            if 'default_clabel' in self.settings.keys():
+                self.settings['xlabel'] = self.settings['default_clabel']
+        elif self.plot_type == 'FFT Y':
+            self.settings['clabel'] = 'FFT Amplitude'
+            if 'default_ylabel' in self.settings.keys():
+                self.settings['ylabel'] = f'1/({self.settings['default_ylabel']})'
+        elif self.plot_type == 'FFT X':
+            self.settings['clabel'] = 'FFT Amplitude'
+            if 'default_xlabel' in self.settings.keys():
+                self.settings['xlabel'] = f'1/({self.settings['default_xlabel']})'
+        elif self.plot_type == 'FFT X/Y':
+            self.settings['clabel'] = 'FFT Amplitude'
+            if 'default_xlabel' in self.settings.keys():
+                self.settings['xlabel'] = f'1/({self.settings['default_xlabel']})'
+            if 'default_ylabel' in self.settings.keys():
+                self.settings['ylabel'] = f'1/({self.settings['default_ylabel']})'
 
     def reset_view_settings(self, overrule=False):
         if not self.view_settings['Locked'] or overrule:
