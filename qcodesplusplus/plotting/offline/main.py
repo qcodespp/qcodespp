@@ -188,7 +188,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.linked_folder = None
         self.linked_files = []
         self.resize(1400,1000)
+
+        # Hide widgets that shouldn't be shown at startup
         self.mixeddata_filter_box.hide()
+        self.binsX_label.hide()
+        self.binsX_lineedit.hide()
+        self.binsY_label.hide()
+        self.binsY_lineedit.hide()
+
+        #... and some that are not currently in use.
         self.track_button.hide()
         self.refresh_label.hide()
         self.refresh_line_edit.hide()
@@ -244,6 +252,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.file_list.itemClicked.connect(self.file_clicked)
         self.file_list.itemDoubleClicked.connect(self.file_double_clicked)
         self.plot_type_box.currentIndexChanged.connect(self.plot_type_changed)
+        self.binsX_lineedit.editingFinished.connect(lambda: self.bins_changed('X'))
+        self.binsY_lineedit.editingFinished.connect(lambda: self.bins_changed('Y'))
         self.settings_table.itemChanged.connect(self.plot_setting_edited)
         self.filters_table.itemChanged.connect(self.filters_table_edited)
         self.copy_settings_button.clicked.connect(self.copy_plot_settings)
@@ -761,15 +771,58 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def plot_type_changed(self):
         # Eventually will do other stuff but for the moment just...
         current_item = self.file_list.currentItem()
-        current_item.data.plot_type=self.plot_type_box.currentText()
+        plot_type = self.plot_type_box.currentText()
+        current_item.data.plot_type=plot_type
+
+        lineedits={'X':[self.binsX_lineedit],
+            'Y':[self.binsY_lineedit],
+            'X/Y':[self.binsX_lineedit,self.binsY_lineedit]}
+        labels={'X':[self.binsX_label],
+            'Y':[self.binsY_label],
+            'X/Y':[self.binsX_label,self.binsY_label]}
+        
+        for label in labels['X/Y']:
+            label.hide()
+        for lineedit in lineedits['X/Y']:
+            lineedit.hide()
 
         if hasattr(current_item.data,'sidebar1D'):
             # current_row = current_item.data.sidebar1D.trace_table.currentRow()
             # line = int(current_item.data.sidebar1D.trace_table.item(current_row,0).text())
             current_item.data.sidebar1D.plot_type_changed()
             self.update_plots(update_data=False)
+        
+        else:
+            if 'Histogram' in plot_type:
+                which=plot_type.split(' ')[1]
+                
+                for label in labels[which]:
+                    label.show()
+                for lineedit in lineedits[which]:
+                    lineedit.show()
+
+                if f'bins{which}' not in current_item.data.settings.keys():
+                    if which == 'X/Y':
+                        current_item.data.settings['binsX'] = 100
+                        current_item.data.settings['binsY'] = 100
+                    else:
+                        current_item.data.settings[f'bins{which}'] = 100
+            
+                if which == 'X/Y':
+                    self.binsX_lineedit.setText(str(current_item.data.settings['binsX']))
+                    self.binsY_lineedit.setText(str(current_item.data.settings['binsY']))
+                else:
+                    lineedits[which][0].setText(str(current_item.data.settings[f'bins{which}']))
+
+            self.update_plots(update_data=True)
 
         self.reset_axlim_settings()
+
+    def bins_changed(self,which='X'):
+        lineedits={'X':self.binsX_lineedit,'Y':self.binsY_lineedit}
+        current_item = self.file_list.currentItem()
+        current_item.data.settings[f'bins{which}'] = int(lineedits[which].text())
+        self.update_plots()
 
     def show_or_hide_view_settings(self):
         current_item = self.file_list.currentItem()
@@ -1091,9 +1144,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.new_plot_Z_box.setCurrentIndex(2)
             
             if current_item.data.dim == 2:
-                plot_types=['X/Y','Histogram','FFT']
+                plot_types=['X,Y','Histogram','FFT']
             elif current_item.data.dim == 3:
-                plot_types=['X/Y/Z', 'Histogram Y', 'Histogram X', 'Histogram X/Y', 'FFT Y', 'FFT X', 'FFT X/Y']
+                plot_types=['X,Y,Z', 'Histogram Y', 'Histogram X', 'Histogram X/Y', 'FFT Y', 'FFT X', 'FFT X/Y']
             self.plot_type_box.addItems(plot_types)
             if hasattr(current_item.data, 'plot_type'):
                 if current_item.data.plot_type in plot_types:
