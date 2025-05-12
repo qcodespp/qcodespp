@@ -1327,14 +1327,19 @@ class LineCutWindow(QtWidgets.QWidget):
             fit_lines = self.get_checked_items(cuts_or_fits='fits')
             first_result = self.parent.linecuts[self.orientation]['lines'][fit_lines[0]]['fit']['fit_result']
             if self.orientation in ['horizontal', 'vertical']:
-                data=np.zeros((len(fit_lines),len(first_result.params.keys())+1))
+                data=np.zeros((len(fit_lines),len(first_result.params.keys())*2+1))
                 for i,line in enumerate(fit_lines):
                     data[i,0] = self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value']
                     for j,param in enumerate(first_result.params.keys()):
                         data[i,j+1] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].value
+                    last_column=j+2
+                    for j,param in enumerate(first_result.params.keys()):
+                        data[i,j+last_column] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].stderr
                 header='X\t'+'\t'.join(first_result.params.keys())
+                for param in first_result.params.keys():
+                    header += '\t'+param+'_error'
             elif self.orientation in ['diagonal', 'circular']:
-                data=np.zeros((len(fit_lines),len(first_result.params.keys())+4))
+                data=np.zeros((len(fit_lines),len(first_result.params.keys())*2+4))
                 for i,line in enumerate(fit_lines):
                     data[i,0] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][0]
                     data[i,1] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][1]
@@ -1342,10 +1347,15 @@ class LineCutWindow(QtWidgets.QWidget):
                     data[i,3] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][1]
                     for j,param in enumerate(first_result.params.keys()):
                         data[i,j+4] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].value
+                    last_column=j+5
+                    for j,param in enumerate(first_result.params.keys()):
+                        data[i,j+last_column] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].stderr
                 header='X_1\tY_1\tX_2\tY_2\t'+'\t'.join(first_result.params.keys())
+                for param in first_result.params.keys():
+                    header += '\t'+param+'_error'
             success=True
         except Exception as e:
-            print('Could not compile array: {e}')
+            print(f'Could not compile parameter dependency array: {e}')
             success=False
         if success:
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
