@@ -844,7 +844,7 @@ class Sidebar1D(QtWidgets.QWidget):
                     else:
                     # Get the error data from the loaded data
                         errorname = self.parent.plotted_lines[line][axiserr]
-                        error = copy.deepcopy(self.parent.loaded_data[self.parent.all_parameter_names.index(errorname)])
+                        error = copy.deepcopy(self.parent.data_dict[errorname])
                 # Only apply multiply or divide filters (and only if they are checked of course)
                 if 'filters' in self.parent.plotted_lines[line].keys():
                     for filt in self.parent.plotted_lines[line]['filters']:
