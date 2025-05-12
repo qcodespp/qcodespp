@@ -87,24 +87,17 @@ class qcodesppData(main.BaseClassData):
         else:
             Xdataname = self.settings['X data']
             Ydataname = self.settings['Y data']
-
         self.prepare_dataset()
         # If user has selected X data, use that, otherwise use the first independent parameter
         # X data is the same no matter the data dimension
-        if Xdataname != '':
-            xdata = self.data_dict[Xdataname]
-            self.settings['xlabel'] = f'{self.channels[Xdataname]['label']} ({self.channels[Xdataname]['unit']})'
-        else:
-            xdata = self.data_dict[self.all_parameters[self.index_x]["array_id"]]
-            self.settings["xlabel"] = "{} ({})".format(self.independent_parameters[0]["label"], self.independent_parameters[0]["unit"])
-
+    
+        xdata = self.data_dict[Xdataname]
+        self.settings['xlabel'] = f'{self.channels[Xdataname]['label']} ({self.channels[Xdataname]['unit']})'
+        
         if len(self.independent_parameters) == 1: # data is 1D
-            if Ydataname != '':
-                ydata = self.data_dict[Ydataname]
-                self.settings['ylabel'] = f'{self.channels[Ydataname]['label']} ({self.channels[Ydataname]['unit']})'
-            else:
-                ydata = self.data_dict[self.dependent_parameters[self.index_dependent_parameter]["array_id"]]
-                self.settings["xlabel"] = "{} ({})".format(self.independent_parameters[0]["label"], self.independent_parameters[0]["unit"])
+            ydata = self.data_dict[Ydataname]
+            self.settings['ylabel'] = f'{self.channels[Ydataname]['label']} ({self.channels[Ydataname]['unit']})'
+            
             if not self.isFinished():
                 # Delete unfinished rows to enable plotting
                 xdata = xdata[:len(self.set_x)-1]
@@ -117,18 +110,11 @@ class qcodesppData(main.BaseClassData):
             self.settings['default_fftxlabel'] = f'1/{self.settings['default_xlabel']}'
 
         elif len(self.independent_parameters) > 1: # data is 2D
-            if self.settings['Y data'] != '':
-                ydata = self.data_dict[self.settings['Y data']]
-                self.settings['ylabel'] = f'{self.channels[self.settings['Y data']]['label']} ({self.channels[self.settings['Y data']]['unit']})'
-            else:
-                ydata = self.data_dict[self.all_parameters[self.index_y]["array_id"]]
-                self.settings["ylabel"] = "{} ({})".format(self.all_parameters[self.index_y]["label"], self.independent_parameters[1]["unit"])
-            if self.settings['Z data'] != '':
-                zdata = self.data_dict[self.settings['Z data']]
-                self.settings['clabel'] = f'{self.channels[self.settings['Z data']]['label']} ({self.channels[self.settings['Z data']]['unit']})'
-            else:
-                zdata = self.data_dict[self.dependent_parameters[self.index_dependent_parameter]["array_id"]]
-                self.settings["clabel"] = "{} ({})".format(self.dependent_parameters[self.index_dependent_parameter]["label"], self.dependent_parameters[self.index_dependent_parameter]["unit"])
+            ydata = self.data_dict[self.settings['Y data']]
+            self.settings['ylabel'] = f'{self.channels[self.settings['Y data']]['label']} ({self.channels[self.settings['Y data']]['unit']})'
+            zdata = self.data_dict[self.settings['Z data']]
+            self.settings['clabel'] = f'{self.channels[self.settings['Z data']]['label']} ({self.channels[self.settings['Z data']]['unit']})'
+
             column_data = np.column_stack((xdata.flatten(),
                                          ydata.flatten(),
                                         zdata.flatten()
@@ -230,14 +216,18 @@ class qcodesppData(main.BaseClassData):
         if not defnamefound: 
             self.index_dependent_parameter = 0
 
-        self.settings['X data'] = self.independent_parameter_names[0]
+        if 'X data' not in self.settings.keys() or self.settings['X data'] == '':
+            self.settings['X data'] = self.independent_parameter_names[0]
 
         if len(self.independent_parameters) > 1:
-            self.settings['Y data'] = self.independent_parameter_names[1]
-            self.settings['Z data'] = self.dependent_parameter_names[self.index_dependent_parameter]
+            if 'Y data' not in self.settings.keys() or self.settings['Y data'] == '':
+                self.settings['Y data'] = self.independent_parameter_names[1]
+            if 'Z data' not in self.settings.keys() or self.settings['Z data'] == '':
+                self.settings['Z data'] = self.dependent_parameter_names[self.index_dependent_parameter]
 
         else:
-            self.settings['Y data'] = self.dependent_parameter_names[self.index_dependent_parameter]
+            if 'Y data' not in self.settings.keys() or self.settings['Y data'] == '':
+                self.settings['Y data'] = self.dependent_parameter_names[self.index_dependent_parameter]
 
             self.settings.pop('Z data', None)
             

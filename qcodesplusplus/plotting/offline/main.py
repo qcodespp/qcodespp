@@ -1176,12 +1176,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     for lineedit in lineedits[which]:
                         lineedit.show()
                  
-
         except:
             pass
         self.plot_type_box.currentIndexChanged.connect(self.plot_type_changed)
 
-    
     def show_current_plot_settings(self):
         self.settings_table.clear()
         self.settings_table.setRowCount(0)
@@ -1334,15 +1332,16 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 except Exception as e:
                     print('Error appending filter to table:', e)
     
-    def plot_setting_edited(self,setting_name=None):
+    def plot_setting_edited(self,setting_item=None,setting_name=None):
         current_item = self.file_list.currentItem()
         if current_item:
             current_item.data.old_settings = current_item.data.settings.copy()
-            row = self.settings_table.currentRow()
-            if setting_name is not None:
-                setting_name = self.settings_table.item(row, 0).text()
-            value = self.settings_table.item(row, 1).text()
-            current_item.data.settings[setting_name] = value
+            if setting_name is None:
+                setting_name = self.settings_table.item(setting_item.row(), 0).text()
+            for row in range(self.settings_table.rowCount()):
+                value = self.settings_table.item(row, 1).text()
+                name = self.settings_table.item(row, 0).text()
+                current_item.data.settings[name] = value
             self.settings_table.clearFocus()
             try:
                 if setting_name == 'X data' or setting_name == 'Y data' or setting_name == 'Z data':
@@ -1637,6 +1636,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     
     def duplicate_item(self, new_plot_button=False):
         original_item = self.file_list.currentItem()
+        X = self.new_plot_X_box.currentText()
+        Y = self.new_plot_Y_box.currentText()
+        Z = self.new_plot_Z_box.currentText()
         if original_item:
             self.clear_sidebar1D()
             # Copy over data if internal data, or else re-load it. 
@@ -1677,29 +1679,33 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             else:
                 new_item.setText(f'Duplicate: {new_item.data.label}')
                 new_item.data.label = f'Duplicate: {new_item.data.label}'
-
+            
             # Making new plot if 'Add new plot' button was pressed
             if new_plot_button:
-                X = self.new_plot_X_box.currentText()
-                Y = self.new_plot_Y_box.currentText()
-                Z = self.new_plot_Z_box.currentText()
-                new_item.data.settings['X data'] = X
-                new_item.data.settings['Y data'] = Y
                 if original_item.data.dim==3 or isinstance(original_item.data, MixedInternalData):
+                    new_item.data.settings['X data'] = X
+                    new_item.data.settings['Y data'] = Y
                     new_item.data.settings['Z data'] = Z
                 else:
+                    # Next two lines basically fix a bug.
+                    new_item.data.settings['X data'] = original_item.data.all_parameter_names[0]
+                    new_item.data.settings['Y data'] = original_item.data.all_parameter_names[1]
                     new_item.data.prepare_data_for_plot()
-                    new_item.data.sidebar1D = Sidebar1D(new_item.data,self)
+                    new_item.data.sidebar1D = Sidebar1D(new_item.data,editor_window=self)
                     new_item.data.sidebar1D.running=True
                     new_item.data.plotted_lines = {0: {'checkstate': 2,
-                                                'X data': X,
-                                                'Y data': Y,
-                                                'raw_data': new_item.data.raw_data,
-                                                'processed_data': new_item.data.processed_data,
-                                                'linecolor': (0.1, 0.5, 0.8, 1),
-                                                'linewidth': 1.5,
-                                                'linestyle': '-',
-                                                'filters': []}}
+                                            'X data': X,
+                                            'Y data': Y,
+                                            'Bins': 100,
+                                            'Xerr': 0,
+                                            'Yerr': 0,
+                                            'raw_data': new_item.data.raw_data,
+                                            'processed_data': new_item.data.processed_data,
+                                            'linecolor': (0.1, 0.5, 0.8, 1),
+                                            'linewidth': 1.5,
+                                            'linestyle': '-',
+                                            'filters': []}}
+
                     new_item.data.sidebar1D.append_trace_to_table(0)
                     self.oneD_layout.addWidget(new_item.data.sidebar1D)
 
@@ -1717,9 +1723,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         new_item.data.plotted_lines[line] = copy.deepcopy(original_item.data.plotted_lines[line])
                         new_item.data.sidebar1D.append_trace_to_table(line)
                     self.oneD_layout.addWidget(new_item.data.sidebar1D)
+
             new_item.setCheckState(QtCore.Qt.Checked)
+            if new_plot_button and new_item.data.dim == 3:
+                self.plot_setting_edited(setting_name='X data')
             self.update_plots()
-                
+
     def combine_plots(self):
         checked_items = self.get_checked_items()
         if checked_items:
@@ -2252,7 +2261,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     selected_colormap = cm.get_cmap('plasma')
                 else:
                     selected_colormap = cm.get_cmap('viridis')
-                data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,init_cmap=selected_colormap.name,editor_window=self)
+                data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,
+                                                                             init_cmap=selected_colormap.name,
+                                                                             editor_window=self)
 
             # For diagonal/circular linecuts, need to make a new line each time. For hori/vert just open the window.
             if orientation == 'diagonal':

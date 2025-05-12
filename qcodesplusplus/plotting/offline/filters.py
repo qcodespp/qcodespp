@@ -188,6 +188,22 @@ def normalize(data, method, point_x, point_y):
     data[-1] = data[-1] / norm_value
     return data
 
+def subtract_average(data, method, setting1, setting2):
+    shape=np.shape(data[-1])
+    if method == 'Z':
+        average=np.average(data[-1])
+        for i in range(shape[0]):
+            data[-1][i] = data[-1][i]-average
+    elif method == 'Y':
+        average=np.average(data[1])
+        for i in range(shape[0]):
+            data[1][i] = data[1][i]-average
+    elif method == 'X':
+        average=np.average(data[0])
+        for i in range(shape[0]):
+            data[0][i] = data[0][i]-average
+    return data
+
 def offset_line_by_line(data,method,index,setting2):
     index=int(index)
     if len(data) == 3:
@@ -215,17 +231,19 @@ def subtract_ave_line_by_line(data,method,setting1,setting2):
         if method=='Z':
             newdata=np.zeros_like(data[-1])
             for i in range(shape[0]):
+                average=np.average(data[-1][i])
                 for j in range(shape[1]):
-                    newdata[i][j]=data[-1][i][j]-np.average(data[-1][i])
+                    newdata[i][j]=data[-1][i][j]-average
             data[-1]=newdata
         elif method=='Y':
             newdata=np.zeros_like(data[-1])
             for i in range(shape[0]):
+                average=np.average(data[1][i])
                 for j in range(shape[1]):
-                    newdata[i][j]=data[1][i][j]-np.average(data[1][i])
+                    newdata[i][j]=data[1][i][j]
             data[1]=newdata
     else:
-        print('Cannot subtract average from 1D data line by line. Use regular offset')
+        print('Cannot subtract average from 1D data line by line. Use subract average')
 
     return data
 
@@ -450,12 +468,16 @@ class Filter:
                                       'Settings': ['', ''],
                                       'Function': normalize,
                                       'Checkstate': 2},
+                        'Subtract average': {'Method': ['Z', 'Y', 'X'],
+                                      'Settings': ['', ''],
+                                        'Function': subtract_average,
+                                        'Checkstate': 2},
                         'Offset line by line': {'Method': ['Z', 'Y'],
                                       'Settings': ['', ''],
                                       'Function': offset_line_by_line,
                                       'Checkstate': 2},
                         'Subtract average line by line': {'Method': ['Z', 'Y'],
-                                      'Settings': ['0', ''],
+                                      'Settings': ['', ''],
                                         'Function': subtract_ave_line_by_line,
                                         'Checkstate': 2},
                         'Subtract trace': {'Method': ['Ver', 'Hor'],
