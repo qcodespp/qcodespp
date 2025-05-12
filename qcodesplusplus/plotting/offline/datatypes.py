@@ -118,14 +118,18 @@ class BaseClassData:
         self.settings['ylabel'] = self.all_parameter_names[1]
         self.settings['default_xlabel'] = self.all_parameter_names[0]
         self.settings['default_ylabel'] = self.all_parameter_names[1]
+        self.settings['default_fftxlabel'] = f'1/{self.all_parameter_names[0]}'
 
         if self.loaded_data[0,1] == self.loaded_data[0,0] and len(self.all_parameter_names) > 2:
             self.settings['Z data'] = self.all_parameter_names[2]
             self.settings['clabel'] = self.all_parameter_names[2]
             self.settings['default_clabel'] = self.all_parameter_names[2]
+            self.settings['default_histlabel'] = self.all_parameter_names[2]
+            self.settings['default_fftylabel'] = f'1/{self.all_parameter_names[1]}'
             self.dim=3
         else:
             self.dim=2
+            self.settings['default_histlabel'] = self.all_parameter_names[1]
 
         self.settings_menu_options = {'X data': self.all_parameter_names,
                                 'Y data': self.all_parameter_names,
@@ -397,7 +401,6 @@ class BaseClassData:
                                                   rasterized=self.settings['rasterized'])
                 if self.settings['colorbar'] == 'True':
                     self.cbar = self.figure.colorbar(self.image, orientation='vertical')
-
                 if apply_default_labels:
                     self.apply_default_lables()
 
@@ -426,28 +429,23 @@ class BaseClassData:
         if 'default_clabel' in self.settings.keys():
             self.settings['clabel'] = self.settings['default_clabel']
 
-        if self.plot_type == 'Histogram Y':
+        if self.plot_type and 'Histogram' in self.plot_type:
             self.settings['clabel'] = 'Counts'
-            if 'default_clabel' in self.settings.keys():
-                self.settings['ylabel'] = self.settings['default_clabel']
-        elif self.plot_type == 'Histogram X':
-            self.settings['clabel'] = 'Counts'
-            if 'default_clabel' in self.settings.keys():
-                self.settings['xlabel'] = self.settings['default_clabel']
-        elif self.plot_type == 'FFT Y':
+            if self.plot_type == 'Histogram Y' and 'default_histlabel' in self.settings.keys():
+                self.settings['ylabel'] = self.settings['default_histlabel']
+            elif self.plot_type == 'Histogram X' and 'default_histlabel' in self.settings.keys():
+                self.settings['xlabel'] = self.settings['default_histlabel']
+        elif self.plot_type and 'FFT' in self.plot_type:
             self.settings['clabel'] = 'FFT Amplitude'
-            if 'default_ylabel' in self.settings.keys():
-                self.settings['ylabel'] = f'1/({self.settings['default_ylabel']})'
-        elif self.plot_type == 'FFT X':
-            self.settings['clabel'] = 'FFT Amplitude'
-            if 'default_xlabel' in self.settings.keys():
-                self.settings['xlabel'] = f'1/({self.settings['default_xlabel']})'
-        elif self.plot_type == 'FFT X/Y':
-            self.settings['clabel'] = 'FFT Amplitude'
-            if 'default_xlabel' in self.settings.keys():
-                self.settings['xlabel'] = f'1/({self.settings['default_xlabel']})'
-            if 'default_ylabel' in self.settings.keys():
-                self.settings['ylabel'] = f'1/({self.settings['default_ylabel']})'
+            if self.plot_type=='FFT Y' and 'default_fftylabel' in self.settings.keys():
+                self.settings['ylabel'] = self.settings['default_fftylabel']
+            elif self.plot_type=='FFT X' and 'default_fftxlabel' in self.settings.keys():
+                self.settings['xlabel'] = self.settings['default_fftxlabel']
+            elif self.plot_type=='FFT X/Y':
+                if 'default_fftxlabel' in self.settings.keys():
+                    self.settings['xlabel'] = self.settings['default_fftxlabel']
+                if 'default_fftylabel' in self.settings.keys():
+                    self.settings['ylabel'] = self.settings['default_fftylabel']
 
     def reset_view_settings(self, overrule=False):
         if not self.view_settings['Locked'] or overrule:

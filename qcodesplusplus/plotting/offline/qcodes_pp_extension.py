@@ -94,48 +94,52 @@ class qcodesppData(main.BaseClassData):
         if Xdataname != '':
             xdata = self.data_dict[Xdataname]
             self.settings['xlabel'] = f'{self.channels[Xdataname]['label']} ({self.channels[Xdataname]['unit']})'
-            self.settings['default_xlabel'] = self.settings['xlabel']
         else:
             xdata = self.data_dict[self.all_parameters[self.index_x]["array_id"]]
             self.settings["xlabel"] = "{} ({})".format(self.independent_parameters[0]["label"], self.independent_parameters[0]["unit"])
-            self.settings['default_xlabel'] = self.settings['xlabel']
 
         if len(self.independent_parameters) == 1: # data is 1D
             if Ydataname != '':
                 ydata = self.data_dict[Ydataname]
                 self.settings['ylabel'] = f'{self.channels[Ydataname]['label']} ({self.channels[Ydataname]['unit']})'
-                self.settings['default_ylabel'] = self.settings['ylabel']
             else:
                 ydata = self.data_dict[self.dependent_parameters[self.index_dependent_parameter]["array_id"]]
                 self.settings["xlabel"] = "{} ({})".format(self.independent_parameters[0]["label"], self.independent_parameters[0]["unit"])
-                self.settings['default_xlabel'] = self.settings['xlabel']
             if not self.isFinished():
                 # Delete unfinished rows to enable plotting
                 xdata = xdata[:len(self.set_x)-1]
                 ydata = ydata[:len(self.set_x)-1]
             column_data = np.column_stack((xdata, ydata))
 
+            self.settings['default_xlabel'] = self.settings['xlabel']
+            self.settings['default_ylabel'] = self.settings['ylabel']
+            self.settings['default_histlabel'] = self.settings['default_ylabel']
+            self.settings['default_fftxlabel'] = f'1/{self.settings['default_xlabel']}'
+
         elif len(self.independent_parameters) > 1: # data is 2D
             if self.settings['Y data'] != '':
                 ydata = self.data_dict[self.settings['Y data']]
                 self.settings['ylabel'] = f'{self.channels[self.settings['Y data']]['label']} ({self.channels[self.settings['Y data']]['unit']})'
-                self.settings['default_ylabel'] = self.settings['ylabel']
             else:
                 ydata = self.data_dict[self.all_parameters[self.index_y]["array_id"]]
                 self.settings["ylabel"] = "{} ({})".format(self.all_parameters[self.index_y]["label"], self.independent_parameters[1]["unit"])
-                self.settings['default_ylabel'] = self.settings['ylabel']
             if self.settings['Z data'] != '':
                 zdata = self.data_dict[self.settings['Z data']]
                 self.settings['clabel'] = f'{self.channels[self.settings['Z data']]['label']} ({self.channels[self.settings['Z data']]['unit']})'
-                self.settings['default_clabel'] = self.settings['clabel']
             else:
                 zdata = self.data_dict[self.dependent_parameters[self.index_dependent_parameter]["array_id"]]
                 self.settings["clabel"] = "{} ({})".format(self.dependent_parameters[self.index_dependent_parameter]["label"], self.dependent_parameters[self.index_dependent_parameter]["unit"])
-                self.settings['default_clabel'] = self.settings['clabel']
             column_data = np.column_stack((xdata.flatten(),
                                          ydata.flatten(),
                                         zdata.flatten()
                                         ))
+            
+            self.settings['default_xlabel'] = self.settings['xlabel']
+            self.settings['default_ylabel'] = self.settings['ylabel']
+            self.settings['default_clabel'] = self.settings['clabel']
+            self.settings['default_histlabel'] = self.settings['default_clabel']
+            self.settings['default_fftxlabel'] = f'1/{self.settings['default_xlabel']}'
+            self.settings['default_fftylabel'] = f'1/{self.settings['default_ylabel']}'
 
             # # Delete unfinished rows to enable plotting
             if not self.isFinished():

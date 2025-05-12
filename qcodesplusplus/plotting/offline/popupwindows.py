@@ -591,8 +591,7 @@ class LineCutWindow(QtWidgets.QWidget):
         if which=='selected':
             try:
                 row = self.cuts_table.currentRow()
-                linecut = self.cuts_table.item(row,0).text()
-                linecut = int(linecut)
+                linecut = int(self.cuts_table.item(row,0).text())
                 if 'draggable_points' in self.parent.linecuts[self.orientation]['lines'][linecut].keys():
                     self.update_draggable_points(linecut,replot=False)
                 self.parent.linecuts[self.orientation]['lines'].pop(linecut)
