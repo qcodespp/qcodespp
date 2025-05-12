@@ -812,7 +812,7 @@ class Sidebar1D(QtWidgets.QWidget):
                                     fmt='none',
                                     ecolor=self.parent.plotted_lines[line]['linecolor'],
                                     elinewidth=self.parent.plotted_lines[line]['linewidth'],
-                                    capsize=5)
+                                    capsize=4)
         else:
             self.parent.axes.fill_between(x, y+error, y-error,
                                     alpha=0.2, color=self.parent.plotted_lines[line]['linecolor'])
@@ -824,20 +824,27 @@ class Sidebar1D(QtWidgets.QWidget):
                                     fmt='none',
                                     ecolor=self.parent.plotted_lines[line]['linecolor'],
                                     elinewidth=self.parent.plotted_lines[line]['linewidth'],
-                                    capsize=5)
+                                    capsize=4)
         else:
             self.parent.axes.fill_betweenx(y, x+error, x-error,
                                     alpha=0.2, color=self.parent.plotted_lines[line]['linecolor'])
     
     def process_uncertainties(self,line,x,y):
         for axiserr in ['Xerr','Yerr']:
-            if axiserr !=0:
+            if self.parent.plotted_lines[line][axiserr] not in [0,'0']:
                 try: # if a single number
                     error = float(self.parent.plotted_lines[line][axiserr])
-                except ValueError: # if name of array, value error is thrown
+                except ValueError: # if name of array or has %, value error is thrown
+                    if '%' in self.parent.plotted_lines[line][axiserr]:
+                    # For percentage errors, make the absolute value array
+                        if axiserr=='Yerr':
+                            error = np.abs(y) * float(self.parent.plotted_lines[line][axiserr].replace('%','')) / 100
+                        else:
+                            error = np.abs(x) * float(self.parent.plotted_lines[line][axiserr].replace('%','')) / 100
+                    else:
                     # Get the error data from the loaded data
-                    errorname = self.parent.plotted_lines[line][axiserr]
-                    error = copy.deepcopy(self.parent.loaded_data[self.parent.all_parameter_names.index(errorname)])
+                        errorname = self.parent.plotted_lines[line][axiserr]
+                        error = copy.deepcopy(self.parent.loaded_data[self.parent.all_parameter_names.index(errorname)])
                 # Only apply multiply or divide filters (and only if they are checked of course)
                 if 'filters' in self.parent.plotted_lines[line].keys():
                     for filt in self.parent.plotted_lines[line]['filters']:
