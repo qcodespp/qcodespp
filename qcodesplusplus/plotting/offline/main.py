@@ -908,6 +908,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             rows, cols = self.subplot_grid[len(checked_items)-1]
             for index, item in enumerate(checked_items):
                 try:
+                    if not hasattr(item.data, 'processed_data'):
+                        item.data.prepare_data_for_plot(reload_data=True)
                     if hasattr(item.data, 'dim'):
                         if item.data.dim == 2:
                             update_data = False # No matter what (except for the very first time, where the data gets its dim)
@@ -1137,8 +1139,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if hasattr(current_item.data, 'all_parameter_names'):
                     dim = len(current_item.data.get_columns())
                     if dim == 2:
+                        self.new_plot_Z_label.hide()
+                        self.new_plot_Z_box.hide()
                         boxes= [self.new_plot_X_box, self.new_plot_Y_box]
                     else:
+                        self.new_plot_Z_label.show()
+                        self.new_plot_Z_box.show()
                         boxes= [self.new_plot_X_box, self.new_plot_Y_box, self.new_plot_Z_box]
                     for combobox in boxes:
                         combobox.addItems(current_item.data.all_parameter_names)
