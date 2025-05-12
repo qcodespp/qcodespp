@@ -1475,7 +1475,7 @@
   </action>
   <action name="action_copy_plot_as_image">
    <property name="text">
-    <string>Copy plot as image (Ctrl+C)</string>
+    <string>Copy plot as image</string>
    </property>
   </action>
   <action name="action_track_data">
@@ -1490,7 +1490,7 @@
   </action>
   <action name="action_restore_session">
    <property name="text">
-    <string>Open saved session (Ctrl+R)</string>
+    <string>Restore saved session (Ctrl+R)</string>
    </property>
   </action>
   <action name="actionAll_files_Ctrl_Shift_S">

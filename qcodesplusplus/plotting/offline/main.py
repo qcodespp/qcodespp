@@ -343,8 +343,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.track_shortcut.activated.connect(self.track_button_clicked)
         self.save_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+S"), self)
         self.save_shortcut.activated.connect(self.save_image)
-        self.copy_image_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+C"), self)
-        self.copy_image_shortcut.activated.connect(self.copy_canvas_to_clipboard)
+        # self.copy_image_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+C"), self)
+        # self.copy_image_shortcut.activated.connect(self.copy_canvas_to_clipboard)
+        # Problem with the above is that you then can't copy text! or anything else.
         self.duplicate_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+D"), self)
         self.duplicate_shortcut.activated.connect(self.duplicate_item)
         self.save_session_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+S"),self)
