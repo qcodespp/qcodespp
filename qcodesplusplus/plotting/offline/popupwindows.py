@@ -1360,21 +1360,47 @@ class LineCutWindow(QtWidgets.QWidget):
 
             scale=1.2
             scale_factor = np.power(scale, -event.step)
-            xdata = event.xdata
-            ydata = event.ydata
-            x_left = xdata - event.inaxes.get_xlim()[0]
-            x_right = event.inaxes.get_xlim()[1] - xdata
-            y_top = ydata - event.inaxes.get_ylim()[0]
-            y_bottom = event.inaxes.get_ylim()[1] - ydata
-            newxlims=[xdata - x_left * scale_factor, xdata + x_right * scale_factor]
-            newylims=[ydata - y_top * scale_factor, ydata + y_bottom * scale_factor]
-            if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
-                self.axes.set_xlim(newxlims)
-            elif QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
-                self.axes.set_ylim(newylims)
+
+            if any([scale != 'linear' for scale in [self.axes.get_xscale(), self.axes.get_yscale()]]):
+                x = event.x
+                y = event.y
+                #convert pixels to axes
+                tranP2A = event.inaxes.transAxes.inverted().transform
+                #convert axes to data limits
+                tranA2D= event.inaxes.transLimits.inverted().transform
+                #convert the scale (for log plots)
+                tranSclA2D = event.inaxes.transScale.inverted().transform
+                #x,y position of the mouse in range (0,1)
+                xa,ya = tranP2A((x,y))
+                newxlims=[xa - xa*scale_factor, xa + (1-xa)*scale_factor]
+                newylims=[ya - ya*scale_factor, ya + (1-ya)*scale_factor]
+                new_xlim0,new_ylim0 = tranSclA2D(tranA2D((newxlims[0],newxlims[0])))
+                new_xlim1,new_ylim1 = tranSclA2D(tranA2D((newylims[1],newylims[1])))
+                if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
+                    self.axes.set_xlim([new_xlim0, new_xlim1])
+                elif QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
+                    self.axes.set_ylim([new_ylim0, new_ylim1])
+                else:
+                    self.axes.set_xlim([new_xlim0, new_xlim1])
+                    self.axes.set_ylim([new_ylim0, new_ylim1])
             else:
-                self.axes.set_xlim(newxlims)
-                self.axes.set_ylim(newylims)
+                #Old method. renders slightly faster, but doesn't work well with log scale.
+                xdata = event.xdata
+                ydata = event.ydata
+                x_left = xdata - event.inaxes.get_xlim()[0]
+                x_right = event.inaxes.get_xlim()[1] - xdata
+                y_top = ydata - event.inaxes.get_ylim()[0]
+                y_bottom = event.inaxes.get_ylim()[1] - ydata
+                newxlims=[xdata - x_left * scale_factor, xdata + x_right * scale_factor]
+                newylims=[ydata - y_top * scale_factor, ydata + y_bottom * scale_factor]
+                if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
+                    self.axes.set_xlim(newxlims)
+                elif QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
+                    self.axes.set_ylim(newylims)
+                else:
+                    self.axes.set_xlim(newxlims)
+                    self.axes.set_ylim(newylims)
+
             event.inaxes.figure.canvas.draw()
             # Update toolbar so back/forward buttons work
             fig = event.inaxes.get_figure()
