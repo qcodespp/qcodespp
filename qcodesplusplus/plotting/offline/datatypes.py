@@ -401,8 +401,8 @@ class BaseClassData:
                                                   rasterized=self.settings['rasterized'])
                 if self.settings['colorbar'] == 'True':
                     self.cbar = self.figure.colorbar(self.image, orientation='vertical')
-                if apply_default_labels:
-                    self.apply_default_lables()
+            if apply_default_labels:
+                self.apply_default_lables()
 
             self.cursor = Cursor(self.axes, useblit=True, 
                                  color='black', linewidth=0.5)
@@ -429,23 +429,31 @@ class BaseClassData:
         if 'default_clabel' in self.settings.keys():
             self.settings['clabel'] = self.settings['default_clabel']
 
-        if self.plot_type and 'Histogram' in self.plot_type:
-            self.settings['clabel'] = 'Counts'
-            if self.plot_type == 'Histogram Y' and 'default_histlabel' in self.settings.keys():
-                self.settings['ylabel'] = self.settings['default_histlabel']
-            elif self.plot_type == 'Histogram X' and 'default_histlabel' in self.settings.keys():
-                self.settings['xlabel'] = self.settings['default_histlabel']
-        elif self.plot_type and 'FFT' in self.plot_type:
-            self.settings['clabel'] = 'FFT Amplitude'
-            if self.plot_type=='FFT Y' and 'default_fftylabel' in self.settings.keys():
-                self.settings['ylabel'] = self.settings['default_fftylabel']
-            elif self.plot_type=='FFT X' and 'default_fftxlabel' in self.settings.keys():
-                self.settings['xlabel'] = self.settings['default_fftxlabel']
-            elif self.plot_type=='FFT X/Y':
-                if 'default_fftxlabel' in self.settings.keys():
-                    self.settings['xlabel'] = self.settings['default_fftxlabel']
-                if 'default_fftylabel' in self.settings.keys():
+        if self.dim == 3:
+            if self.plot_type and 'Histogram' in self.plot_type:
+                self.settings['clabel'] = 'Counts'
+                if self.plot_type == 'Histogram Y' and 'default_histlabel' in self.settings.keys():
+                    self.settings['ylabel'] = self.settings['default_histlabel']
+                elif self.plot_type == 'Histogram X' and 'default_histlabel' in self.settings.keys():
+                    self.settings['xlabel'] = self.settings['default_histlabel']
+            elif self.plot_type and 'FFT' in self.plot_type:
+                self.settings['clabel'] = 'FFT Amplitude'
+                if self.plot_type=='FFT Y' and 'default_fftylabel' in self.settings.keys():
                     self.settings['ylabel'] = self.settings['default_fftylabel']
+                elif self.plot_type=='FFT X' and 'default_fftxlabel' in self.settings.keys():
+                    self.settings['xlabel'] = self.settings['default_fftxlabel']
+                elif self.plot_type=='FFT X/Y':
+                    if 'default_fftxlabel' in self.settings.keys():
+                        self.settings['xlabel'] = self.settings['default_fftxlabel']
+                    if 'default_fftylabel' in self.settings.keys():
+                        self.settings['ylabel'] = self.settings['default_fftylabel']
+        else:
+            if self.plot_type == 'Histogram':
+                self.settings['ylabel'] = 'Counts'
+                self.settings['xlabel'] = self.settings['default_histlabel']
+            elif self.plot_type == 'FFT':
+                self.settings['ylabel'] = 'FFT Amplitude'
+                self.settings['xlabel'] = self.settings['default_fftxlabel']
 
     def reset_view_settings(self, overrule=False):
         if not self.view_settings['Locked'] or overrule:

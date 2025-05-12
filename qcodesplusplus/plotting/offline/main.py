@@ -469,12 +469,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for item_index in range(self.file_list.count()-1):
                 self.file_list.item(item_index).setCheckState(QtCore.Qt.Unchecked)
         if check_item:
-            for i in reversed(range(self.oneD_layout.count())): 
-                widgetToRemove = self.oneD_layout.itemAt(i).widget()
-                # remove it from the layout list
-                self.oneD_layout.removeWidget(widgetToRemove)
-                # remove it from the gui
-                widgetToRemove.setParent(None)
+            self.clear_sidebar1D()
             item.setCheckState(QtCore.Qt.Checked)
             self.file_checked(item)
         self.file_list.itemChanged.connect(self.file_checked)
@@ -1601,12 +1596,16 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if current_item:
             checked_items = self.get_checked_items()
             menu = QtWidgets.QMenu(self)
-            actions = ['Duplicate (Ctrl+D)','Remove file','Check all','Uncheck all','Clear list','Remove unchecked']
-            if len(checked_items) > 1:
-                actions.append('Combine checked files')
+            menu.addAction('Duplicate (Ctrl+D)')
+            menu.addSeparator()
+            actions = ['Remove file','Check all','Uncheck all','Clear list','Remove unchecked']
             for entry in actions:
                 action = QtWidgets.QAction(entry, self)
                 menu.addAction(action)
+            if len(checked_items) > 1:
+                menu.addSeparator()
+                menu.addAction('Combine checked files')
+
             menu.triggered[QtWidgets.QAction].connect(self.do_item_action)
             menu.popup(QtGui.QCursor.pos())
             
@@ -1802,9 +1801,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         if data_list[0].dim == 3:
                             dataset2d=copy.copy(data_list[0])
                             dataset1d=copy.copy(data_list[1])
+                            # Next two lines basically fix a bug.
+                            dataset1d.settings['X data'] = data_list[1].all_parameter_names[0]
+                            dataset1d.settings['Y data'] = data_list[1].all_parameter_names[1]
                         else:
                             dataset2d=copy.copy(data_list[1])
                             dataset1d=copy.copy(data_list[0])
+                            dataset1d.settings['X data'] = data_list[0].data.all_parameter_names[0]
+                            dataset1d.settings['Y data'] = data_list[0].data.all_parameter_names[1]
 
                         combined_item=DataItem(MixedInternalData(self.canvas,dataset2d,dataset1d,label_name))
                         self.add_internal_data(combined_item)

@@ -70,8 +70,6 @@ def rcParams_to_light_theme():
     rcParams['axes.edgecolor'] = 'black'
     rcParams['axes.labelcolor'] = 'black'
 
-    
-
 class NoScrollQComboBox(QtWidgets.QComboBox):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
