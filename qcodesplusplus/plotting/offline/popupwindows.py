@@ -219,7 +219,6 @@ class LineCutWindow(QtWidgets.QWidget):
 
         # Populating
         #self.top_buttons_layout.addWidget(self.navi_toolbar)
-        self.top_buttons_layout.addWidget(self.reset_plot_limits_button)
         if self.orientation =='diagonal':
             self.top_buttons_layout.addWidget(self.plot_against_label)
             self.top_buttons_layout.addWidget(self.plot_against_box)
@@ -237,6 +236,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.bot_buttons_layout.addWidget(self.yscale_label)
         self.bot_buttons_layout.addWidget(self.yscale_box)
         self.bot_buttons_layout.addStretch()
+        self.bot_buttons_layout.addWidget(self.reset_plot_limits_button)
         
         # Sub-layouts(s) in fitting box
         self.lims_layout = QtWidgets.QHBoxLayout()
@@ -323,15 +323,15 @@ class LineCutWindow(QtWidgets.QWidget):
         self.setLayout(self.main_layout)
 
     def init_cuts_table(self):
-        self.cuts_table.setColumnCount(6)
+        self.cuts_table.setColumnCount(7)
         self.cuts_table.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked)
         h = self.cuts_table.horizontalHeader()
         h.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
-        for col in range(6):
+        for col in range(7):
             h.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeToContents)
-        headerlabels={'vertical':['cut #','index','value','offset','color','show fit'],
-                    'horizontal':['cut #','index','value','offset','color','show fit'],
-                    'diagonal':['cut #','point A','point B','offset','color','show fit']}
+        headerlabels={'vertical':['cut #','index','value','offset','color','show fit','show cmpts'],
+                    'horizontal':['cut #','index','value','offset','color','show fit','show cmpts'],
+                    'diagonal':['cut #','point A','point B','offset','color','show fit','show cmpts']}
         self.cuts_table.setHorizontalHeaderLabels(headerlabels[self.orientation])
         v=self.cuts_table.verticalHeader()
         v.setVisible(False)
@@ -433,9 +433,15 @@ class LineCutWindow(QtWidgets.QWidget):
                             QtCore.Qt.ItemIsEnabled | 
                             QtCore.Qt.ItemIsUserCheckable)
             plot_fit_item.setCheckState(linecut['fit']['fit_checkstate'])
-
-
         self.cuts_table.setItem(row,5,plot_fit_item)
+
+        fit_components_item = QtWidgets.QTableWidgetItem('')
+        if 'fit' in linecut.keys():
+            fit_components_item.setFlags(QtCore.Qt.ItemIsSelectable | 
+                            QtCore.Qt.ItemIsEnabled | 
+                            QtCore.Qt.ItemIsUserCheckable)
+            fit_components_item.setCheckState(linecut['fit']['fit_components_checkstate'])
+        self.cuts_table.setItem(row,6,fit_components_item)
 
         self.cuts_table.setCurrentCell(row,0)
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
@@ -450,15 +456,15 @@ class LineCutWindow(QtWidgets.QWidget):
         self.cuts_table.item(row, 2).setText(f'{linecut['points'][1][0]:.4g}, {linecut['points'][1][1]:.4g}')
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
 
-    def cuts_table_edited(self,setting=None):
-        if setting=='index':
+    def cuts_table_edited(self,item):
+        if item=='index':
             current_row = self.cuts_table.currentRow()
             self.index_changed(current_row)
 
         else:
-            current_item = self.cuts_table.currentItem()
-            current_col = self.cuts_table.currentColumn()
-            current_row = self.cuts_table.currentRow()
+            current_item = item
+            current_col = item.column()
+            current_row = item.row()
 
             if current_col == 2 and self.orientation in ['horizontal','vertical']: # The user is trying to edit the value of the data. Let's find a new index for them.
                 linecut = self.cuts_table.item(current_row,0).text()
@@ -505,6 +511,12 @@ class LineCutWindow(QtWidgets.QWidget):
             elif current_col == 5: # It's the checkstate for the fit.
                 linecut = int(self.cuts_table.item(current_row,0).text())
                 self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_checkstate'] = current_item.checkState()
+                self.update()
+
+            elif current_col == 6: # It's the checkstate for the fit components.
+                linecut = int(self.cuts_table.item(current_row,0).text())
+                self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_components_checkstate'] = current_item.checkState()
+                print(f'fit components checkstate changed to: {self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_components_checkstate']}')
                 self.update()
 
     def update_draggable_points(self,linecut,replot=True):
@@ -658,7 +670,6 @@ class LineCutWindow(QtWidgets.QWidget):
         except Exception as e:
             pass
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
-
 
     def reorder_cuts(self):
         # Reorder the cuts in the list based on the data index.
@@ -818,6 +829,30 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.cuts_table.itemChanged.connect(self.cuts_table_edited)
                 self.update()
 
+        elif column==6:
+            menu = QtWidgets.QMenu(self)
+            check_all_action = menu.addAction("Show all fit components")
+            uncheck_all_action = menu.addAction("Hide all fit components")
+            action = menu.exec_(self.cuts_table.viewport().mapToGlobal(position))
+            if action == check_all_action:
+                self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+                for row in range(self.cuts_table.rowCount()):
+                    item = self.cuts_table.item(row, 6)
+                    item.setCheckState(QtCore.Qt.Checked)
+                    linecut=int(self.cuts_table.item(row,0).text())
+                    self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_components_checkstate'] = item.checkState()
+                self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+                self.update()
+            elif action == uncheck_all_action:
+                self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+                for row in range(self.cuts_table.rowCount()):
+                    item = self.cuts_table.item(row, 6)
+                    item.setCheckState(QtCore.Qt.Unchecked)
+                    linecut=int(self.cuts_table.item(row,0).text())
+                    self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_components_checkstate'] = item.checkState()
+                self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+                self.update()
+
     def limits_edited(self):
         try:
             if hasattr(self, 'minline'):
@@ -906,6 +941,7 @@ class LineCutWindow(QtWidgets.QWidget):
             self.guess_checkbox.setText(f'Initial guess:')
         self.output_window.setText('Information about selected fit type:\n'+
                                    fit_function['description'])
+        
     def collect_fit_data(self,x,y):
         # If diagonal or circular, setting limits doesn't work; however, one can easily change the range during linecut definition anyway
         try:
@@ -950,7 +986,6 @@ class LineCutWindow(QtWidgets.QWidget):
             inputinfo=None
         return inputinfo
         
-
     def collect_init_guess(self,function_class, function_name):
         # Collect parameters/initial guess
         if self.guess_checkbox.checkState():
@@ -994,16 +1029,26 @@ class LineCutWindow(QtWidgets.QWidget):
                                                                         'xdata': x_forfit,
                                                                         'ydata': y_forfit,
                                                                         'fitted_y': y_fit,
-                                                                        'fit_checkstate': QtCore.Qt.Checked}
+                                                                        'fit_checkstate': QtCore.Qt.Checked,
+                                                                        'fit_components_checkstate': QtCore.Qt.Unchecked}
 
         # Add a checkbox to the table now a fit exists.
         self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+
         plot_fit_item = QtWidgets.QTableWidgetItem('')
         plot_fit_item.setFlags(QtCore.Qt.ItemIsSelectable | 
                             QtCore.Qt.ItemIsEnabled | 
                             QtCore.Qt.ItemIsUserCheckable)
         plot_fit_item.setCheckState(QtCore.Qt.Checked)
         self.cuts_table.setItem(current_row,5,plot_fit_item)
+
+        fit_components_item = QtWidgets.QTableWidgetItem('')
+        fit_components_item.setFlags(QtCore.Qt.ItemIsSelectable | 
+                                    QtCore.Qt.ItemIsEnabled | 
+                                    QtCore.Qt.ItemIsUserCheckable)
+        fit_components_item.setCheckState(QtCore.Qt.Unchecked)
+        self.cuts_table.setItem(current_row,6,fit_components_item)
+
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
         
         if not multilinefit:
@@ -1017,7 +1062,6 @@ class LineCutWindow(QtWidgets.QWidget):
             self.start_fitting(line,multilinefit=True)
         self.print_parameters(line)
         self.update()
-
 
     def print_parameters(self,line):
         self.output_window.clear()
@@ -1172,14 +1216,15 @@ class LineCutWindow(QtWidgets.QWidget):
             y_fit=fit_result.best_fit+offset
             self.axes.plot(x_forfit, y_fit, 'k--',
                 linewidth=1.5)
-            fit_components=fit_result.eval_components()
-            if self.colormap_box.currentText() == 'viridis':
-                selected_colormap = cm.get_cmap('plasma')
-            elif self.colormap_box.currentText() == 'plasma':
-                selected_colormap = cm.get_cmap('viridis')
-            line_colors = selected_colormap(np.linspace(0.1,0.9,len(fit_components.keys())))
-            for i,key in enumerate(fit_components.keys()):
-                self.axes.plot(x_forfit, fit_components[key]+offset, '--', color=line_colors[i],alpha=0.75, linewidth=1.5)
+            if self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_components_checkstate']==QtCore.Qt.Checked:
+                fit_components=fit_result.eval_components()
+                if self.colormap_box.currentText() == 'viridis':
+                    selected_colormap = cm.get_cmap('plasma')
+                elif self.colormap_box.currentText() == 'plasma':
+                    selected_colormap = cm.get_cmap('viridis')
+                line_colors = selected_colormap(np.linspace(0.1,0.9,len(fit_components.keys())))
+                for i,key in enumerate(fit_components.keys()):
+                    self.axes.plot(x_forfit, fit_components[key]+offset, '--', color=line_colors[i],alpha=0.75, linewidth=1.5)
         except Exception as e:
             self.output_window.setText(f'Could not plot fit: {e}')
         self.canvas.draw()
@@ -1460,3 +1505,21 @@ class LineCutWindow(QtWidgets.QWidget):
             else:
                 self.guess_checkbox.setCheckState(QtCore.Qt.UnChecked)
             self.update()
+
+
+class StatsWindow(QtWidgets.QWidget):
+    def __init__(self, parent, editor_window=None):
+        super().__init__()
+        # The parent is the DATA object.
+        self.parent = parent
+        # self.editor_window is the main window.
+        self.editor_window = editor_window
+        self.running = True
+
+        self.title_label = QtWidgets.QLabel(f'Statistics for {self.parent.label}')
+        self.output_window = QtWidgets.QTextEdit()
+        self.output_window.setReadOnly(True)
+        self.main_layout = QtWidgets.QHBoxLayout()
+        self.main_layout.addWidget(self.title_label)
+        self.main_layout.addWidget(self.output_window)
+        self.setLayout(self.main_layout)
