@@ -323,15 +323,15 @@ class LineCutWindow(QtWidgets.QWidget):
         self.setLayout(self.main_layout)
 
     def init_cuts_table(self):
-        self.cuts_table.setColumnCount(7)
+        self.cuts_table.setColumnCount(8)
         self.cuts_table.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked)
         h = self.cuts_table.horizontalHeader()
         h.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
-        for col in range(7):
+        for col in range(8):
             h.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeToContents)
-        headerlabels={'vertical':['cut #','index','value','offset','color','show fit','show cmpts'],
-                    'horizontal':['cut #','index','value','offset','color','show fit','show cmpts'],
-                    'diagonal':['cut #','point A','point B','offset','color','show fit','show cmpts']}
+        headerlabels={'vertical':['cut #','index','value','offset','color','show fit','show fit cmpts','show fit err'],
+                    'horizontal':['cut #','index','value','offset','color','show fit','show fit cmpts','show fit err'],
+                    'diagonal':['cut #','point A','point B','offset','color','show fit','show fit cmpts','show fit err']}
         self.cuts_table.setHorizontalHeaderLabels(headerlabels[self.orientation])
         v=self.cuts_table.verticalHeader()
         v.setVisible(False)
@@ -443,6 +443,14 @@ class LineCutWindow(QtWidgets.QWidget):
             fit_components_item.setCheckState(linecut['fit']['fit_components_checkstate'])
         self.cuts_table.setItem(row,6,fit_components_item)
 
+        fit_error_item = QtWidgets.QTableWidgetItem('')
+        if 'fit' in linecut.keys():
+            fit_error_item.setFlags(QtCore.Qt.ItemIsSelectable | 
+                            QtCore.Qt.ItemIsEnabled | 
+                            QtCore.Qt.ItemIsUserCheckable)
+            fit_error_item.setCheckState(linecut['fit']['fit_error_checkstate'])
+        self.cuts_table.setItem(row,7,fit_error_item)
+
         self.cuts_table.setCurrentCell(row,0)
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
 
@@ -488,14 +496,12 @@ class LineCutWindow(QtWidgets.QWidget):
                 elif current_col == 2:
                     self.parent.linecuts[self.orientation]['lines'][linecut]['points'][1] = (x,y)
                 self.update_draggable_points(linecut)
-                self.update()
 
             elif current_col == 3: #Change the offset in the dictionary and then replot.
                 linecut = self.cuts_table.item(current_row,0).text()
                 linecut = int(linecut)
                 offset = float(current_item.text())
                 self.parent.linecuts[self.orientation]['lines'][linecut]['offset'] = offset
-                self.update()
     
             elif current_col == 0: # It's the checkstate, so need to replot and update dictionary
                 linecut = int(self.cuts_table.item(current_row,0).text())
@@ -506,18 +512,20 @@ class LineCutWindow(QtWidgets.QWidget):
                     else:
                         replot=False
                     self.update_draggable_points(linecut,replot=replot)
-                self.update()
 
             elif current_col == 5: # It's the checkstate for the fit.
                 linecut = int(self.cuts_table.item(current_row,0).text())
                 self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_checkstate'] = current_item.checkState()
-                self.update()
 
             elif current_col == 6: # It's the checkstate for the fit components.
                 linecut = int(self.cuts_table.item(current_row,0).text())
                 self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_components_checkstate'] = current_item.checkState()
-                print(f'fit components checkstate changed to: {self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_components_checkstate']}')
-                self.update()
+
+            elif current_col == 7: # It's the checkstate for the fit error.
+                linecut = int(self.cuts_table.item(current_row,0).text())
+                self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_uncertainty_checkstate'] = current_item.checkState()
+        
+        self.update()
 
     def update_draggable_points(self,linecut,replot=True):
         try:
@@ -548,7 +556,6 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.parent.linecuts[self.orientation]['lines'][linecut]['cut_axis_value']=self.parent.processed_data[0][data_index,0]
                 self.cuts_table.item(row,2).setText(f'{self.parent.processed_data[0][data_index,0]:6g}')
             self.parent.linecuts[self.orientation]['lines'][linecut]['data_index'] = data_index
-            self.update()
         except Exception as e:
             print(e)
         self.cuts_table.setCurrentItem(self.cuts_table.item(row,0)) # Hopefully fixes a bug that if the index is changed, the focus goes weird.
@@ -852,6 +859,30 @@ class LineCutWindow(QtWidgets.QWidget):
                     self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_components_checkstate'] = item.checkState()
                 self.cuts_table.itemChanged.connect(self.cuts_table_edited)
                 self.update()
+        
+        elif column==7:
+            menu = QtWidgets.QMenu(self)
+            check_all_action = menu.addAction("Show all fit errors")
+            uncheck_all_action = menu.addAction("Hide all fit errors")
+            action = menu.exec_(self.cuts_table.viewport().mapToGlobal(position))
+            if action == check_all_action:
+                self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+                for row in range(self.cuts_table.rowCount()):
+                    item = self.cuts_table.item(row, 7)
+                    item.setCheckState(QtCore.Qt.Checked)
+                    linecut=int(self.cuts_table.item(row,0).text())
+                    self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_uncertainty_checkstate'] = item.checkState()
+                self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+                self.update()
+            elif action == uncheck_all_action:
+                self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+                for row in range(self.cuts_table.rowCount()):
+                    item = self.cuts_table.item(row, 7)
+                    item.setCheckState(QtCore.Qt.Unchecked)
+                    linecut=int(self.cuts_table.item(row,0).text())
+                    self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_uncertainty_checkstate'] = item.checkState()
+                self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+                self.update()
 
     def limits_edited(self):
         try:
@@ -1030,7 +1061,8 @@ class LineCutWindow(QtWidgets.QWidget):
                                                                         'ydata': y_forfit,
                                                                         'fitted_y': y_fit,
                                                                         'fit_checkstate': QtCore.Qt.Checked,
-                                                                        'fit_components_checkstate': QtCore.Qt.Unchecked}
+                                                                        'fit_components_checkstate': QtCore.Qt.Unchecked,
+                                                                        'fit_uncertainty_checkstate': QtCore.Qt.Checked}
 
         # Add a checkbox to the table now a fit exists.
         self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
@@ -1049,6 +1081,13 @@ class LineCutWindow(QtWidgets.QWidget):
         fit_components_item.setCheckState(QtCore.Qt.Unchecked)
         self.cuts_table.setItem(current_row,6,fit_components_item)
 
+        fit_uncertainty_item = QtWidgets.QTableWidgetItem('')
+        fit_uncertainty_item.setFlags(QtCore.Qt.ItemIsSelectable |
+                                    QtCore.Qt.ItemIsEnabled | 
+                                    QtCore.Qt.ItemIsUserCheckable)
+        fit_uncertainty_item.setCheckState(QtCore.Qt.Checked)
+        self.cuts_table.setItem(current_row,7,fit_uncertainty_item)
+        
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
         
         if not multilinefit:
@@ -1216,6 +1255,10 @@ class LineCutWindow(QtWidgets.QWidget):
             y_fit=fit_result.best_fit+offset
             self.axes.plot(x_forfit, y_fit, 'k--',
                 linewidth=1.5)
+            if self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_uncertainty_checkstate']==QtCore.Qt.Checked:
+                uncertainty=fit_result.eval_uncertainty()
+                self.axes.fill_between(x_forfit, y_fit-uncertainty+offset, y_fit+uncertainty+offset,
+                                        color='grey', alpha=0.5, linewidth=0)
             if self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_components_checkstate']==QtCore.Qt.Checked:
                 fit_components=fit_result.eval_components()
                 if self.colormap_box.currentText() == 'viridis':
