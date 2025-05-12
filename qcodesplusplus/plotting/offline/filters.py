@@ -209,6 +209,26 @@ def offset_line_by_line(data,method,index,setting2):
 
     return data
 
+def subtract_ave_line_by_line(data,method,setting1,setting2):
+    if len(data) == 3:
+        shape=np.shape(data[-1])
+        if method=='Z':
+            newdata=np.zeros_like(data[-1])
+            for i in range(shape[0]):
+                for j in range(shape[1]):
+                    newdata[i][j]=data[-1][i][j]-np.average(data[-1][i])
+            data[-1]=newdata
+        elif method=='Y':
+            newdata=np.zeros_like(data[-1])
+            for i in range(shape[0]):
+                for j in range(shape[1]):
+                    newdata[i][j]=data[1][i][j]-np.average(data[1][i])
+            data[1]=newdata
+    else:
+        print('Cannot subtract average from 1D data line by line. Use regular offset')
+
+    return data
+
 def offset(data, method, setting1, setting2, array=None):
     axis = {'X': 0, 'Y': 1, 'Z': 2}
     if array is not None:
@@ -431,9 +451,13 @@ class Filter:
                                       'Function': normalize,
                                       'Checkstate': 2},
                         'Offset line by line': {'Method': ['Z', 'Y'],
-                                      'Settings': ['0', ''],
+                                      'Settings': ['', ''],
                                       'Function': offset_line_by_line,
                                       'Checkstate': 2},
+                        'Subtract average line by line': {'Method': ['Z', 'Y'],
+                                      'Settings': ['0', ''],
+                                        'Function': subtract_ave_line_by_line,
+                                        'Checkstate': 2},
                         'Subtract trace': {'Method': ['Ver', 'Hor'],
                                      'Settings': ['0', ''],
                                      'Function': subtract_trace,
