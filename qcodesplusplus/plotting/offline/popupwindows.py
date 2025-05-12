@@ -762,6 +762,21 @@ class LineCutWindow(QtWidgets.QWidget):
         self.colormap_box.clear()
         self.colormap_box.addItems(cmaps[self.colormap_type_box.currentText()])
 
+    def change_all_checkstate(self,column,checkstate):
+        for row in range(self.cuts_table.rowCount()):
+            item = self.cuts_table.item(row, column)
+            item.setCheckState(checkstate)
+            linecut=int(self.cuts_table.item(row,0).text())
+            if column == 0:
+                self.parent.linecuts[self.orientation]['lines'][linecut]['checkstate'] = checkstate
+            elif column == 5:
+                self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_checkstate'] = checkstate
+            elif column == 6:
+                self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_components_checkstate'] = checkstate
+            elif column == 7:
+                self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_uncertainty_checkstate'] = checkstate
+        self.update()
+        
     def open_cuts_table_menu(self,position):
         item=self.cuts_table.currentItem()
         column=self.cuts_table.currentColumn()
@@ -786,103 +801,34 @@ class LineCutWindow(QtWidgets.QWidget):
                             self.update_draggable_points(linecut,replot=True)
                         self.update()
         
-        elif column==0:
+        elif column in [0,5,6,7]:
             menu = QtWidgets.QMenu(self)
-            check_all_action = menu.addAction("Check all")
-            uncheck_all_action = menu.addAction("Uncheck all")
+            
+            if column==0:
+                check_all_action = menu.addAction("Check all")
+                uncheck_all_action = menu.addAction("Uncheck all")
+
+            elif column==5:
+                check_all_action = menu.addAction("Show all fits")
+                uncheck_all_action = menu.addAction("Hide all fits")
+
+            elif column==6:
+                check_all_action = menu.addAction("Show all fit components")
+                uncheck_all_action = menu.addAction("Hide all fit components")
+            elif column==7:
+                check_all_action = menu.addAction("Show all fit errors")
+                uncheck_all_action = menu.addAction("Hide all fit errors")
 
             action = menu.exec_(self.cuts_table.viewport().mapToGlobal(position))
-            if action == check_all_action:
-                self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
-                for row in range(self.cuts_table.rowCount()):
-                    item = self.cuts_table.item(row, 0)
-                    item.setCheckState(QtCore.Qt.Checked)
-                    linecut=int(self.cuts_table.item(row,0).text())
-                    self.parent.linecuts[self.orientation]['lines'][linecut]['checkstate'] = item.checkState()
-                self.cuts_table.itemChanged.connect(self.cuts_table_edited)
-                self.update()
-            elif action == uncheck_all_action:
-                self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
-                for row in range(self.cuts_table.rowCount()):
-                    item = self.cuts_table.item(row, 0)
-                    item.setCheckState(QtCore.Qt.Unchecked)
-                    linecut=int(self.cuts_table.item(row,0).text())
-                    self.parent.linecuts[self.orientation]['lines'][linecut]['checkstate'] = item.checkState()
-                self.cuts_table.itemChanged.connect(self.cuts_table_edited)
-                self.update()
-
-        elif column==5:
-            menu = QtWidgets.QMenu(self)
-            check_all_action = menu.addAction("Show all fits")
-            uncheck_all_action = menu.addAction("Hide all fits")
-
-            action = menu.exec_(self.cuts_table.viewport().mapToGlobal(position))
-            if action == check_all_action:
-                self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
-                for row in range(self.cuts_table.rowCount()):
-                    item = self.cuts_table.item(row, 5)
-                    item.setCheckState(QtCore.Qt.Checked)
-                    linecut=int(self.cuts_table.item(row,0).text())
-                    self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_checkstate'] = item.checkState()
-                self.cuts_table.itemChanged.connect(self.cuts_table_edited)
-                self.update()
-            elif action == uncheck_all_action:
-                self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
-                for row in range(self.cuts_table.rowCount()):
-                    item = self.cuts_table.item(row, 5)
-                    item.setCheckState(QtCore.Qt.Unchecked)
-                    linecut=int(self.cuts_table.item(row,0).text())
-                    self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_checkstate'] = item.checkState()
-                self.cuts_table.itemChanged.connect(self.cuts_table_edited)
-                self.update()
-
-        elif column==6:
-            menu = QtWidgets.QMenu(self)
-            check_all_action = menu.addAction("Show all fit components")
-            uncheck_all_action = menu.addAction("Hide all fit components")
-            action = menu.exec_(self.cuts_table.viewport().mapToGlobal(position))
-            if action == check_all_action:
-                self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
-                for row in range(self.cuts_table.rowCount()):
-                    item = self.cuts_table.item(row, 6)
-                    item.setCheckState(QtCore.Qt.Checked)
-                    linecut=int(self.cuts_table.item(row,0).text())
-                    self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_components_checkstate'] = item.checkState()
-                self.cuts_table.itemChanged.connect(self.cuts_table_edited)
-                self.update()
-            elif action == uncheck_all_action:
-                self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
-                for row in range(self.cuts_table.rowCount()):
-                    item = self.cuts_table.item(row, 6)
-                    item.setCheckState(QtCore.Qt.Unchecked)
-                    linecut=int(self.cuts_table.item(row,0).text())
-                    self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_components_checkstate'] = item.checkState()
-                self.cuts_table.itemChanged.connect(self.cuts_table_edited)
-                self.update()
-        
-        elif column==7:
-            menu = QtWidgets.QMenu(self)
-            check_all_action = menu.addAction("Show all fit errors")
-            uncheck_all_action = menu.addAction("Hide all fit errors")
-            action = menu.exec_(self.cuts_table.viewport().mapToGlobal(position))
-            if action == check_all_action:
-                self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
-                for row in range(self.cuts_table.rowCount()):
-                    item = self.cuts_table.item(row, 7)
-                    item.setCheckState(QtCore.Qt.Checked)
-                    linecut=int(self.cuts_table.item(row,0).text())
-                    self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_uncertainty_checkstate'] = item.checkState()
-                self.cuts_table.itemChanged.connect(self.cuts_table_edited)
-                self.update()
-            elif action == uncheck_all_action:
-                self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
-                for row in range(self.cuts_table.rowCount()):
-                    item = self.cuts_table.item(row, 7)
-                    item.setCheckState(QtCore.Qt.Unchecked)
-                    linecut=int(self.cuts_table.item(row,0).text())
-                    self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_uncertainty_checkstate'] = item.checkState()
-                self.cuts_table.itemChanged.connect(self.cuts_table_edited)
-                self.update()
+            self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+            try:
+                if action == check_all_action:
+                    self.change_all_checkstate(column,QtCore.Qt.Checked)
+                elif action == uncheck_all_action:
+                    self.change_all_checkstate(column,QtCore.Qt.Unchecked)
+            except Exception as e:
+                print(e)
+            self.cuts_table.itemChanged.connect(self.cuts_table_edited)
 
     def limits_edited(self):
         try:
@@ -1087,7 +1033,7 @@ class LineCutWindow(QtWidgets.QWidget):
                                     QtCore.Qt.ItemIsUserCheckable)
         fit_uncertainty_item.setCheckState(QtCore.Qt.Checked)
         self.cuts_table.setItem(current_row,7,fit_uncertainty_item)
-        
+
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
         
         if not multilinefit:
@@ -1356,8 +1302,9 @@ class LineCutWindow(QtWidgets.QWidget):
         line = int(self.cuts_table.item(current_row,0).text())
         if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
             self.parent.linecuts[self.orientation]['lines'][line].pop('fit')
-            empty_box=QtWidgets.QTableWidgetItem('')
-            self.cuts_table.setItem(current_row,5,empty_box)
+            self.cuts_table.setItem(current_row,5,QtWidgets.QTableWidgetItem(''))
+            self.cuts_table.setItem(current_row,6,QtWidgets.QTableWidgetItem(''))
+            self.cuts_table.setItem(current_row,7,QtWidgets.QTableWidgetItem(''))
             fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
             self.output_window.setText('Information about selected fit type:\n'+
                                    fit_function['description'])
@@ -1368,8 +1315,9 @@ class LineCutWindow(QtWidgets.QWidget):
         for line in fit_lines:
             self.parent.linecuts[self.orientation]['lines'][line].pop('fit')
         for row in range(self.cuts_table.rowCount()):
-            empty_box=QtWidgets.QTableWidgetItem('')
-            self.cuts_table.setItem(row,5,empty_box)
+            self.cuts_table.setItem(row,5,QtWidgets.QTableWidgetItem(''))
+            self.cuts_table.setItem(row,6,QtWidgets.QTableWidgetItem(''))
+            self.cuts_table.setItem(row,7,QtWidgets.QTableWidgetItem(''))
         fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
         self.output_window.setText('Information about selected fit type:\n'+fit_function['description'])
         self.update()
