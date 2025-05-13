@@ -2097,136 +2097,149 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.plot_in_focus = [checked_item for checked_item in checked_items 
                                       if checked_item.data.axes == event.inaxes]
                 if self.plot_in_focus:
-                    data = self.plot_in_focus[0].data
-                    data.selected_x, data.selected_y = x, y
+                    if self.file_list.currentItem() != self.plot_in_focus[0]:
+                        # If the clicked plot is not the current one, set it as current before doing anything else.
+                        self.file_list.setCurrentItem(self.plot_in_focus[0])
+                        self.file_clicked()
+                    else:
+                        self.file_list.setCurrentItem(self.plot_in_focus[0])
+                        self.file_clicked()
+                        data = self.plot_in_focus[0].data
+                        data.selected_x, data.selected_y = x, y
 
-                    # For 1D data left mouse click sets the fit limits.
-                    if (event.button == 1  and 
-                        data.dim == 2):
-                        if hasattr(data, 'sidebar1D'):
-                            current_row=data.sidebar1D.trace_table.currentRow()
-                            xdata,ydata=data.sidebar1D.get_line_data(int(data.sidebar1D.trace_table.item(current_row,0).text()))
-                            # snap to data
-                            index=(np.abs(x-xdata)).argmin()
-                            x_value=xdata[index]
-                            if data.sidebar1D.xmin_box.text()=='':
-                                data.sidebar1D.xmin_box.setText(str(x_value))
-                            elif data.sidebar1D.xmax_box.text()=='':
-                                data.sidebar1D.xmax_box.setText(str(x_value))
-                            else:
-                                if np.abs(float(data.sidebar1D.xmin_box.text())-x_value)<np.abs(float(data.sidebar1D.xmax_box.text())-x_value):
+                        # For 1D data left mouse click sets the fit limits.
+                        if (event.button == 1  and 
+                            data.dim == 2):
+                            if hasattr(data, 'sidebar1D'):
+                                current_row=data.sidebar1D.trace_table.currentRow()
+                                xdata,ydata=data.sidebar1D.get_line_data(int(data.sidebar1D.trace_table.item(current_row,0).text()))
+                                # snap to data
+                                index=(np.abs(x-xdata)).argmin()
+                                x_value=xdata[index]
+                                if data.sidebar1D.xmin_box.text()=='':
                                     data.sidebar1D.xmin_box.setText(str(x_value))
-                                else:
+                                elif data.sidebar1D.xmax_box.text()=='':
                                     data.sidebar1D.xmax_box.setText(str(x_value))
-                            data.sidebar1D.limits_edited()
+                                else:
+                                    if np.abs(float(data.sidebar1D.xmin_box.text())-x_value)<np.abs(float(data.sidebar1D.xmax_box.text())-x_value):
+                                        data.sidebar1D.xmin_box.setText(str(x_value))
+                                    else:
+                                        data.sidebar1D.xmax_box.setText(str(x_value))
+                                data.sidebar1D.limits_edited()
 
-                    # For 2D data, left and middle mouse click generate horizontal or vertical linecut, UNLESS the
-                    # mouse is in the vicinity of a pre-existing diagonal or circular linecut point.
+                        # For 2D data, left and middle mouse click generate horizontal or vertical linecut, UNLESS the
+                        # mouse is in the vicinity of a pre-existing diagonal or circular linecut point.
 
-                    elif ((event.button == 1 or event.button == 2) and 
-                        (data.dim == 3 or isinstance(data,MixedInternalData)) and not self.draggable_point_selected(x,y,data)):
-                        # Opening linecut/fitting window for 2D data
-                        if isinstance(data, MixedInternalData):
-                            data = data.dataset2d
-                        index_x = np.argmin(np.abs(data.processed_data[0][:,0]-x))
-                        index_y = np.argmin(np.abs(data.processed_data[1][0,:]-y))
-                        data.selected_indices = [int(index_x), int(index_y)]
-                        if self.colormap_box.currentText() == 'viridis':
-                            selected_colormap = cm.get_cmap('plasma')
-                        else:
-                            selected_colormap = cm.get_cmap('viridis')
-                        #Make entry to store linecuts in
-                        if not hasattr(data,'linecuts'):
-                            data.linecuts={'horizontal':{'linecut_window':None,'lines':{}},
-                                           'vertical':{'linecut_window':None,'lines':{}},
-                                           'diagonal':{'linecut_window':None,'lines':{}},
-                                           'circular':{'linecut_window':None,'lines':{}}
-                                            }
-                        if event.button == 1:
-                            line_colors = selected_colormap(np.linspace(0.1,0.9,len(data.processed_data[1][0,:])))
-                            orientation='horizontal'
-                            try:
-                                max_index=np.max(list(data.linecuts[orientation]['lines'].keys()))
-                            except ValueError:
-                                max_index=-1
-                            data.linecuts[orientation]['lines'][int(max_index+1)]={'data_index':index_y,
-                                                                                'cut_axis_value':data.processed_data[1][0,index_y],
-                                                                                'checkstate':2,
-                                                                                'offset':0,
-                                                                                'linecolor':line_colors[int(index_y)]}
-                        elif event.button == 2:
-                            line_colors = selected_colormap(np.linspace(0.1,0.9,len(data.processed_data[0][:,0])))
-                            orientation='vertical'
-                            try:
-                                max_index=np.max(list(data.linecuts[orientation]['lines'].keys()))
-                            except ValueError:
-                                max_index=-1
-                            data.linecuts[orientation]['lines'][int(max_index+1)]={'data_index':index_x,
-                                                                                'cut_axis_value':data.processed_data[0][index_x,0],
-                                                                                'checkstate':2,
-                                                                                'offset':0,
-                                                                                'linecolor':line_colors[int(index_x)]}
-                        if data.linecuts[orientation]['linecut_window']==None:
-                            data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,init_cmap=selected_colormap.name,editor_window=self)
-                        data.linecuts[orientation]['linecut_window'].running = True
-                        data.linecuts[orientation]['linecut_window'].append_cut_to_table(int(max_index+1))
-                        data.linecuts[orientation]['linecut_window'].update()
-                        data.linecuts[orientation]['linecut_window'].activateWindow()
-                        self.canvas.draw()
-                        
-                    elif event.button == 3:
-                        # Open right-click menu
-                        rightclick_menu = QtWidgets.QMenu(self)
-
-                        if isinstance(data, MixedInternalData):
-                            index_x = np.argmin(np.abs(data.dataset2d.processed_data[0][:,0]-x))
-                            index_y = np.argmin(np.abs(data.dataset2d.processed_data[1][0,:]-y))
-                            z = data.dataset2d.processed_data[2][index_x,index_y]
-                            coordinates = (f'x = {x:.4g}, y = {y:.4g}, z = {z:.4g}'
-                                           f' ({index_x}, {index_y})')
-                        elif data.dim == 2:
-                            index_x = np.argmin(np.abs(data.processed_data[0]-x))
-                            index_y = np.argmin(np.abs(data.processed_data[1]-y))
-                            coordinates = (f'x = {x:.4g}, y = {y:.4g}'
-                                           f' ({index_x}, {index_y})')
-                        elif data.dim == 3:
+                        elif ((event.button == 1 or event.button == 2) and 
+                            (data.dim == 3 or isinstance(data,MixedInternalData)) and not self.draggable_point_selected(x,y,data)):
+                            # Opening linecut/fitting window for 2D data
+                            if isinstance(data, MixedInternalData):
+                                data = data.dataset2d
                             index_x = np.argmin(np.abs(data.processed_data[0][:,0]-x))
                             index_y = np.argmin(np.abs(data.processed_data[1][0,:]-y))
-                            z = data.processed_data[2][index_x,index_y]
-                            coordinates = (f'x = {x:.4g}, y = {y:.4g}, z = {z:.4g}'
-                                           f' ({index_x}, {index_y})')
-                        action = QtWidgets.QAction(coordinates, self)
-                        action.setEnabled(False)
-                        rightclick_menu.addAction(action)
-                        rightclick_menu.addSeparator()
+                            data.selected_indices = [int(index_x), int(index_y)]
+                            if self.colormap_box.currentText() == 'viridis':
+                                selected_colormap = cm.get_cmap('plasma')
+                            else:
+                                selected_colormap = cm.get_cmap('viridis')
+                            #Make entry to store linecuts in
+                            if not hasattr(data,'linecuts'):
+                                data.linecuts={'horizontal':{'linecut_window':None,'lines':{}},
+                                            'vertical':{'linecut_window':None,'lines':{}},
+                                            'diagonal':{'linecut_window':None,'lines':{}},
+                                            'circular':{'linecut_window':None,'lines':{}}
+                                                }
+                            if event.button == 1:
+                                line_colors = selected_colormap(np.linspace(0.1,0.9,len(data.processed_data[1][0,:])))
+                                orientation='horizontal'
+                                try:
+                                    max_index=np.max(list(data.linecuts[orientation]['lines'].keys()))
+                                except ValueError:
+                                    max_index=-1
+                                data.linecuts[orientation]['lines'][int(max_index+1)]={'data_index':index_y,
+                                                                                    'cut_axis_value':data.processed_data[1][0,index_y],
+                                                                                    'checkstate':2,
+                                                                                    'offset':0,
+                                                                                    'linecolor':line_colors[int(index_y)]}
+                            elif event.button == 2:
+                                line_colors = selected_colormap(np.linspace(0.1,0.9,len(data.processed_data[0][:,0])))
+                                orientation='vertical'
+                                try:
+                                    max_index=np.max(list(data.linecuts[orientation]['lines'].keys()))
+                                except ValueError:
+                                    max_index=-1
+                                data.linecuts[orientation]['lines'][int(max_index+1)]={'data_index':index_x,
+                                                                                    'cut_axis_value':data.processed_data[0][index_x,0],
+                                                                                    'checkstate':2,
+                                                                                    'offset':0,
+                                                                                    'linecolor':line_colors[int(index_x)]}
+                            if data.linecuts[orientation]['linecut_window']==None:
+                                data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,init_cmap=selected_colormap.name,editor_window=self)
+                            data.linecuts[orientation]['linecut_window'].running = True
+                            data.linecuts[orientation]['linecut_window'].append_cut_to_table(int(max_index+1))
+                            data.linecuts[orientation]['linecut_window'].update()
+                            data.linecuts[orientation]['linecut_window'].activateWindow()
+                            self.canvas.draw()
+                            
+                        elif event.button == 3:
+                            # Open right-click menu
+                            rightclick_menu = QtWidgets.QMenu(self)
 
-                        actions = []
-                        actions.append(QtWidgets.QAction(f'Offset X by {x:6g}', self))
-                        actions.append(QtWidgets.QAction(f'Offset Y by {y:6g}', self))
-                        if data.dim == 3:
-                            actions.append(QtWidgets.QAction(f'Offset Z by {z:6g}', self))
-                        for action in actions:
+                            if isinstance(data, MixedInternalData):
+                                index_x = np.argmin(np.abs(data.dataset2d.processed_data[0][:,0]-x))
+                                index_y = np.argmin(np.abs(data.dataset2d.processed_data[1][0,:]-y))
+                                z = data.dataset2d.processed_data[2][index_x,index_y]
+                                coordinates = (f'x = {x:.4g}, y = {y:.4g}, z = {z:.4g}'
+                                            f' ({index_x}, {index_y})')
+                            elif data.dim == 2:
+                                index_x = np.argmin(np.abs(data.processed_data[0]-x))
+                                index_y = np.argmin(np.abs(data.processed_data[1]-y))
+                                coordinates = (f'x = {x:.4g}, y = {y:.4g}'
+                                            f' ({index_x}, {index_y})')
+                            elif data.dim == 3:
+                                index_x = np.argmin(np.abs(data.processed_data[0][:,0]-x))
+                                index_y = np.argmin(np.abs(data.processed_data[1][0,:]-y))
+                                z = data.processed_data[2][index_x,index_y]
+                                coordinates = (f'x = {x:.4g}, y = {y:.4g}, z = {z:.4g}'
+                                            f' ({index_x}, {index_y})')
+                            action = QtWidgets.QAction(coordinates, self)
+                            action.setEnabled(False)
                             rightclick_menu.addAction(action)
-                        # Add actions from extension modules
-                        rightclick_menu.addSeparator()
-                        data.add_extension_actions(self, rightclick_menu)
-                        rightclick_menu.addSeparator()
-                        actions=[]
-                        if data.dim == 3 or isinstance(data, MixedInternalData):
-                            actions.append(QtWidgets.QAction('Draw diagonal linecut', self))
-                            #actions.append(QtWidgets.QAction('Draw circular linecut', self))
-                            actions.append(QtWidgets.QAction('Plot vertical linecuts (middle click on plot)', self))
-                            actions.append(QtWidgets.QAction('Plot horizontal linecuts (left click on plot)', self))
-                        for action in actions:
-                            rightclick_menu.addAction(action)
-                        rightclick_menu.triggered[QtWidgets.QAction].connect(self.popup_canvas)
-                        rightclick_menu.popup(QtGui.QCursor.pos())
+                            rightclick_menu.addSeparator()
+
+                            actions = []
+                            actions.append(QtWidgets.QAction(f'Offset X by {x:6g}', self))
+                            actions.append(QtWidgets.QAction(f'Offset Y by {y:6g}', self))
+                            if data.dim == 3:
+                                actions.append(QtWidgets.QAction(f'Offset Z by {z:6g}', self))
+                            for action in actions:
+                                rightclick_menu.addAction(action)
+                            # Add actions from extension modules
+                            rightclick_menu.addSeparator()
+                            data.add_extension_actions(self, rightclick_menu)
+                            rightclick_menu.addSeparator()
+                            actions=[]
+                            if data.dim == 3 or isinstance(data, MixedInternalData):
+                                actions.append(QtWidgets.QAction('Draw diagonal linecut', self))
+                                #actions.append(QtWidgets.QAction('Draw circular linecut', self))
+                                actions.append(QtWidgets.QAction('Plot vertical linecuts (middle click on plot)', self))
+                                actions.append(QtWidgets.QAction('Plot horizontal linecuts (left click on plot)', self))
+                            for action in actions:
+                                rightclick_menu.addAction(action)
+                            rightclick_menu.triggered[QtWidgets.QAction].connect(self.popup_canvas)
+                            rightclick_menu.popup(QtGui.QCursor.pos())
                     
                 else: # if colorbar in focus
                     self.cbar_in_focus = [checked_item for checked_item in checked_items
-                                          if checked_item.data.cbar.ax == event.inaxes]
+                                          if (hasattr(checked_item.data,'cbar') and checked_item.data.cbar.ax == event.inaxes)]
                     if self.cbar_in_focus:
-                        self.press = event.ydata
+                        if self.file_list.currentItem() != self.cbar_in_focus[0]:
+                            # If the clicked plot is not the current one, set it as current before doing anything else.
+                            self.file_list.setCurrentItem(self.cbar_in_focus[0])
+                            self.file_clicked()
+
+                        else:
+                            self.press = event.ydata
                         # Old behaviour; different clicks would set different color limits
                         # New behaviour is click, drag, and release to set color limits
                         # data = self.cbar_in_focus[0].data
@@ -2243,19 +2256,21 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         # self.show_current_view_settings()
 
     def on_motion(self, event):
-        if hasattr(self,'press') and self.press is not None:
+        if hasattr(self,'press') and self.press != None:
             if self.cbar_in_focus:
-                ypress = self.press
-                dy = event.ydata - ypress
-                self.press=event.ydata
-                map_min=self.cbar_in_focus[0].data.view_settings['Minimum']
-                map_max=self.cbar_in_focus[0].data.view_settings['Maximum']
-                self.cbar_in_focus[0].data.view_settings['Minimum']= map_min+dy
-                self.cbar_in_focus[0].data.view_settings['Maximum']= map_max+dy
-                self.cbar_in_focus[0].data.reset_midpoint()
-                self.cbar_in_focus[0].data.apply_view_settings()
-                self.canvas.draw()
-
+                try:
+                    ypress = self.press
+                    dy = event.ydata - ypress
+                    self.press=event.ydata
+                    map_min=self.cbar_in_focus[0].data.view_settings['Minimum']
+                    map_max=self.cbar_in_focus[0].data.view_settings['Maximum']
+                    self.cbar_in_focus[0].data.view_settings['Minimum']= map_min+dy
+                    self.cbar_in_focus[0].data.view_settings['Maximum']= map_max+dy
+                    self.cbar_in_focus[0].data.reset_midpoint()
+                    self.cbar_in_focus[0].data.apply_view_settings()
+                    self.canvas.draw()
+                except: # sometimes can happen if the focus between plots changes weirdly. Not worth getting worried about, so no use filling up errors
+                    pass
     def on_release(self, event):
         self.press = None
 
@@ -2387,88 +2402,98 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             
             # Scolling within plot bounds zooms
             if self.plot_in_focus:
-                scale=1.2
-                data = self.plot_in_focus[0].data
-                scale_factor = np.power(scale, -event.step)
-
-                if any(scale != 'linear' for scale in [data.axlim_settings['Xscale'],
-                                                        data.axlim_settings['Yscale']]):
-                    # This zoom method works well for non-linear plots, but is slightly slower since requires more calculation.
-                    x = event.x
-                    y = event.y
-                    #convert pixels to axes
-                    tranP2A = event.inaxes.transAxes.inverted().transform
-                    #convert axes to data limits
-                    tranA2D= event.inaxes.transLimits.inverted().transform
-                    #convert the scale (for log plots)
-                    tranSclA2D = event.inaxes.transScale.inverted().transform
-                    #x,y position of the mouse in range (0,1)
-                    xa,ya = tranP2A((x,y))
-                    newxlims=[xa - xa*scale_factor, xa + (1-xa)*scale_factor]
-                    newylims=[ya - ya*scale_factor, ya + (1-ya)*scale_factor]
-                    new_xlim0,new_ylim0 = tranSclA2D(tranA2D((newxlims[0],newxlims[0])))
-                    new_xlim1,new_ylim1 = tranSclA2D(tranA2D((newylims[1],newylims[1])))
-
-                    if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
-                        data.axlim_settings['Xmin']=new_xlim0
-                        data.axlim_settings['Xmax']=new_xlim1
-                    elif QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
-                        data.axlim_settings['Ymin']=new_ylim0
-                        data.axlim_settings['Ymax']=new_ylim1
-                    else:
-                        data.axlim_settings['Xmin']=new_xlim0
-                        data.axlim_settings['Xmax']=new_xlim1
-                        data.axlim_settings['Ymin']=new_ylim0
-                        data.axlim_settings['Ymax']=new_ylim1
+                if self.file_list.currentItem() != self.plot_in_focus[0]:
+                    # If the clicked plot is not the current one, set it as current before doing anything else.
+                    self.file_list.setCurrentItem(self.plot_in_focus[0])
+                    self.file_clicked()
                 else:
-                    xdata = event.xdata
-                    ydata = event.ydata
-                    x_left = xdata - event.inaxes.get_xlim()[0]
-                    x_right = event.inaxes.get_xlim()[1] - xdata
-                    y_top = ydata - event.inaxes.get_ylim()[0]
-                    y_bottom = event.inaxes.get_ylim()[1] - ydata
-                    newxlims=[xdata - x_left * scale_factor, xdata + x_right * scale_factor]
-                    newylims=[ydata - y_top * scale_factor, ydata + y_bottom * scale_factor]
-                    if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
-                        data.axlim_settings['Xmin']=newxlims[0]
-                        data.axlim_settings['Xmax']=newxlims[1]
-                    elif QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
-                        data.axlim_settings['Ymin']=newylims[0]
-                        data.axlim_settings['Ymax']=newylims[1]
+                    scale=1.2
+                    data = self.plot_in_focus[0].data
+                    scale_factor = np.power(scale, -event.step)
+
+                    if any(scale != 'linear' for scale in [data.axlim_settings['Xscale'],
+                                                            data.axlim_settings['Yscale']]):
+                        # This zoom method works well for non-linear plots, but is slightly slower since requires more calculation.
+                        x = event.x
+                        y = event.y
+                        #convert pixels to axes
+                        tranP2A = event.inaxes.transAxes.inverted().transform
+                        #convert axes to data limits
+                        tranA2D= event.inaxes.transLimits.inverted().transform
+                        #convert the scale (for log plots)
+                        tranSclA2D = event.inaxes.transScale.inverted().transform
+                        #x,y position of the mouse in range (0,1)
+                        xa,ya = tranP2A((x,y))
+                        newxlims=[xa - xa*scale_factor, xa + (1-xa)*scale_factor]
+                        newylims=[ya - ya*scale_factor, ya + (1-ya)*scale_factor]
+                        new_xlim0,new_ylim0 = tranSclA2D(tranA2D((newxlims[0],newxlims[0])))
+                        new_xlim1,new_ylim1 = tranSclA2D(tranA2D((newylims[1],newylims[1])))
+
+                        if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
+                            data.axlim_settings['Xmin']=new_xlim0
+                            data.axlim_settings['Xmax']=new_xlim1
+                        elif QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
+                            data.axlim_settings['Ymin']=new_ylim0
+                            data.axlim_settings['Ymax']=new_ylim1
+                        else:
+                            data.axlim_settings['Xmin']=new_xlim0
+                            data.axlim_settings['Xmax']=new_xlim1
+                            data.axlim_settings['Ymin']=new_ylim0
+                            data.axlim_settings['Ymax']=new_ylim1
                     else:
-                        data.axlim_settings['Xmin']=newxlims[0]
-                        data.axlim_settings['Xmax']=newxlims[1]
-                        data.axlim_settings['Ymin']=newylims[0]
-                        data.axlim_settings['Ymax']=newylims[1]
+                        xdata = event.xdata
+                        ydata = event.ydata
+                        x_left = xdata - event.inaxes.get_xlim()[0]
+                        x_right = event.inaxes.get_xlim()[1] - xdata
+                        y_top = ydata - event.inaxes.get_ylim()[0]
+                        y_bottom = event.inaxes.get_ylim()[1] - ydata
+                        newxlims=[xdata - x_left * scale_factor, xdata + x_right * scale_factor]
+                        newylims=[ydata - y_top * scale_factor, ydata + y_bottom * scale_factor]
+                        if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
+                            data.axlim_settings['Xmin']=newxlims[0]
+                            data.axlim_settings['Xmax']=newxlims[1]
+                        elif QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
+                            data.axlim_settings['Ymin']=newylims[0]
+                            data.axlim_settings['Ymax']=newylims[1]
+                        else:
+                            data.axlim_settings['Xmin']=newxlims[0]
+                            data.axlim_settings['Xmax']=newxlims[1]
+                            data.axlim_settings['Ymin']=newylims[0]
+                            data.axlim_settings['Ymax']=newylims[1]
 
 
-                data.apply_axlim_settings()
-                event.inaxes.figure.canvas.draw()
-                self.show_current_axlim_settings()
-                # Update toolbar so back/forward buttons work
-                fig = event.inaxes.get_figure()
-                fig.canvas.toolbar.push_current()
+                    data.apply_axlim_settings()
+                    event.inaxes.figure.canvas.draw()
+                    self.show_current_axlim_settings()
+                    # Update toolbar so back/forward buttons work
+                    fig = event.inaxes.get_figure()
+                    fig.canvas.toolbar.push_current()
 
             self.cbar_in_focus = [checked_item for checked_item in checked_items
                                     if hasattr(checked_item.data, 'cbar') and checked_item.data.cbar.ax == event.inaxes]
             
             #Scrolling within colourbar changes limits
             if self.cbar_in_focus:
-                y = event.ydata
-                data = self.cbar_in_focus[0].data
-                min_map = data.view_settings['Minimum']
-                max_map = data.view_settings['Maximum']
-                range_map = max_map-min_map
-                if y > min_map+0.5*range_map:    
-                    new_max = max_map + event.step*range_map*0.02
-                    data.view_settings['Maximum'] = new_max
+                if self.file_list.currentItem() != self.cbar_in_focus[0]:
+                    # If the clicked plot is not the current one, set it as current before doing anything else.
+                    self.file_list.setCurrentItem(self.cbar_in_focus[0])
+                    self.file_clicked()
                 else:
-                    new_min = min_map + event.step*range_map*0.02
-                    data.view_settings['Minimum'] = new_min
-                data.reset_midpoint()
-                data.apply_view_settings()
-                self.canvas.draw()
-                self.show_current_view_settings()
+                    y = event.ydata
+                    data = self.cbar_in_focus[0].data
+                    min_map = data.view_settings['Minimum']
+                    max_map = data.view_settings['Maximum']
+                    range_map = max_map-min_map
+                    if y > min_map+0.5*range_map:    
+                        new_max = max_map + event.step*range_map*0.02
+                        data.view_settings['Maximum'] = new_max
+                    else:
+                        new_min = min_map + event.step*range_map*0.02
+                        data.view_settings['Minimum'] = new_min
+                    data.reset_midpoint()
+                    data.apply_view_settings()
+                    self.canvas.draw()
+                    self.show_current_view_settings()
 
         # Scrolling outside of plot bounds changes the whitespace around/between plots
         else:
