@@ -358,6 +358,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.canvas = FigureCanvas(self.figure)
         self.canvas.mpl_connect('button_press_event', self.mouse_click_canvas)
         self.canvas.mpl_connect('scroll_event', self.mouse_scroll_canvas)
+        self.canvas.mpl_connect('button_release_event', self.on_release)
+        self.canvas.mpl_connect('motion_notify_event', self.on_motion)
         self.navi_toolbar = NavigationToolbarMod(self.canvas, self)
         self.graph_layout.addWidget(self.navi_toolbar)
         self.graph_layout.addWidget(self.canvas)
@@ -2224,18 +2226,41 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.cbar_in_focus = [checked_item for checked_item in checked_items
                                           if checked_item.data.cbar.ax == event.inaxes]
                     if self.cbar_in_focus:
-                        data = self.cbar_in_focus[0].data
-                        if event.button == 1:
-                            data.view_settings['Minimum'] = y
-                            data.reset_midpoint()
-                        elif event.button == 2:
-                            data.view_settings['Midpoint'] = y
-                        elif event.button == 3:
-                            data.view_settings['Maximum'] = y
-                            data.reset_midpoint()
-                        data.apply_view_settings()
-                        self.canvas.draw()
-                        self.show_current_view_settings()
+                        self.press = event.ydata
+                        # Old behaviour; different clicks would set different color limits
+                        # New behaviour is click, drag, and release to set color limits
+                        # data = self.cbar_in_focus[0].data
+                        # if event.button == 1:
+                        #     data.view_settings['Minimum'] = y
+                        #     data.reset_midpoint()
+                        # elif event.button == 2:
+                        #     data.view_settings['Midpoint'] = y
+                        # elif event.button == 3:
+                        #     data.view_settings['Maximum'] = y
+                        #     data.reset_midpoint()
+                        # data.apply_view_settings()
+                        # self.canvas.draw()
+                        # self.show_current_view_settings()
+
+    def on_motion(self, event):
+        if hasattr(self,'press') and self.press is not None:
+            if self.cbar_in_focus:
+                ypress = self.press
+                dy = event.ydata - ypress
+                self.press=event.ydata
+                map_min=self.cbar_in_focus[0].data.view_settings['Minimum']
+                map_max=self.cbar_in_focus[0].data.view_settings['Maximum']
+                self.cbar_in_focus[0].data.view_settings['Minimum']= map_min+dy
+                self.cbar_in_focus[0].data.view_settings['Maximum']= map_max+dy
+                self.cbar_in_focus[0].data.reset_midpoint()
+                self.cbar_in_focus[0].data.apply_view_settings()
+                self.canvas.draw()
+
+    def on_release(self, event):
+        self.press = None
+
+        self.canvas.draw()
+
     
     def popup_canvas(self, signal):
         # Actions for right-click menu on the plot(s)
@@ -2475,9 +2500,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.canvas.draw()
             
     def keyPressEvent(self, event): 
-        if event.key() == QtCore.Qt.Key_C and event.modifiers() == QtCore.Qt.ControlModifier:
-            self.copy_canvas_to_clipboard()
-        elif event.key() == QtCore.Qt.Key_T and event.modifiers() == QtCore.Qt.ControlModifier:
+        # if event.key() == QtCore.Qt.Key_C and event.modifiers() == QtCore.Qt.ControlModifier:
+        #     self.copy_canvas_to_clipboard()
+        if event.key() == QtCore.Qt.Key_T and event.modifiers() == QtCore.Qt.ControlModifier:
             if not self.action_refresh_stop.isEnabled():
                 self.start_auto_refresh(1)
                 print('Start live tracking...')
