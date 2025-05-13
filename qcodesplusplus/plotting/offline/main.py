@@ -2278,9 +2278,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             # For diagonal/circular linecuts, need to make a new line each time. For hori/vert just open the window.
             if orientation == 'diagonal':
                 x,y=data.selected_x, data.selected_y
+                index_x = np.argmin(np.abs(data.processed_data[0][:,0]-x))
+                index_y = np.argmin(np.abs(data.processed_data[1][0,:]-y))
                 left,right= data.axes.get_xlim()
                 bottom,top= data.axes.get_ylim()
                 x_mid, y_mid = 0.5*(left+right), 0.5*(top+bottom)
+                index_x_mid= np.argmin(np.abs(data.processed_data[0][:,0]-x_mid))
+                index_y_mid= np.argmin(np.abs(data.processed_data[1][0,:]-y_mid))
                 if self.colormap_box.currentText() == 'viridis':
                     selected_colormap = cm.get_cmap('plasma')
                 else:
@@ -2291,6 +2295,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 except ValueError:
                     max_index=-1
                 data.linecuts[orientation]['lines'][int(max_index+1)]={'points':[(x, y),(x_mid, y_mid)],
+                                                            'indices':[(index_x, index_y),(index_x_mid, index_y_mid)],
                                                             'checkstate':2,
                                                             'offset':0,
                                                             'linecolor':line_colors[int(max_index+1)]}

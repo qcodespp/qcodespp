@@ -82,6 +82,11 @@ class LineCutWindow(QtWidgets.QWidget):
         self.plot_against_label = QtWidgets.QLabel('Plot against:')
         self.plot_against_box = QtWidgets.QComboBox() #For diagonal linecuts
         self.plot_against_box.addItems([f'X: {self.parent.settings['xlabel']}',f'Y: {self.parent.settings['ylabel']}','sqrt((x-x0)^2+(y-y0)^2)'])
+        if self.orientation == 'diagonal':
+            self.left_button = QtWidgets.QPushButton('Left')
+            self.right_button = QtWidgets.QPushButton('Right')
+            self.up_button = QtWidgets.QPushButton('Up')
+            self.down_button = QtWidgets.QPushButton('Down')
         self.save_button = QtWidgets.QPushButton('Save Data')
         self.save_image_button = QtWidgets.QPushButton('Save Image')
         self.copy_image_button = QtWidgets.QPushButton('Copy Image')
@@ -150,6 +155,12 @@ class LineCutWindow(QtWidgets.QWidget):
 
         self.reset_plot_limits_button.clicked.connect(self.autoscale_axes)
         self.plot_against_box.currentIndexChanged.connect(self.update)
+        if self.orientation == 'diagonal':
+            self.left_button.clicked.connect(lambda: self.move_diagonal_line('left'))
+            self.right_button.clicked.connect(lambda: self.move_diagonal_line('right'))
+            self.up_button.clicked.connect(lambda: self.move_diagonal_line('up'))
+            self.down_button.clicked.connect(lambda: self.move_diagonal_line('down'))
+
         self.save_button.clicked.connect(self.save_data)
         self.save_image_button.clicked.connect(self.save_image)
         self.copy_image_button.clicked.connect(self.copy_image)
@@ -222,6 +233,12 @@ class LineCutWindow(QtWidgets.QWidget):
         if self.orientation =='diagonal':
             self.top_buttons_layout.addWidget(self.plot_against_label)
             self.top_buttons_layout.addWidget(self.plot_against_box)
+            self.top_buttons_layout.addStretch()
+            self.top_buttons_layout.addWidget(self.left_button)
+            self.top_buttons_layout.addWidget(self.right_button)
+            self.top_buttons_layout.addWidget(self.down_button)
+            self.top_buttons_layout.addWidget(self.up_button)
+
         self.top_buttons_layout.addStretch()
         self.top_buttons_layout.addWidget(self.save_button)
         self.top_buttons_layout.addWidget(self.save_image_button)
@@ -542,6 +559,44 @@ class LineCutWindow(QtWidgets.QWidget):
                                         DraggablePoint(self.parent,newpoints[1][0],newpoints[1][1],linecut,self.orientation,draw_line=True)]
             for point in self.parent.linecuts[self.orientation]['lines'][linecut]['draggable_points']:
                 point.color = self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor']
+
+    def move_diagonal_line(self,direction):
+        # Move the diagonal line in the direction specified.
+        linecut = int(self.cuts_table.item(self.cuts_table.currentRow(),0).text())
+        indices=self.parent.linecuts[self.orientation]['lines'][linecut]['indices']
+        try:
+            if direction == 'left':
+                new_indices = [indices[0][0]-1,indices[1][0]-1]
+                if all([i>=0 for i in new_indices]):
+                    indices[0]=(new_indices[0],indices[0][1])
+                    indices[1]=(new_indices[1],indices[1][1])
+            elif direction == 'right':
+                new_indices = [indices[0][0]+1,indices[1][0]+1]
+                if all([i<self.parent.processed_data[0].shape[0] for i in new_indices]):
+                    indices[0]=(new_indices[0],indices[0][1])
+                    indices[1]=(new_indices[1],indices[1][1])
+            elif direction == 'up':
+                new_indices = [indices[0][1]+1,indices[1][1]+1]
+                if all([i<self.parent.processed_data[1].shape[1] for i in new_indices]):
+                    indices[0]=(indices[0][0],new_indices[0])
+                    indices[1]=(indices[1][0],new_indices[1])
+            elif direction == 'down':
+                new_indices = [indices[0][1]-1,indices[1][1]-1]
+                if all([i>=0 for i in new_indices]):
+                    indices[0]=(indices[0][0],new_indices[0])
+                    indices[1]=(indices[1][0],new_indices[1])
+
+            newpoints=[(self.parent.processed_data[0][indices[0][0],0],self.parent.processed_data[1][0,indices[0][1]]),
+                    (self.parent.processed_data[0][indices[1][0],0],self.parent.processed_data[1][0,indices[1][1]])]
+            
+            self.parent.linecuts[self.orientation]['lines'][linecut]['points'] = newpoints
+
+            self.update_draggable_points(linecut)
+
+            self.update()
+
+        except Exception as e:
+            print(e)
 
     def index_changed(self,row):
         index_box = self.cuts_table.cellWidget(row,1)

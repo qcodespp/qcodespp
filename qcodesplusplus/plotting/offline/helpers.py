@@ -271,8 +271,10 @@ class DraggablePoint:
 
         if self == draggable_points[1]:
             self.parent.linecuts[self.orientation]['lines'][self.linecut]['points'][1] = (self.x, self.y)
+            self.parent.linecuts[self.orientation]['lines'][self.linecut]['indices'][1] = (index_x, index_y)
         else:
             self.parent.linecuts[self.orientation]['lines'][self.linecut]['points'][0] = (self.x, self.y)
+            self.parent.linecuts[self.orientation]['lines'][self.linecut]['indices'][0] = (index_x, index_y)
         self.parent.linecuts[self.orientation]['linecut_window'].points_dragged(self.linecut)
         self.parent.linecuts[self.orientation]['linecut_window'].update()
         self.parent.linecuts[self.orientation]['linecut_window'].activateWindow()
