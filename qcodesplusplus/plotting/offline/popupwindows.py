@@ -1356,12 +1356,16 @@ class LineCutWindow(QtWidgets.QWidget):
     def save_fit_result(self):
         current_row = self.cuts_table.currentRow()
         line = int(self.cuts_table.item(current_row,0).text())
+
+        # Fits get saved in the lmfit format.
         if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
             fit_result = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result']
             formats = 'lmfit Model Result (*.sav)'
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Fit Result','', formats)
             save_modelresult(fit_result,filename)
+
+        #Stats can simply be saved in a json
         elif 'stats' in self.parent.linecuts[self.orientation]['lines'][line].keys():
             formats = 'JSON (*.json)'
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
@@ -1383,14 +1387,49 @@ class LineCutWindow(QtWidgets.QWidget):
                 print('Could not save statistics:', e)
 
     def save_all_fits(self):
-        fit_lines = self.get_checked_items(cuts_or_fits='fits')
-        if len(fit_lines) > 0:
+        # Can save _either_ fits or keys, and decide which to do based on whether the current line has a fit or stats.
+        current_line = int(self.cuts_table.item(self.cuts_table.currentRow(),0).text())
+        if 'fit' in self.parent.linecuts[self.orientation]['lines'][current_line].keys():
+            fit_lines = self.get_checked_items(cuts_or_fits='fits')
+
             formats = 'lmfit Model Result (*.sav)'
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Fit Result: Select base name','', formats)
             for line in fit_lines:
                 fit_result = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result']
                 save_modelresult(fit_result,filename.replace('.sav',f'_{line}.sav'))
+        
+        elif 'stats' in self.parent.linecuts[self.orientation]['lines'][current_line].keys():
+            # We can put all the stats in a single json.
+            stat_lines=[]
+            for line in self.parent.linecuts[self.orientation]['lines'].keys():
+                if 'stats' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+                    stat_lines.append(line)
+
+            formats = 'JSON (*.json)'
+            filename, extension = QtWidgets.QFileDialog.getSaveFileName(
+                self, 'Save Statistics','', formats)
+            export_dict={'data_name':self.parent.label,
+                        'linecut_orientation':self.orientation,
+                        'linecut_stats':{}}
+            for line in stat_lines:
+                export_dict['linecut_stats'][line] = {}
+                if self.orientation in ['horizontal', 'vertical']:
+                    export_dict['linecut_stats'][line]['linecut_index']=int(self.parent.linecuts[self.orientation]['lines'][line]['data_index'])
+                    export_dict['linecut_stats'][line]['linecut_axis_value']=float(self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value'])
+                for key in self.parent.linecuts[self.orientation]['lines'][line]['stats'].keys():
+                    if isinstance(self.parent.linecuts[self.orientation]['lines'][line]['stats'][key],np.ndarray):
+                        export_dict['linecut_stats'][line][key] = self.parent.linecuts[self.orientation]['lines'][line]['stats'][key].tolist()
+                    else:
+                        export_dict['linecut_stats'][line][key] = self.parent.linecuts[self.orientation]['lines'][line]['stats'][key]
+            try:
+                with open(filename, 'w', encoding='utf-8') as f:
+                    jsondump(export_dict, f, ensure_ascii=False,indent=4)
+            except Exception as e:
+                print('Could not save statistics:', e)
+        
+        else:
+            print('First select a linecut with either a fit or statistics. Either the fits or stats for all lines will be saved, based on that.')
 
     def clear_fit(self,row=None):
         self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
@@ -1431,43 +1470,91 @@ class LineCutWindow(QtWidgets.QWidget):
         self.update()
 
     def save_parameters_dependency(self):
-        try:
-            fit_lines = self.get_checked_items(cuts_or_fits='fits')
-            first_result = self.parent.linecuts[self.orientation]['lines'][fit_lines[0]]['fit']['fit_result']
-            if self.orientation in ['horizontal', 'vertical']:
-                data=np.zeros((len(fit_lines),len(first_result.params.keys())*2+1))
-                for i,line in enumerate(fit_lines):
-                    data[i,0] = self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value']
-                    for j,param in enumerate(first_result.params.keys()):
-                        data[i,j+1] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].value
-                    last_column=j+2
-                    for j,param in enumerate(first_result.params.keys()):
-                        data[i,j+last_column] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].stderr
-                header='X\t'+'\t'.join(first_result.params.keys())
-                for param in first_result.params.keys():
-                    header += '\t'+param+'_error'
-            elif self.orientation in ['diagonal', 'circular']:
-                data=np.zeros((len(fit_lines),len(first_result.params.keys())*2+4))
-                for i,line in enumerate(fit_lines):
-                    data[i,0] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][0]
-                    data[i,1] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][1]
-                    data[i,2] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][0]
-                    data[i,3] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][1]
-                    for j,param in enumerate(first_result.params.keys()):
-                        data[i,j+4] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].value
-                    last_column=j+5
-                    for j,param in enumerate(first_result.params.keys()):
-                        data[i,j+last_column] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].stderr
-                header='X_1\tY_1\tX_2\tY_2\t'+'\t'.join(first_result.params.keys())
-                for param in first_result.params.keys():
-                    header += '\t'+param+'_error'
-            success=True
-        except Exception as e:
-            print(f'Could not compile parameter dependency array: {e}')
-            success=False
+        # Save the parameters of all fits in a table. The first column is the x-axis value, and the rest are the parameters and their errors.
+        # First, for actual fits, then statistics below. Decide between fits or stats based on current linecut
+        current_line = int(self.cuts_table.item(self.cuts_table.currentRow(),0).text())
+        if 'fit' in self.parent.linecuts[self.orientation]['lines'][current_line].keys():
+            try:
+                fit_lines = self.get_checked_items(cuts_or_fits='fits')
+                first_result = self.parent.linecuts[self.orientation]['lines'][fit_lines[0]]['fit']['fit_result']
+                if self.orientation in ['horizontal', 'vertical']:
+                    data=np.zeros((len(fit_lines),len(first_result.params.keys())*2+1))
+                    for i,line in enumerate(fit_lines):
+                        data[i,0] = self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value']
+                        for j,param in enumerate(first_result.params.keys()):
+                            data[i,j+1] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].value
+                        last_column=j+2
+                        for j,param in enumerate(first_result.params.keys()):
+                            data[i,j+last_column] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].stderr
+                    header='X\t'+'\t'.join(first_result.params.keys())
+                    for param in first_result.params.keys():
+                        header += '\t'+param+'_error'
+                elif self.orientation in ['diagonal', 'circular']:
+                    data=np.zeros((len(fit_lines),len(first_result.params.keys())*2+4))
+                    for i,line in enumerate(fit_lines):
+                        data[i,0] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][0]
+                        data[i,1] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][1]
+                        data[i,2] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][0]
+                        data[i,3] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][1]
+                        for j,param in enumerate(first_result.params.keys()):
+                            data[i,j+4] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].value
+                        last_column=j+5
+                        for j,param in enumerate(first_result.params.keys()):
+                            data[i,j+last_column] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].stderr
+                    header='X_1\tY_1\tX_2\tY_2\t'+'\t'.join(first_result.params.keys())
+                    for param in first_result.params.keys():
+                        header += '\t'+param+'_error'
+                success=True
+            except Exception as e:
+                print(f'Could not compile parameter dependency array: {e}')
+                success=False
+
+        elif 'stats' in self.parent.linecuts[self.orientation]['lines'][current_line].keys():
+            try:
+                stat_lines=[]
+                for line in self.parent.linecuts[self.orientation]['lines'].keys():
+                    if 'stats' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+                        stat_lines.append(line)
+
+                first_result = self.parent.linecuts[self.orientation]['lines'][stat_lines[0]]['stats']
+                if 'percentiles' in first_result.keys():
+                    if len(first_result.keys())>1:
+                        raise Exception('If saving percentiles as a parameter dependency, it can _only_ be percentiles.')
+                    else:
+                        0
+                elif 'autocorrelation' in first_result.keys():
+                    if len(first_result.keys())>1:
+                        raise Exception('If saving autocorrelation as a parameter dependency, it can _only_ be autocorrelation.')
+                    else:
+                        0
+                else:
+                    if self.orientation in ['horizontal', 'vertical']:
+                        data=np.zeros((len(stat_lines),len(first_result.keys())+1))
+                        for i,line in enumerate(stat_lines):
+                            data[i,0] = self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value']
+                            for j,param in enumerate(first_result.keys()):
+                                data[i,j+1] = self.parent.linecuts[self.orientation]['lines'][line]['stats'][param]
+                        header='X\t'+'\t'.join(first_result.keys())
+                    elif self.orientation in ['diagonal', 'circular']:
+                        data=np.zeros((len(stat_lines),len(first_result.keys())+4))
+                        for i,line in enumerate(stat_lines):
+                            data[i,0] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][0]
+                            data[i,1] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][1]
+                            data[i,2] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][0]
+                            data[i,3] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][1]
+                            for j,param in enumerate(first_result.keys()):
+                                data[i,j+4] = self.parent.linecuts[self.orientation]['lines'][line]['stats'][param]
+                        header='X_1\tY_1\tX_2\tY_2\t'+'\t'.join(first_result.keys())
+
+                success=True
+
+            except Exception as e:
+                print('Could not compile statistics array:', e)
+                success=False
+
         if success:
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
-                self, 'Save dependency of fitted parameters','', 'numpy dat file (*.dat)')
+                self, 'Save dependency of fitted parameters/stats','', 'numpy dat file (*.dat)')
             if filename:
                 np.savetxt(filename, data, delimiter='\t', header=header, fmt='%s')
                 print(f'Saved to {filename}')
