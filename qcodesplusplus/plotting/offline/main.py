@@ -201,6 +201,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.refresh_label.hide()
         self.refresh_line_edit.hide()
         self.refreshunit_label.hide()
+
+        self.global_text_size='12'
+        self.global_text_lineedit.setText(self.global_text_size)
     
     def init_plot_settings(self):
         self.settings_table.setColumnCount(2)
@@ -254,6 +257,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.plot_type_box.currentIndexChanged.connect(self.plot_type_changed)
         self.binsX_lineedit.editingFinished.connect(lambda: self.bins_changed('X'))
         self.binsY_lineedit.editingFinished.connect(lambda: self.bins_changed('Y'))
+        self.global_text_lineedit.editingFinished.connect(self.global_text_changed)
         self.metadata_button.clicked.connect(self.show_metadata)
         self.settings_table.itemChanged.connect(self.plot_setting_edited)
         self.filters_table.itemChanged.connect(self.filters_table_edited)
@@ -407,6 +411,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for i,filepath in enumerate(filepaths):
                 try:
                     item=self.load_data_item(filepath,load_the_data)
+                    for setting in ['titlesize','labelsize','ticksize']:
+                        if hasattr(item.data,'settings'):
+                            item.data.settings[setting]=self.global_text_size
                     item.filepath=filepath
                     self.file_list.addItem(item)
 
@@ -1346,6 +1353,18 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.append_filter_to_table()
                 except Exception as e:
                     print('Error appending filter to table:', e)
+    
+    def global_text_changed(self):
+        self.global_text_size=self.global_text_lineedit.text()
+        for item in range(self.file_list.count()):
+            if hasattr(self.file_list.item(item),'data') and hasattr(self.file_list.item(item).data,'settings'):
+                for setting in ['titlesize','labelsize','ticksize']:
+                    if setting in self.file_list.item(item).data.settings.keys():
+                        self.file_list.item(item).data.settings[setting] = self.global_text_size
+            if self.file_list.item(item).checkState():
+                self.file_list.item(item).data.apply_plot_settings()
+                self.show_current_plot_settings()
+        self.canvas.draw()
     
     def plot_setting_edited(self,setting_item=None,setting_name=None):
         current_item = self.file_list.currentItem()

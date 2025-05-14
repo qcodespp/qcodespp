@@ -379,7 +379,6 @@ class BaseClassData:
                     self.sidebar1D = Sidebar1D(self,editor_window=editor_window)
                     self.sidebar1D.running = True
                     self.sidebar1D.append_trace_to_table(0)
-                    #editor_window.oneD_layout.addWidget(self.sidebar1D)
                 self.sidebar1D.update()
 
                 # This is horrible, but I need to get rid of these. Ideally I would re-write the extension so they're
