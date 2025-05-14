@@ -688,7 +688,7 @@
            </sizepolicy>
           </property>
           <property name="text">
-           <string>Show Metadata</string>
+           <string>View Metadata</string>
           </property>
          </widget>
         </item>
