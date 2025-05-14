@@ -1004,7 +1004,7 @@ class LineCutWindow(QtWidgets.QWidget):
         #     self.y_forfit=self.y_forfit[::-1]
 
     def collect_fit_inputs(self,function_class,function_name):
-        if function_name=='Expression':
+        if function_name in ['Expression','Statistics']:
             inputinfo=self.input_edit.text()
         elif 'inputs' in fits.functions[function_class][function_name].keys():
             try:
@@ -1101,6 +1101,7 @@ class LineCutWindow(QtWidgets.QWidget):
             self.parent.linecuts[self.orientation]['lines'][line]['stats'] = fits.fit_data(function_class=function_class, 
                                                                                            function_name=function_name,
                                                     xdata=x_forfit,ydata=y_forfit, p0=p0, inputinfo=inputinfo)
+            print(self.parent.linecuts[self.orientation]['lines'][line]['stats'])
         
         if not multilinefit:
             self.print_parameters(line)
@@ -1118,8 +1119,10 @@ class LineCutWindow(QtWidgets.QWidget):
     def print_parameters(self,line):
         self.output_window.clear()
         if 'stats' in self.parent.linecuts[self.orientation]['lines'][line].keys():
-            self.output_window.setText('Statistics:\n')
-            self.output_window.append(self.parent.linecuts[self.orientation]['lines'][line]['stats'])
+            text='Statistics:\n'
+            for key in self.parent.linecuts[self.orientation]['lines'][line]['stats'].keys():
+                text+=f'{key}: {self.parent.linecuts[self.orientation]['lines'][line]['stats'][key]}\n'
+            self.output_window.setText(text)
         else:
             try:
                 self.output_window.setText(self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].fit_report())
@@ -1357,7 +1360,16 @@ class LineCutWindow(QtWidgets.QWidget):
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Fit Result','', formats)
             save_modelresult(fit_result,filename)
-
+        elif 'stats' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+            formats = 'JSON (*.json)'
+            filename, extension = QtWidgets.QFileDialog.getSaveFileName(
+                self, 'Save Statistics','', formats)
+            try:
+                with open(filename, 'w', encoding='utf-8') as f:
+                    jsondump(self.parent.linecuts[self.orientation]['lines'][line]['stats'], f, ensure_ascii=False,indent=4)
+            except Exception as e:
+                print('Could not save statistics:', e)
+                
     def save_all_fits(self):
         fit_lines = self.get_checked_items(cuts_or_fits='fits')
         if len(fit_lines) > 0:

@@ -505,7 +505,6 @@ def dynes_fit(xdata,ydata,p0,inputinfo):
 
 def statistics(xdata,ydata,p0,inputinfo):
     # Not really fitting; just returns the statistical information specified in inputinfo.
-
     if 'percentile' in inputinfo:
         percentiles=[float(p0[i]) for i in range(len(p0))] if p0 else [1,5,10,25,50,75,90,95,99]
     elif 'average' in inputinfo:
@@ -541,7 +540,6 @@ def statistics(xdata,ydata,p0,inputinfo):
             result[function]=float(function_dict[function](ydata))
         else:
             result[function]=function_dict[function](ydata)
-
     return result
 
 
