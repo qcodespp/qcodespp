@@ -45,8 +45,9 @@ from pyqtgraph import dockarea
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QWidget, QShortcut, QHBoxLayout
-from PyQt5.QtCore import QBuffer, QIODevice, QByteArray
-from PyQt5.QtCore import QObject, pyqtSlot
+# from PyQt5.QtCore import QBuffer, QIODevice, QByteArray
+# from PyQt5.QtCore import QObject, pyqtSlot
+import itertools
 
 
 qtapp = QtWidgets.QApplication([])
