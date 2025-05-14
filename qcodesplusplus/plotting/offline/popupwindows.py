@@ -364,6 +364,11 @@ class LineCutWindow(QtWidgets.QWidget):
         if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
             fit_result = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result']
             self.output_window.setText(fit_result.fit_report())
+        elif 'stats' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+            text='Statistics:\n'
+            for key in self.parent.linecuts[self.orientation]['lines'][line]['stats'].keys():
+                text+=f'{key}: {self.parent.linecuts[self.orientation]['lines'][line]['stats'][key]}\n'
+            self.output_window.setText(text)
         else:
             fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
             self.output_window.setText('Information about selected fit type:\n'+
@@ -1046,12 +1051,11 @@ class LineCutWindow(QtWidgets.QWidget):
         function_name = self.fit_box.currentText()
         inputinfo=self.collect_fit_inputs(function_class,function_name)
         p0=self.collect_init_guess(function_class,function_name)
-
+        
         # Try to do the fit.
         if function_name != 'Statistics':
-            # Don't want to store fits _and_ stats at the same time. Will get confusing for showing info
             if 'stats' in self.parent.linecuts[self.orientation]['lines'][line].keys():
-                self.parent.linecuts[self.orientation]['lines'][line].pop('stats')
+                self.clear_fit(line)
             try:
                 fit_result = fits.fit_data(function_class=function_class, function_name=function_name,
                                                     xdata=x_forfit,ydata=y_forfit, p0=p0, inputinfo=inputinfo)
@@ -1097,16 +1101,14 @@ class LineCutWindow(QtWidgets.QWidget):
         
         else:
             if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
-                self.parent.linecuts[self.orientation]['lines'][line].pop('fit')
+                self.clear_fit(line)
             self.parent.linecuts[self.orientation]['lines'][line]['stats'] = fits.fit_data(function_class=function_class, 
                                                                                            function_name=function_name,
                                                     xdata=x_forfit,ydata=y_forfit, p0=p0, inputinfo=inputinfo)
-            print(self.parent.linecuts[self.orientation]['lines'][line]['stats'])
         
         if not multilinefit:
             self.print_parameters(line)
-            if function_name != 'Statistics':
-                self.update()
+            self.update()
 
     def fit_checked(self):
         # Fit all checked items in the table.
@@ -1364,12 +1366,22 @@ class LineCutWindow(QtWidgets.QWidget):
             formats = 'JSON (*.json)'
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Statistics','', formats)
+            export_dict={'data_name':self.parent.label,
+                         'linecut_orientation':self.orientation}
+            if self.orientation in ['horizontal', 'vertical']:
+                export_dict['linecut_index']=int(self.parent.linecuts[self.orientation]['lines'][line]['data_index'])
+                export_dict['linecut_axis_value']=float(self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value'])
+            for key in self.parent.linecuts[self.orientation]['lines'][line]['stats'].keys():
+                if isinstance(self.parent.linecuts[self.orientation]['lines'][line]['stats'][key],np.ndarray):
+                    export_dict[key] = self.parent.linecuts[self.orientation]['lines'][line]['stats'][key].tolist()
+                else:
+                    export_dict[key] = self.parent.linecuts[self.orientation]['lines'][line]['stats'][key]
             try:
                 with open(filename, 'w', encoding='utf-8') as f:
-                    jsondump(self.parent.linecuts[self.orientation]['lines'][line]['stats'], f, ensure_ascii=False,indent=4)
+                    jsondump(export_dict, f, ensure_ascii=False,indent=4)
             except Exception as e:
                 print('Could not save statistics:', e)
-                
+
     def save_all_fits(self):
         fit_lines = self.get_checked_items(cuts_or_fits='fits')
         if len(fit_lines) > 0:
@@ -1380,27 +1392,40 @@ class LineCutWindow(QtWidgets.QWidget):
                 fit_result = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result']
                 save_modelresult(fit_result,filename.replace('.sav',f'_{line}.sav'))
 
-    def clear_fit(self):
-        current_row = self.cuts_table.currentRow()
-        line = int(self.cuts_table.item(current_row,0).text())
+    def clear_fit(self,row=None):
+        self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+        if row != None:
+            manual=False
+            line = int(self.cuts_table.item(row,0).text())
+        else:
+            manual=True
+            row = self.cuts_table.currentRow()
+            line = int(self.cuts_table.item(row,0).text())
+
         if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
             self.parent.linecuts[self.orientation]['lines'][line].pop('fit')
-            self.cuts_table.setItem(current_row,5,QtWidgets.QTableWidgetItem(''))
-            self.cuts_table.setItem(current_row,6,QtWidgets.QTableWidgetItem(''))
-            self.cuts_table.setItem(current_row,7,QtWidgets.QTableWidgetItem(''))
-            fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
-            self.output_window.setText('Information about selected fit type:\n'+
-                                   fit_function['description'])
-            self.update()
-
-    def clear_all_fits(self):
-        fit_lines = self.get_checked_items(cuts_or_fits='fits')
-        for line in fit_lines:
-            self.parent.linecuts[self.orientation]['lines'][line].pop('fit')
-        for row in range(self.cuts_table.rowCount()):
             self.cuts_table.setItem(row,5,QtWidgets.QTableWidgetItem(''))
             self.cuts_table.setItem(row,6,QtWidgets.QTableWidgetItem(''))
             self.cuts_table.setItem(row,7,QtWidgets.QTableWidgetItem(''))
+            if manual:
+                self.update()
+
+        # should never be both, but use 'if' just in case
+        if 'stats' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+            self.parent.linecuts[self.orientation]['lines'][line].pop('stats')
+
+        if manual:
+            fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
+            self.output_window.setText('Information about selected fit type:\n'+
+                                   fit_function['description'])
+        self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+
+    def clear_all_fits(self):
+        try:
+            for row in range(self.cuts_table.rowCount()):
+                self.clear_fit(row)
+        except Exception as e:
+            print('Could not clear all fits:', e)
         fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
         self.output_window.setText('Information about selected fit type:\n'+fit_function['description'])
         self.update()
