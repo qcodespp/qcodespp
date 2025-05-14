@@ -401,6 +401,18 @@ class BaseClassData:
                                                   rasterized=self.settings['rasterized'])
                 if self.settings['colorbar'] == 'True':
                     self.cbar = self.figure.colorbar(self.image, orientation='vertical')
+                    self.hax=self.cbar.ax.inset_axes([-1.05, 0, 1, 1])
+                    counts, self.cbar_hist_bins = np.histogram(self.processed_data[-1],bins=int(self.settings['cmap levels']))
+                    midpoints = self.cbar_hist_bins[:-1] + np.diff(self.cbar_hist_bins)/2
+                    self.hax.fill_between(-counts, midpoints,0,color='mediumslateblue')
+                    self.haxfill=self.hax.fill_betweenx(np.linspace(self.view_settings['Minimum'], self.view_settings['Maximum'], 100), 
+                                                                    self.hax.get_xlim()[0], 
+                                                                    color='blue', alpha=0.2)
+                    print(self.haxfill.get_array())
+                    self.hax.margins(0)
+                    self.hax.spines[:].set_linewidth(0.5)
+                    self.hax.get_xaxis().set_visible(False)
+                    self.hax.get_yaxis().set_visible(False)
             if apply_default_labels:
                 self.apply_default_lables()
 
@@ -517,15 +529,24 @@ class BaseClassData:
             norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
                                      vmax=self.view_settings['Maximum'], 
                                      midpoint=self.view_settings['Midpoint'])
-
+            # Update main plot and cbar
             self.image.norm=norm
 
-            if self.settings['colorbar'] == 'True' and hasattr(self, 'cbar'):
-                #self.cbar.update_normal(self.image)
-                self.cbar.ax.set_title(self.settings['clabel'],
-                                       size=self.settings['labelsize'])
-                self.cbar.ax.tick_params(labelsize=self.settings['ticksize'],
-                                         color=rcParams['axes.edgecolor'])
+            # # Update histogram
+            self.haxfill.remove()
+            self.haxfill=self.hax.fill_betweenx(np.linspace(self.view_settings['Minimum'], self.view_settings['Maximum'], 100), 
+                                                self.hax.get_xlim()[0], 
+                                                color='blue', alpha=0.2)
+            self.hax.set_ylim([np.min([self.view_settings['Minimum'],np.min(self.cbar_hist_bins)]),
+                               np.max([self.view_settings['Maximum'],np.max(self.cbar_hist_bins)])])
+
+            # Seems like the below does literally nothing. Checked 14/05/2025. Reintroduce if problems in future
+            # if self.settings['colorbar'] == 'True' and hasattr(self, 'cbar'):
+            #     #self.cbar.update_normal(self.image)
+            #     self.cbar.ax.set_title(self.settings['clabel'],
+            #                            size=self.settings['labelsize'])
+            #     self.cbar.ax.tick_params(labelsize=self.settings['ticksize'],
+            #                              color=rcParams['axes.edgecolor'])
 
     def apply_axlim_settings(self):
         self.axes.set_xlim(left=self.axlim_settings['Xmin'], 

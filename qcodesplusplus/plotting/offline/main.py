@@ -2410,6 +2410,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             checked_items = self.get_checked_items()
             self.plot_in_focus = [checked_item for checked_item in checked_items 
                                   if checked_item.data.axes == event.inaxes]
+            self.cbar_in_focus = [checked_item for checked_item in checked_items
+                        if hasattr(checked_item.data, 'cbar') and checked_item.data.cbar.ax == event.inaxes]
             
             # Scolling within plot bounds zooms
             if self.plot_in_focus:
@@ -2480,11 +2482,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     fig = event.inaxes.get_figure()
                     fig.canvas.toolbar.push_current()
 
-            self.cbar_in_focus = [checked_item for checked_item in checked_items
-                                    if hasattr(checked_item.data, 'cbar') and checked_item.data.cbar.ax == event.inaxes]
-            
             #Scrolling within colourbar changes limits
-            if self.cbar_in_focus:
+            elif self.cbar_in_focus:
                 if self.file_list.currentItem() != self.cbar_in_focus[0]:
                     # If the clicked plot is not the current one, set it as current before doing anything else.
                     self.file_list.setCurrentItem(self.cbar_in_focus[0])
@@ -2506,6 +2505,30 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.canvas.draw()
                     self.show_current_view_settings()
 
+            # self.hax_in_focus = [checked_item for checked_item in checked_items
+            #                         if hasattr(checked_item.data, 'hax') and checked_item.data.hax == event.inaxes]
+            # print(self.hax_in_focus)
+            # #Scrolling within hax changes limits but nothing about the data
+            # if self.hax_in_focus:
+            #     print(1)
+            #     if self.file_list.currentItem() != self.hax_in_focus[0]:
+            #         print(1)
+            #         # If the clicked plot is not the current one, set it as current before doing anything else.
+            #         self.file_list.setCurrentItem(self.hax_in_focus[0])
+            #         self.file_clicked()
+            #     else:
+            #         print(2)
+            #         try:
+            #             y = event.ydata
+            #             #data = self.hax_in_focus[0].data
+            #             y_top = y - event.inaxes.get_ylim()[0]
+            #             y_bottom = event.inaxes.get_ylim()[1] - y
+            #             newylims=[y - y_top * scale_factor, y + y_bottom * scale_factor]
+            #             event.inaxes.set_ylim([newylims[0], newylims[1]])
+            #             event.inaxes.draw()
+            #         except Exception as e:
+            #             print('Error in hax scrolling:', e)
+                    
         # Scrolling outside of plot bounds changes the whitespace around/between plots
         else:
             width, height = self.canvas.get_width_height()
