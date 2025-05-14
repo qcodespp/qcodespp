@@ -1048,52 +1048,64 @@ class LineCutWindow(QtWidgets.QWidget):
         p0=self.collect_init_guess(function_class,function_name)
 
         # Try to do the fit.
-        try:
-            fit_result = fits.fit_data(function_class=function_class, function_name=function_name,
-                                                xdata=x_forfit,ydata=y_forfit, p0=p0, inputinfo=inputinfo)
-            y_fit = fit_result.best_fit
-        except Exception as e:
-            self.output_window.setText(f'Curve could not be fitted: {e}')
-            fit_parameters = [np.nan]*len(fits.get_names(function_name).split(','))
-            y_fit = np.nan
+        if function_name != 'Statistics':
+            # Don't want to store fits _and_ stats at the same time. Will get confusing for showing info
+            if 'stats' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+                self.parent.linecuts[self.orientation]['lines'][line].pop('stats')
+            try:
+                fit_result = fits.fit_data(function_class=function_class, function_name=function_name,
+                                                    xdata=x_forfit,ydata=y_forfit, p0=p0, inputinfo=inputinfo)
+                y_fit = fit_result.best_fit
+            except Exception as e:
+                self.output_window.setText(f'Curve could not be fitted: {e}')
+                fit_parameters = [np.nan]*len(fits.get_names(function_name).split(','))
+                y_fit = np.nan
 
-        self.parent.linecuts[self.orientation]['lines'][line]['fit'] = {'fit_result': fit_result,
-                                                                        'xdata': x_forfit,
-                                                                        'ydata': y_forfit,
-                                                                        'fitted_y': y_fit,
-                                                                        'fit_checkstate': QtCore.Qt.Checked,
-                                                                        'fit_components_checkstate': QtCore.Qt.Unchecked,
-                                                                        'fit_uncertainty_checkstate': QtCore.Qt.Checked}
+            self.parent.linecuts[self.orientation]['lines'][line]['fit'] = {'fit_result': fit_result,
+                                                                            'xdata': x_forfit,
+                                                                            'ydata': y_forfit,
+                                                                            'fitted_y': y_fit,
+                                                                            'fit_checkstate': QtCore.Qt.Checked,
+                                                                            'fit_components_checkstate': QtCore.Qt.Unchecked,
+                                                                            'fit_uncertainty_checkstate': QtCore.Qt.Checked}
 
-        # Add a checkbox to the table now a fit exists.
-        self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+            # Add a checkbox to the table now a fit exists.
+            self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
 
-        plot_fit_item = QtWidgets.QTableWidgetItem('')
-        plot_fit_item.setFlags(QtCore.Qt.ItemIsSelectable | 
-                            QtCore.Qt.ItemIsEnabled | 
-                            QtCore.Qt.ItemIsUserCheckable)
-        plot_fit_item.setCheckState(QtCore.Qt.Checked)
-        self.cuts_table.setItem(current_row,5,plot_fit_item)
+            plot_fit_item = QtWidgets.QTableWidgetItem('')
+            plot_fit_item.setFlags(QtCore.Qt.ItemIsSelectable | 
+                                QtCore.Qt.ItemIsEnabled | 
+                                QtCore.Qt.ItemIsUserCheckable)
+            plot_fit_item.setCheckState(QtCore.Qt.Checked)
+            self.cuts_table.setItem(current_row,5,plot_fit_item)
 
-        fit_components_item = QtWidgets.QTableWidgetItem('')
-        fit_components_item.setFlags(QtCore.Qt.ItemIsSelectable | 
-                                    QtCore.Qt.ItemIsEnabled | 
-                                    QtCore.Qt.ItemIsUserCheckable)
-        fit_components_item.setCheckState(QtCore.Qt.Unchecked)
-        self.cuts_table.setItem(current_row,6,fit_components_item)
+            fit_components_item = QtWidgets.QTableWidgetItem('')
+            fit_components_item.setFlags(QtCore.Qt.ItemIsSelectable | 
+                                        QtCore.Qt.ItemIsEnabled | 
+                                        QtCore.Qt.ItemIsUserCheckable)
+            fit_components_item.setCheckState(QtCore.Qt.Unchecked)
+            self.cuts_table.setItem(current_row,6,fit_components_item)
 
-        fit_uncertainty_item = QtWidgets.QTableWidgetItem('')
-        fit_uncertainty_item.setFlags(QtCore.Qt.ItemIsSelectable |
-                                    QtCore.Qt.ItemIsEnabled | 
-                                    QtCore.Qt.ItemIsUserCheckable)
-        fit_uncertainty_item.setCheckState(QtCore.Qt.Checked)
-        self.cuts_table.setItem(current_row,7,fit_uncertainty_item)
+            fit_uncertainty_item = QtWidgets.QTableWidgetItem('')
+            fit_uncertainty_item.setFlags(QtCore.Qt.ItemIsSelectable |
+                                        QtCore.Qt.ItemIsEnabled | 
+                                        QtCore.Qt.ItemIsUserCheckable)
+            fit_uncertainty_item.setCheckState(QtCore.Qt.Checked)
+            self.cuts_table.setItem(current_row,7,fit_uncertainty_item)
 
-        self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+            self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+        
+        else:
+            if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+                self.parent.linecuts[self.orientation]['lines'][line].pop('fit')
+            self.parent.linecuts[self.orientation]['lines'][line]['stats'] = fits.fit_data(function_class=function_class, 
+                                                                                           function_name=function_name,
+                                                    xdata=x_forfit,ydata=y_forfit, p0=p0, inputinfo=inputinfo)
         
         if not multilinefit:
             self.print_parameters(line)
-            self.update()
+            if function_name != 'Statistics':
+                self.update()
 
     def fit_checked(self):
         # Fit all checked items in the table.
@@ -1105,11 +1117,15 @@ class LineCutWindow(QtWidgets.QWidget):
 
     def print_parameters(self,line):
         self.output_window.clear()
-        try:
-            self.output_window.setText(self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].fit_report())
+        if 'stats' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+            self.output_window.setText('Statistics:\n')
+            self.output_window.append(self.parent.linecuts[self.orientation]['lines'][line]['stats'])
+        else:
+            try:
+                self.output_window.setText(self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].fit_report())
 
-        except Exception as e:
-            self.output_window.setText('Could not print fit parameters:', e)
+            except Exception as e:
+                self.output_window.setText('Could not print fit parameters:', e)
 
     def get_line_data(self,line):
         if self.orientation == 'horizontal':
@@ -1565,6 +1581,7 @@ class LineCutWindow(QtWidgets.QWidget):
 
 class StatsWindow(QtWidgets.QWidget):
     def __init__(self, parent, editor_window=None):
+        print(1)
         super().__init__()
         # The parent is the DATA object.
         self.parent = parent
@@ -1579,3 +1596,34 @@ class StatsWindow(QtWidgets.QWidget):
         self.main_layout.addWidget(self.title_label)
         self.main_layout.addWidget(self.output_window)
         self.setLayout(self.main_layout)
+
+class MetadataWindow(QtWidgets.QDialog):
+    def __init__(self, parent=None):
+        super().__init__()
+        self.setWindowTitle(f"Metadata for {parent.label}")
+        self.resize(600,600)
+        self.parent = parent
+        
+        self.layout = QtWidgets.QVBoxLayout()
+        self.tree_widget = QtWidgets.QTreeWidget()
+        self.tree_widget.setHeaderLabels(["Key", "Value"])
+        if parent:
+            self.populate_tree(self.parent.meta)
+        
+        self.layout.addWidget(self.tree_widget)
+        self.setLayout(self.layout)
+
+
+    def populate_tree(self, metadata, parent_item=None):
+        """
+        Recursively populate the QTreeWidget with nested dictionary data.
+        """
+        if parent_item is None:
+            parent_item = self.tree_widget
+
+        for key, value in metadata.items():
+            if isinstance(value, dict):  # If the value is a dictionary, create a parent node
+                item = QtWidgets.QTreeWidgetItem(parent_item, [str(key)])
+                self.populate_tree(value, item)  # Recursively populate the child items
+            else:  # If the value is not a dictionary, create a leaf node
+                item = QtWidgets.QTreeWidgetItem(parent_item, [str(key), str(value)])

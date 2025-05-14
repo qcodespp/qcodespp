@@ -40,7 +40,7 @@ except ModuleNotFoundError:
 from lmfit.model import save_modelresult, load_modelresult
 
 import qcodesplusplus.plotting.offline.design as design
-from .popupwindows import LineCutWindow
+from .popupwindows import LineCutWindow, MetadataWindow, StatsWindow
 from .sidebars import Sidebar1D
 from .helpers import (cmaps, MidpointNormalize,NavigationToolbarMod,
                       rcParams_to_dark_theme,rcParams_to_light_theme,
@@ -201,6 +201,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.refresh_label.hide()
         self.refresh_line_edit.hide()
         self.refreshunit_label.hide()
+
+        self.global_text_size='12'
+        self.global_text_lineedit.setText(self.global_text_size)
     
     def init_plot_settings(self):
         self.settings_table.setColumnCount(2)
@@ -254,6 +257,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.plot_type_box.currentIndexChanged.connect(self.plot_type_changed)
         self.binsX_lineedit.editingFinished.connect(lambda: self.bins_changed('X'))
         self.binsY_lineedit.editingFinished.connect(lambda: self.bins_changed('Y'))
+        self.global_text_lineedit.editingFinished.connect(self.global_text_changed)
+        self.metadata_button.clicked.connect(self.show_metadata)
         self.settings_table.itemChanged.connect(self.plot_setting_edited)
         self.filters_table.itemChanged.connect(self.filters_table_edited)
         self.copy_settings_button.clicked.connect(self.copy_plot_settings)
@@ -279,6 +284,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.paste_view_button.clicked.connect(lambda: self.paste_view_settings('copied'))
         self.colormap_type_box.currentIndexChanged.connect(self.colormap_type_edited)
         self.colormap_box.currentIndexChanged.connect(self.colormap_edited)
+        self.cbar_hist_checkbox.clicked.connect(lambda: self.view_setting_edited('CBarHist'))
         self.reverse_colors_box.clicked.connect(self.colormap_edited)
         self.xmin_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Xmin'))
         self.xmax_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Xmax'))
@@ -304,7 +310,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.action_restore_session.triggered.connect(self.load_session)
         self.action_combine_files.triggered.connect(self.combine_plots)
         self.action_duplicate_file.triggered.connect(self.duplicate_item)
-        self.action_save_data_selected_file.triggered.connect(lambda: self.save_processed_data('current'))
+        self.action_export_data_columns.triggered.connect(lambda: self.save_processed_data('current'))
+        self.action_export_data_Z.triggered.connect(lambda: self.save_processed_data('Z'))
         self.track_button.clicked.connect(self.track_button_clicked)
         self.refresh_line_edit.editingFinished.connect(lambda: self.refresh_interval_changed(self.refresh_line_edit.text()))
         self.actionSave_plot_s_as.triggered.connect(self.save_image)
@@ -405,6 +412,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for i,filepath in enumerate(filepaths):
                 try:
                     item=self.load_data_item(filepath,load_the_data)
+                    for setting in ['titlesize','labelsize','ticksize']:
+                        if hasattr(item.data,'settings'):
+                            item.data.settings[setting]=self.global_text_size
                     item.filepath=filepath
                     self.file_list.addItem(item)
 
@@ -698,26 +708,25 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current_item = self.file_list.currentItem()
         if current_item:
             formats='Numpy text (*.dat);;Numpy format (*.npy);;CSV (*.csv)'
+            suggested_filename = current_item.data.label
+            filepath, ext = QtWidgets.QFileDialog.getSaveFileName(
+            self, 'Export Data As', suggested_filename, formats)
             if which == 'current':
-                suggested_filename = current_item.data.label
-                filepath, ext = QtWidgets.QFileDialog.getSaveFileName(
-                    self, 'Export Data As', suggested_filename, formats)
-                item = current_item
-                if hasattr(item.data,'processed_data'):
+                if hasattr(current_item.data,'processed_data'):
                     if '.dat' in ext:
                         header=''
                         for label in ['xlabel','ylabel','clabel']:
-                            if item.data.settings[label] != '':
-                                header+=f'{item.data.settings[label]}\t'
+                            if current_item.data.settings[label] != '':
+                                header+=f'{current_item.data.settings[label]}\t'
                         header=header.strip('\t')
                         with open(filepath, "w") as dat_file:
                             if len(current_item.data.get_columns()) == 2:
                                 np.savetxt(filepath, np.column_stack(current_item.data.processed_data),header=header)
                             elif len(current_item.data.get_columns()) == 3:
                                 dat_file.write(f'# {header}\n')
-                                for j in range(np.shape(item.data.processed_data[2])[0]):
-                                    for k in range(np.shape(item.data.processed_data[2])[1]):
-                                        dat_file.write('{}\t{}\t{}\n'.format(item.data.processed_data[0][j,k],item.data.processed_data[1][j,k],item.data.processed_data[2][j,k]))
+                                for j in range(np.shape(current_item.data.processed_data[2])[0]):
+                                    for k in range(np.shape(current_item.data.processed_data[2])[1]):
+                                        dat_file.write('{}\t{}\t{}\n'.format(current_item.data.processed_data[0][j,k],current_item.data.processed_data[1][j,k],current_item.data.processed_data[2][j,k]))
                     elif '.npy' in ext:
                             if len(current_item.data.get_columns()) == 2:
                                 np.save(filepath, np.column_stack(current_item.data.processed_data))
@@ -728,19 +737,30 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             writer = csvwriter(f,delimiter='\t')
                             header=[]
                             for label in ['xlabel','ylabel','clabel']:
-                                if item.data.settings[label] != '':
-                                    header.append(f'#{item.data.settings[label]}')
+                                if current_item.data.settings[label] != '':
+                                    header.append(f'#{current_item.data.settings[label]}')
                             writer.writerow(header)
                             if len(current_item.data.get_columns())==2:
-                                for i,x in enumerate(item.data.processed_data[0]):
-                                    writer.writerow([x,item.data.processed_data[1][i]])
+                                for i,x in enumerate(current_item.data.processed_data[0]):
+                                    writer.writerow([x,current_item.data.processed_data[1][i]])
                             elif len(current_item.data.get_columns()) == 3:
-                                for j in range(np.shape(item.data.processed_data[2])[0]):
-                                    for k in range(np.shape(item.data.processed_data[2])[1]):
-                                        writer.writerow([item.data.processed_data[0][j,k],item.data.processed_data[1][j,k],item.data.processed_data[2][j,k]])
+                                for j in range(np.shape(current_item.data.processed_data[2])[0]):
+                                    for k in range(np.shape(current_item.data.processed_data[2])[1]):
+                                        writer.writerow([current_item.data.processed_data[0][j,k],current_item.data.processed_data[1][j,k],current_item.data.processed_data[2][j,k]])
 
                 else:
                     print('No processed data to export')
+
+            elif which=='Z':
+                if hasattr(current_item.data,'processed_data'):
+                    if '.dat' in ext:
+                        with open(filepath,'w') as dat_file:
+                            np.savetxt(filepath, current_item.data.processed_data[-1])
+                else:
+                    print('No processed data to export')
+                
+            else:
+                print('Cannot export processed Z data from 1D data')
             # else:
             #     if which == 'all':
             #         filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
@@ -768,7 +788,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.mixeddata_filter_box.clear()
                 self.mixeddata_filter_box.hide()
         self.update_plots()
-    
+
     def plot_type_changed(self):
         current_item = self.file_list.currentItem()
         plot_type = self.plot_type_box.currentText()
@@ -1335,6 +1355,18 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 except Exception as e:
                     print('Error appending filter to table:', e)
     
+    def global_text_changed(self):
+        self.global_text_size=self.global_text_lineedit.text()
+        for item in range(self.file_list.count()):
+            if hasattr(self.file_list.item(item),'data') and hasattr(self.file_list.item(item).data,'settings'):
+                for setting in ['titlesize','labelsize','ticksize']:
+                    if setting in self.file_list.item(item).data.settings.keys():
+                        self.file_list.item(item).data.settings[setting] = self.global_text_size
+            if self.file_list.item(item).checkState():
+                self.file_list.item(item).data.apply_plot_settings()
+                self.show_current_plot_settings()
+        self.canvas.draw()
+    
     def plot_setting_edited(self,setting_item=None,setting_name=None):
         current_item = self.file_list.currentItem()
         if current_item:
@@ -1463,6 +1495,23 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         view_settings[edited_setting] = True
                     else:
                         view_settings[edited_setting] = False
+                elif edited_setting == 'CBarHist':
+                    if self.cbar_hist_checkbox.isChecked():
+                        view_settings[edited_setting] = True
+                        if not hasattr(current_item.data,'hax'):
+                            current_item.data.add_cbar_hist()
+                            self.figure.tight_layout()
+                    else:
+                        view_settings[edited_setting] = False
+                        if hasattr(current_item.data, 'hax'):
+                            current_item.data.hax.clear()
+                            try:
+                                current_item.data.hax.remove()
+                            except:
+                                pass
+                            del current_item.data.hax
+                            self.figure.tight_layout()
+                
                 current_item.data.apply_view_settings()
                 self.canvas.draw()
             except Exception as e:
@@ -2240,20 +2289,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                         else:
                             self.press = event.ydata
-                        # Old behaviour; different clicks would set different color limits
-                        # New behaviour is click, drag, and release to set color limits
-                        # data = self.cbar_in_focus[0].data
-                        # if event.button == 1:
-                        #     data.view_settings['Minimum'] = y
-                        #     data.reset_midpoint()
-                        # elif event.button == 2:
-                        #     data.view_settings['Midpoint'] = y
-                        # elif event.button == 3:
-                        #     data.view_settings['Maximum'] = y
-                        #     data.reset_midpoint()
-                        # data.apply_view_settings()
-                        # self.canvas.draw()
-                        # self.show_current_view_settings()
 
     def on_motion(self, event):
         if hasattr(self,'press') and self.press != None:
@@ -2271,11 +2306,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.canvas.draw()
                 except: # sometimes can happen if the focus between plots changes weirdly. Not worth getting worried about, so no use filling up errors
                     pass
+    
     def on_release(self, event):
         self.press = None
-
         self.canvas.draw()
-
     
     def popup_canvas(self, signal):
         # Actions for right-click menu on the plot(s)
@@ -2393,12 +2427,23 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if DARK_THEME and qdarkstyle_imported:
             rcParams_to_dark_theme()
             self.update_plots(update_data=False)
+
+    def show_metadata(self):
+        item = self.file_list.currentItem()
+        if item:
+            if hasattr(item.data,'meta'):
+                if not hasattr(item.data,'metapopup'):
+                    item.data.metapopup=MetadataWindow(item.data)
+                    #metapopup.activateWindow()
+                item.data.metapopup.show()
             
     def mouse_scroll_canvas(self, event):
         if event.inaxes:
             checked_items = self.get_checked_items()
             self.plot_in_focus = [checked_item for checked_item in checked_items 
                                   if checked_item.data.axes == event.inaxes]
+            self.cbar_in_focus = [checked_item for checked_item in checked_items
+                        if hasattr(checked_item.data, 'cbar') and checked_item.data.cbar.ax == event.inaxes]
             
             # Scolling within plot bounds zooms
             if self.plot_in_focus:
@@ -2469,11 +2514,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     fig = event.inaxes.get_figure()
                     fig.canvas.toolbar.push_current()
 
-            self.cbar_in_focus = [checked_item for checked_item in checked_items
-                                    if hasattr(checked_item.data, 'cbar') and checked_item.data.cbar.ax == event.inaxes]
-            
             #Scrolling within colourbar changes limits
-            if self.cbar_in_focus:
+            elif self.cbar_in_focus:
                 if self.file_list.currentItem() != self.cbar_in_focus[0]:
                     # If the clicked plot is not the current one, set it as current before doing anything else.
                     self.file_list.setCurrentItem(self.cbar_in_focus[0])
@@ -2495,6 +2537,30 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.canvas.draw()
                     self.show_current_view_settings()
 
+            # self.hax_in_focus = [checked_item for checked_item in checked_items
+            #                         if hasattr(checked_item.data, 'hax') and checked_item.data.hax == event.inaxes]
+            # print(self.hax_in_focus)
+            # #Scrolling within hax changes limits but nothing about the data
+            # if self.hax_in_focus:
+            #     print(1)
+            #     if self.file_list.currentItem() != self.hax_in_focus[0]:
+            #         print(1)
+            #         # If the clicked plot is not the current one, set it as current before doing anything else.
+            #         self.file_list.setCurrentItem(self.hax_in_focus[0])
+            #         self.file_clicked()
+            #     else:
+            #         print(2)
+            #         try:
+            #             y = event.ydata
+            #             #data = self.hax_in_focus[0].data
+            #             y_top = y - event.inaxes.get_ylim()[0]
+            #             y_bottom = event.inaxes.get_ylim()[1] - y
+            #             newylims=[y - y_top * scale_factor, y + y_bottom * scale_factor]
+            #             event.inaxes.set_ylim([newylims[0], newylims[1]])
+            #             event.inaxes.draw()
+            #         except Exception as e:
+            #             print('Error in hax scrolling:', e)
+                    
         # Scrolling outside of plot bounds changes the whitespace around/between plots
         else:
             width, height = self.canvas.get_width_height()

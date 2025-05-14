@@ -503,6 +503,48 @@ def dynes_fit(xdata,ydata,p0,inputinfo):
     result=model.fit(ydata,params,x=xdata)
     return result
 
+def statistics(xdata,ydata,p0,inputinfo):
+    # Not really fitting; just returns the statistical information specified in inputinfo.
+
+    if 'percentile' in inputinfo:
+        percentiles=[float(p0[i]) for i in range(len(p0))] if p0 else [1,5,10,25,50,75,90,95,99]
+    elif 'average' in inputinfo:
+        weights=[float(p0[i]) for i in range(len(p0))] if p0 else None
+    elif inputinfo == 'all':
+        percentiles=[1,5,10,25,50,75,90,95,99]
+        weights=None
+    
+    function_dict={
+        'mean':np.mean,
+        'average':lambda x: np.average(x,weights=weights),
+        'std':np.std,
+        'var':np.var,
+        'median':np.median,
+        'min':np.min,
+        'max':np.max,
+        'range':lambda x: np.max(x)-np.min(x),
+        'sum':np.sum,
+        'skew':lambda x: np.mean((x-np.mean(x))**3)/np.std(x)**3,
+        'percentile':lambda x: np.percentile(x,percentiles),
+        'autocorrelation': lambda x: np.correlate(x,x,mode='full')[len(x)-1:]
+    }
+
+    result={}
+    if inputinfo == 'all':
+        functions=function_dict.keys()
+    elif inputinfo == 'all1d':
+        functions=['mean','std','var','median','min','max','range','sum','skew']
+    else:
+        functions=inputinfo.split(',')
+    for function in functions:
+        if function not in ['percentile','autocorrelation']:
+            result[function]=float(function_dict[function](ydata))
+        else:
+            result[function]=function_dict[function](ydata)
+
+    return result
+
+
 # Dictionary for storing info about the fit functions used in this module.
 functions = {}
 functions['Polynomials and powers'] = {'Linear': {'function': linear},
@@ -698,6 +740,24 @@ functions['User input']['Expression']['description'] =('Fit an arbitrary express
                                             'You must also provide initial guesses for each parameter in the form:\n'
                                             'C=0.25, A=1.0, x0=2.0, freq=0.04, phase=0')
 functions['User input']['Expression']['function']=expression_fit
+
+functions['Statistics']={'Statistics':{}}
+functions['Statistics']['Statistics']['inputs'] = 'Function names'
+functions['Statistics']['Statistics']['parameters'] = 'weights or percentiles (opt)'
+functions['Statistics']['Statistics']['description'] =('Calculate statistical information about the data. Available functions are:\n'
+                                            'mean, average, std, var, median, min, max, range, sum, skew, percentiles and autocorrelation.\n'
+                                            'Input a comma-separated list of functions to calculate, e.g.\n'
+                                            'mean,std,var,median,min,max.\n'
+                                            'The average can be weighted by providing a list of weights to the "fit" parameters.\n'
+                                            'The default percentiles to calculate are 1,5,10,25,50,75,90,95 and 99. '
+                                            'To change this, provide a list of percentiles to the "fit" parameters.\n'
+                                            'Use "all" to calculate all functions, or use the keyword "all1d" to calculate everything except the percentiles and autocorrelation.\n'
+                                            'Linecuts only: A parameter dependency can be generated, but only if the functions return the same number of values.\n'
+                                            'This means you can generate a dependency that includes everything except the percentiles and autocorrelation; '
+                                            'these can be generated separately, resulting in a 2D dataset.\n'
+                                            'Note the autocorrelation function is not normalised, so the first value will be the sum of squares of the data.\n')
+functions['Statistics']['Statistics']['function']=statistics
+functions['Statistics']['Statistics']['default_inputs'] = 'all'
 
 
 # functions to return different parts of the functions dictionary. Makes it easier to call in main
