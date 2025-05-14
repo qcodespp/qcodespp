@@ -408,7 +408,7 @@ class BaseClassData:
                     self.haxfill=self.hax.fill_betweenx(np.linspace(self.view_settings['Minimum'], self.view_settings['Maximum'], 100), 
                                                                     self.hax.get_xlim()[0], 
                                                                     color='blue', alpha=0.2)
-                    print(self.haxfill.get_array())
+
                     self.hax.margins(0)
                     self.hax.spines[:].set_linewidth(0.5)
                     self.hax.get_xaxis().set_visible(False)

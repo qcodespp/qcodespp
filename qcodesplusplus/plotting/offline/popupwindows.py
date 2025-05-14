@@ -1565,6 +1565,7 @@ class LineCutWindow(QtWidgets.QWidget):
 
 class StatsWindow(QtWidgets.QWidget):
     def __init__(self, parent, editor_window=None):
+        print(1)
         super().__init__()
         # The parent is the DATA object.
         self.parent = parent
@@ -1579,3 +1580,38 @@ class StatsWindow(QtWidgets.QWidget):
         self.main_layout.addWidget(self.title_label)
         self.main_layout.addWidget(self.output_window)
         self.setLayout(self.main_layout)
+
+class MetadataWindow(QtWidgets.QDialog):
+    def __init__(self, parent=None):
+        print(1)
+        super().__init__()
+        try:
+            self.setWindowTitle(f"Metadata for {parent.label}")
+            self.resize(600,600)
+            self.parent = parent
+            
+            self.layout = QtWidgets.QVBoxLayout()
+            self.tree_widget = QtWidgets.QTreeWidget()
+            self.tree_widget.setHeaderLabels(["Key", "Value"])
+            if parent:
+                self.populate_tree(self.parent.meta)
+            
+            self.layout.addWidget(self.tree_widget)
+            self.setLayout(self.layout)
+        except Exception as e:
+            print(e)
+        print(2)
+
+    def populate_tree(self, metadata, parent_item=None):
+        """
+        Recursively populate the QTreeWidget with nested dictionary data.
+        """
+        if parent_item is None:
+            parent_item = self.tree_widget
+
+        for key, value in metadata.items():
+            if isinstance(value, dict):  # If the value is a dictionary, create a parent node
+                item = QtWidgets.QTreeWidgetItem(parent_item, [str(key)])
+                self.populate_tree(value, item)  # Recursively populate the child items
+            else:  # If the value is not a dictionary, create a leaf node
+                item = QtWidgets.QTreeWidgetItem(parent_item, [str(key), str(value)])

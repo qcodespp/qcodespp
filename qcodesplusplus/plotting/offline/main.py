@@ -40,7 +40,7 @@ except ModuleNotFoundError:
 from lmfit.model import save_modelresult, load_modelresult
 
 import qcodesplusplus.plotting.offline.design as design
-from .popupwindows import LineCutWindow
+from .popupwindows import LineCutWindow, MetadataWindow, StatsWindow
 from .sidebars import Sidebar1D
 from .helpers import (cmaps, MidpointNormalize,NavigationToolbarMod,
                       rcParams_to_dark_theme,rcParams_to_light_theme,
@@ -254,6 +254,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.plot_type_box.currentIndexChanged.connect(self.plot_type_changed)
         self.binsX_lineedit.editingFinished.connect(lambda: self.bins_changed('X'))
         self.binsY_lineedit.editingFinished.connect(lambda: self.bins_changed('Y'))
+        self.metadata_button.clicked.connect(self.show_metadata)
         self.settings_table.itemChanged.connect(self.plot_setting_edited)
         self.filters_table.itemChanged.connect(self.filters_table_edited)
         self.copy_settings_button.clicked.connect(self.copy_plot_settings)
@@ -779,7 +780,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.mixeddata_filter_box.clear()
                 self.mixeddata_filter_box.hide()
         self.update_plots()
-    
+
     def plot_type_changed(self):
         current_item = self.file_list.currentItem()
         plot_type = self.plot_type_box.currentText()
@@ -2251,20 +2252,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                         else:
                             self.press = event.ydata
-                        # Old behaviour; different clicks would set different color limits
-                        # New behaviour is click, drag, and release to set color limits
-                        # data = self.cbar_in_focus[0].data
-                        # if event.button == 1:
-                        #     data.view_settings['Minimum'] = y
-                        #     data.reset_midpoint()
-                        # elif event.button == 2:
-                        #     data.view_settings['Midpoint'] = y
-                        # elif event.button == 3:
-                        #     data.view_settings['Maximum'] = y
-                        #     data.reset_midpoint()
-                        # data.apply_view_settings()
-                        # self.canvas.draw()
-                        # self.show_current_view_settings()
 
     def on_motion(self, event):
         if hasattr(self,'press') and self.press != None:
@@ -2282,6 +2269,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.canvas.draw()
                 except: # sometimes can happen if the focus between plots changes weirdly. Not worth getting worried about, so no use filling up errors
                     pass
+    
     def on_release(self, event):
         self.press = None
 
@@ -2404,6 +2392,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if DARK_THEME and qdarkstyle_imported:
             rcParams_to_dark_theme()
             self.update_plots(update_data=False)
+
+    def show_metadata(self):
+        item = self.file_list.currentItem()
+        if item:
+            if hasattr(item.data,'meta'):
+                if not hasattr(item.data,'metapopup'):
+                    item.data.metapopup=MetadataWindow(item.data)
+                    #metapopup.activateWindow()
+                item.data.metapopup.show()
             
     def mouse_scroll_canvas(self, event):
         if event.inaxes:
