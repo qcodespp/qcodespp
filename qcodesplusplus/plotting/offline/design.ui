@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1400</width>
+    <width>1403</width>
     <height>700</height>
    </rect>
   </property>
@@ -1175,17 +1175,16 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1400</width>
-     <height>18</height>
+     <width>1403</width>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_save_session">
     <property name="title">
      <string>Export Processed Data</string>
     </property>
-    <addaction name="action_save_data_selected_file"/>
-    <addaction name="action_save_data_checked_files"/>
-    <addaction name="actionsave_data_all_files"/>
+    <addaction name="action_export_data_columns"/>
+    <addaction name="action_export_data_Z"/>
     <addaction name="separator"/>
     <addaction name="action_filters"/>
    </widget>
@@ -1458,9 +1457,9 @@
     <string>Duplicate Selected File (Ctrl+D)</string>
    </property>
   </action>
-  <action name="action_save_data_selected_file">
+  <action name="action_export_data_columns">
    <property name="text">
-    <string>Selected File</string>
+    <string>All data as columns</string>
    </property>
   </action>
   <action name="action_open_file">
@@ -1503,9 +1502,9 @@
     <string>All files</string>
    </property>
   </action>
-  <action name="action_save_data_checked_files">
+  <action name="action_export_data_Z">
    <property name="text">
-    <string>Checked files</string>
+    <string>Z data as (NxM) array</string>
    </property>
   </action>
   <action name="actionOnline_help">

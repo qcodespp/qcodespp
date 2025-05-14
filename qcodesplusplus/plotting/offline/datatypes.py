@@ -484,13 +484,15 @@ class BaseClassData:
         if self.settings['minorticks'] == 'True':
             self.axes.minorticks_on()
         if self.settings['title'] == '<label>':
-            self.axes.set_title(self.label, size=self.settings['titlesize'])
+            self.axes.set_title(self.label, size=self.settings['titlesize'],wrap=True)
         else:
             self.axes.set_title(self.settings['title'], 
-                                size=self.settings['titlesize'])
+                                size=self.settings['titlesize'],wrap=True)
         if self.settings['colorbar'] == 'True' and len(self.get_columns()) == 3:
-            self.cbar.ax.set_title(self.settings['clabel'], 
-                                   size=self.settings['labelsize'])
+            self.cbar.ax.set_ylabel(self.settings['clabel'], fontsize=self.settings['labelsize'], 
+                                 labelpad=10, rotation=270)
+            # self.cbar.ax.set_title(self.settings['clabel'], 
+            #                        size=self.settings['labelsize'])
             self.cbar.ax.tick_params(labelsize=self.settings['ticksize'], 
                                      color=rcParams['axes.edgecolor']) 
             self.cbar.outline.set_linewidth(float(self.settings['spinewidth']))

@@ -304,7 +304,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.action_restore_session.triggered.connect(self.load_session)
         self.action_combine_files.triggered.connect(self.combine_plots)
         self.action_duplicate_file.triggered.connect(self.duplicate_item)
-        self.action_save_data_selected_file.triggered.connect(lambda: self.save_processed_data('current'))
+        self.action_export_data_columns.triggered.connect(lambda: self.save_processed_data('current'))
+        self.action_export_data_Z.triggered.connect(lambda: self.save_processed_data('Z'))
         self.track_button.clicked.connect(self.track_button_clicked)
         self.refresh_line_edit.editingFinished.connect(lambda: self.refresh_interval_changed(self.refresh_line_edit.text()))
         self.actionSave_plot_s_as.triggered.connect(self.save_image)
@@ -696,26 +697,25 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current_item = self.file_list.currentItem()
         if current_item:
             formats='Numpy text (*.dat);;Numpy format (*.npy);;CSV (*.csv)'
+            suggested_filename = current_item.data.label
+            filepath, ext = QtWidgets.QFileDialog.getSaveFileName(
+            self, 'Export Data As', suggested_filename, formats)
             if which == 'current':
-                suggested_filename = current_item.data.label
-                filepath, ext = QtWidgets.QFileDialog.getSaveFileName(
-                    self, 'Export Data As', suggested_filename, formats)
-                item = current_item
-                if hasattr(item.data,'processed_data'):
+                if hasattr(current_item.data,'processed_data'):
                     if '.dat' in ext:
                         header=''
                         for label in ['xlabel','ylabel','clabel']:
-                            if item.data.settings[label] != '':
-                                header+=f'{item.data.settings[label]}\t'
+                            if current_item.data.settings[label] != '':
+                                header+=f'{current_item.data.settings[label]}\t'
                         header=header.strip('\t')
                         with open(filepath, "w") as dat_file:
                             if len(current_item.data.get_columns()) == 2:
                                 np.savetxt(filepath, np.column_stack(current_item.data.processed_data),header=header)
                             elif len(current_item.data.get_columns()) == 3:
                                 dat_file.write(f'# {header}\n')
-                                for j in range(np.shape(item.data.processed_data[2])[0]):
-                                    for k in range(np.shape(item.data.processed_data[2])[1]):
-                                        dat_file.write('{}\t{}\t{}\n'.format(item.data.processed_data[0][j,k],item.data.processed_data[1][j,k],item.data.processed_data[2][j,k]))
+                                for j in range(np.shape(current_item.data.processed_data[2])[0]):
+                                    for k in range(np.shape(current_item.data.processed_data[2])[1]):
+                                        dat_file.write('{}\t{}\t{}\n'.format(current_item.data.processed_data[0][j,k],current_item.data.processed_data[1][j,k],current_item.data.processed_data[2][j,k]))
                     elif '.npy' in ext:
                             if len(current_item.data.get_columns()) == 2:
                                 np.save(filepath, np.column_stack(current_item.data.processed_data))
@@ -726,19 +726,30 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             writer = csvwriter(f,delimiter='\t')
                             header=[]
                             for label in ['xlabel','ylabel','clabel']:
-                                if item.data.settings[label] != '':
-                                    header.append(f'#{item.data.settings[label]}')
+                                if current_item.data.settings[label] != '':
+                                    header.append(f'#{current_item.data.settings[label]}')
                             writer.writerow(header)
                             if len(current_item.data.get_columns())==2:
-                                for i,x in enumerate(item.data.processed_data[0]):
-                                    writer.writerow([x,item.data.processed_data[1][i]])
+                                for i,x in enumerate(current_item.data.processed_data[0]):
+                                    writer.writerow([x,current_item.data.processed_data[1][i]])
                             elif len(current_item.data.get_columns()) == 3:
-                                for j in range(np.shape(item.data.processed_data[2])[0]):
-                                    for k in range(np.shape(item.data.processed_data[2])[1]):
-                                        writer.writerow([item.data.processed_data[0][j,k],item.data.processed_data[1][j,k],item.data.processed_data[2][j,k]])
+                                for j in range(np.shape(current_item.data.processed_data[2])[0]):
+                                    for k in range(np.shape(current_item.data.processed_data[2])[1]):
+                                        writer.writerow([current_item.data.processed_data[0][j,k],current_item.data.processed_data[1][j,k],current_item.data.processed_data[2][j,k]])
 
                 else:
                     print('No processed data to export')
+
+            elif which=='Z':
+                if hasattr(current_item.data,'processed_data'):
+                    if '.dat' in ext:
+                        with open(filepath,'w') as dat_file:
+                            np.savetxt(filepath, current_item.data.processed_data[-1])
+                else:
+                    print('No processed data to export')
+                
+            else:
+                print('Cannot export processed Z data from 1D data')
             # else:
             #     if which == 'all':
             #         filepath, _ = QtWidgets.QFileDialog.getSaveFileName(

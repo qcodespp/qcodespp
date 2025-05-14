@@ -53,8 +53,8 @@ class qcodesppData(main.BaseClassData):
 
         #self.dataset_id = "#" + self.dataset.location.split("#", 1)[1].split("_", 1)[0]
         self.dataset_id = "#" + dirname.split("#", 1)[1].split("_", 1)[0]
-        self.settings["title"] = self.dataset_id
-        self.DEFAULT_PLOT_SETTINGS['title']= self.dataset_id
+        self.settings["title"] = self.label#[:120]#self.dataset_id
+        self.DEFAULT_PLOT_SETTINGS['title']= self.label#[:120]#self.dataset_id
     
 
 
