@@ -525,7 +525,8 @@ def statistics(xdata,ydata,p0,inputinfo):
         'sum':np.sum,
         'skew':lambda x: np.mean((x-np.mean(x))**3)/np.std(x)**3,
         'percentile':lambda x: np.percentile(x,percentiles),
-        'autocorrelation': lambda x: np.correlate(x,x,mode='full')[len(x)-1:]
+        'autocorrelation': lambda x: np.correlate(x,x,mode='full')[len(x)-1:],
+        'autocorrelation_norm': lambda x: np.correlate(x,x,mode='full')[len(x)-1:]/np.max(np.correlate(x,x,mode='full'))
     }
 
     result={}
@@ -536,10 +537,16 @@ def statistics(xdata,ydata,p0,inputinfo):
     else:
         functions=inputinfo.split(',')
     for function in functions:
-        if function not in ['percentile','autocorrelation']:
+        if function not in ['percentile','autocorrelation','autocorrelation_norm']:
             result[function]=float(function_dict[function](ydata))
         else:
-            result[function]=function_dict[function](ydata)
+            if function == 'percentile':
+                result[function]=function_dict[function](ydata)
+                result['percentiles']=percentiles
+            else:
+                result[function]=function_dict[function](ydata)
+    result['xdata']=xdata
+    result['ydata']=ydata
     return result
 
 
@@ -742,8 +749,9 @@ functions['User input']['Expression']['function']=expression_fit
 functions['Statistics']={'Statistics':{}}
 functions['Statistics']['Statistics']['inputs'] = 'Function names'
 functions['Statistics']['Statistics']['parameters'] = 'weights or percentiles (opt)'
-functions['Statistics']['Statistics']['description'] =('Calculate statistical information about the data. Available functions are:\n'
-                                            'mean, average, std, var, median, min, max, range, sum, skew, percentiles and autocorrelation.\n'
+functions['Statistics']['Statistics']['description'] =('Calculate statistical information about the data. Available numpy functions are:\n'
+                                            'mean, average, std, var, median, min, max, range, sum, skew, percentile, autocorrelation and autocorrelation_norm.\n'
+                                            'See: https://numpy.org/doc/stable/reference/routines.statistics.html.\n'
                                             'Input a comma-separated list of functions to calculate, e.g.\n'
                                             'mean,std,var,median,min,max.\n'
                                             'The average can be weighted by providing a list of weights to the "fit" parameters.\n'
@@ -753,7 +761,7 @@ functions['Statistics']['Statistics']['description'] =('Calculate statistical in
                                             'Linecuts only: A parameter dependency can be generated, but only if the functions return the same number of values.\n'
                                             'This means you can generate a dependency that includes everything except the percentiles and autocorrelation; '
                                             'these can be generated separately, resulting in a 2D dataset.\n'
-                                            'Note the autocorrelation function is not normalised, so the first value will be the sum of squares of the data.\n')
+                                            'The difference between autocorrelation and autocorrelation_norm is that the latter is normalised to the zero-th index value.\n')
 functions['Statistics']['Statistics']['function']=statistics
 functions['Statistics']['Statistics']['default_inputs'] = 'all'
 

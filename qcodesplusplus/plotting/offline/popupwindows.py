@@ -167,7 +167,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.xscale_box.currentIndexChanged.connect(self.update)
         self.yscale_box.currentIndexChanged.connect(self.update)
 
-        self.clear_fit_button.clicked.connect(self.clear_fit)
+        self.clear_fit_button.clicked.connect(lambda: self.clear_fit(row='manual'))
         self.fit_class_box.currentIndexChanged.connect(self.fit_class_changed)
         self.fit_box.currentIndexChanged.connect(self.fit_type_changed)
         self.fit_button.clicked.connect(lambda: self.start_fitting(line='manual'))
@@ -1431,16 +1431,15 @@ class LineCutWindow(QtWidgets.QWidget):
         else:
             print('First select a linecut with either a fit or statistics. Either the fits or stats for all lines will be saved, based on that.')
 
-    def clear_fit(self,row=None):
+    def clear_fit(self,row='manual'):
         self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
-        if row != None:
-            manual=False
-            line = int(self.cuts_table.item(row,0).text())
-        else:
+        if row=='manual':
             manual=True
             row = self.cuts_table.currentRow()
             line = int(self.cuts_table.item(row,0).text())
-
+        else:
+            manual=False
+            line = int(self.cuts_table.item(row,0).text())
         if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
             self.parent.linecuts[self.orientation]['lines'][line].pop('fit')
             self.cuts_table.setItem(row,5,QtWidgets.QTableWidgetItem(''))
@@ -1490,18 +1489,19 @@ class LineCutWindow(QtWidgets.QWidget):
                     for param in first_result.params.keys():
                         header += '\t'+param+'_error'
                 elif self.orientation in ['diagonal', 'circular']:
-                    data=np.zeros((len(fit_lines),len(first_result.params.keys())*2+4))
+                    data=np.zeros((len(fit_lines),len(first_result.params.keys())*2+5))
                     for i,line in enumerate(fit_lines):
-                        data[i,0] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][0]
-                        data[i,1] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][1]
-                        data[i,2] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][0]
-                        data[i,3] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][1]
+                        data[i,0] = line
+                        data[i,1] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][0]
+                        data[i,2] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][1]
+                        data[i,3] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][0]
+                        data[i,4] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][1]
                         for j,param in enumerate(first_result.params.keys()):
-                            data[i,j+4] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].value
-                        last_column=j+5
+                            data[i,j+5] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].value
+                        last_column=j+6
                         for j,param in enumerate(first_result.params.keys()):
                             data[i,j+last_column] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].stderr
-                    header='X_1\tY_1\tX_2\tY_2\t'+'\t'.join(first_result.params.keys())
+                    header='index\tX_1\tY_1\tX_2\tY_2\t'+'\t'.join(first_result.params.keys())
                     for param in first_result.params.keys():
                         header += '\t'+param+'_error'
                 success=True
@@ -1517,34 +1517,87 @@ class LineCutWindow(QtWidgets.QWidget):
                         stat_lines.append(line)
 
                 first_result = self.parent.linecuts[self.orientation]['lines'][stat_lines[0]]['stats']
-                if 'percentiles' in first_result.keys():
-                    if len(first_result.keys())>1:
-                        raise Exception('If saving percentiles as a parameter dependency, it can _only_ be percentiles.')
+                params = [key for key in first_result.keys() if key not in ['xdata','ydata']]
+                if 'percentiles' in params:
+                    if len(params)>2:
+                        raise Exception('If saving percentiles as a parameter dependency, it can _only_ be percentiles. '
+                                        'The result must be a rectangular array.')
                     else:
-                        0
-                elif 'autocorrelation' in first_result.keys():
-                    if len(first_result.keys())>1:
-                        raise Exception('If saving autocorrelation as a parameter dependency, it can _only_ be autocorrelation.')
-                    else:
-                        0
+                        percentiles_array=np.zeros((len(stat_lines),len(first_result['percentiles'])))
+                        if self.orientation in ['horizontal', 'vertical']:
+                            cut_axis_array=np.zeros_like(percentiles_array)
+                        elif self.orientation in ['diagonal', 'circular']:
+                            point1xarray=np.zeros_like(percentiles_array)
+                            point1yarray=np.zeros_like(percentiles_array)
+                            point2xarray=np.zeros_like(percentiles_array)
+                            point2yarray=np.zeros_like(percentiles_array)
+                            indexarray=np.zeros_like(percentiles_array)
+                        percentile_values_array=np.zeros_like(percentiles_array)
+
+                        for i,line in enumerate(stat_lines):
+                            percentile_values_array[i,:]=self.parent.linecuts[self.orientation]['lines'][line]['stats']['percentiles']
+                            for j,value in enumerate(first_result['percentiles']):
+                                percentiles_array[i,j] = self.parent.linecuts[self.orientation]['lines'][line]['stats']['percentile'][j]
+                                if self.orientation in ['horizontal', 'vertical']:
+                                    cut_axis_array[i,j]=self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value']
+                                elif self.orientation in ['diagonal', 'circular']:
+                                    indexarray[i,j] = line
+                                    point1xarray[i,j] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][0]
+                                    point1yarray[i,j] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][1]
+                                    point2xarray[i,j] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][0]
+                                    point2yarray[i,j] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][1]
+                        if self.orientation in ['horizontal', 'vertical']:
+                            data=np.column_stack((cut_axis_array.flatten(), percentile_values_array.flatten(), percentiles_array.flatten()))
+                            header='X\tpercentiles\tpercentile'
+                        elif self.orientation in ['diagonal', 'circular']:
+                            data=np.column_stack((indexarray.flatten(),point1xarray.flatten(), point1yarray.flatten(), point2xarray.flatten(), point2yarray.flatten(), percentile_values_array.flatten(), percentiles_array.flatten()))
+                            header='index\tX_1\tY_1\tX_2\tY_2\tpercentiles\tpercentile'
+
+                elif 'autocorrelation' in params or 'autocorrelation_norm' in params:
+                    if len(params)>1:
+                        raise Exception('If saving one of the autocorrelation fuctions as a parameter dependency, '
+                                        'it can _only_ be that function. The result must be a rectangular array.')
+                    elif self.orientation in ['horizontal', 'vertical']:
+                        name=params[0]
+                        autocorrelation_array=np.zeros((len(stat_lines),len(first_result[name])))
+                        print(np.shape(autocorrelation_array))
+                        cut_axis_array=np.zeros_like(autocorrelation_array)
+                        sweep_axis_array=np.zeros_like(autocorrelation_array)
+
+                        for i,line in enumerate(stat_lines):
+                            sweep_axis_array[i,:]=self.parent.linecuts[self.orientation]['lines'][line]['stats']['xdata']
+                            cut_value = self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value']
+                            for j,value in enumerate(first_result[name]):
+                                autocorrelation_array[i,j] = self.parent.linecuts[self.orientation]['lines'][line]['stats'][name][j]
+                                cut_axis_array[i,j] = cut_value
+                        data=np.column_stack((cut_axis_array.flatten(), sweep_axis_array.flatten(), autocorrelation_array.flatten()))
+                        header='X\tY\tautocorrelation'
+                        
+                    elif self.orientation in ['diagonal', 'circular']:
+                        raise Exception('Generating a parameter dependency for autocorrelations along diagonal linecuts is not currently supported, '
+                                    'since in general the arrays will not be rectangular. You can instead use Save All Fits which anyway puts all '
+                                    'the arrays into a single json.')
                 else:
                     if self.orientation in ['horizontal', 'vertical']:
-                        data=np.zeros((len(stat_lines),len(first_result.keys())+1))
+                        data=np.zeros((len(stat_lines),len(params)+1)) # beccause we will exclude the x and y data that is present in stats dictinoaries
                         for i,line in enumerate(stat_lines):
                             data[i,0] = self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value']
-                            for j,param in enumerate(first_result.keys()):
-                                data[i,j+1] = self.parent.linecuts[self.orientation]['lines'][line]['stats'][param]
-                        header='X\t'+'\t'.join(first_result.keys())
+                            for j,param in enumerate(params):
+                                if param not in ['xdata','ydata']:
+                                    data[i,j+1] = self.parent.linecuts[self.orientation]['lines'][line]['stats'][param]
+                        header='X\t'+'\t'.join(params)
                     elif self.orientation in ['diagonal', 'circular']:
-                        data=np.zeros((len(stat_lines),len(first_result.keys())+4))
+                        data=np.zeros((len(stat_lines),len(params)+5))
                         for i,line in enumerate(stat_lines):
-                            data[i,0] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][0]
-                            data[i,1] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][1]
-                            data[i,2] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][0]
-                            data[i,3] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][1]
-                            for j,param in enumerate(first_result.keys()):
-                                data[i,j+4] = self.parent.linecuts[self.orientation]['lines'][line]['stats'][param]
-                        header='X_1\tY_1\tX_2\tY_2\t'+'\t'.join(first_result.keys())
+                            data[i,0] = line
+                            data[i,1] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][0]
+                            data[i,2] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][1]
+                            data[i,3] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][0]
+                            data[i,4] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][1]
+                            for j,param in enumerate(params):
+                                if param not in ['xdata','ydata']:
+                                    data[i,j+4] = self.parent.linecuts[self.orientation]['lines'][line]['stats'][param]
+                        header='index\tX_1\tY_1\tX_2\tY_2\t'+'\t'.join(params)
 
                 success=True
 
