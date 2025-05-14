@@ -1583,24 +1583,20 @@ class StatsWindow(QtWidgets.QWidget):
 
 class MetadataWindow(QtWidgets.QDialog):
     def __init__(self, parent=None):
-        print(1)
         super().__init__()
-        try:
-            self.setWindowTitle(f"Metadata for {parent.label}")
-            self.resize(600,600)
-            self.parent = parent
-            
-            self.layout = QtWidgets.QVBoxLayout()
-            self.tree_widget = QtWidgets.QTreeWidget()
-            self.tree_widget.setHeaderLabels(["Key", "Value"])
-            if parent:
-                self.populate_tree(self.parent.meta)
-            
-            self.layout.addWidget(self.tree_widget)
-            self.setLayout(self.layout)
-        except Exception as e:
-            print(e)
-        print(2)
+        self.setWindowTitle(f"Metadata for {parent.label}")
+        self.resize(600,600)
+        self.parent = parent
+        
+        self.layout = QtWidgets.QVBoxLayout()
+        self.tree_widget = QtWidgets.QTreeWidget()
+        self.tree_widget.setHeaderLabels(["Key", "Value"])
+        if parent:
+            self.populate_tree(self.parent.meta)
+        
+        self.layout.addWidget(self.tree_widget)
+        self.setLayout(self.layout)
+
 
     def populate_tree(self, metadata, parent_item=None):
         """

@@ -15,7 +15,7 @@ class DataItem(QtWidgets.QListWidgetItem):
         self.setCheckState(QtCore.Qt.Unchecked)
         self.setText(self.data.label)
 
-class BaseClassData:    
+class BaseClassData:
     # Set default plot settings
     DEFAULT_PLOT_SETTINGS = {}
     DEFAULT_PLOT_SETTINGS['title'] = '<label>'
@@ -27,6 +27,7 @@ class BaseClassData:
     DEFAULT_PLOT_SETTINGS['titlesize'] = '14'
     DEFAULT_PLOT_SETTINGS['labelsize'] = '14' 
     DEFAULT_PLOT_SETTINGS['ticksize'] = '14'
+    # The above three now get overridden by global_text_size
     DEFAULT_PLOT_SETTINGS['spinewidth'] = '1'
     DEFAULT_PLOT_SETTINGS['colorbar'] = 'True'
     DEFAULT_PLOT_SETTINGS['minorticks'] = 'False'
@@ -48,6 +49,7 @@ class BaseClassData:
     DEFAULT_VIEW_SETTINGS['Locked'] = False
     DEFAULT_VIEW_SETTINGS['MidLock'] = False
     DEFAULT_VIEW_SETTINGS['Reverse'] = False
+    DEFAULT_VIEW_SETTINGS['CBarHist'] = True
 
     # Set default axlim settings
     DEFAULT_AXLIM_SETTINGS = {}
@@ -69,6 +71,7 @@ class BaseClassData:
         self.settings = self.DEFAULT_PLOT_SETTINGS.copy()
         self.view_settings = self.DEFAULT_VIEW_SETTINGS.copy()
         self.axlim_settings = self.DEFAULT_AXLIM_SETTINGS.copy()
+        #print(self.view_settings['CBarHist'])
         self.filters = []
 
         try: # on Windows
@@ -364,6 +367,20 @@ class BaseClassData:
                         'linestyle': '-',
                         'filters': []}}
         
+    def add_cbar_hist(self):
+        self.hax=self.cbar.ax.inset_axes([-1.05, 0, 1, 1])
+        counts, self.cbar_hist_bins = np.histogram(self.processed_data[-1],bins=int(self.settings['cmap levels']))
+        midpoints = self.cbar_hist_bins[:-1] + np.diff(self.cbar_hist_bins)/2
+        self.hax.fill_between(-counts, midpoints,0,color='mediumslateblue')
+        self.haxfill=self.hax.fill_betweenx(np.linspace(self.view_settings['Minimum'], self.view_settings['Maximum'], 100), 
+                                                        self.hax.get_xlim()[0], 
+                                                        color='blue', alpha=0.2)
+
+        self.hax.margins(0)
+        self.hax.spines[:].set_linewidth(0.5)
+        self.hax.get_xaxis().set_visible(False)
+        self.hax.get_yaxis().set_visible(False)
+
     def add_plot(self, editor_window=None, apply_default_labels=True):
         if self.processed_data:
             cmap_str = self.view_settings['Colormap']
@@ -400,18 +417,9 @@ class BaseClassData:
                                                   rasterized=self.settings['rasterized'])
                 if self.settings['colorbar'] == 'True':
                     self.cbar = self.figure.colorbar(self.image, orientation='vertical')
-                    self.hax=self.cbar.ax.inset_axes([-1.05, 0, 1, 1])
-                    counts, self.cbar_hist_bins = np.histogram(self.processed_data[-1],bins=int(self.settings['cmap levels']))
-                    midpoints = self.cbar_hist_bins[:-1] + np.diff(self.cbar_hist_bins)/2
-                    self.hax.fill_between(-counts, midpoints,0,color='mediumslateblue')
-                    self.haxfill=self.hax.fill_betweenx(np.linspace(self.view_settings['Minimum'], self.view_settings['Maximum'], 100), 
-                                                                    self.hax.get_xlim()[0], 
-                                                                    color='blue', alpha=0.2)
+                    if self.view_settings['CBarHist'] == True:
+                        self.add_cbar_hist()
 
-                    self.hax.margins(0)
-                    self.hax.spines[:].set_linewidth(0.5)
-                    self.hax.get_xaxis().set_visible(False)
-                    self.hax.get_yaxis().set_visible(False)
             if apply_default_labels:
                 self.apply_default_lables()
 
@@ -532,12 +540,13 @@ class BaseClassData:
             self.image.norm=norm
 
             # # Update histogram
-            self.haxfill.remove()
-            self.haxfill=self.hax.fill_betweenx(np.linspace(self.view_settings['Minimum'], self.view_settings['Maximum'], 100), 
-                                                self.hax.get_xlim()[0], 
-                                                color='blue', alpha=0.2)
-            self.hax.set_ylim([np.min([self.view_settings['Minimum'],np.min(self.cbar_hist_bins)]),
-                               np.max([self.view_settings['Maximum'],np.max(self.cbar_hist_bins)])])
+            if hasattr(self,'hax'):
+                self.haxfill.remove()
+                self.haxfill=self.hax.fill_betweenx(np.linspace(self.view_settings['Minimum'], self.view_settings['Maximum'], 100), 
+                                                    self.hax.get_xlim()[0], 
+                                                    color='blue', alpha=0.2)
+                self.hax.set_ylim([np.min([self.view_settings['Minimum'],np.min(self.cbar_hist_bins)]),
+                                np.max([self.view_settings['Maximum'],np.max(self.cbar_hist_bins)])])
 
             # Seems like the below does literally nothing. Checked 14/05/2025. Reintroduce if problems in future
             # if self.settings['colorbar'] == 'True' and hasattr(self, 'cbar'):

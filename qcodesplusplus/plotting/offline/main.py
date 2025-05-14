@@ -284,6 +284,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.paste_view_button.clicked.connect(lambda: self.paste_view_settings('copied'))
         self.colormap_type_box.currentIndexChanged.connect(self.colormap_type_edited)
         self.colormap_box.currentIndexChanged.connect(self.colormap_edited)
+        self.cbar_hist_checkbox.clicked.connect(lambda: self.view_setting_edited('CBarHist'))
         self.reverse_colors_box.clicked.connect(self.colormap_edited)
         self.xmin_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Xmin'))
         self.xmax_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Xmax'))
@@ -1494,6 +1495,23 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         view_settings[edited_setting] = True
                     else:
                         view_settings[edited_setting] = False
+                elif edited_setting == 'CBarHist':
+                    if self.cbar_hist_checkbox.isChecked():
+                        view_settings[edited_setting] = True
+                        if not hasattr(current_item.data,'hax'):
+                            current_item.data.add_cbar_hist()
+                            self.figure.tight_layout()
+                    else:
+                        view_settings[edited_setting] = False
+                        if hasattr(current_item.data, 'hax'):
+                            current_item.data.hax.clear()
+                            try:
+                                current_item.data.hax.remove()
+                            except:
+                                pass
+                            del current_item.data.hax
+                            self.figure.tight_layout()
+                
                 current_item.data.apply_view_settings()
                 self.canvas.draw()
             except Exception as e:
