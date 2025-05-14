@@ -2309,9 +2309,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     
     def on_release(self, event):
         self.press = None
-
         self.canvas.draw()
-
     
     def popup_canvas(self, signal):
         # Actions for right-click menu on the plot(s)

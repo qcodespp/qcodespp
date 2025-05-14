@@ -1048,52 +1048,64 @@ class LineCutWindow(QtWidgets.QWidget):
         p0=self.collect_init_guess(function_class,function_name)
 
         # Try to do the fit.
-        try:
-            fit_result = fits.fit_data(function_class=function_class, function_name=function_name,
-                                                xdata=x_forfit,ydata=y_forfit, p0=p0, inputinfo=inputinfo)
-            y_fit = fit_result.best_fit
-        except Exception as e:
-            self.output_window.setText(f'Curve could not be fitted: {e}')
-            fit_parameters = [np.nan]*len(fits.get_names(function_name).split(','))
-            y_fit = np.nan
+        if function_name != 'Statistics':
+            # Don't want to store fits _and_ stats at the same time. Will get confusing for showing info
+            if 'stats' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+                self.parent.linecuts[self.orientation]['lines'][line].pop('stats')
+            try:
+                fit_result = fits.fit_data(function_class=function_class, function_name=function_name,
+                                                    xdata=x_forfit,ydata=y_forfit, p0=p0, inputinfo=inputinfo)
+                y_fit = fit_result.best_fit
+            except Exception as e:
+                self.output_window.setText(f'Curve could not be fitted: {e}')
+                fit_parameters = [np.nan]*len(fits.get_names(function_name).split(','))
+                y_fit = np.nan
 
-        self.parent.linecuts[self.orientation]['lines'][line]['fit'] = {'fit_result': fit_result,
-                                                                        'xdata': x_forfit,
-                                                                        'ydata': y_forfit,
-                                                                        'fitted_y': y_fit,
-                                                                        'fit_checkstate': QtCore.Qt.Checked,
-                                                                        'fit_components_checkstate': QtCore.Qt.Unchecked,
-                                                                        'fit_uncertainty_checkstate': QtCore.Qt.Checked}
+            self.parent.linecuts[self.orientation]['lines'][line]['fit'] = {'fit_result': fit_result,
+                                                                            'xdata': x_forfit,
+                                                                            'ydata': y_forfit,
+                                                                            'fitted_y': y_fit,
+                                                                            'fit_checkstate': QtCore.Qt.Checked,
+                                                                            'fit_components_checkstate': QtCore.Qt.Unchecked,
+                                                                            'fit_uncertainty_checkstate': QtCore.Qt.Checked}
 
-        # Add a checkbox to the table now a fit exists.
-        self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+            # Add a checkbox to the table now a fit exists.
+            self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
 
-        plot_fit_item = QtWidgets.QTableWidgetItem('')
-        plot_fit_item.setFlags(QtCore.Qt.ItemIsSelectable | 
-                            QtCore.Qt.ItemIsEnabled | 
-                            QtCore.Qt.ItemIsUserCheckable)
-        plot_fit_item.setCheckState(QtCore.Qt.Checked)
-        self.cuts_table.setItem(current_row,5,plot_fit_item)
+            plot_fit_item = QtWidgets.QTableWidgetItem('')
+            plot_fit_item.setFlags(QtCore.Qt.ItemIsSelectable | 
+                                QtCore.Qt.ItemIsEnabled | 
+                                QtCore.Qt.ItemIsUserCheckable)
+            plot_fit_item.setCheckState(QtCore.Qt.Checked)
+            self.cuts_table.setItem(current_row,5,plot_fit_item)
 
-        fit_components_item = QtWidgets.QTableWidgetItem('')
-        fit_components_item.setFlags(QtCore.Qt.ItemIsSelectable | 
-                                    QtCore.Qt.ItemIsEnabled | 
-                                    QtCore.Qt.ItemIsUserCheckable)
-        fit_components_item.setCheckState(QtCore.Qt.Unchecked)
-        self.cuts_table.setItem(current_row,6,fit_components_item)
+            fit_components_item = QtWidgets.QTableWidgetItem('')
+            fit_components_item.setFlags(QtCore.Qt.ItemIsSelectable | 
+                                        QtCore.Qt.ItemIsEnabled | 
+                                        QtCore.Qt.ItemIsUserCheckable)
+            fit_components_item.setCheckState(QtCore.Qt.Unchecked)
+            self.cuts_table.setItem(current_row,6,fit_components_item)
 
-        fit_uncertainty_item = QtWidgets.QTableWidgetItem('')
-        fit_uncertainty_item.setFlags(QtCore.Qt.ItemIsSelectable |
-                                    QtCore.Qt.ItemIsEnabled | 
-                                    QtCore.Qt.ItemIsUserCheckable)
-        fit_uncertainty_item.setCheckState(QtCore.Qt.Checked)
-        self.cuts_table.setItem(current_row,7,fit_uncertainty_item)
+            fit_uncertainty_item = QtWidgets.QTableWidgetItem('')
+            fit_uncertainty_item.setFlags(QtCore.Qt.ItemIsSelectable |
+                                        QtCore.Qt.ItemIsEnabled | 
+                                        QtCore.Qt.ItemIsUserCheckable)
+            fit_uncertainty_item.setCheckState(QtCore.Qt.Checked)
+            self.cuts_table.setItem(current_row,7,fit_uncertainty_item)
 
-        self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+            self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+        
+        else:
+            if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+                self.parent.linecuts[self.orientation]['lines'][line].pop('fit')
+            self.parent.linecuts[self.orientation]['lines'][line]['stats'] = fits.fit_data(function_class=function_class, 
+                                                                                           function_name=function_name,
+                                                    xdata=x_forfit,ydata=y_forfit, p0=p0, inputinfo=inputinfo)
         
         if not multilinefit:
             self.print_parameters(line)
-            self.update()
+            if function_name != 'Statistics':
+                self.update()
 
     def fit_checked(self):
         # Fit all checked items in the table.
@@ -1105,11 +1117,15 @@ class LineCutWindow(QtWidgets.QWidget):
 
     def print_parameters(self,line):
         self.output_window.clear()
-        try:
-            self.output_window.setText(self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].fit_report())
+        if 'stats' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+            self.output_window.setText('Statistics:\n')
+            self.output_window.append(self.parent.linecuts[self.orientation]['lines'][line]['stats'])
+        else:
+            try:
+                self.output_window.setText(self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].fit_report())
 
-        except Exception as e:
-            self.output_window.setText('Could not print fit parameters:', e)
+            except Exception as e:
+                self.output_window.setText('Could not print fit parameters:', e)
 
     def get_line_data(self,line):
         if self.orientation == 'horizontal':
