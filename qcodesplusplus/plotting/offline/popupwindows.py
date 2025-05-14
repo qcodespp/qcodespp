@@ -48,6 +48,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.set_main_layout()
         self.init_cuts_table()
         self.fit_type_changed()
+        self.line_dict={}
         
     def init_widgets(self):
         # Widgets in Linecut list box
@@ -547,7 +548,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 linecut = int(self.cuts_table.item(current_row,0).text())
                 self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_uncertainty_checkstate'] = current_item.checkState()
         
-        self.update()
+            self.update()
 
     def update_draggable_points(self,linecut,replot=True):
         try:
@@ -606,8 +607,7 @@ class LineCutWindow(QtWidgets.QWidget):
     def index_changed(self,row):
         index_box = self.cuts_table.cellWidget(row,1)
         data_index=index_box.value()
-        linecut = self.cuts_table.item(row,0).text()
-        linecut = int(linecut)
+        linecut = int(self.cuts_table.item(row,0).text())
         try:
             if self.orientation == 'horizontal':
                 self.parent.linecuts[self.orientation]['lines'][linecut]['cut_axis_value']=self.parent.processed_data[1][0,data_index]
@@ -616,6 +616,9 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.parent.linecuts[self.orientation]['lines'][linecut]['cut_axis_value']=self.parent.processed_data[0][data_index,0]
                 self.cuts_table.item(row,2).setText(f'{self.parent.processed_data[0][data_index,0]:6g}')
             self.parent.linecuts[self.orientation]['lines'][linecut]['data_index'] = data_index
+            x,y,z=self.get_line_data(linecut)
+            self.line_dict[linecut]['line'].set_data(x,y)
+            self.canvas.draw()
         except Exception as e:
             print(e)
         self.cuts_table.setCurrentItem(self.cuts_table.item(row,0)) # Hopefully fixes a bug that if the index is changed, the focus goes weird.
@@ -1214,7 +1217,7 @@ class LineCutWindow(QtWidgets.QWidget):
                                                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
                 #self.ylabel = self.parent.settings['clabel']
                 offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
-                self.axes.plot(x, y+offset, linewidth=1.5,
+                self.line_dict[line]=self.axes.plot(x, y+offset, linewidth=1.5,
                                 color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
 
         elif self.orientation == 'vertical':
@@ -1234,7 +1237,7 @@ class LineCutWindow(QtWidgets.QWidget):
                                                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
                 #self.ylabel = self.parent.settings['clabel']
                 offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
-                self.axes.plot(x, y+offset, linewidth=1.5,
+                self.line_dict[line]=self.axes.plot(x, y+offset, linewidth=1.5,
                                 color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
 
         elif self.orientation == 'diagonal' or self.orientation == 'circular':
@@ -1253,7 +1256,7 @@ class LineCutWindow(QtWidgets.QWidget):
                         self.xlabel = 'Angle (rad)'
 
                     offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
-                    self.axes.plot(x, y+offset, linewidth=1.5,
+                    self.line_dict[line]=self.axes.plot(x, y+offset, linewidth=1.5,
                                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
                 except Exception as e:
                     print(e)

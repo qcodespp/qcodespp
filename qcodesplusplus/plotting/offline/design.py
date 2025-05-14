@@ -807,7 +807,7 @@ class Ui_MainWindow(object):
         self.track_button.setText(_translate("MainWindow", "Track data"))
         self.refresh_label.setText(_translate("MainWindow", "Refresh interval:"))
         self.refreshunit_label.setText(_translate("MainWindow", "sec"))
-        self.metadata_button.setText(_translate("MainWindow", "Show Metadata"))
+        self.metadata_button.setText(_translate("MainWindow", "View Metadata"))
         self.data_shape_label.setText(_translate("MainWindow", "Data shape:"))
         self.new_plot_X_label.setText(_translate("MainWindow", "X:"))
         self.new_plot_Y_label.setText(_translate("MainWindow", "Y:"))
