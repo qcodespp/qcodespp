@@ -102,7 +102,7 @@ class Sidebar1D(QtWidgets.QWidget):
 
         self.trace_table.itemClicked.connect(self.item_clicked)
 
-        self.clear_fit_button.clicked.connect(self.clear_fit)
+        self.clear_fit_button.clicked.connect(lambda: self.clear_fit(row='manual'))
         self.fit_class_box.currentIndexChanged.connect(self.fit_class_changed)
         self.fit_box.currentIndexChanged.connect(self.fit_type_changed)
         self.fit_button.clicked.connect(lambda: self.start_fitting(line='manual'))
@@ -251,6 +251,11 @@ class Sidebar1D(QtWidgets.QWidget):
         if 'fit' in self.parent.plotted_lines[line].keys():
             fit_result = self.parent.plotted_lines[line]['fit']['fit_result']
             self.output_window.setText(fit_result.fit_report())
+        elif 'stats' in self.parent.plotted_lines[line].keys():
+            text='Statistics:\n'
+            for key in self.parent.plotted_lines[line]['stats'].keys():
+                text+=f'{key}: {self.parent.plotted_lines[line]['stats'][key]}\n'
+            self.output_window.setText(text)
         else:
             fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
             self.output_window.setText('Information about selected fit type:\n'+
@@ -428,8 +433,7 @@ class Sidebar1D(QtWidgets.QWidget):
         if which=='selected':
             try:
                 row = self.trace_table.currentRow()
-                linetrace = self.trace_table.item(row,0).text()
-                linetrace = int(linetrace)
+                linetrace = int(self.trace_table.item(row,0).text())
                 self.parent.plotted_lines.pop(linetrace)
                 self.trace_table.removeRow(row)
             except Exception as e:
@@ -577,7 +581,6 @@ class Sidebar1D(QtWidgets.QWidget):
             elif column==10:
                 self.parent.plotted_lines[linetrace]['fit']['fit_uncertainty_checkstate'] = item.checkState()
 
-    
     def replace_table_entry(self, signal):
         item = self.trace_table.currentItem()
         item.setText(signal.text())
@@ -630,11 +633,6 @@ class Sidebar1D(QtWidgets.QWidget):
                 self.limits_edited()
         
         self.parent.canvas.draw()
-               
-    def clear_lines(self):
-        self.output_window.clear()
-        self.fit_type_changed(resetinputs=False)
-        self.parent.canvas.draw()
     
     def fit_class_changed(self):
         self.fit_box.clear()
@@ -671,12 +669,12 @@ class Sidebar1D(QtWidgets.QWidget):
             xmin = float(self.xmin_box.text())
             min_ind=(np.abs(x - xmin)).argmin()
         else:
-            min_ind = x.argmin()
+            min_ind = 0
         if self.xmax_box.text() != '':
             xmax = float(self.xmax_box.text())
             max_ind=(np.abs(x - xmax)).argmin()
         else:
-            max_ind = x.argmax()
+            max_ind = len(x)-1
         # Need to check if indices in 'wrong' order; i.e. x data descending.
         if min_ind > max_ind:
             x_forfit=x[max_ind:min_ind]
@@ -692,7 +690,7 @@ class Sidebar1D(QtWidgets.QWidget):
         #     self.y_forfit=self.y_forfit[::-1]
 
     def collect_fit_inputs(self,function_class,function_name):
-        if function_name=='Expression':
+        if function_name in ['Expression','Statistics']:
             inputinfo=self.input_edit.text()
         elif 'inputs' in fits.functions[function_class][function_name].keys():
             try:
@@ -736,46 +734,66 @@ class Sidebar1D(QtWidgets.QWidget):
         p0=self.collect_init_guess(function_class,function_name)
 
         # Try to do the fit.
-        try:
-            fit_result = fits.fit_data(function_class=function_class, function_name=function_name,
-                                                xdata=x_forfit,ydata=y_forfit, p0=p0, inputinfo=inputinfo)
-            y_fit = fit_result.best_fit
-        except Exception as e:
-            self.output_window.setText(f'Curve could not be fitted: {e}')
-            fit_parameters = [np.nan]*len(fits.get_names(function_name).split(','))
-            y_fit = np.nan
+        if function_name != 'Statistics':
+            if 'stats' in self.parent.plotted_lines[line].keys():
+                self.parent.plotted_lines[line].pop('stats')
+            try:
+                fit_result = fits.fit_data(function_class=function_class, function_name=function_name,
+                                                    xdata=x_forfit,ydata=y_forfit, p0=p0, inputinfo=inputinfo)
+                y_fit = fit_result.best_fit
 
-        self.parent.plotted_lines[line]['fit'] = {'fit_result': fit_result,
-                                                'xdata': x_forfit,
-                                                'ydata': y_forfit,
-                                                'fitted_y': y_fit,
-                                                'fit_checkstate': QtCore.Qt.Checked,
-                                                'fit_components_checkstate': QtCore.Qt.Unchecked,
-                                                'fit_uncertainty_checkstate': QtCore.Qt.Checked}
+                self.parent.plotted_lines[line]['fit'] = {'fit_result': fit_result,
+                                                        'xdata': x_forfit,
+                                                        'ydata': y_forfit,
+                                                        'fitted_y': y_fit,
+                                                        'fit_checkstate': QtCore.Qt.Checked,
+                                                        'fit_components_checkstate': QtCore.Qt.Unchecked,
+                                                        'fit_uncertainty_checkstate': QtCore.Qt.Checked}
 
-        # Add a checkbox to the table now a fit exists.
-        self.trace_table.itemChanged.disconnect(self.trace_table_edited)
-        plot_fit_item = QtWidgets.QTableWidgetItem('')
-        plot_fit_item.setFlags(QtCore.Qt.ItemIsSelectable | 
-                            QtCore.Qt.ItemIsEnabled | 
-                            QtCore.Qt.ItemIsUserCheckable)
-        plot_fit_item.setCheckState(QtCore.Qt.Checked)
-        self.trace_table.setItem(current_row,8,plot_fit_item)
+                # Add a checkbox to the table now a fit exists.
+                self.trace_table.itemChanged.disconnect(self.trace_table_edited)
+                plot_fit_item = QtWidgets.QTableWidgetItem('')
+                plot_fit_item.setFlags(QtCore.Qt.ItemIsSelectable | 
+                                    QtCore.Qt.ItemIsEnabled | 
+                                    QtCore.Qt.ItemIsUserCheckable)
+                plot_fit_item.setCheckState(QtCore.Qt.Checked)
+                self.trace_table.setItem(current_row,8,plot_fit_item)
 
-        plot_components_item = QtWidgets.QTableWidgetItem('')
-        plot_components_item.setFlags(QtCore.Qt.ItemIsSelectable |
-                            QtCore.Qt.ItemIsEnabled | 
-                            QtCore.Qt.ItemIsUserCheckable)
-        plot_components_item.setCheckState(QtCore.Qt.Unchecked)
-        self.trace_table.setItem(current_row,9,plot_components_item)
+                plot_components_item = QtWidgets.QTableWidgetItem('')
+                plot_components_item.setFlags(QtCore.Qt.ItemIsSelectable |
+                                    QtCore.Qt.ItemIsEnabled | 
+                                    QtCore.Qt.ItemIsUserCheckable)
+                plot_components_item.setCheckState(QtCore.Qt.Unchecked)
+                self.trace_table.setItem(current_row,9,plot_components_item)
 
-        plot_uncertainty_item = QtWidgets.QTableWidgetItem('')
-        plot_uncertainty_item.setFlags(QtCore.Qt.ItemIsSelectable |
-                            QtCore.Qt.ItemIsEnabled | 
-                            QtCore.Qt.ItemIsUserCheckable)
-        plot_uncertainty_item.setCheckState(QtCore.Qt.Checked)
-        self.trace_table.setItem(current_row,10,plot_uncertainty_item)
-        self.trace_table.itemChanged.connect(self.trace_table_edited)
+                plot_uncertainty_item = QtWidgets.QTableWidgetItem('')
+                plot_uncertainty_item.setFlags(QtCore.Qt.ItemIsSelectable |
+                                    QtCore.Qt.ItemIsEnabled | 
+                                    QtCore.Qt.ItemIsUserCheckable)
+                plot_uncertainty_item.setCheckState(QtCore.Qt.Checked)
+                self.trace_table.setItem(current_row,10,plot_uncertainty_item)
+                self.trace_table.itemChanged.connect(self.trace_table_edited)
+
+            except Exception as e:
+                self.output_window.setText(f'Curve could not be fitted: {e}')
+        
+        else:
+            if 'fit' in self.parent.plotted_lines[line].keys():
+                self.clear_fit(line)
+            self.parent.plotted_lines[line]['stats'] = fits.fit_data(function_class=function_class, 
+                                                                                           function_name=function_name,
+                                                    xdata=x_forfit,ydata=y_forfit, p0=p0, inputinfo=inputinfo)
+            if 'autocorrelation' in self.parent.plotted_lines[line]['stats'].keys():
+                self.parent.add_array_to_data_dict(self.parent.plotted_lines[line]['stats']['xdata'],'x_for_autocorr')
+                self.parent.add_array_to_data_dict(self.parent.plotted_lines[line]['stats']['autocorrelation'],'autocorrelation')
+            if 'autocorrelation_norm' in self.parent.plotted_lines[line]['stats'].keys():
+                self.parent.add_array_to_data_dict(self.parent.plotted_lines[line]['stats']['xdata'],'x_for_autocorr')
+                self.parent.add_array_to_data_dict(self.parent.plotted_lines[line]['stats']['autocorrelation_norm'],'autocorrelation_norm')
+            if 'percentile' in self.parent.plotted_lines[line]['stats'].keys():
+                self.parent.add_array_to_data_dict(self.parent.plotted_lines[line]['stats']['percentile'],'percentile')
+                self.parent.add_array_to_data_dict(self.parent.plotted_lines[line]['stats']['percentiles'],'percentiles')
+
+            #self.parent.prepare_data_for_plot(reload_data=True,reload_from_file=False,linefrompopup=line)
         
         if not multilinefit:
             self.print_parameters(line)
@@ -791,11 +809,17 @@ class Sidebar1D(QtWidgets.QWidget):
     
     def print_parameters(self,line):
         self.output_window.clear()
-        try:
-            self.output_window.setText(self.parent.plotted_lines[line]['fit']['fit_result'].fit_report())
+        if 'stats' in self.parent.plotted_lines[line].keys():
+            text='Statistics:\n'
+            for key in self.parent.plotted_lines[line]['stats'].keys():
+                text+=f'{key}: {self.parent.plotted_lines[line]['stats'][key]}\n'
+            self.output_window.setText(text)
+        else:
+            try:
+                self.output_window.setText(self.parent.plotted_lines[line]['fit']['fit_result'].fit_report())
 
-        except Exception as e:
-            self.output_window.setText('Could not print fit parameters:', e)
+            except Exception as e:
+                self.output_window.setText('Could not print fit parameters:', e)
 
     def get_line_data(self,line):
         # Returns the processed x,y data for a particular entry in the plotted lines dictionary
@@ -918,6 +942,8 @@ class Sidebar1D(QtWidgets.QWidget):
     def save_fit_result(self):
         current_row = self.trace_table.currentRow()
         line = int(self.trace_table.item(current_row,0).text())
+
+        # Fits get saved in the lmfit format.
         if 'fit' in self.parent.plotted_lines[line].keys():
             fit_result = self.parent.plotted_lines[line]['fit']['fit_result']
             formats = 'lmfit Model Result (*.sav)'
@@ -925,9 +951,29 @@ class Sidebar1D(QtWidgets.QWidget):
                 self, 'Save Fit Result','', formats)
             save_modelresult(fit_result,filename)
 
+        #Stats can simply be saved in a json
+        elif 'stats' in self.parent.plotted_lines[line].keys():
+            formats = 'JSON (*.json)'
+            filename, extension = QtWidgets.QFileDialog.getSaveFileName(
+                self, 'Save Statistics','', formats)
+            export_dict={'data_name':self.parent.label,
+                         'X_param':self.parent.plotted_lines[line]['X data'],
+                         'Y_param':self.parent.plotted_lines[line]['Y data']}
+            for key in self.parent.plotted_lines[line]['stats'].keys():
+                if isinstance(self.parent.plotted_lines[line]['stats'][key],np.ndarray):
+                    export_dict[key] = self.parent.plotted_lines[line]['stats'][key].tolist()
+                else:
+                    export_dict[key] = self.parent.plotted_lines[line]['stats'][key]
+            try:
+                with open(filename, 'w', encoding='utf-8') as f:
+                    jsondump(export_dict, f, ensure_ascii=False,indent=4)
+            except Exception as e:
+                print('Could not save statistics:', e)
+
     def save_all_fits(self):
-        fit_lines = self.get_checked_items(traces_or_fits='fits')
-        if len(fit_lines) > 0:
+        # Can save _either_ fits or stats, and decide which to do based on whether the current line has a fit or stats.
+        if 'fit' in self.parent.plotted_lines[line].keys():
+            fit_lines = self.get_checked_items(traces_or_fits='fits')
             formats = 'lmfit Model Result (*.sav)'
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Fit Result: Select base name','', formats)
@@ -935,27 +981,71 @@ class Sidebar1D(QtWidgets.QWidget):
                 fit_result = self.parent.plotted_lines[line]['fit']['fit_result']
                 save_modelresult(fit_result,filename.replace('.sav',f'_{line}.sav'))
 
-    def clear_fit(self):
-        current_row = self.trace_table.currentRow()
-        line = int(self.trace_table.item(current_row,0).text())
+        elif 'stats' in self.parent.plotted_lines[line].keys():
+            # All the stats can go into a single json.
+            stat_lines=[]
+            for line in self.parent.plotted_lines.keys():
+                if 'stats' in self.parent.plotted_lines[line].keys():
+                    stat_lines.append(line)
+            formats = 'JSON (*.json)'
+            filename, extension = QtWidgets.QFileDialog.getSaveFileName(
+                self, 'Save Statistics','', formats)
+            export_dict={'data_name':self.parent.label,
+                         'linetrace_stats':{}}
+            for line in stat_lines:
+                export_dict['linetrace_stats'][line]={}
+                export_dict['linetrace_stats'][line]['X_param']=self.parent.plotted_lines[line]['X data']
+                export_dict['linetrace_stats'][line]['Y_param']=self.parent.plotted_lines[line]['Y data']
+                for key in self.parent.plotted_lines[line]['stats'].keys():
+                    if isinstance(self.parent.plotted_lines[line]['stats'][key],np.ndarray):
+                        export_dict['linetrace_stats'][line][key] = self.parent.plotted_lines[line]['stats'][key].tolist()
+                    else:
+                        export_dict['linetrace_stats'][line][key] = self.parent.plotted_lines[line]['stats'][key]
+            try:
+                with open(filename, 'w', encoding='utf-8') as f:
+                    jsondump(export_dict, f, ensure_ascii=False,indent=4)
+            except Exception as e:
+                print('Could not save statistics:', e)
+        else:
+            print('First select a linecut with either a fit or statistics. '
+                  'Either the fits or stats for all lines will be saved, based on that.')
+
+
+    def clear_fit(self,row='manual'):
+        self.trace_table.itemChanged.disconnect(self.trace_table_edited)
+        if row=='manual':
+            manual=True
+            row = self.trace_table.currentRow()
+        else:
+            manual=False
+        line = int(self.trace_table.item(row,0).text())
+
         if 'fit' in self.parent.plotted_lines[line].keys():
             self.parent.plotted_lines[line].pop('fit')
-            self.trace_table.setItem(current_row,8,QtWidgets.QTableWidgetItem(''))
-            self.trace_table.setItem(current_row,9,QtWidgets.QTableWidgetItem(''))
-            self.trace_table.setItem(current_row,10,QtWidgets.QTableWidgetItem(''))
-            fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
-            self.output_window.setText('Information about selected fit type:\n'+
-                                   fit_function['description'])
-            self.editor_window.update_plots(update_data=False)
-
-    def clear_all_fits(self):
-        fit_lines = self.get_checked_items(traces_or_fits='fits')
-        for line in fit_lines:
-            self.parent.plotted_lines[line].pop('fit')
-        for row in range(self.trace_table.rowCount()):
             self.trace_table.setItem(row,8,QtWidgets.QTableWidgetItem(''))
             self.trace_table.setItem(row,9,QtWidgets.QTableWidgetItem(''))
             self.trace_table.setItem(row,10,QtWidgets.QTableWidgetItem(''))
+            if manual:
+                self.editor_window.update_plots(update_data=False)
+
+        # should never be both, but use 'if' just in case
+        if 'stats' in self.parent.plotted_lines[line].keys():
+            self.parent.plotted_lines[line].pop('stats')
+
+        if manual:
+            fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
+            self.output_window.setText('Information about selected fit type:\n'+
+                                   fit_function['description'])
+            
+        self.trace_table.itemChanged.connect(self.trace_table_edited)
+
+    def clear_all_fits(self):
+        try:
+            for row in range(self.trace_table.rowCount()):
+                self.clear_fit(row=row)
+        except Exception as e:
+            print('Could not clear all fits:', e)
+
         fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
         self.output_window.setText('Information about selected fit type:\n'+fit_function['description'])
         self.editor_window.update_plots(update_data=False)

@@ -48,7 +48,6 @@ class LineCutWindow(QtWidgets.QWidget):
         self.set_main_layout()
         self.init_cuts_table()
         self.fit_type_changed()
-        self.line_dict={}
         
     def init_widgets(self):
         # Widgets in Linecut list box
@@ -616,8 +615,6 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.parent.linecuts[self.orientation]['lines'][linecut]['cut_axis_value']=self.parent.processed_data[0][data_index,0]
                 self.cuts_table.item(row,2).setText(f'{self.parent.processed_data[0][data_index,0]:6g}')
             self.parent.linecuts[self.orientation]['lines'][linecut]['data_index'] = data_index
-            x,y,z=self.get_line_data(linecut)
-            self.line_dict[linecut]['line'].set_data(x,y)
             self.canvas.draw()
         except Exception as e:
             print(e)
@@ -989,12 +986,12 @@ class LineCutWindow(QtWidgets.QWidget):
                 xmin = float(self.xmin_box.text())
                 min_ind=(np.abs(x - xmin)).argmin()
             else:
-                min_ind = x.argmin()
+                min_ind = 0
             if self.xmax_box.text() != '':
                 xmax = float(self.xmax_box.text())
                 max_ind=(np.abs(x - xmax)).argmin()
             else:
-                max_ind = x.argmax()
+                max_ind = len(x)-1
             # Need to check if indices in 'wrong' order; i.e. x data descending.
             if min_ind > max_ind:
                 x_forfit=x[max_ind:min_ind]
@@ -1063,44 +1060,43 @@ class LineCutWindow(QtWidgets.QWidget):
                 fit_result = fits.fit_data(function_class=function_class, function_name=function_name,
                                                     xdata=x_forfit,ydata=y_forfit, p0=p0, inputinfo=inputinfo)
                 y_fit = fit_result.best_fit
+
+                self.parent.linecuts[self.orientation]['lines'][line]['fit'] = {'fit_result': fit_result,
+                                                                                'xdata': x_forfit,
+                                                                                'ydata': y_forfit,
+                                                                                'fitted_y': y_fit,
+                                                                                'fit_checkstate': QtCore.Qt.Checked,
+                                                                                'fit_components_checkstate': QtCore.Qt.Unchecked,
+                                                                                'fit_uncertainty_checkstate': QtCore.Qt.Checked}
+
+                # Add a checkbox to the table now a fit exists.
+                self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
+
+                plot_fit_item = QtWidgets.QTableWidgetItem('')
+                plot_fit_item.setFlags(QtCore.Qt.ItemIsSelectable | 
+                                    QtCore.Qt.ItemIsEnabled | 
+                                    QtCore.Qt.ItemIsUserCheckable)
+                plot_fit_item.setCheckState(QtCore.Qt.Checked)
+                self.cuts_table.setItem(current_row,5,plot_fit_item)
+
+                fit_components_item = QtWidgets.QTableWidgetItem('')
+                fit_components_item.setFlags(QtCore.Qt.ItemIsSelectable | 
+                                            QtCore.Qt.ItemIsEnabled | 
+                                            QtCore.Qt.ItemIsUserCheckable)
+                fit_components_item.setCheckState(QtCore.Qt.Unchecked)
+                self.cuts_table.setItem(current_row,6,fit_components_item)
+
+                fit_uncertainty_item = QtWidgets.QTableWidgetItem('')
+                fit_uncertainty_item.setFlags(QtCore.Qt.ItemIsSelectable |
+                                            QtCore.Qt.ItemIsEnabled | 
+                                            QtCore.Qt.ItemIsUserCheckable)
+                fit_uncertainty_item.setCheckState(QtCore.Qt.Checked)
+                self.cuts_table.setItem(current_row,7,fit_uncertainty_item)
+
+                self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+
             except Exception as e:
                 self.output_window.setText(f'Curve could not be fitted: {e}')
-                fit_parameters = [np.nan]*len(fits.get_names(function_name).split(','))
-                y_fit = np.nan
-
-            self.parent.linecuts[self.orientation]['lines'][line]['fit'] = {'fit_result': fit_result,
-                                                                            'xdata': x_forfit,
-                                                                            'ydata': y_forfit,
-                                                                            'fitted_y': y_fit,
-                                                                            'fit_checkstate': QtCore.Qt.Checked,
-                                                                            'fit_components_checkstate': QtCore.Qt.Unchecked,
-                                                                            'fit_uncertainty_checkstate': QtCore.Qt.Checked}
-
-            # Add a checkbox to the table now a fit exists.
-            self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
-
-            plot_fit_item = QtWidgets.QTableWidgetItem('')
-            plot_fit_item.setFlags(QtCore.Qt.ItemIsSelectable | 
-                                QtCore.Qt.ItemIsEnabled | 
-                                QtCore.Qt.ItemIsUserCheckable)
-            plot_fit_item.setCheckState(QtCore.Qt.Checked)
-            self.cuts_table.setItem(current_row,5,plot_fit_item)
-
-            fit_components_item = QtWidgets.QTableWidgetItem('')
-            fit_components_item.setFlags(QtCore.Qt.ItemIsSelectable | 
-                                        QtCore.Qt.ItemIsEnabled | 
-                                        QtCore.Qt.ItemIsUserCheckable)
-            fit_components_item.setCheckState(QtCore.Qt.Unchecked)
-            self.cuts_table.setItem(current_row,6,fit_components_item)
-
-            fit_uncertainty_item = QtWidgets.QTableWidgetItem('')
-            fit_uncertainty_item.setFlags(QtCore.Qt.ItemIsSelectable |
-                                        QtCore.Qt.ItemIsEnabled | 
-                                        QtCore.Qt.ItemIsUserCheckable)
-            fit_uncertainty_item.setCheckState(QtCore.Qt.Checked)
-            self.cuts_table.setItem(current_row,7,fit_uncertainty_item)
-
-            self.cuts_table.itemChanged.connect(self.cuts_table_edited)
         
         else:
             if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
@@ -1217,7 +1213,7 @@ class LineCutWindow(QtWidgets.QWidget):
                                                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
                 #self.ylabel = self.parent.settings['clabel']
                 offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
-                self.line_dict[line]=self.axes.plot(x, y+offset, linewidth=1.5,
+                self.axes.plot(x, y+offset, linewidth=1.5,
                                 color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
 
         elif self.orientation == 'vertical':
@@ -1237,7 +1233,7 @@ class LineCutWindow(QtWidgets.QWidget):
                                                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
                 #self.ylabel = self.parent.settings['clabel']
                 offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
-                self.line_dict[line]=self.axes.plot(x, y+offset, linewidth=1.5,
+                self.axes.plot(x, y+offset, linewidth=1.5,
                                 color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
 
         elif self.orientation == 'diagonal' or self.orientation == 'circular':
@@ -1256,7 +1252,7 @@ class LineCutWindow(QtWidgets.QWidget):
                         self.xlabel = 'Angle (rad)'
 
                     offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
-                    self.line_dict[line]=self.axes.plot(x, y+offset, linewidth=1.5,
+                    self.axes.plot(x, y+offset, linewidth=1.5,
                                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
                 except Exception as e:
                     print(e)
@@ -1390,7 +1386,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 print('Could not save statistics:', e)
 
     def save_all_fits(self):
-        # Can save _either_ fits or keys, and decide which to do based on whether the current line has a fit or stats.
+        # Can save _either_ fits or stats, and decide which to do based on whether the current line has a fit or stats.
         current_line = int(self.cuts_table.item(self.cuts_table.currentRow(),0).text())
         if 'fit' in self.parent.linecuts[self.orientation]['lines'][current_line].keys():
             fit_lines = self.get_checked_items(cuts_or_fits='fits')
@@ -1432,17 +1428,18 @@ class LineCutWindow(QtWidgets.QWidget):
                 print('Could not save statistics:', e)
         
         else:
-            print('First select a linecut with either a fit or statistics. Either the fits or stats for all lines will be saved, based on that.')
+            print('First select a linecut with either a fit or statistics. '
+                  'Either the fits or stats for all lines will be saved, based on that.')
 
     def clear_fit(self,row='manual'):
         self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
         if row=='manual':
             manual=True
             row = self.cuts_table.currentRow()
-            line = int(self.cuts_table.item(row,0).text())
         else:
             manual=False
-            line = int(self.cuts_table.item(row,0).text())
+        line = int(self.cuts_table.item(row,0).text())
+        
         if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
             self.parent.linecuts[self.orientation]['lines'][line].pop('fit')
             self.cuts_table.setItem(row,5,QtWidgets.QTableWidgetItem(''))
@@ -1459,6 +1456,7 @@ class LineCutWindow(QtWidgets.QWidget):
             fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
             self.output_window.setText('Information about selected fit type:\n'+
                                    fit_function['description'])
+            
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
 
     def clear_all_fits(self):

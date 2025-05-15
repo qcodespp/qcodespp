@@ -142,6 +142,22 @@ class BaseClassData:
         self.filter_menu_options = {'Multiply': allnames,
                                     'Divide': allnames,
                                     'Add/Subtract': allnames}
+        
+
+    def add_array_to_data_dict(self, array, name):
+        if name in self.data_dict.keys():
+            print(f"Array with name '{name}' already exists in data_dict. Overwriting.")
+        else:
+            self.data_dict[name] = array
+            self.all_parameter_names.append(name)
+            self.settings_menu_options['X data'].append(name)
+            self.settings_menu_options['Y data'].append(name)
+            self.settings_menu_options['Z data'].append(name)
+            negparamnames=[f'-{name}' for name in self.all_parameter_names]
+            allnames=np.hstack((self.all_parameter_names,negparamnames))
+            self.filter_menu_options['Multiply']=allnames
+            self.filter_menu_options['Divide']=allnames
+            self.filter_menu_options['Add/Subtract']=allnames
 
     def get_column_data(self,line=None):
         if line is not None:
