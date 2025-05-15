@@ -422,10 +422,13 @@ class Sidebar1D(QtWidgets.QWidget):
 
         # If the X or Y data is changed, we need to update the processed data.
         if current_col in [1,2,6,7]:
-            self.parent.prepare_data_for_plot(reload_data=True,reload_from_file=False,linefrompopup=line)
-            self.parent.plotted_lines[line]['processed_data'] = [self.parent.processed_data[0],
-                                                                self.parent.processed_data[1]]
-            self.editor_window.show_current_plot_settings()
+            try:
+                self.parent.prepare_data_for_plot(reload_data=True,reload_from_file=False,linefrompopup=line)
+                self.parent.plotted_lines[line]['processed_data'] = [self.parent.processed_data[0],
+                                                                    self.parent.processed_data[1]]
+                self.editor_window.show_current_plot_settings()
+            except Exception as e:
+                print('Error changing plotted data: '+str(e))
         self.editor_window.update_plots(update_data=False)
 
     def remove_trace(self,which='selected'):

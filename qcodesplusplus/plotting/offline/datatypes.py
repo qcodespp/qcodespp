@@ -83,6 +83,9 @@ class BaseClassData:
                 self.creation_time = None
 
     def prepare_dataset(self):
+        # Loads the data from file and prepares a data_dict, where the arrays are stored identified by 
+        # either their header column names, or by their column number if no header is present.
+        # These names are then sent to various parts of the GUI.
         try:
             self.loaded_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'])
         except ValueError: # Can occur if python doesn't recognise a header
@@ -149,15 +152,16 @@ class BaseClassData:
             print(f"Array with name '{name}' already exists in data_dict. Overwriting.")
         else:
             self.data_dict[name] = array
-            self.all_parameter_names.append(name)
-            self.settings_menu_options['X data'].append(name)
-            self.settings_menu_options['Y data'].append(name)
-            self.settings_menu_options['Z data'].append(name)
+            self.all_parameter_names=list(self.data_dict.keys())
+            self.settings_menu_options['X data']=self.all_parameter_names
+            self.settings_menu_options['Y data']=self.all_parameter_names
+            self.settings_menu_options['Z data']=self.all_parameter_names
             negparamnames=[f'-{name}' for name in self.all_parameter_names]
             allnames=np.hstack((self.all_parameter_names,negparamnames))
             self.filter_menu_options['Multiply']=allnames
             self.filter_menu_options['Divide']=allnames
             self.filter_menu_options['Add/Subtract']=allnames
+        #self.prepare_data_for_plot(reload_from_file=False)
 
     def get_column_data(self,line=None):
         if line is not None:
@@ -177,7 +181,7 @@ class BaseClassData:
     def get_columns(self):
         return [int(col) for col in self.settings['columns'].split(',')]
     
-    def load_and_reshape_data(self,reload=False,reload_from_file=False,linefrompopup=None):
+    def load_and_reshape_data(self,reload_data=False,reload_from_file=False,linefrompopup=None):
         if reload_from_file or self.loaded_data is None:
             self.prepare_dataset()
         column_data = self.get_column_data(linefrompopup)
