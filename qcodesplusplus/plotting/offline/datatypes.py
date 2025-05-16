@@ -401,18 +401,6 @@ class BaseClassData:
         self.hax.get_xaxis().set_visible(False)
         self.hax.get_yaxis().set_visible(False)
 
-    # def on_pick(self, event):
-    #     if event.artist == self.haxfill:
-    #         ydata = event.mouseevent.ydata
-    #         y=event.mouseevent.y
-    #         print('fill',ydata,y,event.artist.get_window_extent())
-    #     if event.artist == self.hax:
-    #         ydata = event.mouseevent.ydata
-    #         y=event.mouseevent.y
-    #         print('axes',ydata,y,event.mouseevent.button)
-    #         if hasattr(event.mouseevent,'step'):
-    #             print('step',event.mouseevent.step)
-
     def add_plot(self, editor_window=None, apply_default_labels=True):
         if self.processed_data:
             cmap_str = self.view_settings['Colormap']
@@ -579,7 +567,8 @@ class BaseClassData:
                 #                                     color='blue', alpha=0.2)
                 self.haxfill.set_data(np.linspace(self.view_settings['Minimum'], self.view_settings['Maximum'], 100),
                                       self.hax.get_xlim()[0], 0)
-                self.hax.set_ylim([np.min([self.view_settings['Minimum'],np.min(self.cbar_hist_bins)]),
+                if self.view_settings['Minimum']<self.hax.get_ylim()[0] or self.view_settings['Maximum']>self.hax.get_ylim()[1]:
+                    self.hax.set_ylim([np.min([self.view_settings['Minimum'],np.min(self.cbar_hist_bins)]),
                                 np.max([self.view_settings['Maximum'],np.max(self.cbar_hist_bins)])])
                 
 

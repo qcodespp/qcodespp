@@ -2327,14 +2327,30 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 elif which == 'haxfill':
                     data.view_settings['Minimum']= map_min+dy
                     data.view_settings['Maximum']= map_max+dy
-                data.haxfill.set_data(np.linspace(data.view_settings['Minimum'], data.view_settings['Maximum'], 100), 
-                                        data.hax.get_xlim()[0],0)
+                if hasattr(self,'hax_marker'):
+                    self.hax_marker.set_ydata([pixels_to_hax((0,event.y))[1],pixels_to_hax((0,event.y))[1]])
+                # data.haxfill.set_data(np.linspace(data.view_settings['Minimum'], data.view_settings['Maximum'], 100), 
+                #                         data.hax.get_xlim()[0],0)
                 data.reset_midpoint()
                 data.apply_view_settings()
                 self.canvas.draw()
-    
+            
+            elif self.press[0] == 'outside':
+                data=self.press[2]
+                pixels_to_hax = data.hax.transData.inverted().transform
+                ypress= self.press[1]
+                dx,dy = pixels_to_hax((0,event.y)) - ypress
+                self.press=['outside',pixels_to_hax((0,event.y)),data]
+                axmin=data.hax.get_ylim()[0]
+                axmax=data.hax.get_ylim()[1]
+                data.hax.set_ylim(axmin-dy,axmax-dy)
+                self.canvas.draw()
+
     def on_release(self, event):
         self.press = None
+        if hasattr(self,'hax_marker'):
+            self.hax_marker.remove()
+            del self.hax_marker
         self.canvas.draw()
 
     def on_pick(self,event):
@@ -2347,8 +2363,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             box=data.haxfill
             box_min=box.get_window_extent().get_points()[0][1]
             box_max=box.get_window_extent().get_points()[1][1]
-            min_window=[box_min-(box_max-box_min)/100,box_min+(box_max-box_min)/100]
-            max_window=[box_max-(box_max-box_min)/100,box_max+(box_max-box_min)/100]
+            min_window=[box_min-(box_max-box_min)/50,box_min+(box_max-box_min)/50]
+            max_window=[box_max-(box_max-box_min)/50,box_max+(box_max-box_min)/50]
             x, y = event.mouseevent.x, event.mouseevent.y
             pixels_to_hax = data.hax.transData.inverted().transform
             if self.file_list.currentItem() != hist_in_focus[0]:
@@ -2367,11 +2383,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 data.hax.figure.canvas.draw()
             
             elif event.mouseevent.button == 1 and max_window[0]<y<max_window[1]: # Adjust upper limit of the haxfill box.
+                self.hax_marker=data.hax.axhline(y=pixels_to_hax((x, y))[1], color='red', lw=1)
                 self.press = ['haxfill_top', pixels_to_hax((x, y))[1], data]
             elif event.mouseevent.button == 1 and min_window[0]<y<min_window[1]:
+                self.hax_marker=data.hax.axhline(y=pixels_to_hax((x, y))[1], color='red', lw=1)
                 self.press = ['haxfill_bottom', pixels_to_hax((x, y))[1], data]
             elif event.mouseevent.button == 1 and min_window[1]<y<max_window[0]:
                 self.press = ['haxfill', pixels_to_hax((x, y))[1], data]
+            else:
+                self.press = ['outside', pixels_to_hax((x, y))[1], data]
     
     def popup_canvas(self, signal):
         # Actions for right-click menu on the plot(s)
