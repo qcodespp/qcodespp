@@ -388,7 +388,7 @@ class BaseClassData:
                         'filters': []}}
         
     def add_cbar_hist(self):
-        self.hax=self.cbar.ax.inset_axes([-1.05, 0, 1, 1])
+        self.hax=self.cbar.ax.inset_axes([-1.05, 0, 1, 1],picker=True)
         counts, self.cbar_hist_bins = np.histogram(self.processed_data[-1],bins=int(self.settings['cmap levels']))
         midpoints = self.cbar_hist_bins[:-1] + np.diff(self.cbar_hist_bins)/2
         self.hax.fill_between(-counts, midpoints,0,color='mediumslateblue')
@@ -400,6 +400,18 @@ class BaseClassData:
         self.hax.spines[:].set_linewidth(0.5)
         self.hax.get_xaxis().set_visible(False)
         self.hax.get_yaxis().set_visible(False)
+
+    # def on_pick(self, event):
+    #     if event.artist == self.haxfill:
+    #         ydata = event.mouseevent.ydata
+    #         y=event.mouseevent.y
+    #         print('fill',ydata,y,event.artist.get_window_extent())
+    #     if event.artist == self.hax:
+    #         ydata = event.mouseevent.ydata
+    #         y=event.mouseevent.y
+    #         print('axes',ydata,y,event.mouseevent.button)
+    #         if hasattr(event.mouseevent,'step'):
+    #             print('step',event.mouseevent.step)
 
     def add_plot(self, editor_window=None, apply_default_labels=True):
         if self.processed_data:

@@ -370,6 +370,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.canvas.mpl_connect('scroll_event', self.mouse_scroll_canvas)
         self.canvas.mpl_connect('button_release_event', self.on_release)
         self.canvas.mpl_connect('motion_notify_event', self.on_motion)
+        self.canvas.mpl_connect('pick_event', self.on_pick)
         self.navi_toolbar = NavigationToolbarMod(self.canvas, self)
         self.graph_layout.addWidget(self.navi_toolbar)
         self.graph_layout.addWidget(self.canvas)
@@ -2295,7 +2296,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def on_motion(self, event):
         if hasattr(self,'press') and self.press != None:
-            if self.cbar_in_focus:
+            if hasattr(self,'cbar_in_focus') and self.cbar_in_focus:
                 try:
                     ypress = self.press
                     dy = event.ydata - ypress
@@ -2309,10 +2310,68 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.canvas.draw()
                 except: # sometimes can happen if the focus between plots changes weirdly. Not worth getting worried about, so no use filling up errors
                     pass
+            
+            elif self.press[0] in ['haxfill_top','haxfill_bottom','haxfill']:
+                which=self.press[0]
+                data=self.press[2]
+                pixels_to_hax = data.hax.transData.inverted().transform
+                ypress= self.press[1]
+                dx,dy = pixels_to_hax((0,event.y)) - ypress
+                self.press=[which,pixels_to_hax((0,event.y)),data]
+                map_max=data.view_settings['Maximum']
+                map_min=data.view_settings['Minimum']
+                if which == 'haxfill_top':
+                    data.view_settings['Maximum']= map_max+dy
+                elif which == 'haxfill_bottom':
+                    data.view_settings['Minimum']= map_min+dy
+                elif which == 'haxfill':
+                    data.view_settings['Minimum']= map_min+dy
+                    data.view_settings['Maximum']= map_max+dy
+                data.haxfill.set_data(np.linspace(data.view_settings['Minimum'], data.view_settings['Maximum'], 100), 
+                                        data.hax.get_xlim()[0],0)
+                data.reset_midpoint()
+                data.apply_view_settings()
+                self.canvas.draw()
     
     def on_release(self, event):
         self.press = None
         self.canvas.draw()
+
+    def on_pick(self,event):
+        # Use this exclusively for the cbar's histogram, since it's not possible to access it in any other way.
+        hist_in_focus = [checked_item for checked_item in self.get_checked_items() if
+                        hasattr(checked_item.data, 'hax') and
+                        checked_item.data.hax == event.artist]
+        if hist_in_focus:
+            data=hist_in_focus[0].data
+            box=data.haxfill
+            box_min=box.get_window_extent().get_points()[0][1]
+            box_max=box.get_window_extent().get_points()[1][1]
+            min_window=[box_min-(box_max-box_min)/100,box_min+(box_max-box_min)/100]
+            max_window=[box_max-(box_max-box_min)/100,box_max+(box_max-box_min)/100]
+            x, y = event.mouseevent.x, event.mouseevent.y
+            pixels_to_hax = data.hax.transData.inverted().transform
+            if self.file_list.currentItem() != hist_in_focus[0]:
+                # If the clicked plot is not the current one, set it as current before doing anything else.
+                self.file_list.setCurrentItem(hist_in_focus[0])
+                self.file_clicked()
+            
+            if event.mouseevent.step != 0: #The user is scrolling.
+                ydata= pixels_to_hax((x, y))[1]
+                scale_factor = np.power(1.1, -event.mouseevent.step)
+                y_top = ydata - data.hax.get_ylim()[0]
+                y_bottom = data.hax.get_ylim()[1] - ydata
+                newylims=[ydata - y_top * scale_factor, ydata + y_bottom * scale_factor]
+
+                data.hax.set_ylim(newylims[0], newylims[1])
+                data.hax.figure.canvas.draw()
+            
+            elif event.mouseevent.button == 1 and max_window[0]<y<max_window[1]: # Adjust upper limit of the haxfill box.
+                self.press = ['haxfill_top', pixels_to_hax((x, y))[1], data]
+            elif event.mouseevent.button == 1 and min_window[0]<y<min_window[1]:
+                self.press = ['haxfill_bottom', pixels_to_hax((x, y))[1], data]
+            elif event.mouseevent.button == 1 and min_window[1]<y<max_window[0]:
+                self.press = ['haxfill', pixels_to_hax((x, y))[1], data]
     
     def popup_canvas(self, signal):
         # Actions for right-click menu on the plot(s)
