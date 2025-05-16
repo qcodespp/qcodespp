@@ -150,9 +150,12 @@ class DraggablePoint:
         #         self.circle.set_animated(True)
         #     else:
         #         self.parent.linecut_points[2].circle.set_animated(True)
+        
+        # Draws over the old point. 
         canvas.draw()
         self.background = canvas.copy_from_bbox(self.point.axes.bbox)
         axes.draw_artist(self.point)
+        # below is faster than canvas.draw()
         canvas.blit(axes.bbox)
 
     def on_motion(self, event):

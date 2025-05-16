@@ -561,12 +561,15 @@ class BaseClassData:
 
             # # Update histogram
             if hasattr(self,'hax'):
-                self.haxfill.remove()
-                self.haxfill=self.hax.fill_betweenx(np.linspace(self.view_settings['Minimum'], self.view_settings['Maximum'], 100), 
-                                                    self.hax.get_xlim()[0], 
-                                                    color='blue', alpha=0.2)
+                # self.haxfill.remove()
+                # self.haxfill=self.hax.fill_betweenx(np.linspace(self.view_settings['Minimum'], self.view_settings['Maximum'], 100), 
+                #                                     self.hax.get_xlim()[0], 
+                #                                     color='blue', alpha=0.2)
+                self.haxfill.set_data(np.linspace(self.view_settings['Minimum'], self.view_settings['Maximum'], 100),
+                                      self.hax.get_xlim()[0], 0)
                 self.hax.set_ylim([np.min([self.view_settings['Minimum'],np.min(self.cbar_hist_bins)]),
                                 np.max([self.view_settings['Maximum'],np.max(self.cbar_hist_bins)])])
+                
 
             # Seems like the below does literally nothing. Checked 14/05/2025. Reintroduce if problems in future
             # if self.settings['colorbar'] == 'True' and hasattr(self, 'cbar'):

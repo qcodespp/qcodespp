@@ -961,12 +961,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.remaining_time_label.setText(self.live_track_item.data.remaining_time_string)
             else:
                 self.remaining_time_label.setText('')
-          
+                
     def refresh_files(self):
         checked_items = self.get_checked_items()
         if checked_items:
             for item in checked_items:
-                item.data.prepare_data_for_plot(reload_data=True)
+                item.data.prepare_data_for_plot(reload_data=True, reload_from_file=True)
             self.update_plots()
         if self.linked_folder:
             old_number_of_items = self.file_list.count()
@@ -975,7 +975,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 last_item = self.file_list.item(self.file_list.count()-1)
                 self.file_double_clicked(last_item)
                 self.file_list.setCurrentItem(last_item)
-                self.track_button_clicked()
+                #self.track_button_clicked()
     
     # The below is not working and not implemented, but could be useful to fix and include.
     # def to_next_file(self):
@@ -2526,11 +2526,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     min_map = data.view_settings['Minimum']
                     max_map = data.view_settings['Maximum']
                     range_map = max_map-min_map
-                    if y > min_map+0.5*range_map:    
-                        new_max = max_map + event.step*range_map*0.02
+                    speed= np.abs(y-(min_map+0.5*range_map))*(0.25+0.01)/range_map # Scroll faster further away from the midpoint
+
+                    if y > min_map+0.5*range_map:
+                        new_max = max_map + event.step*range_map*speed
                         data.view_settings['Maximum'] = new_max
                     else:
-                        new_min = min_map + event.step*range_map*0.02
+                        new_min = min_map + event.step*range_map*speed
                         data.view_settings['Minimum'] = new_min
                     data.reset_midpoint()
                     data.apply_view_settings()
