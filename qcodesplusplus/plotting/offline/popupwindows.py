@@ -15,6 +15,9 @@ from matplotlib import colormaps as cm
 import numpy as np
 from lmfit.model import save_modelresult
 
+import matplotlib.style as mplstyle
+mplstyle.use('fast')
+
 try:
     import qdarkstyle # pip install qdarkstyle
     qdarkstyle_imported = True

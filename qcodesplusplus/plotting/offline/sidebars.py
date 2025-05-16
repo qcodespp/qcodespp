@@ -10,6 +10,9 @@ from matplotlib import colormaps as cm
 import numpy as np
 from lmfit.model import save_modelresult
 
+import matplotlib.style as mplstyle
+mplstyle.use('fast')
+
 from .helpers import cmaps
 
 class Sidebar1D(QtWidgets.QWidget):

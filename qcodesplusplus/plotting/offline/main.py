@@ -37,6 +37,9 @@ try:
 except ModuleNotFoundError:
     qdarkstyle_imported = False
 
+import matplotlib.style as mplstyle
+mplstyle.use('fast')
+
 from lmfit.model import save_modelresult, load_modelresult
 
 import qcodesplusplus.plotting.offline.design as design
