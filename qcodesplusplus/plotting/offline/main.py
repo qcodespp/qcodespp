@@ -2328,9 +2328,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     data.view_settings['Minimum']= map_min+dy
                     data.view_settings['Maximum']= map_max+dy
                 if hasattr(self,'hax_marker'):
-                    self.hax_marker.set_ydata([pixels_to_hax((0,event.y))[1],pixels_to_hax((0,event.y))[1]])
-                # data.haxfill.set_data(np.linspace(data.view_settings['Minimum'], data.view_settings['Maximum'], 100), 
-                #                         data.hax.get_xlim()[0],0)
+                    if which=='haxfill_top':
+                        self.hax_marker.set_ydata([data.view_settings['Maximum'],data.view_settings['Maximum']])
+                    elif which=='haxfill_bottom':
+                        self.hax_marker.set_ydata([data.view_settings['Minimum'],data.view_settings['Minimum']])
+
                 data.reset_midpoint()
                 data.apply_view_settings()
                 self.canvas.draw()
@@ -2345,6 +2347,28 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 axmax=data.hax.get_ylim()[1]
                 data.hax.set_ylim(axmin-dy,axmax-dy)
                 self.canvas.draw()
+
+        else:
+            # Mouse is moving around without a press event (i.e. not clicked). Turn it into a move cursor if over a haxfill.
+            histograms = [checked_item for checked_item in self.get_checked_items() if
+                        hasattr(checked_item.data, 'hax')]
+            box_mins = [checked_item.data.haxfill.get_window_extent().get_points()[0][1] for checked_item in histograms]
+            box_maxs = [checked_item.data.haxfill.get_window_extent().get_points()[1][1] for checked_item in histograms]
+            box_xmins = [checked_item.data.haxfill.get_window_extent().get_points()[0][0] for checked_item in histograms]
+            box_xmaxs = [checked_item.data.haxfill.get_window_extent().get_points()[1][0] for checked_item in histograms]
+            min_windows = [[box_min-(box_max-box_min)/50,box_min+(box_max-box_min)/50] for box_min, box_max in zip(box_mins, box_maxs)]
+            max_windows = [[box_max-(box_max-box_min)/50,box_max+(box_max-box_min)/50] for box_min, box_max in zip(box_mins, box_maxs)]
+
+            for i in range(len(min_windows)):
+                if box_xmins[i] < event.x < box_xmaxs[i]:
+                    if min_windows[i][0] < event.y < min_windows[i][1]:
+                        self.canvas.setCursor(QtCore.Qt.SizeVerCursor)
+                        break
+                    elif max_windows[i][0] < event.y < max_windows[i][1]:
+                        self.canvas.setCursor(QtCore.Qt.SizeVerCursor)
+                        break
+                else:
+                    self.canvas.setCursor(QtCore.Qt.ArrowCursor)
 
     def on_release(self, event):
         self.press = None
@@ -2383,10 +2407,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 data.hax.figure.canvas.draw()
             
             elif event.mouseevent.button == 1 and max_window[0]<y<max_window[1]: # Adjust upper limit of the haxfill box.
-                self.hax_marker=data.hax.axhline(y=pixels_to_hax((x, y))[1], color='red', lw=1)
+                self.hax_marker=data.hax.axhline(y=pixels_to_hax((0,box_max))[1], color='red', lw=1)
                 self.press = ['haxfill_top', pixels_to_hax((x, y))[1], data]
             elif event.mouseevent.button == 1 and min_window[0]<y<min_window[1]:
-                self.hax_marker=data.hax.axhline(y=pixels_to_hax((x, y))[1], color='red', lw=1)
+                self.hax_marker=data.hax.axhline(y=pixels_to_hax((0,box_min))[1], color='red', lw=1)
                 self.press = ['haxfill_bottom', pixels_to_hax((x, y))[1], data]
             elif event.mouseevent.button == 1 and min_window[1]<y<max_window[0]:
                 self.press = ['haxfill', pixels_to_hax((x, y))[1], data]
