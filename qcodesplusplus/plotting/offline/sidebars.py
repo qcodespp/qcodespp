@@ -977,6 +977,8 @@ class Sidebar1D(QtWidgets.QWidget):
                 print('Could not save statistics:', e)
 
     def save_all_fits(self):
+        current_row = self.trace_table.currentRow()
+        line = int(self.trace_table.item(current_row,0).text())
         # Can save _either_ fits or stats, and decide which to do based on whether the current line has a fit or stats.
         if 'fit' in self.parent.plotted_lines[line].keys():
             fit_lines = self.get_checked_items(traces_or_fits='fits')
@@ -989,10 +991,12 @@ class Sidebar1D(QtWidgets.QWidget):
 
         elif 'stats' in self.parent.plotted_lines[line].keys():
             # All the stats can go into a single json.
+            print(1)
             stat_lines=[]
             for line in self.parent.plotted_lines.keys():
                 if 'stats' in self.parent.plotted_lines[line].keys():
                     stat_lines.append(line)
+            print(2)
             formats = 'JSON (*.json)'
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Statistics','', formats)
