@@ -1552,7 +1552,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.filters_table.clearFocus()
                 current_item.data.apply_all_filters(filter_box_index=self.mixeddata_filter_box.currentIndex())
                 if current_item.checkState():
-                    self.update_plots()
+                    self.update_plots(update_color_limits=True)
                     self.show_current_filters()
                     self.show_current_view_settings()
                     self.reset_axlim_settings()
@@ -1605,12 +1605,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 filters = copy.deepcopy(self.old_filters)
             self.which_filters(current_item,filters=filters)
 
-            self.show_current_filters()
-            current_item.data.apply_all_filters()
-            self.show_current_view_settings()
+            #self.show_current_filters() Now show_current_all below
+            #current_item.data.apply_all_filters() <<-- seems unnecessary; this will be done at update_plots on next call.
+
             if current_item.checkState():
-                self.update_plots()
-                self.canvas.draw()
+                self.update_plots(update_color_limits=True)
+            self.reset_axlim_settings()
+            self.show_current_all()
 
     def paste_view_settings(self, which='copied'):
         current_item = self.file_list.currentItem()
@@ -1938,7 +1939,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             filters[row].checkstate = checkstates[text]
         self.filters_table.itemChanged.connect(self.filters_table_edited)
         if current_item.checkState():
-            self.update_plots()
+            self.update_plots(update_color_limits=True)
             self.show_current_filters()
             self.show_current_view_settings()
             self.reset_axlim_settings()
@@ -1961,7 +1962,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             except Exception as e:
                 print('Error adding filter:', e)
             if current_item.checkState() and filt.checkstate:
-                self.update_plots()
+                self.update_plots(update_color_limits=True)
             else:
                 self.append_filter_to_table()
         self.filters_combobox.currentIndexChanged.disconnect(self.filters_box_changed)
@@ -2021,7 +2022,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if current_item.checkState():
                 current_item.data.apply_view_settings()
                 self.show_current_view_settings()
-            self.update_plots()
+            self.update_plots(update_color_limits=True)
      
     def move_filter(self, to):
         current_item = self.file_list.currentItem()
@@ -2036,7 +2037,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if (self.filters_table.item(row,0).checkState() and 
                     self.filters_table.item(row+to,0).checkState()):
                     current_item.data.apply_all_filters()
-                    self.update_plots()
+                    self.update_plots(update_color_limits=True)
                     self.show_current_view_settings()
 
     def save_image(self):
@@ -2112,7 +2113,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             loaded_filters = list(np.load(filename[0], allow_pickle=True))
             filters += copy.deepcopy(loaded_filters)
             current_item.data.apply_all_filters()
-            self.update_plots()
+            self.update_plots(update_color_limits=True)
             self.show_current_view_settings()
 
     def filttocol_clicked(self, axis):
@@ -2258,6 +2259,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             actions.append(QtWidgets.QAction(f'Offset Y by {y:6g}', self))
                             if data.dim == 3:
                                 actions.append(QtWidgets.QAction(f'Offset Z by {z:6g}', self))
+                            actions.append(QtWidgets.QAction('Crop data to zoom', self))
                             for action in actions:
                                 rightclick_menu.addAction(action)
                             # Add actions from extension modules
@@ -2423,8 +2425,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 filt = Filter('Add/Subtract',method=axis, settings=[str(value),''], checkstate=2)
                 self.which_filters(current_item,filt=filt)
             if current_item.checkState() and filt.checkstate:
-                self.update_plots()
+                self.update_plots(update_color_limits=True)
                 self.reset_axlim_settings()
+                self.show_current_all()
         
         # Making linecuts
         elif 'linecut' in signal.text():
@@ -2501,6 +2504,23 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             data.linecut_window.update()
             self.canvas.draw()
             data.linecut_window.activateWindow()
+
+        elif signal.text() == 'Crop data to zoom':
+            left, right = data.axes.get_xlim()
+            bottom, top = data.axes.get_ylim()
+            x_min, x_max = np.argmin(np.abs(data.processed_data[0][:,0]-left)), np.argmin(np.abs(data.processed_data[0][:,0]-right))
+            y_min, y_max = np.argmin(np.abs(data.processed_data[1][0,:]-bottom)), np.argmin(np.abs(data.processed_data[1][0,:]-top))
+            if current_item:
+                filt = Filter('Crop X',method='Abs', settings=[str(data.processed_data[0][x_min,0]),
+                                                               str(data.processed_data[0][x_max,0])], checkstate=2)
+                self.which_filters(current_item,filt=filt)
+                filt = Filter('Crop Y',method='Abs', settings=[str(data.processed_data[1][0,y_min]),
+                                                               str(data.processed_data[1][0,y_max])], checkstate=2)
+                self.which_filters(current_item,filt=filt)
+            if current_item.checkState() and filt.checkstate:
+                self.update_plots(update_color_limits=True)
+                self.reset_axlim_settings()
+                self.show_current_all()
             
     def copy_canvas_to_clipboard(self):
         checked_items = self.get_checked_items()
