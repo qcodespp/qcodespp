@@ -1249,6 +1249,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.reverse_colors_box.setCheckState(QtCore.Qt.Checked)
             else:
                 self.reverse_colors_box.setCheckState(QtCore.Qt.Unchecked)
+            if settings['CBarHist']:
+                self.cbar_hist_checkbox.setCheckState(QtCore.Qt.Checked)
+            else:
+                self.cbar_hist_checkbox.setCheckState(QtCore.Qt.Unchecked)
         else:
             self.min_line_edit.setText('')
             self.max_line_edit.setText('')
