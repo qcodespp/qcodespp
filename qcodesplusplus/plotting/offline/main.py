@@ -2507,16 +2507,27 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         elif signal.text() == 'Crop data to zoom':
             left, right = data.axes.get_xlim()
-            bottom, top = data.axes.get_ylim()
-            x_min, x_max = np.argmin(np.abs(data.processed_data[0][:,0]-left)), np.argmin(np.abs(data.processed_data[0][:,0]-right))
-            y_min, y_max = np.argmin(np.abs(data.processed_data[1][0,:]-bottom)), np.argmin(np.abs(data.processed_data[1][0,:]-top))
-            if current_item:
+            if data.dim ==3:
+                bottom, top = data.axes.get_ylim()
+                x_min, x_max = np.argmin(np.abs(data.processed_data[0][:,0]-left)), np.argmin(np.abs(data.processed_data[0][:,0]-right))
+                y_min, y_max = np.argmin(np.abs(data.processed_data[1][0,:]-bottom)), np.argmin(np.abs(data.processed_data[1][0,:]-top))
+
                 filt = Filter('Crop X',method='Abs', settings=[str(data.processed_data[0][x_min,0]),
-                                                               str(data.processed_data[0][x_max,0])], checkstate=2)
+                                                                str(data.processed_data[0][x_max,0])], checkstate=2)
                 self.which_filters(current_item,filt=filt)
                 filt = Filter('Crop Y',method='Abs', settings=[str(data.processed_data[1][0,y_min]),
-                                                               str(data.processed_data[1][0,y_max])], checkstate=2)
+                                                            str(data.processed_data[1][0,y_max])], checkstate=2)
                 self.which_filters(current_item,filt=filt)
+            elif data.dim == 2:
+                current_1D_row = data.sidebar1D.trace_table.currentRow()
+                current_line = int(data.sidebar1D.trace_table.item(current_1D_row,0).text())
+                try:
+                    x_min,x_max=np.argmin(np.abs(data.plotted_lines[current_line]['processed_data'][0]-left)),np.argmin(np.abs(data.plotted_lines[current_line]['processed_data'][0]-right))
+                    filt = Filter('Crop X',method='Abs', settings=[str(data.plotted_lines[current_line]['processed_data'][0][x_min]),
+                                                                    str(data.plotted_lines[current_line]['processed_data'][0][x_max])], checkstate=2)
+                    self.which_filters(current_item,filt=filt)
+                except Exception as e:
+                    print('Error cropping X:', e)
             if current_item.checkState() and filt.checkstate:
                 self.update_plots(update_color_limits=True)
                 self.reset_axlim_settings()
