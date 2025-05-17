@@ -798,18 +798,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         plot_type = self.plot_type_box.currentText()
         current_item.data.plot_type=plot_type
 
-        lineedits={'X':[self.binsX_lineedit],
-            'Y':[self.binsY_lineedit],
-            'X/Y':[self.binsX_lineedit,self.binsY_lineedit]}
-        labels={'X':[self.binsX_label],
-            'Y':[self.binsY_label],
-            'X/Y':[self.binsX_label,self.binsY_label]}
+        lineedits={'X':self.binsX_lineedit,
+            'Y':self.binsY_lineedit}
+        labels={'X':self.binsX_label,
+            'Y':self.binsY_label}
         
-        for label in labels['X/Y']:
-            label.hide()
-        for lineedit in lineedits['X/Y']:
-            lineedit.hide()
-
+        self.binsX_lineedit.hide()
+        self.binsY_lineedit.hide()
+        self.binsX_label.hide()
+        self.binsY_label.hide()
         if hasattr(current_item.data,'sidebar1D'):
             # current_row = current_item.data.sidebar1D.trace_table.currentRow()
             # line = int(current_item.data.sidebar1D.trace_table.item(current_row,0).text())
@@ -818,27 +815,20 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         
         else:
             if 'Histogram' in plot_type:
-                which=plot_type.split(' ')[1]
-                
-                for label in labels[which]:
-                    label.show()
-                for lineedit in lineedits[which]:
-                    lineedit.show()
+                try:
+                    which=plot_type.split(' ')[1]
+                    
+                    labels[which].show()
+                    lineedits[which].show()
 
-                if f'bins{which}' not in current_item.data.settings.keys():
-                    if which == 'X/Y':
-                        current_item.data.settings['binsX'] = 100
-                        current_item.data.settings['binsY'] = 100
-                    else:
+                    if f'bins{which}' not in current_item.data.settings.keys():
                         current_item.data.settings[f'bins{which}'] = 100
+                
+                    lineedits[which].setText(str(current_item.data.settings[f'bins{which}']))
+                except Exception as e:
+                    print('Error in plot_type_changed:', e)
             
-                if which == 'X/Y':
-                    self.binsX_lineedit.setText(str(current_item.data.settings['binsX']))
-                    self.binsY_lineedit.setText(str(current_item.data.settings['binsY']))
-                else:
-                    lineedits[which][0].setText(str(current_item.data.settings[f'bins{which}']))
-
-            self.update_plots(update_data=True)
+            self.update_plots(update_data=True,update_color_limits=True)
 
         self.reset_axlim_settings()
 
@@ -918,7 +908,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             # remove it from the gui
             widgetToRemove.setParent(None)
 
-    def update_plots(self, item=None,update_data=True,clear_figure=True):
+    def update_plots(self, item=None,update_data=True,clear_figure=True,update_color_limits=False):
         if clear_figure:
             self.figure.clf()
 
@@ -931,11 +921,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 try:
                     if not hasattr(item.data, 'processed_data'):
                         item.data.prepare_data_for_plot(reload_data=True)
-                    if hasattr(item.data, 'dim'):
-                        if item.data.dim == 2:
-                            update_data = False # No matter what (except for the very first time, where the data gets its dim)
-                    if update_data: # This should only be called when updating 2D data: updating 1D data is taken care of in the datatype and sidebar
-                        item.data.prepare_data_for_plot(plot_type=item.data.plot_type)
+                    elif hasattr(item.data, 'dim'):
+                        if item.data.dim == 3 and update_data==True: # This should only be called when updating 2D data: updating 1D data is taken care of in the datatype and sidebar
+                            item.data.prepare_data_for_plot(update_color_limits=update_color_limits) #reload_data=False by default
+                        
                     item.data.figure = self.figure
                     item.data.axes = item.data.figure.add_subplot(rows, cols, index+1)
                     item.data.add_plot(editor_window=self)

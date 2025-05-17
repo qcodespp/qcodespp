@@ -285,7 +285,7 @@ class BaseClassData:
     # After the data has been reshaped into raw_data and copied to processed_data,
     # first again reshape the data if it should be plotted as a histogram or FFT.
     # After this step, it goes through the filters.
-    def reshape_for_plot_type(self, plot_type=None, line=None):
+    def reshape_for_plot_type(self, line=None):
         type_dict={'Histogram': lambda: self.plot_type_histogram(line),
                    'FFT': lambda: self.plot_type_fft(line),
                    'Histogram Y': self.plot_type_histogram_y,
@@ -293,7 +293,7 @@ class BaseClassData:
                    'FFT Y': self.plot_type_ffty,
                    'FFT X': self.plot_type_fftx,
                    'FFT X/Y': self.plot_type_fftxy}
-        type_dict[plot_type]()
+        type_dict[self.plot_type]()
 
     def plot_type_histogram(self,line):
         y,x=np.histogram(self.plotted_lines[line]['processed_data'][1], bins=int(self.plotted_lines[line]['Bins']))
@@ -362,13 +362,14 @@ class BaseClassData:
         self.processed_data=[xdata,ydata,zdata]
 
     def prepare_data_for_plot(self, reload_data=False, reload_from_file=False,
-                              linefrompopup=None,update_color_limits=True,plot_type=None):
+                              linefrompopup=None,update_color_limits=False,plot_type=None):
         if not hasattr(self, 'raw_data') or reload_data:
             self.load_and_reshape_data(reload_data, reload_from_file, linefrompopup)
+            update_color_limits = True
         if self.raw_data:
             self.copy_raw_to_processed_data(linefrompopup)
-            if plot_type and plot_type not in ['X,Y','X,Y,Z']:
-                self.reshape_for_plot_type(plot_type,linefrompopup)
+            if hasattr(self,'plot_type') and self.plot_type not in ['X,Y','X,Y,Z',None]:
+                self.reshape_for_plot_type(linefrompopup)
             self.apply_all_filters(update_color_limits=update_color_limits)
         else:
             self.processed_data = None
@@ -561,10 +562,6 @@ class BaseClassData:
 
             # # Update histogram
             if hasattr(self,'hax'):
-                # self.haxfill.remove()
-                # self.haxfill=self.hax.fill_betweenx(np.linspace(self.view_settings['Minimum'], self.view_settings['Maximum'], 100), 
-                #                                     self.hax.get_xlim()[0], 
-                #                                     color='blue', alpha=0.2)
                 self.haxfill.set_data(np.linspace(self.view_settings['Minimum'], self.view_settings['Maximum'], 100),
                                       self.hax.get_xlim()[0], 0)
                 if self.view_settings['Minimum']<self.hax.get_ylim()[0] or self.view_settings['Maximum']>self.hax.get_ylim()[1]:
