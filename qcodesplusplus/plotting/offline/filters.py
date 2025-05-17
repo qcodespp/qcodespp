@@ -177,14 +177,17 @@ def normalize(data, method, point_x, point_y):
     if method == 'Max': 
         norm_value = np.max(data[-1])
     elif method == 'Min':
-        norm_value = np.min(data[-1])
+        norm_value = np.min(data[-1])    
     elif method == 'Point' and len(data) == 3:
         x_index = np.argmin(np.abs(data[0][:,0] - float(point_x)))
         y_index = np.argmin(np.abs(data[1][0,:] - float(point_y)))
         norm_value = data[-1][x_index,y_index]
     elif method == 'Point' and len(data) == 2:
         x_index = np.argmin(np.abs(data[0] - float(point_x)))
-        norm_value = data[-1][x_index]        
+        norm_value = data[-1][x_index]
+    elif method == 'Min to Max':
+        norm_value = np.max(data[-1]) - np.min(data[-1])
+        data[-1] = data[-1]-np.min(data[-1])
     data[-1] = data[-1] / norm_value
     return data
 
@@ -464,7 +467,7 @@ class Filter:
                                    'Settings': ['', ''],
                                    'Function': invert,
                                    'Checkstate': 0},
-                        'Normalize': {'Method': ['Max', 'Min', 'Point'],
+                        'Normalize': {'Method': ['Max', 'Min', 'Min to Max','Point'],
                                       'Settings': ['', ''],
                                       'Function': normalize,
                                       'Checkstate': 2},
