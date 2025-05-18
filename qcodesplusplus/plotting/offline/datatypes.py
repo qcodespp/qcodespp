@@ -334,21 +334,23 @@ class BaseClassData:
         self.processed_data=[new_xdata,new_ydata,new_zdata]
 
     def plot_type_ffty(self):
-        xdata = self.processed_data[0]
-        ydata = self.processed_data[1]
-        zdata = self.processed_data[-1]
-        zdata=np.abs(np.fft.rfft(zdata,norm='ortho',axis=1))
-        ydata=[np.fft.rfftfreq(len(ydata[i]),np.abs(ydata[i][1]-ydata[i][0])) for i in range(len(ydata))]
-        xdata=[np.interp(np.linspace(0,np.shape(zdata)[1]-1,np.shape(zdata)[1]),np.arange(np.shape(xdata)[1]),xdata[i]) for i in range(len(xdata))]
+        zdata=np.abs(np.fft.rfft(self.processed_data[-1],norm='ortho',axis=1))
+        ydata=np.zeros_like(zdata)
+        for i in range(ydata.shape[0]):
+            ydata[i,:]=np.linspace(0,1/(2*np.abs(self.processed_data[1][i,1]-self.processed_data[1][i,0])),zdata.shape[1])
+        xdata=np.zeros_like(zdata)
+        for i in range(xdata.shape[0]):
+            xdata[i,:]=np.interp(np.arange(np.shape(xdata)[1]),np.arange(np.shape(self.processed_data[0])[1]),self.processed_data[0][i,:])
         self.processed_data=[xdata,ydata,zdata]
 
     def plot_type_fftx(self):
-        xdata = self.processed_data[0]
-        ydata = self.processed_data[1]
-        zdata = self.processed_data[-1]
-        zdata=np.abs(np.fft.rfft(zdata,norm='ortho',axis=0))
-        xdata=np.transpose([np.fft.rfftfreq(len(xdata[:,i]),np.abs(xdata[:,i][1]-xdata[:,i][0])) for i in range(np.shape(zdata)[1])])
-        ydata=np.transpose([np.interp(np.linspace(0,np.shape(zdata)[0]-1,np.shape(zdata)[0]),np.arange(np.shape(ydata)[0]),ydata[:,i]) for i in range(np.shape(zdata)[1])])
+        zdata=np.abs(np.fft.rfft(self.processed_data[-1],norm='ortho',axis=0))
+        xdata=np.zeros_like(zdata)
+        for i in range(xdata.shape[1]):
+            xdata[:,i]=np.linspace(0,1/(2*np.abs(self.processed_data[0][1,i]-self.processed_data[0][0,i])),zdata.shape[0])
+        ydata=np.zeros_like(zdata)
+        for i in range(ydata.shape[1]):
+            ydata[:,i]=np.interp(np.arange(np.shape(ydata)[0]),np.arange(np.shape(self.processed_data[1])[0]),self.processed_data[1][:,i])
         self.processed_data=[xdata,ydata,zdata]
 
     def plot_type_fftxy(self):

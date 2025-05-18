@@ -2564,7 +2564,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if hasattr(item.data,'meta'):
                 if not hasattr(item.data,'metapopup'):
                     item.data.metapopup=MetadataWindow(item.data)
-                    #metapopup.activateWindow()
                 item.data.metapopup.show()
             
     def mouse_scroll_canvas(self, event):
