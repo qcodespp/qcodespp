@@ -1787,9 +1787,12 @@ class MetadataWindow(QtWidgets.QDialog):
         
         self.layout = QtWidgets.QVBoxLayout()
         self.tree_widget = QtWidgets.QTreeWidget()
+        self.tree_widget.setColumnCount(2)
+        header_view = self.tree_widget.header()
+        header_view.setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        header_view.setStretchLastSection(False)
         self.tree_widget.setHeaderLabels(["Key", "Value"])
-        if parent:
-            self.populate_tree(self.parent.meta)
+        self.populate_tree(self.parent.meta)
         
         self.layout.addWidget(self.tree_widget)
         self.setLayout(self.layout)
@@ -1803,8 +1806,25 @@ class MetadataWindow(QtWidgets.QDialog):
             parent_item = self.tree_widget
 
         for key, value in metadata.items():
-            if isinstance(value, dict):  # If the value is a dictionary, create a parent node
+            if isinstance(value, list):  # If the value is a list, create a parent node
+                item = QtWidgets.QTreeWidgetItem(parent_item, [str(key)])
+                for i, sub_value in enumerate(value):
+                    if isinstance(sub_value, dict):
+                        sub_item = QtWidgets.QTreeWidgetItem(item, [str(i)])
+                        self.populate_tree(sub_value, sub_item)
+                    else:
+                        sub_item = QtWidgets.QTreeWidgetItem(item, [str(i), str(sub_value)])
+
+            elif isinstance(value, dict):  # If the value is a dictionary, create a parent node
                 item = QtWidgets.QTreeWidgetItem(parent_item, [str(key)])
                 self.populate_tree(value, item)  # Recursively populate the child items
             else:  # If the value is not a dictionary, create a leaf node
                 item = QtWidgets.QTreeWidgetItem(parent_item, [str(key), str(value)])
+                # try:
+                #     label=QtWidgets.QLabel(str(value))
+                #     label.setWordWrap(True)
+                #     label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
+                #     item = QtWidgets.QTreeWidgetItem(parent_item, [str(key), ''])
+                #     self.tree_widget.setItemWidget(item, 1, label)
+                # except Exception as e:
+                #     print(e)
