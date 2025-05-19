@@ -69,6 +69,7 @@ class BaseClassData:
         self.plot_type=None
         
         self.settings = self.DEFAULT_PLOT_SETTINGS.copy()
+        self.settings['title'] = self.label
         self.view_settings = self.DEFAULT_VIEW_SETTINGS.copy()
         self.axlim_settings = self.DEFAULT_AXLIM_SETTINGS.copy()
         #print(self.view_settings['CBarHist'])
@@ -148,19 +149,16 @@ class BaseClassData:
         
 
     def add_array_to_data_dict(self, array, name):
-        if name in self.data_dict.keys():
-            print(f"Array with name '{name}' already exists in data_dict. Overwriting.")
-        else:
-            self.data_dict[name] = array
-            self.all_parameter_names=list(self.data_dict.keys())
-            self.settings_menu_options['X data']=self.all_parameter_names
-            self.settings_menu_options['Y data']=self.all_parameter_names
-            self.settings_menu_options['Z data']=self.all_parameter_names
-            negparamnames=[f'-{name}' for name in self.all_parameter_names]
-            allnames=np.hstack((self.all_parameter_names,negparamnames))
-            self.filter_menu_options['Multiply']=allnames
-            self.filter_menu_options['Divide']=allnames
-            self.filter_menu_options['Add/Subtract']=allnames
+        self.data_dict[name] = array
+        self.all_parameter_names=list(self.data_dict.keys())
+        self.settings_menu_options['X data']=self.all_parameter_names
+        self.settings_menu_options['Y data']=self.all_parameter_names
+        self.settings_menu_options['Z data']=self.all_parameter_names
+        negparamnames=[f'-{name}' for name in self.all_parameter_names]
+        allnames=np.hstack((self.all_parameter_names,negparamnames))
+        self.filter_menu_options['Multiply']=allnames
+        self.filter_menu_options['Divide']=allnames
+        self.filter_menu_options['Add/Subtract']=allnames
         #self.prepare_data_for_plot(reload_from_file=False)
 
     def get_column_data(self,line=None):
@@ -175,7 +173,13 @@ class BaseClassData:
             z=self.data_dict[self.settings['Z data']]
             column_data=np.column_stack((x,y,z))
         else:
-            column_data=np.column_stack((x,y))
+            if len(x)==len(y):
+                column_data = np.column_stack((x, y))
+            else:
+                column_data = np.zeros((2,2))
+                # This can happen if the user has run statistics, and is trying to plot the result; if they change only
+                # the X data, the length of the data won't match the Y data until they then select the correct thing.
+                # So, just plot nothing until the user selects something sensible.
         return column_data
     
     def get_columns(self):
@@ -703,14 +707,15 @@ class InternalData(BaseClassData):
     def __init__(self, canvas, dataset, label_name, all_parameter_names,dimension):
         super().__init__(filepath='internal_data', canvas=canvas)
 
-        self.loaded_data = dataset
+        self.loaded_data = dataset.copy()
         self.canvas = canvas
-        self.all_parameter_names = all_parameter_names
+        self.all_parameter_names = all_parameter_names.copy()
         self.data_dict={}
         for i,name in enumerate(self.all_parameter_names):
             self.data_dict[name]=self.loaded_data[i]
         self.label = label_name
         self.dim = dimension
+        self.settings['title'] = self.label
 
         self.prepare_dataset()
 

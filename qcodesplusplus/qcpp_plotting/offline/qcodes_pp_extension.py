@@ -55,8 +55,6 @@ class qcodesppData(main.BaseClassData):
         self.dataset_id = "#" + dirname.split("#", 1)[1].split("_", 1)[0]
         self.settings["title"] = '#'+self.label#[:120]#self.dataset_id
         self.DEFAULT_PLOT_SETTINGS['title']= '#'+self.label#[:120]#self.dataset_id
-    
-
 
     def prepare_dataset(self):
         pars = list(self.data_dict.keys())
@@ -90,19 +88,31 @@ class qcodesppData(main.BaseClassData):
         self.prepare_dataset()
         # If user has selected X data, use that, otherwise use the first independent parameter
         # X data is the same no matter the data dimension
-    
+
         xdata = self.data_dict[Xdataname]
-        self.settings['xlabel'] = f'{self.channels[Xdataname]['label']} ({self.channels[Xdataname]['unit']})'
+        try:
+            self.settings['xlabel'] = f'{self.channels[Xdataname]['label']} ({self.channels[Xdataname]['unit']})'
+        except KeyError:
+            self.settings['xlabel'] = Xdataname
         
         if len(self.independent_parameters) == 1: # data is 1D
             ydata = self.data_dict[Ydataname]
-            self.settings['ylabel'] = f'{self.channels[Ydataname]['label']} ({self.channels[Ydataname]['unit']})'
+            try:
+                self.settings['ylabel'] = f'{self.channels[Ydataname]['label']} ({self.channels[Ydataname]['unit']})'
+            except KeyError:
+                self.settings['ylabel'] = Ydataname
             
             if not self.isFinished():
                 # Delete unfinished rows to enable plotting
                 xdata = xdata[:len(self.set_x)-1]
                 ydata = ydata[:len(self.set_x)-1]
-            column_data = np.column_stack((xdata, ydata))
+            if len(xdata)==len(ydata):
+                column_data = np.column_stack((xdata, ydata))
+            else:
+                column_data = np.zeros((2,2))
+                # This can happen if the user has run statistics, and is trying to plot the result; if they change only
+                # the X data, the length of the data won't match the Y data until they then select the correct thing.
+                # So, just plot nothing until the user selects something sensible.
 
             self.settings['default_xlabel'] = self.settings['xlabel']
             self.settings['default_ylabel'] = self.settings['ylabel']

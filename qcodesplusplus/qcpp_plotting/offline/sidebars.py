@@ -430,6 +430,7 @@ class Sidebar1D(QtWidgets.QWidget):
                 self.parent.plotted_lines[line]['processed_data'] = [self.parent.processed_data[0],
                                                                     self.parent.processed_data[1]]
                 self.editor_window.show_current_plot_settings()
+
             except Exception as e:
                 print('Error changing plotted data: '+str(e))
         self.editor_window.update_plots(update_data=False)
@@ -897,26 +898,31 @@ class Sidebar1D(QtWidgets.QWidget):
         if len(lines) > 0:
             for line in lines:
                 x,y= self.get_line_data(line)
-                if self.parent.plot_type == 'Histogram':
-                    self.parent.settings['ylabel'] = 'Counts'
-                    if 'default_ylabel' in self.parent.settings.keys():
-                        self.parent.settings['xlabel'] = self.parent.settings['default_ylabel']
-                    drawstyle='steps-mid'
+                if len(x)!=len(y):
+                    pass # This can happen for combined datasets with good reason: the user may haves e.g. _just_ chosen a new x axis
+                        # that doesn't match the y axis, and are just about to choose an appropriate y axis. 
+                        # Instead of crashing the program and throwing an error, just skip plotting until they choose something sensible.
                 else:
-                    drawstyle='default'
-                if 'FFT' in self.editor_window.plot_type_box.currentText():
-                    self.parent.settings['ylabel'] = 'Amplitude (a.u.)'
-                    self.parent.settings['xlabel'] = 'Frequency'
-                #self.parent.image = 
-                self.parent.axes.plot(x, y,
-                                    self.parent.plotted_lines[line]['linestyle'],
-                                    linewidth=self.parent.plotted_lines[line]['linewidth'],
-                                    markersize=self.parent.plotted_lines[line]['linewidth'],
-                                    color=self.parent.plotted_lines[line]['linecolor'],
-                                    drawstyle=drawstyle)
+                    if self.parent.plot_type == 'Histogram':
+                        self.parent.settings['ylabel'] = 'Counts'
+                        if 'default_ylabel' in self.parent.settings.keys():
+                            self.parent.settings['xlabel'] = self.parent.settings['default_ylabel']
+                        drawstyle='steps-mid'
+                    else:
+                        drawstyle='default'
+                    if 'FFT' in self.editor_window.plot_type_box.currentText():
+                        self.parent.settings['ylabel'] = 'Amplitude (a.u.)'
+                        self.parent.settings['xlabel'] = 'Frequency'
+                    #self.parent.image = 
+                    self.parent.axes.plot(x, y,
+                                        self.parent.plotted_lines[line]['linestyle'],
+                                        linewidth=self.parent.plotted_lines[line]['linewidth'],
+                                        markersize=self.parent.plotted_lines[line]['linewidth'],
+                                        color=self.parent.plotted_lines[line]['linecolor'],
+                                        drawstyle=drawstyle)
 
-                if self.parent.plotted_lines[line]['Xerr'] not in [0,'0'] or self.parent.plotted_lines[line]['Yerr'] not in [0,'0']:
-                    self.process_uncertainties(line,x,y)
+                    if self.parent.plotted_lines[line]['Xerr'] not in [0,'0'] or self.parent.plotted_lines[line]['Yerr'] not in [0,'0']:
+                        self.process_uncertainties(line,x,y)
             self.parent.apply_plot_settings()
             #self.parent.apply_axlim_settings()
             self.parent.apply_axscale_settings()
