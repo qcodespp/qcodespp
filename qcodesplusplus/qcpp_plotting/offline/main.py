@@ -2287,36 +2287,36 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             rightclick_menu.triggered[QtWidgets.QAction].connect(self.popup_canvas)
                             rightclick_menu.popup(QtGui.QCursor.pos())
                     
-                else: # if colorbar in focus
-                    self.cbar_in_focus = [checked_item for checked_item in checked_items
-                                          if (hasattr(checked_item.data,'cbar') and checked_item.data.cbar.ax == event.inaxes)]
-                    if self.cbar_in_focus:
-                        if self.file_list.currentItem() != self.cbar_in_focus[0]:
-                            # If the clicked plot is not the current one, set it as current before doing anything else.
-                            self.file_list.setCurrentItem(self.cbar_in_focus[0])
-                            self.file_clicked()
+                # else: # if colorbar in focus
+                #     self.cbar_in_focus = [checked_item for checked_item in checked_items
+                #                           if (hasattr(checked_item.data,'cbar') and checked_item.data.cbar.ax == event.inaxes)]
+                #     if self.cbar_in_focus:
+                #         if self.file_list.currentItem() != self.cbar_in_focus[0]:
+                #             # If the clicked plot is not the current one, set it as current before doing anything else.
+                #             self.file_list.setCurrentItem(self.cbar_in_focus[0])
+                #             self.file_clicked()
 
-                        else:
-                            self.press = event.ydata
+                #         else:
+                #             self.press = event.ydata
 
     def on_motion(self, event):
         if hasattr(self,'press') and self.press != None:
-            if hasattr(self,'cbar_in_focus') and self.cbar_in_focus:
-                try:
-                    ypress = self.press
-                    dy = event.ydata - ypress
-                    self.press=event.ydata
-                    map_min=self.cbar_in_focus[0].data.view_settings['Minimum']
-                    map_max=self.cbar_in_focus[0].data.view_settings['Maximum']
-                    self.cbar_in_focus[0].data.view_settings['Minimum']= map_min+dy
-                    self.cbar_in_focus[0].data.view_settings['Maximum']= map_max+dy
-                    self.cbar_in_focus[0].data.reset_midpoint()
-                    self.cbar_in_focus[0].data.apply_view_settings()
-                    self.canvas.draw()
-                except: # sometimes can happen if the focus between plots changes weirdly. Not worth getting worried about, so no use filling up errors
-                    pass
+            # if hasattr(self,'cbar_in_focus') and self.cbar_in_focus:
+            #     try:
+            #         ypress = self.press
+            #         dy = event.ydata - ypress
+            #         self.press=event.ydata
+            #         map_min=self.cbar_in_focus[0].data.view_settings['Minimum']
+            #         map_max=self.cbar_in_focus[0].data.view_settings['Maximum']
+            #         self.cbar_in_focus[0].data.view_settings['Minimum']= map_min+dy
+            #         self.cbar_in_focus[0].data.view_settings['Maximum']= map_max+dy
+            #         self.cbar_in_focus[0].data.reset_midpoint()
+            #         self.cbar_in_focus[0].data.apply_view_settings()
+            #         self.canvas.draw()
+            #     except: # sometimes can happen if the focus between plots changes weirdly. Not worth getting worried about, so no use filling up errors
+            #         pass
             
-            elif self.press[0] in ['haxfill_top','haxfill_bottom','haxfill']:
+            if self.press[0] in ['haxfill_top','haxfill_bottom','haxfill']:
                 which=self.press[0]
                 data=self.press[2]
                 pixels_to_hax = data.hax.transData.inverted().transform
@@ -2372,6 +2372,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     elif max_windows[i][0] < event.y < max_windows[i][1]:
                         self.canvas.setCursor(QtCore.Qt.SizeVerCursor)
                         break
+                    else:
+                        self.canvas.setCursor(QtCore.Qt.ArrowCursor)
                 else:
                     self.canvas.setCursor(QtCore.Qt.ArrowCursor)
 
@@ -2661,54 +2663,30 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     fig.canvas.toolbar.push_current()
 
             #Scrolling within colourbar changes limits
-            elif self.cbar_in_focus:
-                if self.file_list.currentItem() != self.cbar_in_focus[0]:
-                    # If the clicked plot is not the current one, set it as current before doing anything else.
-                    self.file_list.setCurrentItem(self.cbar_in_focus[0])
-                    self.file_clicked()
-                else:
-                    y = event.ydata
-                    data = self.cbar_in_focus[0].data
-                    min_map = data.view_settings['Minimum']
-                    max_map = data.view_settings['Maximum']
-                    range_map = max_map-min_map
-                    speed= np.abs(y-(min_map+0.5*range_map))*(0.25+0.01)/range_map # Scroll faster further away from the midpoint
-
-                    if y > min_map+0.5*range_map:
-                        new_max = max_map + event.step*range_map*speed
-                        data.view_settings['Maximum'] = new_max
-                    else:
-                        new_min = min_map + event.step*range_map*speed
-                        data.view_settings['Minimum'] = new_min
-                    data.reset_midpoint()
-                    data.apply_view_settings()
-                    self.canvas.draw()
-                    self.show_current_view_settings()
-
-            # self.hax_in_focus = [checked_item for checked_item in checked_items
-            #                         if hasattr(checked_item.data, 'hax') and checked_item.data.hax == event.inaxes]
-            # print(self.hax_in_focus)
-            # #Scrolling within hax changes limits but nothing about the data
-            # if self.hax_in_focus:
-            #     print(1)
-            #     if self.file_list.currentItem() != self.hax_in_focus[0]:
-            #         print(1)
+            # elif self.cbar_in_focus:
+            #     if self.file_list.currentItem() != self.cbar_in_focus[0]:
             #         # If the clicked plot is not the current one, set it as current before doing anything else.
-            #         self.file_list.setCurrentItem(self.hax_in_focus[0])
+            #         self.file_list.setCurrentItem(self.cbar_in_focus[0])
             #         self.file_clicked()
             #     else:
-            #         print(2)
-            #         try:
-            #             y = event.ydata
-            #             #data = self.hax_in_focus[0].data
-            #             y_top = y - event.inaxes.get_ylim()[0]
-            #             y_bottom = event.inaxes.get_ylim()[1] - y
-            #             newylims=[y - y_top * scale_factor, y + y_bottom * scale_factor]
-            #             event.inaxes.set_ylim([newylims[0], newylims[1]])
-            #             event.inaxes.draw()
-            #         except Exception as e:
-            #             print('Error in hax scrolling:', e)
-                    
+            #         y = event.ydata
+            #         data = self.cbar_in_focus[0].data
+            #         min_map = data.view_settings['Minimum']
+            #         max_map = data.view_settings['Maximum']
+            #         range_map = max_map-min_map
+            #         speed= np.abs(y-(min_map+0.5*range_map))*(0.25+0.01)/range_map # Scroll faster further away from the midpoint
+
+            #         if y > min_map+0.5*range_map:
+            #             new_max = max_map + event.step*range_map*speed
+            #             data.view_settings['Maximum'] = new_max
+            #         else:
+            #             new_min = min_map + event.step*range_map*speed
+            #             data.view_settings['Minimum'] = new_min
+            #         data.reset_midpoint()
+            #         data.apply_view_settings()
+            #         self.canvas.draw()
+            #         self.show_current_view_settings()
+
         # Scrolling outside of plot bounds changes the whitespace around/between plots
         else:
             width, height = self.canvas.get_width_height()
