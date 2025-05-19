@@ -5,7 +5,7 @@ import json
 import logging
 
 from qcodes.utils.helpers import deep_update
-from qcodesplusplus.utils.helpers import NumpyJSONEncoder
+from qcodesplusplus.qcpp_utils.helpers import NumpyJSONEncoder
 from .data_array import DataArray
 from .format import Formatter
 

@@ -2,9 +2,39 @@ from qcodes.configuration import Config
 config = Config() # type: Config
 
 # import all top-level modules from qcodes so that qcodespp operates exactly like qcodes if desired
-from qcodes import (calibrations,configuration,dataset,dist,extensions,instrument,instrument_drivers,
-                    logger,math_utils,metadatable,monitor,parameters,plotting,sphinx_extensions,
-                    utils,validators)
+from importlib import import_module
+calibrations=import_module('qcodes.calibrations')
+configuration=import_module('qcodes.configuration')
+dataset=import_module('qcodes.dataset')
+dist=import_module('qcodes.dist')
+extensions=import_module('qcodes.extensions')
+instrument=import_module('qcodes.instrument')
+instrument_drivers=import_module('qcodes.instrument_drivers')
+logger=import_module('qcodes.logger')
+math_utils=import_module('qcodes.math_utils')
+metadatable=import_module('qcodes.metadatable')
+monitor=import_module('qcodes.monitor')
+parameters=import_module('qcodes.parameters')
+plotting=import_module('qcodes.plotting')
+sphinx_extensions=import_module('qcodes.sphinx_extensions')
+utils=import_module('qcodes.utils')
+validators=import_module('qcodes.validators')
+# import qcodes.configuration as configuration
+# import qcodes.dataset as dataset
+# import qcodes.dist as dist
+# import qcodes.extensions as extensions
+# import qcodes.instrument as instrument
+# import qcodes.instrument_drivers as instrument_drivers
+# import qcodes.logger as logger
+# import qcodes.math_utils as math_utils
+# import qcodes.metadatable as metadatable
+# import qcodes.monitor as monitor
+# import qcodes.parameters as parameters
+# import qcodes.plotting as plotting
+# import qcodes.sphinx_extensions as sphinx_extensions
+# import qcodes.utils as utils
+# import qcodes.validators as validators
+
 # Then import all modules included in the qcodes namespace, except Parameter and Station
 # as these need to go through qcodespp wrappers
 from qcodes.dataset import (
@@ -51,11 +81,11 @@ from qcodes.parameters import (
     SweepValues,
     combine,
 )
-#from qcodes.station import Station
+
 from qcodes.utils import deprecate
 from qcodes.parameters import ElapsedTimeParameter
 
-# modules that will be overwritten.
+# modules from qcodes that have been extended/modified
 from .parameters import Parameter
 
 from .station import Station
@@ -67,18 +97,18 @@ from .loops import Loop, active_loop, active_data_set
 from .measure import Measure
 from .actions import Task, Wait, BreakIf
 
-from .plotting.RemotePlot import Plot, live_plot
-from .plotting.offline.main import offline_plotting
+from .qcpp_plotting.RemotePlot import Plot, live_plot
+from .qcpp_plotting.offline.main import offline_plotting
 
-from .data.data_set import DataSet, new_data, load_data, load_data_num, load_data_nums, set_data_format, set_data_folder
-from .data.location import FormatLocation
-from .data.data_array import DataArray
-from .data.format import Formatter
-from .data.gnuplot_format import GNUPlotFormat
-from .data.hdf5_format import HDF5Format
-from .data.io import DiskIO
+from .qcpp_data.data_set import DataSet, new_data, load_data, load_data_num, load_data_nums, set_data_format, set_data_folder
+from .qcpp_data.location import FormatLocation
+from .qcpp_data.data_array import DataArray
+from .qcpp_data.format import Formatter
+from .qcpp_data.gnuplot_format import GNUPlotFormat
+from .qcpp_data.hdf5_format import HDF5Format
+from .qcpp_data.io import DiskIO
 
-from .utils.visa_helpers import listVISAinstruments
+from .qcpp_utils.visa_helpers import listVISAinstruments
 
 from .parameters import MultiParameterWrapper, ArrayParameterWrapper
 

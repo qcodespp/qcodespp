@@ -53,13 +53,13 @@ import numpy as np
 from tqdm.auto import tqdm
 
 from qcodesplusplus.station import Station
-from qcodesplusplus.data.data_set import new_data, load_data
-from qcodesplusplus.data.data_array import DataArray
+from qcodesplusplus.qcpp_data.data_set import new_data, load_data
+from qcodesplusplus.qcpp_data.data_array import DataArray
 from qcodes.utils.helpers import full_class
-from qcodesplusplus.utils.helpers import wait_secs, tprint
+from qcodesplusplus.qcpp_utils.helpers import wait_secs, tprint
 from qcodes.utils.metadata import Metadatable
 from qcodes.parameters import MultiParameter
-from qcodesplusplus.plotting.RemotePlot import Plot
+from qcodesplusplus.qcpp_plotting.RemotePlot import Plot
 
 from .actions import (_actions_snapshot, Task, Wait, _Measure, _Nest,
                       BreakIf, _QcodesBreak)

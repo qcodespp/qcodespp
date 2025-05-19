@@ -42,7 +42,7 @@ mplstyle.use('fast')
 
 from lmfit.model import save_modelresult, load_modelresult
 
-import qcodesplusplus.plotting.offline.design as design
+import qcodesplusplus.qcpp_plotting.offline.design as design
 from .popupwindows import LineCutWindow, MetadataWindow, StatsWindow
 from .sidebars import Sidebar1D
 from .helpers import (cmaps, MidpointNormalize,NavigationToolbarMod,
