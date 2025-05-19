@@ -1,41 +1,7 @@
 from qcodes.configuration import Config
 config = Config() # type: Config
 
-# import all top-level modules from qcodes so that qcodespp operates exactly like qcodes if desired
-from importlib import import_module
-calibrations=import_module('qcodes.calibrations')
-configuration=import_module('qcodes.configuration')
-dataset=import_module('qcodes.dataset')
-dist=import_module('qcodes.dist')
-extensions=import_module('qcodes.extensions')
-instrument=import_module('qcodes.instrument')
-instrument_drivers=import_module('qcodes.instrument_drivers')
-logger=import_module('qcodes.logger')
-math_utils=import_module('qcodes.math_utils')
-metadatable=import_module('qcodes.metadatable')
-monitor=import_module('qcodes.monitor')
-parameters=import_module('qcodes.parameters')
-plotting=import_module('qcodes.plotting')
-sphinx_extensions=import_module('qcodes.sphinx_extensions')
-utils=import_module('qcodes.utils')
-validators=import_module('qcodes.validators')
-# import qcodes.configuration as configuration
-# import qcodes.dataset as dataset
-# import qcodes.dist as dist
-# import qcodes.extensions as extensions
-# import qcodes.instrument as instrument
-# import qcodes.instrument_drivers as instrument_drivers
-# import qcodes.logger as logger
-# import qcodes.math_utils as math_utils
-# import qcodes.metadatable as metadatable
-# import qcodes.monitor as monitor
-# import qcodes.parameters as parameters
-# import qcodes.plotting as plotting
-# import qcodes.sphinx_extensions as sphinx_extensions
-# import qcodes.utils as utils
-# import qcodes.validators as validators
-
-# Then import all modules included in the qcodes namespace, except Parameter and Station
+# Import all modules included in the qcodes namespace, except Parameter and Station
 # as these need to go through qcodespp wrappers
 from qcodes.dataset import (
     Measurement,
