@@ -1,8 +1,8 @@
 
 from zhinst.ziPython import ziDAQServer
 from zhinst.utils import utils
-from qcodes import Instrument
-from qcodes.utils.validators import Numbers, Enum, Ints
+from qcodesplusplus import Instrument
+from qcodes.validators import Numbers, Enum, Ints
 from functools import partial
 import numpy as np
 
@@ -36,10 +36,11 @@ class ZIHF2LI(Instrument):
                 
     def __init__(self, name, serial, **kwargs):
         super().__init__(name, **kwargs)
-        self.name = name
+        # self.name = name
         self.serial = serial
 
-
+        def get_idn(self):
+            return self.serial
 
 
         # Register oscillators

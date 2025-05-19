@@ -160,7 +160,7 @@ class Plot():
 
     def add_multiple(self,*z_params):
         for i,z_param in enumerate(z_params):
-            self.add(z_param,title=z_param.full_name,name=z_param.name,subplot=i)
+            self.add(z_param,subplot=i) #title=z_param.full_name,name=z_param.name,
 
     def add(self, *args, x=None, y=None, z=None,
             subplot=0, name=None, title=None, position=None,

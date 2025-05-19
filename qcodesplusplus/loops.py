@@ -735,7 +735,7 @@ class ActiveLoop(Metadatable):
             The plot object. The user can add subplots, etc before running the loop,
             or specify run=True to run the loop immediately.
         """
-        pp = Plot(title=self.data_set.name, name=self.data_set.name)
+        pp = Plot()#title=self.data_set.name, name=self.data_set.name)
         self.data_set.publisher=pp
         pp.add_multiple(*dataitems)
         if run:
