@@ -198,6 +198,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.binsX_lineedit.hide()
         self.binsY_label.hide()
         self.binsY_lineedit.hide()
+        self.metadata_button.hide()
+        self.stats_button.hide()
 
         #... and some that are not currently in use.
         self.track_button.hide()
@@ -261,6 +263,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.binsX_lineedit.editingFinished.connect(lambda: self.bins_changed('X'))
         self.binsY_lineedit.editingFinished.connect(lambda: self.bins_changed('Y'))
         self.global_text_lineedit.editingFinished.connect(self.global_text_changed)
+        self.stats_button.clicked.connect(self.show_stats)
         self.metadata_button.clicked.connect(self.show_metadata)
         self.settings_table.itemChanged.connect(self.plot_setting_edited)
         self.filters_table.itemChanged.connect(self.filters_table_edited)
@@ -1164,8 +1167,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         self.new_plot_Z_box.setCurrentIndex(2)
                 
                 if current_item.data.dim == 2:
+                    self.stats_button.hide()
                     plot_types=['X,Y','Histogram','FFT']
                 elif current_item.data.dim == 3:
+                    self.stats_button.show()
                     plot_types=['X,Y,Z', 'Histogram Y', 'Histogram X', 'FFT Y', 'FFT X', 'FFT X/Y']
                 self.plot_type_box.addItems(plot_types)
                 if hasattr(current_item.data, 'plot_type'):
@@ -1191,6 +1196,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         label.show()
                     for lineedit in lineedits[which]:
                         lineedit.show()
+
+                if isinstance(current_item.data, qcodesppData):
+                    self.metadata_button.show()
+                else:
+                    self.metadata_button.hide()
                  
         except:
             pass
@@ -2565,6 +2575,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if not hasattr(item.data,'metapopup'):
                     item.data.metapopup=MetadataWindow(item.data)
                 item.data.metapopup.show()
+
+    def show_stats(self):
+        item = self.file_list.currentItem()
+        if item:
+            if not hasattr(item.data,'statspopup'):
+                item.data.statspopup=StatsWindow(item.data)
+            item.data.statspopup.show()
             
     def mouse_scroll_canvas(self, event):
         if event.inaxes:

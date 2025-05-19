@@ -1761,22 +1761,61 @@ class LineCutWindow(QtWidgets.QWidget):
 
 
 class StatsWindow(QtWidgets.QWidget):
-    def __init__(self, parent, editor_window=None):
-        print(1)
+    def __init__(self, parent):
         super().__init__()
         # The parent is the DATA object.
         self.parent = parent
-        # self.editor_window is the main window.
-        self.editor_window = editor_window
+        self.resize(600,600)
         self.running = True
 
-        self.title_label = QtWidgets.QLabel(f'Statistics for {self.parent.label}')
-        self.output_window = QtWidgets.QTextEdit()
-        self.output_window.setReadOnly(True)
+        self.setWindowTitle(f'Statistics for {self.parent.label}')
+        statsdict=self.calculate_stats()
+        self.tree_widget = QtWidgets.QTreeWidget()
+        self.tree_widget.setColumnCount(2)
+        self.tree_widget.setHeaderLabels(["Name", "Value"])
+        self.populate_tree(statsdict)
         self.main_layout = QtWidgets.QHBoxLayout()
-        self.main_layout.addWidget(self.title_label)
-        self.main_layout.addWidget(self.output_window)
+        self.main_layout.addWidget(self.tree_widget)
         self.setLayout(self.main_layout)
+
+    def calculate_stats(self):
+        data=self.parent.processed_data[-1]
+        statsdict={'mean':np.mean(data),
+                   'std':np.std(data),
+                    'variance':np.var(data),
+                   'min':np.min(data),
+                   'max':np.max(data),
+                   'range':np.max(data)-np.min(data),
+                   'median':np.median(data),
+                   'percentiles':{}}
+        percentiles=np.percentile(data,[1,5,10,25,50,75,90,95,99])
+        for i,percentile in enumerate([1,5,10,25,50,75,90,95,99]):
+            statsdict['percentiles'][f'{percentile}%'] = percentiles[i]
+        
+        return statsdict
+    
+    def populate_tree(self, metadata, parent_item=None):
+        """
+        Recursively populate the QTreeWidget with nested dictionary data.
+        """
+        if parent_item is None:
+            parent_item = self.tree_widget
+
+        for key, value in metadata.items():
+            if isinstance(value, list):  # If the value is a list, create a parent node
+                item = QtWidgets.QTreeWidgetItem(parent_item, [str(key)])
+                for i, sub_value in enumerate(value):
+                    if isinstance(sub_value, dict):
+                        sub_item = QtWidgets.QTreeWidgetItem(item, [str(i)])
+                        self.populate_tree(sub_value, sub_item)
+                    else:
+                        sub_item = QtWidgets.QTreeWidgetItem(item, [str(i), str(sub_value)])
+
+            elif isinstance(value, dict):  # If the value is a dictionary, create a parent node
+                item = QtWidgets.QTreeWidgetItem(parent_item, [str(key)])
+                self.populate_tree(value, item)  # Recursively populate the child items
+            else:  # If the value is not a dictionary, create a leaf node
+                item = QtWidgets.QTreeWidgetItem(parent_item, [str(key), str(value)])
 
 class MetadataWindow(QtWidgets.QDialog):
     def __init__(self, parent=None):
