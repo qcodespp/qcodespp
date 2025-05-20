@@ -997,12 +997,10 @@ class Sidebar1D(QtWidgets.QWidget):
 
         elif 'stats' in self.parent.plotted_lines[line].keys():
             # All the stats can go into a single json.
-            print(1)
             stat_lines=[]
             for line in self.parent.plotted_lines.keys():
                 if 'stats' in self.parent.plotted_lines[line].keys():
                     stat_lines.append(line)
-            print(2)
             formats = 'JSON (*.json)'
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Statistics','', formats)

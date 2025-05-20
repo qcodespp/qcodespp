@@ -924,7 +924,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     elif hasattr(item.data, 'dim'):
                         if item.data.dim == 3 and update_data==True: # This should only be called when updating 2D data: updating 1D data is taken care of in the datatype and sidebar
                             item.data.prepare_data_for_plot(update_color_limits=update_color_limits) #reload_data=False by default
-                        
+                        elif item.data.dim == 'mixed' and update_data==True: #If MixedInternalData
+                            item.data.dataset2d.prepare_data_for_plot(update_color_limits=update_color_limits)
+
                     item.data.figure = self.figure
                     item.data.axes = item.data.figure.add_subplot(rows, cols, index+1)
                     item.data.add_plot(editor_window=self)

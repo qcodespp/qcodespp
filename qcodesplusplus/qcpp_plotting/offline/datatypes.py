@@ -799,6 +799,12 @@ class MixedInternalData(BaseClassData):
             print('could not find the correct type for dataset1d')
 
         self.all_parameter_names = self.dataset2d.all_parameter_names.copy()
+        self.dataset2d.settings=self.settings
+        self.dataset2d.axlim_settings=self.axlim_settings
+        self.dataset2d.view_settings=self.view_settings
+
+        if hasattr(dataset1d,'plotted_lines'):
+            self.dataset1d.plotted_lines = dataset1d.plotted_lines.copy()
 
         self.canvas = canvas
         self.label = label_name
@@ -846,26 +852,23 @@ class MixedInternalData(BaseClassData):
                                             rasterized=self.dataset2d.settings['rasterized'])
         if self.dataset2d.settings['colorbar'] == 'True':
             self.cbar = self.figure.colorbar(self.image, orientation='vertical')
+            if self.view_settings['CBarHist'] == True:
+                self.add_cbar_hist()
 
-        # Transfer the sidebar upwards so it's accessible in the editor window.
-        if not hasattr(self, 'sidebar1D') and hasattr(self.dataset1d, 'sidebar1d'):
-            self.sidebar1D=self.dataset1d.sidebar1d
-            newsidebar=False
-        # Or create one
-        else:
+        # Now plot 1D data on top
+        if not hasattr(self, 'sidebar1D'):
             self.sidebar1D = Sidebar1D(self.dataset1d,editor_window=editor_window)
             self.sidebar1D.running = True
-            newsidebar=True
-
-        self.sidebar1D.lims_label.setText('Fit limits')
-
+            if hasattr(self.dataset1d, 'plotted_lines'):
+                for line in self.dataset1d.plotted_lines.keys():
+                    self.sidebar1D.append_trace_to_table(line)
+        
         if not hasattr(self.dataset1d, 'plotted_lines'):
-            # Should basically never happen; user should always have created a plot before.
+            # Should basically never happen; user should always have created a plot before since it's 'combine _checked_ files'
             self.dataset1d.init_plotted_lines()
             self.sidebar1D.append_trace_to_table(0)
-        elif newsidebar:
-            for line in self.dataset1d.plotted_lines.keys():
-                self.sidebar1D.append_trace_to_table(line)
+
+        self.sidebar1D.lims_label.setText('Fit limits')
             
         self.sidebar1D.update(clearplot=False)
 
@@ -894,3 +897,17 @@ class MixedInternalData(BaseClassData):
             self.dataset2d.processed_data = processed_data
             if update_color_limits:
                 self.reset_view_settings()
+
+    def add_cbar_hist(self):
+        self.hax=self.cbar.ax.inset_axes([-1.05, 0, 1, 1],picker=True)
+        counts, self.cbar_hist_bins = np.histogram(self.dataset2d.processed_data[-1],bins=int(self.settings['cmap levels']))
+        midpoints = self.cbar_hist_bins[:-1] + np.diff(self.cbar_hist_bins)/2
+        self.hax.fill_between(-counts, midpoints,0,color='mediumslateblue')
+        self.haxfill=self.hax.fill_betweenx(np.linspace(self.view_settings['Minimum'], self.view_settings['Maximum'], 100), 
+                                                        self.hax.get_xlim()[0], 
+                                                        color='blue', alpha=0.2)
+
+        self.hax.margins(0)
+        self.hax.spines[:].set_linewidth(0.5)
+        self.hax.get_xaxis().set_visible(False)
+        self.hax.get_yaxis().set_visible(False)
