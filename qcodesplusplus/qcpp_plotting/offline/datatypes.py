@@ -764,25 +764,48 @@ class InternalData(BaseClassData):
     
     def copy(self):
         # Copy the data to a new object.
-        new_data = InternalData(self.canvas, self.loaded_data, self.label, self.all_parameter_names,self.dim)
+        new_data = InternalData(self.canvas, self.loaded_data.copy(), self.label, self.all_parameter_names.copy(),self.dim)
         return new_data
     
 class MixedInternalData(BaseClassData):
     # Class for combination of a single 2D dataset and various 1D datasets.
     def __init__(self, canvas, dataset2d, dataset1d, label_name):
         super().__init__(filepath='internal_data', canvas=canvas)
-        self.dataset2d = dataset2d
-        self.dataset1d = dataset1d
+
+        # Copy some settings over from the 2D dataset that we will use.
+        self.settings = dataset2d.settings.copy()
+        self.axlim_settings = dataset2d.axlim_settings.copy()
+        self.view_settings = dataset2d.view_settings.copy()
+
+        # Then reload both datasets to ensure completely distinct objects.
+        from qcodesplusplus.qcpp_plotting.offline.qcodes_pp_extension import qcodesppData
+
+        if type(dataset2d) == qcodesppData:
+            self.dataset2d = qcodesppData(dataset2d.filepath,canvas,os.path.dirname(dataset2d.filepath)+'/snapshot.json',load_the_data=True)
+        elif type(dataset2d) == BaseClassData:
+            self.dataset2d = BaseClassData(dataset2d.filepath,canvas)
+        elif type(dataset2d) == InternalData:
+            self.dataset2d = InternalData(canvas,dataset2d.loaded_data,dataset2d.label,dataset2d.all_parameter_names,dataset2d.dim)
+        else:
+            print('could not find the correct type for dataset2d')
+        
+        if type(dataset1d) == qcodesppData:
+            self.dataset1d = qcodesppData(dataset1d.filepath,canvas,os.path.dirname(dataset1d.filepath)+'/snapshot.json',load_the_data=True)
+        elif type(dataset1d) == BaseClassData:
+            self.dataset1d = BaseClassData(dataset1d.filepath,canvas)
+        elif type(dataset1d) == InternalData:
+            self.dataset1d = InternalData(canvas,dataset1d.loaded_data,dataset1d.label,dataset1d.all_parameter_names,dataset1d.dim)
+        else:
+            print('could not find the correct type for dataset1d')
+
+        self.all_parameter_names = self.dataset2d.all_parameter_names.copy()
+
         self.canvas = canvas
         self.label = label_name
         self.dim = 'mixed'
 
-        self.settings = self.dataset2d.settings
-        self.axlim_settings = self.dataset2d.axlim_settings
-        self.view_settings = self.dataset2d.view_settings
-        self.all_parameter_names = self.dataset2d.all_parameter_names
-        if hasattr(self.dataset1d, 'linecuts'):
-            self.linecuts = self.dataset2d.linecuts
+        # if hasattr(self.dataset2d, 'linecuts'):
+        #     self.linecuts = self.dataset2d.linecuts
 
         self.settings_menu_options = {'X data': self.all_parameter_names,
                                 'Y data': self.all_parameter_names,

@@ -6,9 +6,6 @@ Author: Joeri de Bruijckere
 
 Adapted for qcodes++ by: Dags Olsteins and Damon Carrad
 
-To convert QtDesigner UI to python file:
-pyuic5 -x design.ui -o design.py
-
 """
 
 from PyQt5 import QtWidgets, QtCore, QtGui
@@ -1854,21 +1851,17 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     if len(data_list) > 2:
                         raise ValueError('Could not combine data. When combining 2D and 1D data, use only one dataset of each type.\n{finalerrormes}')
                     try:
-                        dataset2d=None
-                        combined_data=[]
-                        combined_parameter_names=[]
                         if data_list[0].dim == 3:
-                            dataset2d=copy.copy(data_list[0])
-                            dataset1d=copy.copy(data_list[1])
+                            dataset2d=data_list[0]
+                            dataset1d=data_list[1]
                             # Next two lines basically fix a bug.
                             dataset1d.settings['X data'] = data_list[1].all_parameter_names[0]
                             dataset1d.settings['Y data'] = data_list[1].all_parameter_names[1]
                         else:
-                            dataset2d=copy.copy(data_list[1])
-                            dataset1d=copy.copy(data_list[0])
-                            dataset1d.settings['X data'] = data_list[0].data.all_parameter_names[0]
-                            dataset1d.settings['Y data'] = data_list[0].data.all_parameter_names[1]
-
+                            dataset2d=data_list[1]
+                            dataset1d=data_list[0]
+                            dataset1d.settings['X data'] = data_list[0].all_parameter_names[0]
+                            dataset1d.settings['Y data'] = data_list[0].all_parameter_names[1]
                         combined_item=DataItem(MixedInternalData(self.canvas,dataset2d,dataset1d,label_name))
                         self.add_internal_data(combined_item)
 
