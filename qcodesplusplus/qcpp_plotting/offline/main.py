@@ -1777,15 +1777,16 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 new_item.data.settings['X data'] = original_item.data.all_parameter_names[0]
                 new_item.data.settings['Y data'] = original_item.data.all_parameter_names[1]
                 new_item.data.prepare_data_for_plot()
-                # Populate trace table from original data.
-                if hasattr(original_item.data, 'plotted_lines'):
-                    new_item.data.sidebar1D = Sidebar1D(new_item.data,self)
-                    new_item.data.sidebar1D.running=True
-                    new_item.data.plotted_lines = {}
-                    for line in original_item.data.plotted_lines:
-                        new_item.data.plotted_lines[line] = copy.deepcopy(original_item.data.plotted_lines[line])
-                        new_item.data.sidebar1D.append_trace_to_table(line)
-                    self.oneD_layout.addWidget(new_item.data.sidebar1D)
+                # Populate trace table from original data. This doesn't work. It links the new item to the old one.
+                # if hasattr(original_item.data, 'plotted_lines'):
+                #     new_item.data.sidebar1D = Sidebar1D(new_item.data,self)
+                #     new_item.data.sidebar1D.running=True
+                #     new_item.data.plotted_lines = {}
+                #     for line in original_item.data.plotted_lines:
+                #         new_item.data.plotted_lines[line] = copy.deepcopy(original_item.data.plotted_lines[line])
+                #         new_item.data.sidebar1D.append_trace_to_table(line)
+                #     self.oneD_layout.addWidget(new_item.data.sidebar1D)
+                new_item.data.init_plotted_lines()
 
             new_item.setCheckState(QtCore.Qt.Checked)
             if new_plot_button and new_item.data.dim == 3:

@@ -28,9 +28,9 @@ class BaseClassData:
     DEFAULT_PLOT_SETTINGS['clabel'] = ''
     DEFAULT_PLOT_SETTINGS['transpose'] = 'False'
     DEFAULT_PLOT_SETTINGS['delimiter'] = ''
-    DEFAULT_PLOT_SETTINGS['titlesize'] = '14'
-    DEFAULT_PLOT_SETTINGS['labelsize'] = '14' 
-    DEFAULT_PLOT_SETTINGS['ticksize'] = '14'
+    DEFAULT_PLOT_SETTINGS['titlesize'] = '12'
+    DEFAULT_PLOT_SETTINGS['labelsize'] = '12' 
+    DEFAULT_PLOT_SETTINGS['ticksize'] = '12'
     # The above three now get overridden by global_text_size
     DEFAULT_PLOT_SETTINGS['spinewidth'] = '1'
     DEFAULT_PLOT_SETTINGS['colorbar'] = 'True'
@@ -776,12 +776,12 @@ class MixedInternalData(BaseClassData):
     def __init__(self, canvas, dataset2d, dataset1d, label_name, editor_window):
         super().__init__(filepath='internal_data', canvas=canvas)
 
-        # Copy some settings over from the 2D dataset that we will use.
-        self.settings = dataset2d.settings.copy()
-        self.axlim_settings = dataset2d.axlim_settings.copy()
-        self.view_settings = dataset2d.view_settings.copy()
+        self.canvas = canvas
+        self.label = label_name
+        self.dim = 'mixed'
+        self.settings['title'] = self.label
 
-        # Then reload both datasets to ensure completely distinct objects.
+        # Reload both datasets to ensure completely distinct objects.
         from qcodesplusplus.qcpp_plotting.offline.qcodes_pp_extension import qcodesppData
 
         if type(dataset2d) == qcodesppData:
@@ -802,23 +802,12 @@ class MixedInternalData(BaseClassData):
         else:
             print('could not find the correct type for dataset1d')
 
+        self.plot_type=None
+        
         self.all_parameter_names = self.dataset2d.all_parameter_names.copy()
         self.dataset2d.settings=self.settings
         self.dataset2d.axlim_settings=self.axlim_settings
         self.dataset2d.view_settings=self.view_settings
-
-        if hasattr(dataset2d, 'linecuts'):
-            self.dataset2d.linecuts=copy_linecuts(dataset2d,editor_window=editor_window)
-
-        if hasattr(dataset1d,'plotted_lines'):
-            self.dataset1d.plotted_lines=copy_plotted_lines(dataset1d.plotted_lines)
-
-        self.canvas = canvas
-        self.label = label_name
-        self.dim = 'mixed'
-
-        # if hasattr(self.dataset2d, 'linecuts'):
-        #     self.linecuts = self.dataset2d.linecuts
 
         self.settings_menu_options = {'X data': self.all_parameter_names,
                                 'Y data': self.all_parameter_names,
@@ -829,6 +818,15 @@ class MixedInternalData(BaseClassData):
                                     'Divide': allnames,
                                     'Add/Subtract': allnames}
         
+        # if hasattr(dataset2d, 'linecuts'):
+        #     self.dataset2d.linecuts=copy_linecuts(dataset2d,editor_window=editor_window)
+
+        # if hasattr(dataset1d,'plotted_lines'):
+        #     self.dataset1d.plotted_lines=copy_plotted_lines(dataset1d.plotted_lines)
+
+        self.prepare_data_for_plot(reload_data=True,reload_from_file=True)
+        self.dataset1d.init_plotted_lines()
+
     def prepare_data_for_plot(self, *args, **kwargs):
         self.dataset2d.prepare_data_for_plot(*args, **kwargs)
         self.dataset1d.prepare_data_for_plot(*args, **kwargs)
@@ -932,7 +930,7 @@ def copy_fit(fit):
             new_fit[key] = load_modelresult('temp_fit_result')
             os.remove('temp_fit_result')
         else:
-            new_fit[key] = copy.copy(fit[key])
+            new_fit[key] = copy.deepcopy(fit[key])
     return new_fit
 
 def copy_plotted_lines(plotted_lines):
@@ -943,7 +941,7 @@ def copy_plotted_lines(plotted_lines):
             if key == 'fit':
                 plotted_lines[line][key] = copy_fit(plotted_lines[line][key])
             else:
-                copied_plotted_lines[line][key] = copy.copy(plotted_lines[line][key])
+                copied_plotted_lines[line][key] = copy.deepcopy(plotted_lines[line][key])
     return copied_plotted_lines
 
 def copy_linecuts(dataset2d,editor_window):
@@ -960,7 +958,7 @@ def copy_linecuts(dataset2d,editor_window):
                     new_linecuts[orientation]['lines'][line][key] = [DraggablePoint(dataset2d, points[0][0], points[0][1],line,orientation),
                                         DraggablePoint(dataset2d, points[1][0], points[1][1],line,orientation,draw_line=True)]
                 else:
-                    new_linecuts[orientation]['lines'][line][key] = copy.copy(dataset2d.linecuts[orientation]['lines'][line][key])
+                    new_linecuts[orientation]['lines'][line][key] = copy.deepcopy(dataset2d.linecuts[orientation]['lines'][line][key])
         if len(new_linecuts[orientation]['lines']) > 0:
             new_linecuts[orientation]['linecut_window']= LineCutWindow(dataset2d,
                                                         orientation=orientation,
