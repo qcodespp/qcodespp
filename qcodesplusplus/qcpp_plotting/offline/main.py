@@ -667,7 +667,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         for key, value in d.items():
             if isinstance(value, dict):
                 # Recurse into nested dictionaries
-                new_dict[key] = self.remove_linecutwindows_and_fits(value, dirpath,exclude_key,exclude_key2)
+                new_dict[key] = self.remove_linecutwindows_and_fits(value, dirpath,exclude_key,exclude_key2,exclude_key3)
             else:
                 # For non-dictionary values, just copy them
                 new_dict[key] = value
@@ -1864,7 +1864,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             dataset1d=data_list[0]
                             dataset1d.settings['X data'] = data_list[0].all_parameter_names[0]
                             dataset1d.settings['Y data'] = data_list[0].all_parameter_names[1]
-                        combined_item=DataItem(MixedInternalData(self.canvas,dataset2d,dataset1d,label_name))
+                        combined_item=DataItem(MixedInternalData(self.canvas,dataset2d,dataset1d,label_name,self))
                         self.add_internal_data(combined_item)
 
                     except Exception as e:

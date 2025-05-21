@@ -1,4 +1,6 @@
 from PyQt5 import QtWidgets, QtCore
+import copy
+import os
 import numpy as np
 from collections import OrderedDict
 from matplotlib import rcParams
@@ -286,4 +288,3 @@ class DraggablePoint:
         self.point.figure.canvas.mpl_disconnect(self.cidpress)
         self.point.figure.canvas.mpl_disconnect(self.cidrelease)
         self.point.figure.canvas.mpl_disconnect(self.cidmotion)
- 

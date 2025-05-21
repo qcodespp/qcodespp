@@ -4,8 +4,11 @@ import os
 import copy
 from matplotlib.widgets import Cursor
 from matplotlib import cm, rcParams
-from .helpers import MidpointNormalize
+from .helpers import MidpointNormalize,DraggablePoint
 from .sidebars import Sidebar1D
+from .popupwindows import LineCutWindow
+
+from lmfit.model import save_modelresult, load_modelresult
 
 class DataItem(QtWidgets.QListWidgetItem):
     def __init__(self, data):
@@ -770,7 +773,7 @@ class InternalData(BaseClassData):
     
 class MixedInternalData(BaseClassData):
     # Class for combination of a single 2D dataset and various 1D datasets.
-    def __init__(self, canvas, dataset2d, dataset1d, label_name):
+    def __init__(self, canvas, dataset2d, dataset1d, label_name, editor_window):
         super().__init__(filepath='internal_data', canvas=canvas)
 
         # Copy some settings over from the 2D dataset that we will use.
@@ -804,8 +807,11 @@ class MixedInternalData(BaseClassData):
         self.dataset2d.axlim_settings=self.axlim_settings
         self.dataset2d.view_settings=self.view_settings
 
+        if hasattr(dataset2d, 'linecuts'):
+            self.dataset2d.linecuts=copy_linecuts(dataset2d,editor_window=editor_window)
+
         if hasattr(dataset1d,'plotted_lines'):
-            self.copy_plotted_lines(dataset1d)
+            self.dataset1d.plotted_lines=copy_plotted_lines(dataset1d.plotted_lines)
 
         self.canvas = canvas
         self.label = label_name
@@ -822,19 +828,6 @@ class MixedInternalData(BaseClassData):
         self.filter_menu_options = {'Multiply': allnames,
                                     'Divide': allnames,
                                     'Add/Subtract': allnames}
-        
-
-    def copy_plotted_lines(self,dataset1d):
-        try:
-            self.dataset1d.plotted_lines = {}
-            for line in dataset1d.plotted_lines.keys():
-                for key in dataset1d.plotted_lines[line].keys():
-                    if key != 'fit':
-                        self.dataset1d.plotted_lines[line][key] = copy.deepcopy(dataset1d.plotted_lines[line][key])
-        except Exception as e:
-            print(e)
-        
-
         
     def prepare_data_for_plot(self, *args, **kwargs):
         self.dataset2d.prepare_data_for_plot(*args, **kwargs)
@@ -925,3 +918,56 @@ class MixedInternalData(BaseClassData):
         self.hax.spines[:].set_linewidth(0.5)
         self.hax.get_xaxis().set_visible(False)
         self.hax.get_yaxis().set_visible(False)
+
+
+# Copying data instances is problematic because linecut windows and lmfit results can't be copied or pickled.
+# These functions deal with that by copying all the data that is possible to copy, and otherwise 1) saving
+# the lmfit result to a temporary file and loading it again, or 2) recreating the linecut window.
+
+def copy_fit(fit):
+    new_fit = {}
+    for key in fit.keys():
+        if key == 'fit_result':
+            save_modelresult(fit[key],'temp_fit_result')
+            new_fit[key] = load_modelresult('temp_fit_result')
+            os.remove('temp_fit_result')
+        else:
+            new_fit[key] = copy.copy(fit[key])
+    return new_fit
+
+def copy_plotted_lines(plotted_lines):
+    copied_plotted_lines = {}
+    for line in plotted_lines.keys():
+        copied_plotted_lines[line] = {}
+        for key in plotted_lines[line].keys():
+            if key == 'fit':
+                plotted_lines[line][key] = copy_fit(plotted_lines[line][key])
+            else:
+                copied_plotted_lines[line][key] = copy.copy(plotted_lines[line][key])
+    return copied_plotted_lines
+
+def copy_linecuts(dataset2d,editor_window):
+    new_linecuts = {}
+    for orientation in dataset2d.linecuts.keys():
+        new_linecuts[orientation] = {'lines': {}}
+        for line in dataset2d.linecuts[orientation]['lines'].keys():
+            new_linecuts[orientation]['lines'][line] = {}
+            for key in dataset2d.linecuts[orientation]['lines'][line].keys():
+                if key == 'fit':
+                    new_linecuts[orientation]['lines'][line][key] = copy_fit(dataset2d.linecuts[orientation]['lines'][line][key])
+                elif key == 'draggable_points':
+                    points=dataset2d.linecuts[orientation]['lines'][line]['points']
+                    new_linecuts[orientation]['lines'][line][key] = [DraggablePoint(dataset2d, points[0][0], points[0][1],line,orientation),
+                                        DraggablePoint(dataset2d, points[1][0], points[1][1],line,orientation,draw_line=True)]
+                else:
+                    new_linecuts[orientation]['lines'][line][key] = copy.copy(dataset2d.linecuts[orientation]['lines'][line][key])
+        if len(new_linecuts[orientation]['lines']) > 0:
+            new_linecuts[orientation]['linecut_window']= LineCutWindow(dataset2d,
+                                                        orientation=orientation,
+                                                        editor_window=editor_window)
+            for line in new_linecuts[orientation]['lines'].keys():
+                new_linecuts[orientation]['linecut_window'].append_cut_to_table(line)
+            new_linecuts[orientation]['linecut_window'].running = False
+            # To show the linecut window, run the below line where relevant
+            new_linecuts[orientation]['linecut_window'].show()
+    return new_linecuts
