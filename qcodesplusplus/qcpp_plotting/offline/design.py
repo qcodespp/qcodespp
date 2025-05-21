@@ -264,6 +264,7 @@ class Ui_MainWindow(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.mixeddata_filter_box.sizePolicy().hasHeightForWidth())
         self.mixeddata_filter_box.setSizePolicy(sizePolicy)
+        self.mixeddata_filter_box.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToMinimumContentsLength)
         self.mixeddata_filter_box.setObjectName("mixeddata_filter_box")
         self.filters_layout.addWidget(self.mixeddata_filter_box, 1, 0, 1, 3)
         self.gridLayout_6.addLayout(self.filters_layout, 1, 0, 1, 1)

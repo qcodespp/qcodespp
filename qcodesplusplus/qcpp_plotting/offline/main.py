@@ -2335,6 +2335,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                 data.reset_midpoint()
                 data.apply_view_settings()
+                self.show_current_view_settings()
                 self.canvas.draw()
             
             elif self.press[0] == 'outside':
