@@ -1,6 +1,7 @@
 from PyQt5 import QtWidgets, QtCore
 import numpy as np
 import os
+import copy
 from matplotlib.widgets import Cursor
 from matplotlib import cm, rcParams
 from .helpers import MidpointNormalize
@@ -804,7 +805,7 @@ class MixedInternalData(BaseClassData):
         self.dataset2d.view_settings=self.view_settings
 
         if hasattr(dataset1d,'plotted_lines'):
-            self.dataset1d.plotted_lines = dataset1d.plotted_lines.copy()
+            self.copy_plotted_lines(dataset1d)
 
         self.canvas = canvas
         self.label = label_name
@@ -821,6 +822,19 @@ class MixedInternalData(BaseClassData):
         self.filter_menu_options = {'Multiply': allnames,
                                     'Divide': allnames,
                                     'Add/Subtract': allnames}
+        
+
+    def copy_plotted_lines(self,dataset1d):
+        try:
+            self.dataset1d.plotted_lines = {}
+            for line in dataset1d.plotted_lines.keys():
+                for key in dataset1d.plotted_lines[line].keys():
+                    if key != 'fit':
+                        self.dataset1d.plotted_lines[line][key] = copy.deepcopy(dataset1d.plotted_lines[line][key])
+        except Exception as e:
+            print(e)
+        
+
         
     def prepare_data_for_plot(self, *args, **kwargs):
         self.dataset2d.prepare_data_for_plot(*args, **kwargs)
