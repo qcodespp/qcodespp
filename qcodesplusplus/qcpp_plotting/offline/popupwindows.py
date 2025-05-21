@@ -941,18 +941,6 @@ class LineCutWindow(QtWidgets.QWidget):
             self.parent.canvas.draw()
             self.show()
                
-    def clear_lines(self):
-        for line in reversed(self.axes.get_lines()):
-            if line.get_linestyle() == '--':
-                line.remove()
-                del line
-        if hasattr(self, 'peak_estimates'):
-            self.peak_estimates = []
-        self.update()
-        self.output_window.clear()
-        self.fit_type_changed(resetinputs=False)
-        self.canvas.draw()
-    
     def fit_class_changed(self):
         self.fit_box.clear()
         self.fit_box.addItems(fits.get_names(fitclass=self.fit_class_box.currentText()))
@@ -1333,6 +1321,7 @@ class LineCutWindow(QtWidgets.QWidget):
                     fit_result=self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result']
                     data[f'fit{line}_X'] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['xdata'].tolist()
                     data[f'fit{line}_Y'] = fit_result.best_fit.tolist()
+                    data[f'fit{line}_Y_err'] = fit_result.eval_uncertainty().tolist()
                     fit_components=fit_result.eval_components()
                     for key in fit_components.keys():
                         data[f'fit{line}_{key}Y'] = fit_components[key].tolist()
@@ -1344,7 +1333,8 @@ class LineCutWindow(QtWidgets.QWidget):
                     with open(filename, 'w', newline='') as f:
                         writer = csvwriter(f)
                         writer.writerow([key for key in data])
-                        for i in range(len(data[f'linecut{lines[0]}_X'])):
+                        lengths = [len(data[key]) for key in data.keys()]
+                        for i in range(np.max(lengths)):
                             row = []
                             for param in data:
                                 try:

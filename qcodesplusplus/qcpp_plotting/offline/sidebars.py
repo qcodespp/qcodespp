@@ -1024,7 +1024,6 @@ class Sidebar1D(QtWidgets.QWidget):
             print('First select a linecut with either a fit or statistics. '
                   'Either the fits or stats for all lines will be saved, based on that.')
 
-
     def clear_fit(self,row='manual'):
         self.trace_table.itemChanged.disconnect(self.trace_table_edited)
         if row=='manual':

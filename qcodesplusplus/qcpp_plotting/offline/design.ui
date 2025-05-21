@@ -1280,14 +1280,6 @@
     <property name="title">
      <string>File</string>
     </property>
-    <widget class="QMenu" name="menuSave_session">
-     <property name="title">
-      <string>Save session...</string>
-     </property>
-     <addaction name="action_all_files"/>
-     <addaction name="action_checked_files"/>
-     <addaction name="action_current_file"/>
-    </widget>
     <addaction name="action_open_file"/>
     <addaction name="action_open_files_from_folder"/>
     <addaction name="separator"/>
@@ -1295,7 +1287,7 @@
     <addaction name="action_unlink_folder"/>
     <addaction name="action_track_data"/>
     <addaction name="separator"/>
-    <addaction name="menuSave_session"/>
+    <addaction name="action_save_session"/>
     <addaction name="action_restore_session"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
@@ -1338,11 +1330,6 @@
   <action name="action_pdf">
    <property name="text">
     <string>PDF</string>
-   </property>
-  </action>
-  <action name="actionSession">
-   <property name="text">
-    <string>All Files...</string>
    </property>
   </action>
   <action name="actionExit">
@@ -1430,9 +1417,9 @@
     <string>Current File</string>
    </property>
   </action>
-  <action name="action_all_files">
+  <action name="action_save_session">
    <property name="text">
-    <string>All Files (Ctrl+S)</string>
+    <string>Save session (Ctrl+S)</string>
    </property>
   </action>
   <action name="action_filters">
@@ -1548,11 +1535,6 @@
   <action name="action_track_data">
    <property name="text">
     <string>Start/stop tracking (Ctrl+T)</string>
-   </property>
-  </action>
-  <action name="action_save_session">
-   <property name="text">
-    <string>Save session (Ctrl+Shift+S)</string>
    </property>
   </action>
   <action name="action_restore_session">

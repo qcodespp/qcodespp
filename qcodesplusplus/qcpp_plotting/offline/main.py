@@ -307,9 +307,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.copy_image_button.clicked.connect(self.copy_canvas_to_clipboard)
         self.load_filters_button.clicked.connect(self.load_filters)
         self.action_filters.triggered.connect(self.save_filters)
-        self.action_current_file.triggered.connect(lambda: self.save_session('current'))
-        self.action_all_files.triggered.connect(lambda: self.save_session('all'))
-        self.action_checked_files.triggered.connect(lambda: self.save_session('checked'))
+        # self.action_current_file.triggered.connect(lambda: self.save_session('current'))
+        self.action_save_session.triggered.connect(lambda: self.save_session('all'))
+        # self.action_checked_files.triggered.connect(lambda: self.save_session('checked'))
         self.action_restore_session.triggered.connect(self.load_session)
         self.action_combine_files.triggered.connect(self.combine_plots)
         self.action_duplicate_file.triggered.connect(self.duplicate_item)
@@ -606,20 +606,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def save_session(self, which='current'):
         current_item = self.file_list.currentItem()
         if current_item:
-            if which == 'current':
-                suggested_filename = os.path.splitext(current_item.data.filepath)[0].replace(':','')
-                filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
-                    self, 'Save Session As...', suggested_filename, '*.igs')
-                items = [current_item]
-            elif which == 'all':
-                filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
-                    self, 'Save Session As...', '', '*.igs')
-                items = [self.file_list.item(n) for n in range(self.file_list.count())]
-            elif which == 'checked':
-                filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
-                    self, 'Save Session As...', '', '*.igs')
-                items = [self.file_list.item(n) for n in range(self.file_list.count()) 
-                         if self.file_list.item(n).checkState() == 2]         
+
+            filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
+                self, 'Save Session As...', '', '*.igs')
+            items = [self.file_list.item(n) for n in range(self.file_list.count())]
+     
             if filepath:
                 dirpath = os.path.dirname(filepath)
                 dictionary_list = []
@@ -711,7 +702,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def save_processed_data(self, which='current'):
         current_item = self.file_list.currentItem()
         if current_item:
-            formats='Numpy text (*.dat);;Numpy format (*.npy);;CSV (*.csv)'
+            formats='Numpy text (*.dat);;CSV (*.csv);;JSON (*.json)'
             suggested_filename = current_item.data.label
             filepath, ext = QtWidgets.QFileDialog.getSaveFileName(
             self, 'Export Data As', suggested_filename, formats)
@@ -719,39 +710,96 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if hasattr(current_item.data,'processed_data'):
                     if '.dat' in ext:
                         header=''
-                        for label in ['xlabel','ylabel','clabel']:
-                            if current_item.data.settings[label] != '':
-                                header+=f'{current_item.data.settings[label]}\t'
-                        header=header.strip('\t')
                         with open(filepath, "w") as dat_file:
-                            if len(current_item.data.get_columns()) == 2:
-                                np.savetxt(filepath, np.column_stack(current_item.data.processed_data),header=header)
-                            elif len(current_item.data.get_columns()) == 3:
-                                dat_file.write(f'# {header}\n')
-                                for j in range(np.shape(current_item.data.processed_data[2])[0]):
-                                    for k in range(np.shape(current_item.data.processed_data[2])[1]):
-                                        dat_file.write('{}\t{}\t{}\n'.format(current_item.data.processed_data[0][j,k],current_item.data.processed_data[1][j,k],current_item.data.processed_data[2][j,k]))
-                    elif '.npy' in ext:
-                            if len(current_item.data.get_columns()) == 2:
-                                np.save(filepath, np.column_stack(current_item.data.processed_data))
-                            elif len(current_item.data.get_columns()) == 3:
-                                np.save(filepath, np.stack(current_item.data.processed_data, axis=2))
-                    elif '.csv' in ext:
-                        with open(filepath, 'w', newline='') as f:
-                            writer = csvwriter(f,delimiter='\t')
-                            header=[]
-                            for label in ['xlabel','ylabel','clabel']:
-                                if current_item.data.settings[label] != '':
-                                    header.append(f'#{current_item.data.settings[label]}')
-                            writer.writerow(header)
-                            if len(current_item.data.get_columns())==2:
-                                for i,x in enumerate(current_item.data.processed_data[0]):
-                                    writer.writerow([x,current_item.data.processed_data[1][i]])
-                            elif len(current_item.data.get_columns()) == 3:
-                                for j in range(np.shape(current_item.data.processed_data[2])[0]):
-                                    for k in range(np.shape(current_item.data.processed_data[2])[1]):
-                                        writer.writerow([current_item.data.processed_data[0][j,k],current_item.data.processed_data[1][j,k],current_item.data.processed_data[2][j,k]])
+                            try:
+                                if current_item.data.dim==3:
+                                    labels=['xlabel','ylabel','clabel']
+                                    for label in labels:
+                                        if current_item.data.settings[label] != '':
+                                            header+=f'{current_item.data.settings[label]}\t'
+                                    header=header.strip('\t')
+                                    dat_file.write(f'# {header}\n')
+                                    for j in range(np.shape(current_item.data.processed_data[2])[0]):
+                                        for k in range(np.shape(current_item.data.processed_data[2])[1]):
+                                            dat_file.write('{}\t{}\t{}\n'.format(current_item.data.processed_data[0][j,k],current_item.data.processed_data[1][j,k],current_item.data.processed_data[2][j,k]))
+                                elif current_item.data.dim == 2:
+                                    if current_item.data.plot_type == 'Histogram':
+                                        print('Cannot save 1D histogram data as .dat. Use .json or .csv instead.')
+                                    else:
+                                        processed_data=[]
+                                        for line in current_item.data.plotted_lines.keys():
+                                            if current_item.data.plotted_lines[line]['checkstate']:
+                                                header+=f'{line}_{current_item.data.plotted_lines[line]["X data"]}\t{line}_{current_item.data.plotted_lines[line]["Y data"]}\t'
+                                                processed_data.append(current_item.data.plotted_lines[line]['processed_data'][0])
+                                                processed_data.append(current_item.data.plotted_lines[line]['processed_data'][1])
+                                        np.savetxt(filepath, np.column_stack(processed_data),header=header)
+                            except Exception as e:
+                                print('Error saving processed data as .dat:', e)
 
+                    else:
+                        data={}
+                        if current_item.data.dim==3:
+                            if current_item.data.settings['xlabel'] != '':
+                                data[current_item.data.settings['xlabel']]=current_item.data.processed_data[0].flatten().tolist()
+                            else:
+                                data['X']=current_item.data.processed_data[0].flatten().tolist()
+                            if current_item.data.settings['ylabel'] != '':
+                                data[current_item.data.settings['ylabel']]=current_item.data.processed_data[1].flatten().tolist()
+                            else:
+                                data['Y']=current_item.data.processed_data[1].flatten().tolist()
+                            if current_item.data.settings['clabel'] != '':
+                                data[current_item.data.settings['clabel']]=current_item.data.processed_data[2].flatten().tolist()
+                            else:
+                                data['Z']=current_item.data.processed_data[2].flatten().tolist()
+
+                        elif current_item.data.dim == 2:
+                            for line in current_item.data.plotted_lines.keys():
+                                if current_item.data.plotted_lines[line]['checkstate']:
+                                    if current_item.data.plot_type == 'Histogram':
+                                        headers=[f'{line}_{current_item.data.plotted_lines[line]['Y data']}_bins',
+                                                 f'{line}_{current_item.data.plotted_lines[line]['Y data']}_counts',
+                                                 f'{line}_{current_item.data.plotted_lines[line]['Y data']}_bins_fit']
+                                    else:
+                                        headers=[f'{line}_{current_item.data.plotted_lines[line]['X data']}',
+                                                 f'{line}_{current_item.data.plotted_lines[line]['Y data']}',
+                                                 f'{line}_{current_item.data.plotted_lines[line]['X data']}_fit']
+                                    data[headers[0]]=current_item.data.plotted_lines[line]['processed_data'][0].tolist()
+                                    data[headers[1]]=current_item.data.plotted_lines[line]['processed_data'][1].tolist()
+                                    if 'fit' in current_item.data.plotted_lines[line].keys() and current_item.data.plotted_lines[line]['fit']['fit_checkstate']:
+                                        data[headers[2]]=current_item.data.plotted_lines[line]['fit']['xdata'].tolist()
+                                        fit_result=current_item.data.plotted_lines[line]['fit']['fit_result']
+                                        data[f'{line}_{current_item.data.plotted_lines[line]['Y data']}'+'_fit']=fit_result.best_fit.tolist()
+                                        data[f'{line}_{current_item.data.plotted_lines[line]['Y data']}'+'_fit_error']=fit_result.eval_uncertainty().tolist()
+                                        fit_components=fit_result.eval_components()
+                                        for component in fit_components:
+                                            data[f'{line}_{current_item.data.plotted_lines[line]['Y data']}'+'_'+component]=fit_components[component].tolist()
+                        if '.json' in ext:
+                            with open(filepath, 'w') as json_file:
+                                jsondump(data, json_file,ensure_ascii=False, indent=4)
+
+                        elif '.csv' in ext:
+                            with open(filepath, 'w', newline='') as f:
+                                writer = csvwriter(f)
+                                if current_item.data.dim==3:
+                                    header=[]
+                                    for label in ['xlabel','ylabel','clabel']:
+                                        if current_item.data.settings[label] != '':
+                                            header.append(f'#{current_item.data.settings[label]}')
+                                    writer.writerow(header)
+                                    for j in range(np.shape(current_item.data.processed_data[2])[0]):
+                                        for k in range(np.shape(current_item.data.processed_data[2])[1]):
+                                            writer.writerow([current_item.data.processed_data[0][j,k],current_item.data.processed_data[1][j,k],current_item.data.processed_data[2][j,k]])
+                                elif current_item.data.dim == 2:
+                                    writer.writerow([key for key in data.keys()])
+                                    lengths = [len(data[key]) for key in data.keys()]
+                                    for i in range(np.max(lengths)):
+                                        row = []
+                                        for key in data.keys():
+                                            try:
+                                                row.append(data[key][i])
+                                            except IndexError:
+                                                row.append('')
+                                        writer.writerow(row)
                 else:
                     print('No processed data to export')
 
@@ -762,23 +810,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             np.savetxt(filepath, current_item.data.processed_data[-1])
                 else:
                     print('No processed data to export')
-                
-            else:
-                print('Cannot export processed Z data from 1D data')
-            # else:
-            #     if which == 'all':
-            #         filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
-            #             self, 'Export Data As: Specify Base Filename', '', formats)
-            #         items = [self.file_list.item(n) for n in range(self.file_list.count())]
-            #     elif which == 'checked':
-            #         filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
-            #             self, 'Export Data As: Specify Base Filename', '', formats)
-            #         items = [self.file_list.item(n) for n in range(self.file_list.count()) 
-            #                 if self.file_list.item(n).checkState() == 2]
-            #     for i,item in enumerate(items):
-            #         if hasattr(item.data,'processed_data'):
-            #             np.savetxt(filepath+'_'+str(i).zfill(2),item.data.processed_data)
-                
+               
     def file_checked(self, item):
 
         if item.checkState() == 2:
