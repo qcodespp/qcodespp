@@ -170,7 +170,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.xscale_box.currentIndexChanged.connect(self.update)
         self.yscale_box.currentIndexChanged.connect(self.update)
 
-        self.clear_fit_button.clicked.connect(lambda: self.clear_fit(row='manual'))
+        self.clear_fit_button.clicked.connect(lambda: self.clear_fit(line='manual'))
         self.fit_class_box.currentIndexChanged.connect(self.fit_class_changed)
         self.fit_box.currentIndexChanged.connect(self.fit_type_changed)
         self.fit_button.clicked.connect(lambda: self.start_fitting(line='manual'))
@@ -447,10 +447,12 @@ class LineCutWindow(QtWidgets.QWidget):
                                                     int(QtCore.Qt.AlignVCenter))
         
         color_box=QtWidgets.QTableWidgetItem('')
-        rgbavalue = [int(linecut['linecolor'][0]*255), int(linecut['linecolor'][1]*255), int(linecut['linecolor'][2]*255),int(linecut['linecolor'][3]*255)]
-        
         self.cuts_table.setItem(row,4,color_box)
-        self.cuts_table.item(row,4).setBackground(QtGui.QColor(*rgbavalue))
+        if type(linecut['linecolor'])==str and linecut['linecolor'].startswith('#'):
+            self.cuts_table.item(row,4).setBackground(QtGui.QColor(linecut['linecolor']))
+        else:
+            rgbavalue = [int(linecut['linecolor'][0]*255), int(linecut['linecolor'][1]*255), int(linecut['linecolor'][2]*255),int(linecut['linecolor'][3]*255)]
+            self.cuts_table.item(row,4).setBackground(QtGui.QColor(*rgbavalue))
         
         plot_fit_item = QtWidgets.QTableWidgetItem('')
         if 'fit' in linecut.keys():
@@ -473,7 +475,7 @@ class LineCutWindow(QtWidgets.QWidget):
             fit_error_item.setFlags(QtCore.Qt.ItemIsSelectable | 
                             QtCore.Qt.ItemIsEnabled | 
                             QtCore.Qt.ItemIsUserCheckable)
-            fit_error_item.setCheckState(linecut['fit']['fit_error_checkstate'])
+            fit_error_item.setCheckState(linecut['fit']['fit_uncertainty_checkstate'])
         self.cuts_table.setItem(row,7,fit_error_item)
 
         self.cuts_table.setCurrentCell(row,0)
@@ -1424,14 +1426,17 @@ class LineCutWindow(QtWidgets.QWidget):
             print('First select a linecut with either a fit or statistics. '
                   'Either the fits or stats for all lines will be saved, based on that.')
 
-    def clear_fit(self,row='manual'):
+    def clear_fit(self,line='manual'):
         self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
-        if row=='manual':
+        if line=='manual':
             manual=True
             row = self.cuts_table.currentRow()
+            line = int(self.cuts_table.item(row,0).text())
         else:
             manual=False
-        line = int(self.cuts_table.item(row,0).text())
+            for row in range(self.cuts_table.rowCount()):
+                if int(self.cuts_table.item(row,0).text())==line:
+                    break
         
         if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
             self.parent.linecuts[self.orientation]['lines'][line].pop('fit')
@@ -1454,10 +1459,11 @@ class LineCutWindow(QtWidgets.QWidget):
 
     def clear_all_fits(self):
         try:
-            for row in range(self.cuts_table.rowCount()):
-                self.clear_fit(row)
+            for line in self.parent.linecuts[self.orientation]['lines'].keys():
+                self.clear_fit(line)
         except Exception as e:
             print('Could not clear all fits:', e)
+            
         fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
         self.output_window.setText('Information about selected fit type:\n'+fit_function['description'])
         self.update()

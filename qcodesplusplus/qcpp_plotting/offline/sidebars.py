@@ -105,7 +105,7 @@ class Sidebar1D(QtWidgets.QWidget):
 
         self.trace_table.itemClicked.connect(self.item_clicked)
 
-        self.clear_fit_button.clicked.connect(lambda: self.clear_fit(row='manual'))
+        self.clear_fit_button.clicked.connect(lambda: self.clear_fit(line='manual'))
         self.fit_class_box.currentIndexChanged.connect(self.fit_class_changed)
         self.fit_box.currentIndexChanged.connect(self.fit_type_changed)
         self.fit_button.clicked.connect(lambda: self.start_fitting(line='manual'))
@@ -351,8 +351,11 @@ class Sidebar1D(QtWidgets.QWidget):
         style_item = QtWidgets.QTableWidgetItem(line['linestyle'])
 
         color_box = QtWidgets.QTableWidgetItem('')
-        rgbavalue = [int(line['linecolor'][0]*255), int(line['linecolor'][1]*255), int(line['linecolor'][2]*255),int(line['linecolor'][3]*255)]
-        color_box.setBackground(QtGui.QColor(*rgbavalue))
+        if type(line['linecolor'])==str:
+            color_box.setBackground(QtGui.QColor(line['linecolor']))
+        else:
+            rgbavalue = [int(line['linecolor'][0]*255), int(line['linecolor'][1]*255), int(line['linecolor'][2]*255),int(line['linecolor'][3]*255)]
+            color_box.setBackground(QtGui.QColor(*rgbavalue))
 
         width_item = QtWidgets.QTableWidgetItem(str(line['linewidth']))
 
@@ -1024,14 +1027,17 @@ class Sidebar1D(QtWidgets.QWidget):
             print('First select a linecut with either a fit or statistics. '
                   'Either the fits or stats for all lines will be saved, based on that.')
 
-    def clear_fit(self,row='manual'):
+    def clear_fit(self,line='manual'):
         self.trace_table.itemChanged.disconnect(self.trace_table_edited)
-        if row=='manual':
+        if line=='manual':
             manual=True
             row = self.trace_table.currentRow()
+            line = int(self.trace_table.item(row,0).text())
         else:
             manual=False
-        line = int(self.trace_table.item(row,0).text())
+            for row in range(self.trace_table.rowCount()):
+                if int(self.trace_table.item(row,0).text())==line:
+                    break        
 
         if 'fit' in self.parent.plotted_lines[line].keys():
             self.parent.plotted_lines[line].pop('fit')
@@ -1054,8 +1060,8 @@ class Sidebar1D(QtWidgets.QWidget):
 
     def clear_all_fits(self):
         try:
-            for row in range(self.trace_table.rowCount()):
-                self.clear_fit(row=row)
+            for line in self.parent.plotted_lines.keys():
+                self.clear_fit(line)
         except Exception as e:
             print('Could not clear all fits:', e)
 

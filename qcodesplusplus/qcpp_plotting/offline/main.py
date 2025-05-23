@@ -307,14 +307,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.copy_image_button.clicked.connect(self.copy_canvas_to_clipboard)
         self.load_filters_button.clicked.connect(self.load_filters)
         self.action_filters.triggered.connect(self.save_filters)
-        # self.action_current_file.triggered.connect(lambda: self.save_session('current'))
         self.action_save_session.triggered.connect(lambda: self.save_session('all'))
-        # self.action_checked_files.triggered.connect(lambda: self.save_session('checked'))
         self.action_restore_session.triggered.connect(self.load_session)
         self.action_combine_files.triggered.connect(self.combine_plots)
         self.action_duplicate_file.triggered.connect(self.duplicate_item)
-        self.action_export_data_columns.triggered.connect(lambda: self.save_processed_data('current'))
-        self.action_export_data_Z.triggered.connect(lambda: self.save_processed_data('Z'))
+        self.action_export_data_columns.triggered.connect(lambda: self.export_processed_data('current'))
+        self.action_export_data_Z.triggered.connect(lambda: self.export_processed_data('Z'))
         self.track_button.clicked.connect(self.track_button_clicked)
         self.refresh_line_edit.editingFinished.connect(lambda: self.refresh_interval_changed(self.refresh_line_edit.text()))
         self.actionSave_plot_s_as.triggered.connect(self.save_image)
@@ -323,10 +321,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.action_copy_plot_as_image.triggered.connect(self.copy_canvas_to_clipboard)
         self.action_save_files_as_PNG.triggered.connect(lambda: self.save_images_as('.png'))
         self.action_save_files_as_PDF.triggered.connect(lambda: self.save_images_as('.pdf'))
-        # self.action_preset_0.triggered.connect(lambda: self.apply_preset(0))
-        # self.action_preset_1.triggered.connect(lambda: self.apply_preset(1))
-        # self.action_preset_2.triggered.connect(lambda: self.apply_preset(2))
-        # self.action_preset_3.triggered.connect(lambda: self.apply_preset(3))
         self.action_load_preset.triggered.connect(self.load_preset)
         self.action_save_preset.triggered.connect(self.save_preset)
         self.action_refresh_stop.setEnabled(False)
@@ -408,6 +402,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             return item
 
     def open_files(self, filepaths=None, load_the_data=True, attr_dicts=None, dirpath=None,overrideautocheck=False):
+        self.file_list.itemClicked.disconnect(self.file_clicked)
         self.file_list.itemChanged.disconnect(self.file_checked)
         if not filepaths:
             filepaths, _ = QtWidgets.QFileDialog.getOpenFileNames(
@@ -415,13 +410,16 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if filepaths:
             for i,filepath in enumerate(filepaths):
                 try:
-                    item=self.load_data_item(filepath,load_the_data)
-                    for setting in ['titlesize','labelsize','ticksize']:
-                        if hasattr(item.data,'settings'):
-                            item.data.settings[setting]=self.global_text_size
+                    if filepath == 'internal_data': # Should only happen when loading a session, therefore rely on attr_dicts
+                        item=DataItem(InternalData(self.canvas, 
+                                                   attr_dicts[i]['loaded_data'],
+                                                   attr_dicts[i]['label'],
+                                                   attr_dicts[i]['all_parameter_names'],
+                                                   attr_dicts[i]['dim']))
+                    else:
+                        item=self.load_data_item(filepath,load_the_data)
                     item.filepath=filepath
                     self.file_list.addItem(item)
-
                     if attr_dicts is not None: #then a previous session is being loaded
                         for attr in attr_dicts[i]:
                             if attr not in ['filename','checkState']:
@@ -431,8 +429,23 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 item.setCheckState(attr_dicts[i][attr])
                                 if attr_dicts[i][attr]==2:
                                     self.file_checked(item)
-                                    overrideautocheck=True #If any item is checked, override autochecking. But if NONE of them are checked, let autocheck do it's thing.
-                            
+                                    overrideautocheck=True #If any item is checked, override autochecking. But if NONE of them are checked, let autocheck do its thing.
+                                    # The below is kind of dumb... but for anything at all to work, 1D data has to be inited by
+                                    # actually plotting _something_, which makes a sidebar1D with the default params plotted.
+                                    # So we need to check if the sidebar1D exists, and if it does, delete it.
+                                    if hasattr(item.data,'sidebar1D'):
+                                        item.data.sidebar1D.hide()
+                                        del item.data.sidebar1D
+
+                        if hasattr(item.data,'plotted_lines'):
+                            if len(item.data.plotted_lines) > 0:
+                                item.data.sidebar1D = Sidebar1D(item.data,self)
+                                for line in item.data.plotted_lines.keys():
+                                    if 'fit' in item.data.plotted_lines[line].keys():
+                                        item.data.plotted_lines[line]['fit']['fit_result'] = load_modelresult(dirpath+'/igtemp/'+item.data.plotted_lines[line]['fit']['fit_result']+'.sav')
+                                    item.data.sidebar1D.append_trace_to_table(line)
+                                item.data.sidebar1D.update()
+
                         if hasattr(item.data,'linecuts'):
                             for orientation in item.data.linecuts.keys():
                                 if len(item.data.linecuts[orientation]['lines']) > 0:
@@ -448,21 +461,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                     item.data.linecuts[orientation]['linecut_window'].running = True
                                     for line in item.data.linecuts[orientation]['lines']:
                                         item.data.linecuts[orientation]['linecut_window'].append_cut_to_table(line)
-                                    item.data.linecuts[orientation]['linecut_window'].activateWindow()
-                                    item.data.linecuts[orientation]['linecut_window'].update()
-                                    item.data.linecuts[orientation]['linecut_window'].show()
-                        
-                        if hasattr(item.data,'plotted_lines'):
-                            if len(item.data.plotted_lines) > 0:
-                                item.data.sidebar1D = Sidebar1D(item.data,self)
-                                item.data.sidebar1D.running = True
-                                for line in item.data.plotted_lines.keys():
-                                    if 'fit' in item.data.plotted_lines[line].keys():
-                                        item.data.plotted_lines[line]['fit']['fit_result'] = load_modelresult(dirpath+'/igtemp/'+item.data.plotted_lines[line]['fit']['fit_result']+'.sav')
-                                for line in item.data.plotted_lines:
-                                    item.data.sidebar1D.append_trace_to_table(line)
-                                item.data.sidebar1D.update()
-                            
+                                    if item.checkState():
+                                        item.data.linecuts[orientation]['linecut_window'].activateWindow()
+                                        item.data.linecuts[orientation]['linecut_window'].update()
+                                        item.data.linecuts[orientation]['linecut_window'].show()
+                    else:
+                        for setting in ['titlesize','labelsize','ticksize']:
+                            if hasattr(item.data,'settings'):
+                                item.data.settings[setting]=self.global_text_size
+
                 except Exception as e:
                     print(f'Failed to open {filepath}:', e)
 
@@ -475,9 +482,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     last_item.setCheckState(QtCore.Qt.Checked)
                     self.file_checked(last_item)
         self.file_list.itemChanged.connect(self.file_checked)
+        self.file_list.itemClicked.connect(self.file_clicked)
 
     def add_internal_data(self,item,check_item=True,uncheck_others=True):
         # Add internal data to the file list (from combined plots/files, fitting dependency, etc)
+        item.filepath='internal_data'
         self.file_list.itemChanged.disconnect(self.file_checked)
         self.file_list.addItem(item)
         self.file_list.setCurrentItem(item)
@@ -615,19 +624,25 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 dirpath = os.path.dirname(filepath)
                 dictionary_list = []
                 os.makedirs(dirpath+'/igtemp', exist_ok=True)
+                self.i=0 # Used to iterate over total number of lmfit results across all datafiles.
                 for item in items:
                     item_dictionary = {}
                     if hasattr(item,'filepath'):
                         item_dictionary['filepath']=item.filepath
                     if hasattr(item,'checkState'):
                         item_dictionary['checkState']=item.checkState()
-                    attributes=['label','settings','filters','view_settings','axlim_settings',
-                                'raw_data','processed_data']
+                    attributes=['label','settings','filters','view_settings','axlim_settings','plot_type','dim',
+                                'raw_data','processed_data'] # These two are potentially not necessary.
+                    if isinstance(item.data, InternalData):
+                        attributes.append('loaded_data')
+                        attributes.append('label')
+                        attributes.append('all_parameter_names')
+                        attributes.append('dim')
+
                     for attribute in attributes:
                         if hasattr(item.data,attribute):
                             item_dictionary[attribute]=getattr(item.data,attribute)
 
-                    self.i=0
                     if hasattr(item.data,'linecuts'):
                         item_dictionary['linecuts'] = self.remove_linecutwindows_and_fits(item.data.linecuts,dirpath)
 
@@ -698,8 +713,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 file_path = os.path.join(dirpath+'/igtemp', filename)
                 os.remove(file_path)
             os.rmdir(dirpath+'/igtemp')
+
+            self.update_plots() # Necessary to ensure some settings are applied to the final plot.
    
-    def save_processed_data(self, which='current'):
+    def export_processed_data(self, which='current'):
         current_item = self.file_list.currentItem()
         if current_item:
             formats='Numpy text (*.dat);;CSV (*.csv);;JSON (*.json)'

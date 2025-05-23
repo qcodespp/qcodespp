@@ -766,10 +766,10 @@ class InternalData(BaseClassData):
             column_data=[x,y]
         return column_data
     
-    def copy(self):
-        # Copy the data to a new object.
-        new_data = InternalData(self.canvas, self.loaded_data.copy(), self.label, self.all_parameter_names.copy(),self.dim)
-        return new_data
+    # def copy(self):
+    #     # Copy the data to a new object.
+    #     new_data = InternalData(self.canvas, self.loaded_data.copy(), self.label, self.all_parameter_names.copy(),self.dim)
+    #     return new_data
     
 class MixedInternalData(BaseClassData):
     # Class for combination of a single 2D dataset and various 1D datasets.
@@ -922,50 +922,50 @@ class MixedInternalData(BaseClassData):
 # These functions deal with that by copying all the data that is possible to copy, and otherwise 1) saving
 # the lmfit result to a temporary file and loading it again, or 2) recreating the linecut window.
 
-def copy_fit(fit):
-    new_fit = {}
-    for key in fit.keys():
-        if key == 'fit_result':
-            save_modelresult(fit[key],'temp_fit_result')
-            new_fit[key] = load_modelresult('temp_fit_result')
-            os.remove('temp_fit_result')
-        else:
-            new_fit[key] = copy.deepcopy(fit[key])
-    return new_fit
+# def copy_fit(fit):
+#     new_fit = {}
+#     for key in fit.keys():
+#         if key == 'fit_result':
+#             save_modelresult(fit[key],'temp_fit_result')
+#             new_fit[key] = load_modelresult('temp_fit_result')
+#             os.remove('temp_fit_result')
+#         else:
+#             new_fit[key] = copy.deepcopy(fit[key])
+#     return new_fit
 
-def copy_plotted_lines(plotted_lines):
-    copied_plotted_lines = {}
-    for line in plotted_lines.keys():
-        copied_plotted_lines[line] = {}
-        for key in plotted_lines[line].keys():
-            if key == 'fit':
-                plotted_lines[line][key] = copy_fit(plotted_lines[line][key])
-            else:
-                copied_plotted_lines[line][key] = copy.deepcopy(plotted_lines[line][key])
-    return copied_plotted_lines
+# def copy_plotted_lines(plotted_lines):
+#     copied_plotted_lines = {}
+#     for line in plotted_lines.keys():
+#         copied_plotted_lines[line] = {}
+#         for key in plotted_lines[line].keys():
+#             if key == 'fit':
+#                 plotted_lines[line][key] = copy_fit(plotted_lines[line][key])
+#             else:
+#                 copied_plotted_lines[line][key] = copy.deepcopy(plotted_lines[line][key])
+#     return copied_plotted_lines
 
-def copy_linecuts(dataset2d,editor_window):
-    new_linecuts = {}
-    for orientation in dataset2d.linecuts.keys():
-        new_linecuts[orientation] = {'lines': {}}
-        for line in dataset2d.linecuts[orientation]['lines'].keys():
-            new_linecuts[orientation]['lines'][line] = {}
-            for key in dataset2d.linecuts[orientation]['lines'][line].keys():
-                if key == 'fit':
-                    new_linecuts[orientation]['lines'][line][key] = copy_fit(dataset2d.linecuts[orientation]['lines'][line][key])
-                elif key == 'draggable_points':
-                    points=dataset2d.linecuts[orientation]['lines'][line]['points']
-                    new_linecuts[orientation]['lines'][line][key] = [DraggablePoint(dataset2d, points[0][0], points[0][1],line,orientation),
-                                        DraggablePoint(dataset2d, points[1][0], points[1][1],line,orientation,draw_line=True)]
-                else:
-                    new_linecuts[orientation]['lines'][line][key] = copy.deepcopy(dataset2d.linecuts[orientation]['lines'][line][key])
-        if len(new_linecuts[orientation]['lines']) > 0:
-            new_linecuts[orientation]['linecut_window']= LineCutWindow(dataset2d,
-                                                        orientation=orientation,
-                                                        editor_window=editor_window)
-            for line in new_linecuts[orientation]['lines'].keys():
-                new_linecuts[orientation]['linecut_window'].append_cut_to_table(line)
-            new_linecuts[orientation]['linecut_window'].running = False
-            # To show the linecut window, run the below line where relevant
-            new_linecuts[orientation]['linecut_window'].show()
-    return new_linecuts
+# def copy_linecuts(dataset2d,editor_window):
+#     new_linecuts = {}
+#     for orientation in dataset2d.linecuts.keys():
+#         new_linecuts[orientation] = {'lines': {}}
+#         for line in dataset2d.linecuts[orientation]['lines'].keys():
+#             new_linecuts[orientation]['lines'][line] = {}
+#             for key in dataset2d.linecuts[orientation]['lines'][line].keys():
+#                 if key == 'fit':
+#                     new_linecuts[orientation]['lines'][line][key] = copy_fit(dataset2d.linecuts[orientation]['lines'][line][key])
+#                 elif key == 'draggable_points':
+#                     points=dataset2d.linecuts[orientation]['lines'][line]['points']
+#                     new_linecuts[orientation]['lines'][line][key] = [DraggablePoint(dataset2d, points[0][0], points[0][1],line,orientation),
+#                                         DraggablePoint(dataset2d, points[1][0], points[1][1],line,orientation,draw_line=True)]
+#                 else:
+#                     new_linecuts[orientation]['lines'][line][key] = copy.deepcopy(dataset2d.linecuts[orientation]['lines'][line][key])
+#         if len(new_linecuts[orientation]['lines']) > 0:
+#             new_linecuts[orientation]['linecut_window']= LineCutWindow(dataset2d,
+#                                                         orientation=orientation,
+#                                                         editor_window=editor_window)
+#             for line in new_linecuts[orientation]['lines'].keys():
+#                 new_linecuts[orientation]['linecut_window'].append_cut_to_table(line)
+#             new_linecuts[orientation]['linecut_window'].running = False
+#             # To show the linecut window, run the below line where relevant
+#             new_linecuts[orientation]['linecut_window'].show()
+#     return new_linecuts
