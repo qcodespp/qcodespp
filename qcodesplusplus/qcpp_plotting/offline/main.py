@@ -444,7 +444,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                     if 'fit' in item.data.plotted_lines[line].keys():
                                         item.data.plotted_lines[line]['fit']['fit_result'] = load_modelresult(dirpath+'/igtemp/'+item.data.plotted_lines[line]['fit']['fit_result']+'.sav')
                                     item.data.sidebar1D.append_trace_to_table(line)
-                                item.data.sidebar1D.update()
+                                if item.checkState():
+                                    item.data.sidebar1D.update()
 
                         if hasattr(item.data,'linecuts'):
                             for orientation in item.data.linecuts.keys():
