@@ -378,17 +378,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                     left=0.121, right=0.86)
         
     def load_data_item(self,filepath,load_the_data=True):
-        #print(f'Open {filepath}...')
         filename, extension = os.path.splitext(filepath)
-        if extension == '.npy': # Numpy files (saved session)
+        if extension == '.npy': # Numpy files (old saved sessions)
             dataset_list = np.load(filepath, allow_pickle=True)
             for dataset in dataset_list:
                 try:
                     item = DataItem(NumpyData(filepath, self.canvas, dataset))
                     return item
                 except Exception as e:
-                    print(f'Failed to add NumPy dataset '
-                            f'{dataset["File Name"]}:', e)
+                    print(f'Failed to add NumPy dataset inside {filepath}:', e)
                     
         elif (extension == '.dat' and # qcodes++ files
                 os.path.isfile(os.path.dirname(filepath)+'/snapshot.json')):
@@ -408,7 +406,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.file_list.itemChanged.disconnect(self.file_checked)
         if not filepaths:
             filepaths, _ = QtWidgets.QFileDialog.getOpenFileNames(
-                self, 'Open File', '', 'Data Files (*.dat *.npy *.db *.csv)')
+                self, 'Open File', '', 'Data Files (*.dat *.npy *.csv)')
         if filepaths:
             for i,filepath in enumerate(filepaths):
                 try:
