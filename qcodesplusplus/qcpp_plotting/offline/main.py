@@ -418,15 +418,44 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                                    attr_dicts[i]['label'],
                                                    attr_dicts[i]['all_parameter_names'],
                                                    attr_dicts[i]['dim']))
+                        
                     elif filepath == 'mixed_internal_data': # Should only happen when loading a session, therefore rely on attr_dicts
-                        item=DataItem(MixedInternalData(self.canvas))
+                        type_dictionary={'qcodesppData': qcodesppData,
+                                         'BaseClassData': BaseClassData,
+                                         'InternalData': InternalData}
+                        for key in type_dictionary.keys():
+                            if key in attr_dicts[i]['dataset1d_type']:
+                                dataset1d_type = type_dictionary[key]
+                            if key in attr_dicts[i]['dataset2d_type']:
+                                dataset2d_type = type_dictionary[key]
+                        label_name = attr_dicts[i]['label']
+                        kwargs={}
+                        if dataset1d_type in [qcodesppData,BaseClassData]:
+                            kwargs['dataset1d_filepath'] = attr_dicts[i]['dataset1d_filepath']
+                        elif dataset1d_type == InternalData:
+                            kwargs['dataset1d_loaded_data'] = attr_dicts[i]['dataset1d_loaded_data']
+                            kwargs['dataset1d_label'] = attr_dicts[i]['dataset1d_label']
+                            kwargs['dataset1d_all_parameter_names'] = attr_dicts[i]['dataset1d_all_parameter_names']
+                            kwargs['dataset1d_dim']= attr_dicts[i]['dataset1d_dim']
+                        if dataset2d_type in [qcodesppData,BaseClassData]:
+                            kwargs['dataset2d_filepath'] = attr_dicts[i]['dataset2d_filepath']
+                        elif dataset2d_type == InternalData:
+                            kwargs['dataset2d_loaded_data'] = attr_dicts[i]['dataset2d_loaded_data']
+                            kwargs['dataset2d_label'] = attr_dicts[i]['dataset2d_label']
+                            kwargs['dataset2d_all_parameter_names'] = attr_dicts[i]['dataset2d_all_parameter_names']
+                            kwargs['dataset2d_dim']= attr_dicts[i]['dataset2d_dim']
+                        item=DataItem(MixedInternalData(self.canvas,label_name,dataset2d_type,dataset1d_type,**kwargs))
+
                     else:
                         item=self.load_data_item(filepath,load_the_data)
+
                     item.filepath=filepath
                     self.file_list.addItem(item)
                     if attr_dicts is not None: #then a previous session is being loaded
                         for attr in attr_dicts[i]:
-                            if attr not in ['filename','checkState']:
+                            if attr not in ['filename','checkState',
+                                            'dataset1d_type','dataset2d_type',
+                                            'dataset1d_plotted_lines','dataset2d_linecuts']:
                                 setattr(item.data,attr,attr_dicts[i][attr])
                             
                             elif attr=='checkState':
@@ -441,35 +470,18 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                         item.data.sidebar1D.hide()
                                         del item.data.sidebar1D
 
-                        if hasattr(item.data,'plotted_lines'):
-                            if len(item.data.plotted_lines) > 0:
-                                item.data.sidebar1D = Sidebar1D(item.data,self)
-                                for line in item.data.plotted_lines.keys():
-                                    if 'fit' in item.data.plotted_lines[line].keys():
-                                        item.data.plotted_lines[line]['fit']['fit_result'] = load_modelresult(dirpath+'/igtemp/'+item.data.plotted_lines[line]['fit']['fit_result']+'.sav')
-                                    item.data.sidebar1D.append_trace_to_table(line)
-                                if item.checkState():
-                                    item.data.sidebar1D.update()
+                            elif attr=='dataset1d_plotted_lines':
+                                self.reload_plotted_lines(item.data.dataset1d,dirpath,item)
 
-                        if hasattr(item.data,'linecuts'):
-                            for orientation in item.data.linecuts.keys():
-                                if len(item.data.linecuts[orientation]['lines']) > 0:
-                                    for line in item.data.linecuts[orientation]['lines'].keys():
-                                        if 'fit' in item.data.linecuts[orientation]['lines'][line].keys():
-                                            item.data.linecuts[orientation]['lines'][line]['fit']['fit_result'] = load_modelresult(dirpath+'/igtemp/'+item.data.linecuts[orientation]['lines'][line]['fit']['fit_result']+'.sav')
-                                        if 'draggable_points' in item.data.linecuts[orientation]['lines'][line].keys():
-                                            points=item.data.linecuts[orientation]['lines'][line]['points']
-                                            item.data.linecuts[orientation]['lines'][line]['draggable_points'] = [DraggablePoint(item.data,points[0][0],points[0][1],line,orientation),
-                                            DraggablePoint(item.data,points[1][0],points[1][1],line,orientation,draw_line=True)]
-                                #Then make the linecut window
-                                    item.data.linecuts[orientation]['linecut_window'] = LineCutWindow(item.data,orientation=orientation,init_cmap='plasma',editor_window=self)
-                                    item.data.linecuts[orientation]['linecut_window'].running = True
-                                    for line in item.data.linecuts[orientation]['lines']:
-                                        item.data.linecuts[orientation]['linecut_window'].append_cut_to_table(line)
-                                    if item.checkState():
-                                        item.data.linecuts[orientation]['linecut_window'].activateWindow()
-                                        item.data.linecuts[orientation]['linecut_window'].update()
-                                        item.data.linecuts[orientation]['linecut_window'].show()
+                            elif attr=='dataset2d_linecuts':
+                                self.reload_linecuts(item.data.dataset2d,dirpath,item.checkState())
+
+                            if attr=='linecuts':
+                                self.reload_linecuts(item.data,dirpath,item.checkState())
+
+                            if attr=='plotted_lines':
+                                self.reload_plotted_lines(item.data,dirpath,item)
+
                     else:
                         for setting in ['titlesize','labelsize','ticksize']:
                             if hasattr(item.data,'settings'):
@@ -489,9 +501,39 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.file_list.itemChanged.connect(self.file_checked)
         self.file_list.itemClicked.connect(self.file_clicked)
 
+    def reload_plotted_lines(self,data,dirpath,item):
+        if len(data.plotted_lines) > 0:
+            item.data.sidebar1D = Sidebar1D(data,self)
+            for line in data.plotted_lines.keys():
+                if 'fit' in data.plotted_lines[line].keys():
+                    data.plotted_lines[line]['fit']['fit_result'] = load_modelresult(dirpath+'/igtemp/'+item.data.plotted_lines[line]['fit']['fit_result']+'.sav')
+                item.data.sidebar1D.append_trace_to_table(line)
+            if item.checkState():
+                item.data.sidebar1D.update()
+
+    def reload_linecuts(self,data,dirpath,item_checkState):
+        for orientation in data.linecuts.keys():
+            if len(data.linecuts[orientation]['lines']) > 0:
+                for line in data.linecuts[orientation]['lines'].keys():
+                    if 'fit' in data.linecuts[orientation]['lines'][line].keys():
+                        data.linecuts[orientation]['lines'][line]['fit']['fit_result'] = load_modelresult(dirpath+'/igtemp/'+data.linecuts[orientation]['lines'][line]['fit']['fit_result']+'.sav')
+                    if 'draggable_points' in data.linecuts[orientation]['lines'][line].keys():
+                        points=data.linecuts[orientation]['lines'][line]['points']
+                        data.linecuts[orientation]['lines'][line]['draggable_points'] = [DraggablePoint(data,points[0][0],points[0][1],line,orientation),
+                        DraggablePoint(data,points[1][0],points[1][1],line,orientation,draw_line=True)]
+            #Then make the linecut window
+                data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,init_cmap='plasma',editor_window=self)
+                data.linecuts[orientation]['linecut_window'].running = True
+                for line in data.linecuts[orientation]['lines']:
+                    data.linecuts[orientation]['linecut_window'].append_cut_to_table(line)
+                if item_checkState:
+                    data.linecuts[orientation]['linecut_window'].activateWindow()
+                    data.linecuts[orientation]['linecut_window'].update()
+                    data.linecuts[orientation]['linecut_window'].show()
+
     def add_internal_data(self,item,check_item=True,uncheck_others=True):
         # Add internal data to the file list (from combined plots/files, fitting dependency, etc)
-        item.filepath='internal_data'
+        #item.filepath='internal_data'
         self.file_list.itemChanged.disconnect(self.file_checked)
         self.file_list.addItem(item)
         self.file_list.setCurrentItem(item)
@@ -643,6 +685,25 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         attributes.append('label')
                         attributes.append('all_parameter_names')
                         attributes.append('dim')
+                    elif isinstance(item.data, MixedInternalData):
+                        item_dictionary['dataset2d_type'] = str(item.data.dataset2d_type)
+                        item_dictionary['dataset1d_type'] = str(item.data.dataset2d_type)
+                        attributes.append('label')
+                        attributes.append('dataset1d_filepath')
+                        attributes.append('dataset2d_filepath')
+                        attributes.append('dataset1d_loaded_data')
+                        attributes.append('dataset2d_loaded_data')
+                        attributes.append('dataset1d_label')
+                        attributes.append('dataset2d_label')
+                        attributes.append('dataset1d_all_parameter_names')
+                        attributes.append('dataset2d_all_parameter_names')
+                        attributes.append('dataset1d_dim')
+                        attributes.append('dataset2d_dim')
+                        attributes.append('show_2d_data')
+                        if hasattr(item.data.dataset2d,'linecuts'):
+                            item_dictionary['dataset2d_linecuts'] = self.remove_linecutwindows_and_fits(item.data.dataset2d.linecuts,dirpath)
+                        if hasattr(item.data.dataset1d,'plotted_lines'):
+                            item_dictionary['dataset1d_plotted_lines'] = self.remove_linecutwindows_and_fits(item.data.dataset1d.plotted_lines,dirpath)
 
                     for attribute in attributes:
                         if hasattr(item.data,attribute):
@@ -1771,7 +1832,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             # Copy over data if internal data, or else re-load it. 
             # The advantage of keeping it this way is that the new data gets the correct data class; it won't be InternalData.
             if any([isinstance(original_item.data, InternalData),isinstance(original_item.data, MixedInternalData)]):
-                self.add_internal_data(DataItem(original_item.data.copy()),check_item=False,uncheck_others=False)
+                item=DataItem(original_item.data.copy())
+                if isinstance(original_item.data, MixedInternalData):
+                    item.filepath = 'mixed_internal_data'
+                else:
+                    item.filepath = 'internal_data'
+                self.add_internal_data(item,check_item=False,uncheck_others=False)
             else:
                 self.open_files(filepaths=[original_item.data.filepath],overrideautocheck=True)
 
@@ -1897,6 +1963,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     if len(combined_data[0].shape) == 1: # Try to catch BaseClassData that also has a first independent param that is 1D, but this should never happen.
                         combined_data[0]=np.tile(combined_data[0],(combined_data[1].shape[1],1)).T
                     combined_item=DataItem(InternalData(self.canvas,combined_data,label_name,combined_parameter_names,dimension=3))
+                    combined_item.filepath = 'internal_data'
                     self.add_internal_data(combined_item)
 
                 elif all([item.dim == 2 for item in data_list]):
@@ -1908,6 +1975,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             combined_data.append(data.data_dict[parameter_name])
                             combined_parameter_names.append(f'{data.label[:4]}: {parameter_name}')
                     combined_item=DataItem(InternalData(self.canvas,combined_data,label_name,combined_parameter_names,dimension=2))
+                    combined_item.filepath = 'internal_data'
                     self.add_internal_data(combined_item)
 
                 else:
@@ -1943,6 +2011,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             kwargs['dataset2d_dim']= dataset2d.dim
 
                         combined_item=DataItem(MixedInternalData(self.canvas,label_name,dataset2d_type,dataset1d_type,**kwargs))
+                        combined_item.filepath = 'mixed_internal_data'
                         self.add_internal_data(combined_item)
 
                     except Exception as e:

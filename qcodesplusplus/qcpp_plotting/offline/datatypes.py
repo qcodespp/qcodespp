@@ -785,6 +785,20 @@ class MixedInternalData(BaseClassData):
                  dataset1d_dim=None,dataset2d_dim=None):
         super().__init__(filepath='mixed_internal_data', canvas=canvas)
 
+        # The following block is necessary for saving and loading.
+        self.dataset2d_type = dataset2d_type
+        self.dataset1d_type = dataset1d_type
+        self.dataset1d_filepath = dataset1d_filepath
+        self.dataset2d_filepath = dataset2d_filepath
+        self.dataset1d_loaded_data = dataset1d_loaded_data
+        self.dataset2d_loaded_data = dataset2d_loaded_data
+        self.dataset1d_label = dataset1d_label
+        self.dataset2d_label = dataset2d_label
+        self.dataset1d_all_parameter_names = dataset1d_all_parameter_names
+        self.dataset2d_all_parameter_names = dataset2d_all_parameter_names
+        self.dataset1d_dim = dataset1d_dim
+        self.dataset2d_dim = dataset2d_dim
+
         self.filepath = 'mixed_internal_data'
         self.canvas = canvas
         self.label = label_name
