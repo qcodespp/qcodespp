@@ -503,6 +503,30 @@ def dynes_fit(xdata,ydata,p0,inputinfo):
     result=model.fit(ydata,params,x=xdata)
     return result
 
+def ramsey_fit(xdata,ydata,p0,inputinfo):
+    def ramsey_model(x, A, B, C, f, phi, T2):
+        return A*np.cos(2*np.pi*f*x + phi)*np.exp(-x/T2)+B+C*x
+    
+    model=Model(ramsey_model)
+    params=model.make_params()
+    if p0:
+        params['A'].set(value=float(p0[0]))
+        params['B'].set(value=float(p0[1]))
+        params['C'].set(value=float(p0[2]))
+        params['f'].set(value=float(p0[3]))
+        params['phi'].set(value=float(p0[4]))
+        params['T2'].set(value=float(p0[5]))
+    else:
+        params['A'].set(value=(ydata.max()-ydata.min())/2)
+        params['B'].set(value=ydata.min())
+        params['C'].set(value=(ydata.max()-ydata.min())/100)
+        params['f'].set(value=1/(xdata.max()-xdata.min()))
+        params['phi'].set(value=0)
+        params['T2'].set(value=(xdata.max()-xdata.min())/10)
+
+    result=model.fit(ydata,params,x=xdata)
+    return result
+
 def statistics(xdata,ydata,p0,inputinfo):
     # Not really fitting; just returns the statistical information specified in inputinfo.
     if 'percentile' in inputinfo:
@@ -651,6 +675,7 @@ functions['Peaks: skewed']['SkewedVoigt']['function'] = partial(fit_skewedpeaks,
 
 # Oscillating
 functions['Oscillating']={'Sine':{'function':fit_sines}
+                          #'Ramsey':{'function':ramsey_fit},
                         # 'Sine w/exp decay':{},
                         # 'Sine w/power decay':{}
                         }
@@ -708,8 +733,9 @@ functions['Rectangle']['ErrorFunction']['function'] = partial(rectangle_fit, 'er
 functions['Rectangle']['Logistic']['function'] = partial(rectangle_fit, 'logistic')
 
 # Custom fits based on expression fit
-functions['Custom']={'FET mobility':{},
-                     'BCS/Dynes':{}
+functions['Custom']={'FET mobility':{'function':FET_mobility},
+                    'BCS/Dynes':{'function':dynes_fit},
+                    'Ramsey':{'function':ramsey_fit},
                      }
 functions['Custom']['FET mobility']['inputs']='C,L'
 functions['Custom']['FET mobility']['default_inputs']='5e-15,5e-6'
@@ -724,7 +750,6 @@ functions['Custom']['FET mobility']['description']=('Fit a FET mobility curve of
                                                 '0.1,0.5,1e3\n'
                                                 'Note; all units in SI! i.e. S and m, not e2/h and cm.\n'
                                                 'See doi.org/10.1088/0957-4484/26/21/215202')
-functions['Custom']['FET mobility']['function']=FET_mobility
 
 functions['Custom']['BCS/Dynes']['parameters']='G_N, gamma, delta'
 functions['Custom']['BCS/Dynes']['description']=('Fit the BCS/Dynes model to a tunnel spectrum of a superconducting gap. '
@@ -733,7 +758,12 @@ functions['Custom']['BCS/Dynes']['description']=('Fit the BCS/Dynes model to a t
                                                  'where G_N is the normal state conductance, gamma is broadening and '
                                                  'delta is the superconducting gap. Delta and gamma are in electronvolts\n'
                                                  'see doi.org/10.1103/PhysRevLett.41.1509\n or doi.org/10.1038/s41467-021-25100-w')
-functions['Custom']['BCS/Dynes']['function']=dynes_fit
+
+functions['Custom']['Ramsey']['parameters']='A, B, C, f, phi, T2'
+functions['Custom']['Ramsey']['description']=('Fit a Ramsey oscillation of the form A*cos(2*pi*f*x + phi)*exp(-x/T2) + B + C*x.\n'
+                                                'Initial guesses for the parameters are given in the form:\n'
+                                                'A, B, C, f, phi, T2\n'
+                                                'e.g., 0.01, -50, -4e6, 40e6, 0, 50e-9\n')
 
 #Wrap the ExpressionModel to allow arbitrary input.
 functions['User input']={'Expression':{}}
