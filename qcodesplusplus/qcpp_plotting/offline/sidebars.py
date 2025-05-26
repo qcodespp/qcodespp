@@ -650,17 +650,17 @@ class Sidebar1D(QtWidgets.QWidget):
         self.fit_box.setCurrentIndex(0)
         self.fit_type_changed()
     
-    def fit_type_changed(self,resetinputs=True):
+    def fit_type_changed(self):
         fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
-        if resetinputs:
-            if 'default_inputs' in fit_function.keys():
-                self.input_edit.setText(fit_function['default_inputs'])
-            else:
-                self.input_edit.setText('')
-            if 'default_guess' in fit_function.keys():
-                self.guess_edit.setText(fit_function['default_guess'])
-            else:
-                self.guess_edit.setText('')
+
+        if 'default_inputs' in fit_function.keys():
+            self.input_edit.setText(fit_function['default_inputs'])
+        else:
+            self.input_edit.setText('')
+        if 'default_guess' in fit_function.keys():
+            self.guess_edit.setText(fit_function['default_guess'])
+        else:
+            self.guess_edit.setText('')
         if 'inputs' in fit_function.keys():
             self.input_label.setText(f'Input info: {fit_function['inputs']}')
         else:
