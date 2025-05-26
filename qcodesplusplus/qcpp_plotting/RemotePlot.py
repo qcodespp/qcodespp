@@ -17,10 +17,7 @@ def live_plot(data_set, data_arrays=None):
 
     Args:
         data_set (DataSet): The data set to plot.
-        *data_arrays (DataArray, optional): The data arrays to plot. Usually this wouldn't be used here, since
-            it's easier to add them when using loop.run(). This function will more likely be used for flexibly
-            plotting data with plot.add()
-        **kwargs: Additional arguments to pass to the RemotePlot class.
+        *data_arrays (DataArray, optional): The data arrays to plot.
 
     Returns:
         None
