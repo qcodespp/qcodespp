@@ -197,6 +197,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.binsY_lineedit.hide()
         self.metadata_button.hide()
         self.stats_button.hide()
+        self.show_2d_data_checkbox.hide()
 
         #... and some that are not currently in use.
         self.track_button.hide()
@@ -259,6 +260,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.plot_type_box.currentIndexChanged.connect(self.plot_type_changed)
         self.binsX_lineedit.editingFinished.connect(lambda: self.bins_changed('X'))
         self.binsY_lineedit.editingFinished.connect(lambda: self.bins_changed('Y'))
+        self.show_2d_data_checkbox.clicked.connect(self.show_2d_data_checkbox_changed)
         self.global_text_lineedit.editingFinished.connect(self.global_text_changed)
         self.stats_button.clicked.connect(self.show_stats)
         self.metadata_button.clicked.connect(self.show_metadata)
@@ -416,6 +418,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                                    attr_dicts[i]['label'],
                                                    attr_dicts[i]['all_parameter_names'],
                                                    attr_dicts[i]['dim']))
+                    elif filepath == 'mixed_internal_data': # Should only happen when loading a session, therefore rely on attr_dicts
+                        item=DataItem(MixedInternalData(self.canvas))
                     else:
                         item=self.load_data_item(filepath,load_the_data)
                     item.filepath=filepath
@@ -833,14 +837,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         if item.checkState() == 2:
             self.file_list.setCurrentItem(item)
-            if isinstance(item.data,MixedInternalData):
-                self.mixeddata_filter_box.clear()
-                self.mixeddata_filter_box.show()
-                self.mixeddata_filter_box.addItem(f'Applied to 2D data: {item.data.dataset2d.label}')
-                self.mixeddata_filter_box.addItem(f'Applied to 1D data: {item.data.dataset1d.label}')
-            else:
-                self.mixeddata_filter_box.clear()
-                self.mixeddata_filter_box.hide()
+            self.show_or_hide_mixeddata_widgets()
         self.update_plots()
 
     def plot_type_changed(self):
@@ -888,10 +885,17 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current_item.data.settings[f'bins{which}'] = int(lineedits[which].text())
         self.update_plots()
 
+    def show_2d_data_checkbox_changed(self):
+        current_item = self.file_list.currentItem()
+        if isinstance(current_item.data, MixedInternalData):
+            current_item.data.show_2d_data = self.show_2d_data_checkbox.isChecked()
+            self.update_plots()
+
     def show_or_hide_view_settings(self):
         current_item = self.file_list.currentItem()
         if current_item:
             if any([current_item.data.dim==3,isinstance(current_item.data, MixedInternalData)]):
+                self.stats_button.show()
                 for i in range(self.view_layout.rowCount()):
                     for j in range(self.view_layout.columnCount()):
                         try:
@@ -899,6 +903,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         except:
                             pass
             else:
+                self.stats_button.hide()
                 for i in range(self.view_layout.rowCount()):
                     for j in range(self.view_layout.columnCount()):
                         try:
@@ -912,12 +917,23 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.clear_sidebar1D()
         if hasattr(current_item.data,'sidebar1D'):
             self.oneD_layout.addWidget(current_item.data.sidebar1D)
+        self.show_or_hide_mixeddata_widgets()
+
+    def show_or_hide_mixeddata_widgets(self):
+        current_item = self.file_list.currentItem()
         if isinstance(current_item.data,MixedInternalData):
+            self.show_2d_data_checkbox.show()
+            self.show_2d_data_checkbox.setChecked(current_item.data.show_2d_data)
+            self.plot_type_box.hide()
+            self.plot_type_label.hide()
             self.mixeddata_filter_box.clear()
             self.mixeddata_filter_box.show()
             self.mixeddata_filter_box.addItem(f'Applied to 2D data: {current_item.data.dataset2d.label}')
             self.mixeddata_filter_box.addItem(f'Applied to 1D data: {current_item.data.dataset1d.label}')
         else:
+            self.plot_type_box.show()
+            self.plot_type_label.show()
+            self.show_2d_data_checkbox.hide()
             self.mixeddata_filter_box.clear()
             self.mixeddata_filter_box.hide()
 
@@ -1216,10 +1232,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         self.new_plot_Z_box.setCurrentIndex(2)
                 
                 if current_item.data.dim == 2:
-                    self.stats_button.hide()
                     plot_types=['X,Y','Histogram','FFT']
                 elif current_item.data.dim == 3:
-                    self.stats_button.show()
                     plot_types=['X,Y,Z', 'Histogram Y', 'Histogram X', 'FFT Y', 'FFT X', 'FFT X/Y']
                 self.plot_type_box.addItems(plot_types)
                 if hasattr(current_item.data, 'plot_type'):
@@ -1907,15 +1921,28 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         if data_list[0].dim == 3:
                             dataset2d=data_list[0]
                             dataset1d=data_list[1]
-                            # Next two lines basically fix a bug.
-                            dataset1d.settings['X data'] = data_list[1].all_parameter_names[0]
-                            dataset1d.settings['Y data'] = data_list[1].all_parameter_names[1]
                         else:
                             dataset2d=data_list[1]
                             dataset1d=data_list[0]
-                            dataset1d.settings['X data'] = data_list[0].all_parameter_names[0]
-                            dataset1d.settings['Y data'] = data_list[0].all_parameter_names[1]
-                        combined_item=DataItem(MixedInternalData(self.canvas,dataset2d,dataset1d,label_name,self))
+                        dataset1d_type=type(dataset1d)
+                        dataset2d_type=type(dataset2d)
+                        kwargs={}
+                        if dataset1d_type in [qcodesppData,BaseClassData]:
+                            kwargs['dataset1d_filepath'] = dataset1d.filepath
+                        elif dataset1d_type == InternalData:
+                            kwargs['dataset1d_loaded_data'] = dataset1d.loaded_data
+                            kwargs['dataset1d_label'] = dataset1d.label
+                            kwargs['dataset1d_all_parameter_names'] = dataset1d.all_parameter_names
+                            kwargs['dataset1d_dim']= dataset1d.dim
+                        if dataset2d_type in [qcodesppData,BaseClassData]:
+                            kwargs['dataset2d_filepath'] = dataset2d.filepath
+                        elif dataset2d_type == InternalData:
+                            kwargs['dataset2d_loaded_data'] = dataset2d.loaded_data
+                            kwargs['dataset2d_label'] = dataset2d.label
+                            kwargs['dataset2d_all_parameter_names'] = dataset2d.all_parameter_names
+                            kwargs['dataset2d_dim']= dataset2d.dim
+
+                        combined_item=DataItem(MixedInternalData(self.canvas,label_name,dataset2d_type,dataset1d_type,**kwargs))
                         self.add_internal_data(combined_item)
 
                     except Exception as e:

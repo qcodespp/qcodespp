@@ -1775,7 +1775,10 @@ class StatsWindow(QtWidgets.QWidget):
         self.setLayout(self.main_layout)
 
     def calculate_stats(self):
-        data=self.parent.processed_data[-1]
+        if self.parent.filepath=='mixed_internal_data':
+            data=self.parent.dataset2d.processed_data[-1]
+        else:
+            data=self.parent.processed_data[-1]
         statsdict={'mean':np.mean(data),
                    'std':np.std(data),
                     'variance':np.var(data),

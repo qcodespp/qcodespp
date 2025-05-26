@@ -773,32 +773,44 @@ class InternalData(BaseClassData):
     
 class MixedInternalData(BaseClassData):
     # Class for combination of a single 2D dataset and various 1D datasets.
-    def __init__(self, canvas, dataset2d, dataset1d, label_name, editor_window):
-        super().__init__(filepath='internal_data', canvas=canvas)
+    # The type of each dataset needs to be provided by e.g. type(dataset).
+    # For BaseClassData or qcodesppData, all that is then needed is the filepath.
+    # For internal data, more info is needed.
+    
+    def __init__(self, canvas, label_name, dataset2d_type, dataset1d_type,
+                 dataset2d_filepath=None, dataset1d_filepath=None,
+                 dataset1d_loaded_data=None,dataset2d_loaded_data=None,
+                 dataset1d_label=None,dataset2d_label=None,
+                 dataset1d_all_parameter_names=None,dataset2d_all_parameter_names=None,
+                 dataset1d_dim=None,dataset2d_dim=None):
+        super().__init__(filepath='mixed_internal_data', canvas=canvas)
 
+        self.filepath = 'mixed_internal_data'
         self.canvas = canvas
         self.label = label_name
         self.dim = 'mixed'
         self.settings['title'] = self.label
 
+        self.show_2d_data = True
+
         # Reload both datasets to ensure completely distinct objects.
         from qcodesplusplus.qcpp_plotting.offline.qcodes_pp_extension import qcodesppData
 
-        if type(dataset2d) == qcodesppData:
-            self.dataset2d = qcodesppData(dataset2d.filepath,canvas,os.path.dirname(dataset2d.filepath)+'/snapshot.json',load_the_data=True)
-        elif type(dataset2d) == BaseClassData:
-            self.dataset2d = BaseClassData(dataset2d.filepath,canvas)
-        elif type(dataset2d) == InternalData:
-            self.dataset2d = InternalData(canvas,dataset2d.loaded_data,dataset2d.label,dataset2d.all_parameter_names,dataset2d.dim)
+        if dataset2d_type == qcodesppData:
+            self.dataset2d = qcodesppData(dataset2d_filepath,canvas,os.path.dirname(dataset2d_filepath)+'/snapshot.json',load_the_data=True)
+        elif dataset2d_type == BaseClassData:
+            self.dataset2d = BaseClassData(dataset2d_filepath,canvas)
+        elif dataset2d_type == InternalData:
+            self.dataset2d = InternalData(canvas,dataset2d_loaded_data,dataset2d_label,dataset2d_all_parameter_names,dataset2d_dim)
         else:
             print('could not find the correct type for dataset2d')
         
-        if type(dataset1d) == qcodesppData:
-            self.dataset1d = qcodesppData(dataset1d.filepath,canvas,os.path.dirname(dataset1d.filepath)+'/snapshot.json',load_the_data=True)
-        elif type(dataset1d) == BaseClassData:
-            self.dataset1d = BaseClassData(dataset1d.filepath,canvas)
-        elif type(dataset1d) == InternalData:
-            self.dataset1d = InternalData(canvas,dataset1d.loaded_data,dataset1d.label,dataset1d.all_parameter_names,dataset1d.dim)
+        if dataset1d_type == qcodesppData:
+            self.dataset1d = qcodesppData(dataset1d_filepath,canvas,os.path.dirname(dataset1d_filepath)+'/snapshot.json',load_the_data=True)
+        elif dataset1d_type == BaseClassData:
+            self.dataset1d = BaseClassData(dataset1d_filepath,canvas)
+        elif dataset1d_type == InternalData:
+            self.dataset1d = InternalData(canvas,dataset1d_loaded_data,dataset1d_label,dataset1d_all_parameter_names,dataset1d_dim)
         else:
             print('could not find the correct type for dataset1d')
 
@@ -840,25 +852,26 @@ class MixedInternalData(BaseClassData):
         self.dataset1d.axes=self.axes
         self.dataset1d.figure=self.figure
 
-        cmap_str = self.dataset2d.view_settings['Colormap']
-        if self.dataset2d.view_settings['Reverse']:
-            cmap_str += '_r'
-        cmap = cm.get_cmap(cmap_str, lut=int(self.dataset2d.settings['cmap levels']))
-        cmap.set_bad(self.dataset2d.settings['maskcolor'])
+        if self.show_2d_data:
+            cmap_str = self.dataset2d.view_settings['Colormap']
+            if self.dataset2d.view_settings['Reverse']:
+                cmap_str += '_r'
+            cmap = cm.get_cmap(cmap_str, lut=int(self.dataset2d.settings['cmap levels']))
+            cmap.set_bad(self.dataset2d.settings['maskcolor'])
 
-        norm = MidpointNormalize(vmin=self.dataset2d.view_settings['Minimum'], 
-                                    vmax=self.dataset2d.view_settings['Maximum'], 
-                                    midpoint=self.dataset2d.view_settings['Midpoint'])
-        self.image = self.axes.pcolormesh(self.dataset2d.processed_data[0], 
-                                            self.dataset2d.processed_data[1], 
-                                            self.dataset2d.processed_data[2], 
-                                            shading=self.dataset2d.settings['shading'], 
-                                            norm=norm, cmap=cmap,
-                                            rasterized=self.dataset2d.settings['rasterized'])
-        if self.dataset2d.settings['colorbar'] == 'True':
-            self.cbar = self.figure.colorbar(self.image, orientation='vertical')
-            if self.view_settings['CBarHist'] == True:
-                self.add_cbar_hist()
+            norm = MidpointNormalize(vmin=self.dataset2d.view_settings['Minimum'], 
+                                        vmax=self.dataset2d.view_settings['Maximum'], 
+                                        midpoint=self.dataset2d.view_settings['Midpoint'])
+            self.image = self.axes.pcolormesh(self.dataset2d.processed_data[0], 
+                                                self.dataset2d.processed_data[1], 
+                                                self.dataset2d.processed_data[2], 
+                                                shading=self.dataset2d.settings['shading'], 
+                                                norm=norm, cmap=cmap,
+                                                rasterized=self.dataset2d.settings['rasterized'])
+            if self.dataset2d.settings['colorbar'] == 'True':
+                self.cbar = self.figure.colorbar(self.image, orientation='vertical')
+                if self.view_settings['CBarHist'] == True:
+                    self.add_cbar_hist()
 
         # Now plot 1D data on top
         if not hasattr(self, 'sidebar1D'):

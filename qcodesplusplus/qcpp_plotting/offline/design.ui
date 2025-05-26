@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1403</width>
+    <width>1418</width>
     <height>700</height>
    </rect>
   </property>
@@ -610,6 +610,16 @@
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="show_2d_data_checkbox">
+          <property name="text">
+           <string>Show 2D data</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
@@ -1243,8 +1253,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1403</width>
-     <height>18</height>
+     <width>1418</width>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_save_session">
