@@ -56,7 +56,7 @@ from qcodesplusplus.station import Station
 from qcodesplusplus.data.data_set import new_data, load_data
 from qcodesplusplus.data.data_array import DataArray
 from qcodes.utils.helpers import full_class
-from qcodesplusplus.qcpp_utils.helpers import wait_secs, tprint
+from qcodesplusplus.utils.helpers import wait_secs, tprint
 from qcodes.utils.metadata import Metadatable
 from qcodes.parameters import MultiParameter
 from qcodesplusplus.plotting.RemotePlot import Plot

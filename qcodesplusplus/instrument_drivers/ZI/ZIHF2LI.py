@@ -5,7 +5,7 @@ from qcodesplusplus import Instrument
 from qcodes.validators import Numbers, Enum, Ints
 from functools import partial
 import numpy as np
-
+import time
 
 
 class ZIHF2LI(Instrument):
@@ -35,12 +35,10 @@ class ZIHF2LI(Instrument):
 
                 
     def __init__(self, name, serial, **kwargs):
+        begin_time=time.time()
         super().__init__(name, **kwargs)
         # self.name = name
         self.serial = serial
-
-        def get_idn(self):
-            return self.serial
 
 
         # Register oscillators
@@ -340,23 +338,21 @@ class ZIHF2LI(Instrument):
 
 
         # REgister AUX inputs
-        for n in range(self.LI["numAUXins"]):
-            # AUX input value
-            self.add_parameter(name='AUXin{}_value'.format(n),
-                               label='AUXin{}_value'.format(n),
-                               unit = "V",
-                               get_cmd= partial(self.daq.getDouble,'/{}/auxins/{}/value'.format(self.serial, n)),
-                               get_parser = float)
+        # for n in range(self.LI["numAUXins"]):
+        #     # AUX input value
+        #     self.add_parameter(name='AUXin{}_value'.format(n),
+        #                        label='AUXin{}_value'.format(n),
+        #                        unit = "V",
+        #                        get_cmd= partial(self.daq.getDouble,'/{}/auxins/{}/values/{}/value'.format(self.serial, n,n)),
+        #                        get_parser = float)
 
 
+        self.hwrevision = partial(self.daq.getInt,'{}/system/hwrevision'.format(self.serial))()
+        t = time.time() - (begin_time or self._t0)
+        print('Connected to: Zurich Instruments HF2LI (serial:{}, hardware:{}) as {} in {:.2f}s'.format(self.serial,self.hwrevision,self.name,t))
 
-
-                              
-                           
-        
-
-
-    
+    def get_idn(self):
+        return self.serial
     
     def setAmplitude(self,path,val):
         """
