@@ -78,6 +78,7 @@ class BaseClassData:
         self.axlim_settings = self.DEFAULT_AXLIM_SETTINGS.copy()
         #print(self.view_settings['CBarHist'])
         self.filters = []
+        self.labels_changed = False
 
         try: # on Windows
             self.creation_time = os.path.getctime(filepath)
@@ -412,7 +413,7 @@ class BaseClassData:
         self.hax.get_xaxis().set_visible(False)
         self.hax.get_yaxis().set_visible(False)
 
-    def add_plot(self, editor_window=None, apply_default_labels=True):
+    def add_plot(self, editor_window=None):
         if self.processed_data:
             cmap_str = self.view_settings['Colormap']
             if self.view_settings['Reverse']:
@@ -451,7 +452,7 @@ class BaseClassData:
                     if self.view_settings['CBarHist'] == True:
                         self.add_cbar_hist()
 
-            if apply_default_labels:
+            if not self.labels_changed:
                 self.apply_default_lables()
 
             self.cursor = Cursor(self.axes, useblit=True, 

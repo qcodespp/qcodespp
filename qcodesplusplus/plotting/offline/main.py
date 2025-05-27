@@ -676,7 +676,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         item_dictionary['filepath']=item.filepath
                     if hasattr(item,'checkState'):
                         item_dictionary['checkState']=item.checkState()
-                    attributes=['label','settings','filters','view_settings','axlim_settings','plot_type','dim',
+                    attributes=['label','settings','filters','view_settings','axlim_settings','plot_type','dim','labels_changed'
                                 'raw_data','processed_data'] # These two are potentially not necessary.
                     if isinstance(item.data, InternalData):
                         attributes.append('loaded_data')
@@ -1519,10 +1519,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.check_all_filters(signal=None,manual_signal='Uncheck all')
                     self.update_plots()
                     self.reset_axlim_settings()
-                if setting_name == 'transpose':
+                elif 'label' in setting_name:
+                    current_item.data.labels_changed=True
+                    if f'default_{setting_name}' in current_item.data.settings.keys():
+                        current_item.data.settings[f'default_{setting_name}'] = current_item.data.settings[f'{setting_name}']
+                        self.show_current_plot_settings()
+                elif setting_name == 'transpose':
                     current_item.data.prepare_data_for_plot(reload_data=True,reload_from_file=True)
                     self.update_plots()
-                if setting_name == 'columns' or setting_name == 'delimiter':
+                elif setting_name == 'columns' or setting_name == 'delimiter':
                     current_item.data.prepare_data_for_plot(reload_data=True,reload_from_file=False)
                     self.update_plots()
                     self.reset_axlim_settings()
