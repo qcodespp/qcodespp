@@ -469,9 +469,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                         del item.data.sidebar1D
 
                             elif attr=='dataset1d_plotted_lines':
+                                item.data.dataset1d.plotted_lines= attr_dicts[i][attr]
                                 self.reload_plotted_lines(item.data.dataset1d,dirpath,item)
 
                             elif attr=='dataset2d_linecuts':
+                                item.data.dataset2d.linecuts = attr_dicts[i][attr]
                                 self.reload_linecuts(item.data.dataset2d,dirpath,item.checkState())
 
                             if attr=='linecuts':
@@ -504,7 +506,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             item.data.sidebar1D = Sidebar1D(data,self)
             for line in data.plotted_lines.keys():
                 if 'fit' in data.plotted_lines[line].keys():
-                    data.plotted_lines[line]['fit']['fit_result'] = load_modelresult(dirpath+'/igtemp/'+item.data.plotted_lines[line]['fit']['fit_result']+'.sav')
+                    data.plotted_lines[line]['fit']['fit_result'] = load_modelresult(dirpath+'/igtemp/'+data.plotted_lines[line]['fit']['fit_result']+'.sav')
                 item.data.sidebar1D.append_trace_to_table(line)
             if item.checkState():
                 item.data.sidebar1D.update()
@@ -1829,12 +1831,23 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.clear_sidebar1D()
             # Copy over data if internal data, or else re-load it. 
             # The advantage of keeping it this way is that the new data gets the correct data class; it won't be InternalData.
-            if any([isinstance(original_item.data, InternalData),isinstance(original_item.data, MixedInternalData)]):
-                item=DataItem(original_item.data.copy())
-                if isinstance(original_item.data, MixedInternalData):
-                    item.filepath = 'mixed_internal_data'
-                else:
-                    item.filepath = 'internal_data'
+            if isinstance(original_item.data, InternalData):
+                item=DataItem(InternalData(self.canvas,original_item.loaded_data,
+                                           original_item.data.label,
+                                           original_item.data.all_parameter_names,
+                                           dimension=original_item.data.dim))
+                item.filepath = 'internal_data'
+                self.add_internal_data(item,check_item=False,uncheck_others=False)
+            
+            elif isinstance(original_item.data, MixedInternalData):
+                item=DataItem(MixedInternalData(self.canvas,original_item.label,
+                                        original_item.dataset2d_type, original_item.dataset1d_type,
+                                        original_item.dataset2d_filepath, original_item.dataset1d_filepath,
+                                        original_item.dataset1d_loaded_data,original_item.dataset2d_loaded_data,
+                                        original_item.dataset1d_label,original_item.dataset2d_label,
+                                        original_item.dataset1d_all_parameter_names,original_item.dataset2d_all_parameter_names,
+                                        original_item.dataset1d_dim,original_item.dataset2d_dim))
+                item.filepath = 'mixed_internal_data'
                 self.add_internal_data(item,check_item=False,uncheck_others=False)
             else:
                 self.open_files(filepaths=[original_item.data.filepath],overrideautocheck=True)
