@@ -3,7 +3,7 @@ import io
 from json import load as jsonload
 from json import dump as jsondump
 from csv import writer as csvwriter
-import qcodesplusplus.qcpp_plotting.offline.fits as fits
+import qcodesplusplus.plotting.offline.fits as fits
 from scipy.ndimage import map_coordinates
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar

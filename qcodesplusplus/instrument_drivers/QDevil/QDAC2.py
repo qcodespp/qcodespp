@@ -2642,7 +2642,7 @@ class QDac2(VisaInstrument):
 
         loc_folder=os.path.dirname(__file__)
         if datafolder==0:
-            datafolder='C:/Users/'+os.getlogin()+'/AppData/Local/qcodes-elab/qdac_calibrations'
+            datafolder='C:/Users/'+os.getlogin()+'/AppData/Local/qcodespp/qdac_calibrations'
         if os.path.exists(datafolder)==False:
             os.makedirs(datafolder,exist_ok=True)
 

@@ -467,6 +467,47 @@ def expression_fit(xdata,ydata,p0,inputinfo):
     return result
 
 #Custom fits
+def QD_fit(xdata,ydata,p0,inputinfo):
+    numofpeaks=inputinfo[0]
+    alpha=inputinfo[1]
+    G0s=None
+    
+    if p0: #Format should be list of strings: ['x0 x0 ... x0','G0 G0 ... G0','T']
+        rough_peak_positions=[float(par) for par in p0[0].split()]
+        G0s=[float(par) for par in p0[1].split()]
+        T=[float(p0[2])]
+    else:
+        peakspacing=(xdata.max()-xdata.min())/numofpeaks
+        rough_peak_positions=[i*peakspacing+peakspacing/2+xdata.min() for i in range(int(numofpeaks))]
+        G0s=[ydata.max()-ydata.min() for i in range(int(numofpeaks))]
+        T=0.01
+    
+    boltzmann = 1.38064852e-23  # J/K
+    def QD_model(x, x0, G0, T):
+        return G0 * np.cosh(1.60217663e-19*alpha * (x - x0) / (2 * boltzmann * T))**(-2)
+    model=Model(QD_model,prefix='peak0_')
+    params=model.make_params()
+
+    params['peak0_G0'].set(value=G0s[0])
+    params['peak0_T'].set(value=T)
+    params['peak0_x0'].set(value=rough_peak_positions[0])
+
+    def add_peak(prefix, x0, G0, T):
+        peak = Model(QD_model,prefix=prefix)
+        pars = peak.make_params()
+        pars[prefix + 'x0'].set(x0)
+        pars[prefix + 'G0'].set(G0)
+        pars[prefix + 'T'].set(T)
+        return peak, pars
+    
+    for i, cen in enumerate(rough_peak_positions[1:]):
+        peak, pars = add_peak('peak%d_' % (i+1), cen, G0s[i+1], T)
+        model = model + peak
+        params.update(pars)
+
+    result=model.fit(ydata,params,x=xdata)
+    return result
+
 def FET_mobility(xdata,ydata,p0,inputinfo):
     C=float(inputinfo[0])
     L=float(inputinfo[1])
@@ -487,7 +528,7 @@ def FET_mobility(xdata,ydata,p0,inputinfo):
     return result
 
 def dynes_fit(xdata,ydata,p0,inputinfo):
-    electron=1.602e-19
+    electron=1.60217663e-19
     def dynes_model(x, G_N, gamma, delta):
         return np.abs(G_N*((electron*x-1j*gamma*electron)/np.sqrt((electron*x-1j*gamma*electron)**2-(delta*electron)**2)).real)
     model=Model(dynes_model)
@@ -733,10 +774,30 @@ functions['Rectangle']['ErrorFunction']['function'] = partial(rectangle_fit, 'er
 functions['Rectangle']['Logistic']['function'] = partial(rectangle_fit, 'logistic')
 
 # Custom fits based on expression fit
-functions['Custom']={'FET mobility':{'function':FET_mobility},
+functions['Custom']={'Coulomb blockade':{'function':QD_fit},
+                    'FET mobility':{'function':FET_mobility},
                     'BCS/Dynes':{'function':dynes_fit},
                     'Ramsey':{'function':ramsey_fit},
                      }
+
+functions['Custom']['Coulomb blockade']['inputs']='# of peaks, alpha'
+functions['Custom']['Coulomb blockade']['default_inputs']='1,0.1'
+functions['Custom']['Coulomb blockade']['parameters']='V_0s, G_0s, T'
+functions['Custom']['Coulomb blockade']['description']=('Fit one or more Coulomb blockade peaks in the limit of low tunnel coupling:\n'
+                                                'G = G_0 * cosh(e*alpha*(Vg - V_0)/(2*k_B*T))**(-2)\n'
+                                                'where G is the conductance, G_0 the peak conductance, Vg is the gate voltage, '
+                                                'V_0 the gate voltage at the peak, k_B is the Boltzmann constant, '
+                                                'T is the temperature, e is electron charge and alpha is the lever arm.\n'
+                                                'Alpha must be provided as an input, e.g. 0.02, and should be measured from '
+                                                'Coulomb diamonds.\n'
+                                                'Initial guesses for V_0s, G_s0s and T are given in the form:\n'
+                                                'V_0_1 V_0_2 ... V_0_n, G_0_1 G_0_2 ... G_0_n, T\n'
+                                                'e.g., -0.1 0 0.1, 1.1 1.05 1.2, 0.01\n'
+                                                'note: give only a single value for T, as it _should_ be the same for all peaks.\n'
+                                                'However, each peak will return its own T.\n'
+                                                'See e.g. page 396 of the Thomas Ihn book "Semiconductor Nanostructures: Quantum States and Electronic Transport" '
+                                                )
+
 functions['Custom']['FET mobility']['inputs']='C,L'
 functions['Custom']['FET mobility']['default_inputs']='5e-15,5e-6'
 functions['Custom']['FET mobility']['parameters']='mu, V_th, R_s'

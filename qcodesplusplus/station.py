@@ -9,7 +9,7 @@ from qcodesplusplus import Instrument, Parameter
 from qcodes.parameters import ParameterBase , ElapsedTimeParameter
 
 from qcodes import Station as QStation
-
+from qcodesplusplus.actions import _actions_snapshot
 '''
 This code wraps the QCoDeS Station class and adds some functionality to it.
 It allows for the automatic addition of instruments and parameters to the station,
@@ -82,42 +82,71 @@ class Station(QStation):
         Automatically add instruments and parameters to the station.
         Usually, variables=globals()
         """
-        if add_instruments==True:
-            if 'instruments' in self.snapshot_base():
-                for variable in variables:
-                    if isinstance(variables[variable],Instrument):
-                        if variables[variable].name not in self.snapshot_base()['instruments']:
-                            self.add_component(variables[variable],update_snapshot=update_snapshot)
-            else:
-                for variable in variables:
-                    if isinstance(variables[variable],Instrument):
-                        self.add_component(variables[variable],update_snapshot=update_snapshot)
+        print('Automatically adding components to Station...')
+        for variable in variables:
+            if add_instruments and isinstance(variables[variable],Instrument):
+                if 'instruments' not in self.snapshot_base():
+                    self.add_component(variables[variable],update_snapshot=update_snapshot)
+                elif variables[variable].name not in self.snapshot_base()['instruments']:
+                    self.add_component(variables[variable],update_snapshot=update_snapshot)
+            elif add_parameters and isinstance(variables[variable],ParameterBase):
+                if 'parameters' not in self.snapshot_base():
+                    self.add_component(variables[variable],update_snapshot=update_snapshot)
+                elif variables[variable].name not in self.snapshot_base()['parameters']:
+                    self.add_component(variables[variable],update_snapshot=update_snapshot)
+        if add_instruments and 'instruments' in self.snapshot_base():
+            names=[name for name in self.snapshot_base()['instruments']]
+            print('Instruments in station: '+str(names))
+        if add_parameters and 'parameters' in self.snapshot_base():
+            names=[name for name in self.snapshot_base()['parameters']]
+            print('Parameters in station: '+str(names))
 
-            if 'instruments' not in self.snapshot_base():
-                raise KeyError('No instruments found in variable list!')
-            else:
-                names=[]
-                for variable in self.snapshot_base()['instruments']:
-                    names.append(variable)
-                print('Instruments in station: '+str(names))
-        if add_parameters==True:
-            if 'parameters' in self.snapshot_base():
-                for variable in variables:
-                    if isinstance(variables[variable],ParameterBase):
-                        if variables[variable].name not in self.snapshot_base()['parameters']:
-                            self.add_component(variables[variable],update_snapshot=update_snapshot)
-            else:
-                for variable in variables:
-                    if isinstance(variables[variable],ParameterBase):
-                        self.add_component(variables[variable],update_snapshot=update_snapshot)
+    def snapshot_base(self, update: bool=False,
+                      params_to_skip_update: Sequence[str]=None) -> dict:
+        """
+        State of the station as a JSON-compatible dict.
 
-            if 'parameters' not in self.snapshot_base():
-                raise KeyError('No parameters found in variable list!')
+        Note: in the station contains an instrument that has already been
+        closed, not only will it not be snapshotted, it will also be removed
+        from the station during the execution of this function.
+
+        Args:
+            update (bool): If True, update the state by querying the
+             all the children: f.ex. instruments, parameters, components, etc.
+             If False, just use the latest values in memory.
+
+        Returns:
+            dict: base snapshot
+        """
+        snap = {
+            'instruments': {},
+            'parameters': {},
+            'components': {},
+            'default_measurement': _actions_snapshot(
+                self.default_measurement, update)
+        }
+
+        components_to_remove = []
+
+        for name, itm in self.components.items():
+            if isinstance(itm, Instrument):
+                # instruments can be closed during the lifetime of the
+                # station object, hence this 'if' allows to avoid
+                # snapshotting instruments that are already closed
+                if Instrument.is_valid(itm):
+                    snap['instruments'][name] = itm.snapshot(update=update)
+                else:
+                    components_to_remove.append(name)
+            elif isinstance(itm, (Parameter
+                                  )):
+                snap['parameters'][name] = itm.snapshot(update=update)
             else:
-                names=[]
-                for variable in self.snapshot_base()['parameters']:
-                    names.append(variable)
-                print('Parameters in station: '+str(names))
+                snap['components'][name] = itm.snapshot(update=update)
+
+        for c in components_to_remove:
+            self.remove_component(c)
+
+        return snap
 
     def set_measurement(self, *actions):
         """

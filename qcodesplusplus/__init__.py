@@ -63,18 +63,18 @@ from .loops import Loop, active_loop, active_data_set
 from .measure import Measure
 from .actions import Task, Wait, BreakIf
 
-from .qcpp_plotting.RemotePlot import Plot, live_plot
-from .qcpp_plotting.offline.main import offline_plotting
+from .plotting.RemotePlot import Plot, live_plot
+from .plotting.offline.main import offline_plotting
 
-from .qcpp_data.data_set import DataSet, new_data, load_data, load_data_num, load_data_nums, set_data_format, set_data_folder
-from .qcpp_data.location import FormatLocation
-from .qcpp_data.data_array import DataArray
-from .qcpp_data.format import Formatter
-from .qcpp_data.gnuplot_format import GNUPlotFormat
-from .qcpp_data.hdf5_format import HDF5Format
-from .qcpp_data.io import DiskIO
+from .data.data_set import DataSet, new_data, load_data, load_data_num, load_data_nums, set_data_format, set_data_folder
+from .data.location import FormatLocation
+from .data.data_array import DataArray
+from .data.format import Formatter
+from .data.gnuplot_format import GNUPlotFormat
+from .data.hdf5_format import HDF5Format
+from .data.io import DiskIO
 
-from .qcpp_utils.visa_helpers import listVISAinstruments
+from .utils.visa_helpers import listVISAinstruments
 
 from .parameters import MultiParameterWrapper, ArrayParameterWrapper
 
