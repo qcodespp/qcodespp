@@ -809,7 +809,7 @@ class MixedInternalData(BaseClassData):
         self.show_2d_data = True
 
         # Reload both datasets to ensure completely distinct objects.
-        from qcodesplusplus.qcpp_plotting.offline.qcodes_pp_extension import qcodesppData
+        from qcodesplusplus.plotting.offline.qcodes_pp_extension import qcodesppData
 
         if dataset2d_type == qcodesppData:
             self.dataset2d = qcodesppData(dataset2d_filepath,canvas,os.path.dirname(dataset2d_filepath)+'/snapshot.json',load_the_data=True)

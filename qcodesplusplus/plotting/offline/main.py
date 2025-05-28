@@ -1837,21 +1837,24 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             # Copy over data if internal data, or else re-load it. 
             # The advantage of keeping it this way is that the new data gets the correct data class; it won't be InternalData.
             if isinstance(original_item.data, InternalData):
-                item=DataItem(InternalData(self.canvas,original_item.loaded_data,
+                try:
+                    item=DataItem(InternalData(self.canvas,original_item.data.loaded_data,
                                            original_item.data.label,
                                            original_item.data.all_parameter_names,
                                            dimension=original_item.data.dim))
+                except Exception as e:
+                    print(e)
                 item.filepath = 'internal_data'
                 self.add_internal_data(item,check_item=False,uncheck_others=False)
             
             elif isinstance(original_item.data, MixedInternalData):
-                item=DataItem(MixedInternalData(self.canvas,original_item.label,
-                                        original_item.dataset2d_type, original_item.dataset1d_type,
-                                        original_item.dataset2d_filepath, original_item.dataset1d_filepath,
-                                        original_item.dataset1d_loaded_data,original_item.dataset2d_loaded_data,
-                                        original_item.dataset1d_label,original_item.dataset2d_label,
-                                        original_item.dataset1d_all_parameter_names,original_item.dataset2d_all_parameter_names,
-                                        original_item.dataset1d_dim,original_item.dataset2d_dim))
+                item=DataItem(MixedInternalData(self.canvas,original_item.data.label,
+                                        original_item.data.dataset2d_type, original_item.data.dataset1d_type,
+                                        original_item.data.dataset2d_filepath, original_item.data.dataset1d_filepath,
+                                        original_item.data.dataset1d_loaded_data,original_item.data.dataset2d_loaded_data,
+                                        original_item.data.dataset1d_label,original_item.data.dataset2d_label,
+                                        original_item.data.dataset1d_all_parameter_names,original_item.data.dataset2d_all_parameter_names,
+                                        original_item.data.dataset1d_dim,original_item.data.dataset2d_dim))
                 item.filepath = 'mixed_internal_data'
                 self.add_internal_data(item,check_item=False,uncheck_others=False)
             else:
