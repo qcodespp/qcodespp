@@ -402,8 +402,14 @@ class ZIHF2LI(Instrument):
         R = np.sqrt(x**2+y**2)
         return R
     
+    # Temporary fix for phase not working using getSample (not even for official qcodes drivers!!!)
     def getP(self,path):
         data = self.daq.getSample(path)
-        P = float(data['phase'])
-        return P
+        try:
+            x = float(data['x'])
+            y = float(data['y'])
+            P=np.atan(y/x)*180/np.pi
+            return P
+        except ZeroDivisionError:
+            return 0
             
