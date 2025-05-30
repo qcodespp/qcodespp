@@ -48,7 +48,6 @@ def fit_powerlaw(xdata,ydata, p0,inputinfo):
                 params[key].set(1)
 
     result = model.fit(ydata, params, x=xdata)
-    #components = result.eval_components()
     return result
 
 def fit_exponentials(xdata,ydata, p0,inputinfo):
@@ -84,7 +83,6 @@ def fit_exponentials(xdata,ydata, p0,inputinfo):
                 params[key].set(decays)
 
     result = model.fit(ydata, params, x=xdata)
-    #components = result.eval_components()
     return result
 
 
@@ -749,7 +747,8 @@ functions['Step']={'Linear':{},'Arctan':{},'ErrorFunction':{},'Logistic':{}}
 stepdescription=('Fit a single step function of type {} (see lmfit documentation for information). \n'
                 'The step function starts at 0 and ends with value +/- A. '
                 'The x-value where y=A/2 is given by x0, and sigma is the characteristic width of the step.\n'
-                'Use an offset filter on the data in the main panel to ensure your data starts at y=0.')
+                'Use an offset filter on the data in the main panel to ensure your data starts at y=0.\n'
+                'In addition, the x-data must be ascending; use a filter to multiply by -1, and possibly an add/subtract offset, if necessary.\n')
 for key in functions['Step'].keys():
     functions['Step'][key]['parameters']='A, x0, sigma'
     functions['Step'][key]['description']=stepdescription.format(key)
@@ -763,7 +762,8 @@ functions['Rectangle']={'Linear':{},'Arctan':{},'ErrorFunction':{},'Logistic':{}
 rectdescription=('Fit a rectangle function of type {} (see lmfit documentation for information). \n'
                 'A rectangle function steps from 0 to +/- A, then back to 0. '
                 'The x-values where y=A/2 are given by x0_1, x0_2, and sigma_1 and sigma_2 are the characteristic widths of the steps.\n'
-                'Use an offset filter on the data in the main panel to ensure your data starts at y=0.')
+                'Use an offset filter on the data in the main panel to ensure your data starts at y=0.\n'
+                'In addition, the x-data must be ascending; use a filter to multiply by -1, and possibly an add/subtract offset, if necessary.\n')
 for key in functions['Rectangle'].keys():
     functions['Rectangle'][key]['parameters']=['A, x0_1, x0_2, sigma_1, sigma_2']
     functions['Rectangle'][key]['description']=rectdescription.format(key)
@@ -845,9 +845,10 @@ functions['Statistics']['Statistics']['description'] =('Calculate statistical in
                                             'See: https://numpy.org/doc/stable/reference/routines.statistics.html.\n'
                                             'Input a comma-separated list of functions to calculate, e.g.\n'
                                             'mean,std,var,median,min,max.\n'
-                                            'The average can be weighted by providing a list of weights to the "fit" parameters.\n'
+                                            'The average can be weighted by providing a list of weights in the "Initial guess" box.\n'
                                             'The default percentiles to calculate are 1,5,10,25,50,75,90,95 and 99. '
-                                            'To change this, provide a list of percentiles to the "fit" parameters.\n'
+                                            'To change this, provide a list of percentiles in the "Initial guess" box.\n'
+                                            'User-defined weights and percentiles cannot be used together; calculate the average and percentiles separately in this case.\n'
                                             'Use "all" to calculate all functions, or use the keyword "all1d" to calculate everything except the percentiles and autocorrelation.\n'
                                             'Linecuts only: A parameter dependency can be generated, but only if the functions return the same number of values.\n'
                                             'This means you can generate a dependency that includes everything except the percentiles and autocorrelation; '

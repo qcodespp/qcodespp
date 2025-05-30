@@ -692,12 +692,15 @@ class Sidebar1D(QtWidgets.QWidget):
         else:
             x_forfit=x[min_ind:max_ind]
             y_forfit=y[min_ind:max_ind]
+        
+        # if self.x_forfit[-1]<self.x_forfit[0]:
+        #     x_forfit=x_forfit[::-1]
+        #     y_forfit=y_forfit[::-1]
+        #     self.fit_flipped=True
+        # else:
+        #     self.fit_flipped=False
 
         return x_forfit, y_forfit
-
-        # if self.x_forfit[-1]<self.x_forfit[0]:
-        #     self.x_forfit=self.x_forfit[::-1]
-        #     self.y_forfit=self.y_forfit[::-1]
 
     def collect_fit_inputs(self,function_class,function_name):
         if function_name in ['Expression','Statistics']:
