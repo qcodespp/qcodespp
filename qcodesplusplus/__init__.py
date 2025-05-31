@@ -59,7 +59,7 @@ from .station import Station
 # new modules not included in qcodes
 from .version import __version__
 
-from .loops import Loop, active_loop, active_data_set, loop1d,loop2d,loop2dUD
+from .loops import Loop, loop1d,loop2d,loop2dUD
 from .measure import Measure
 from .actions import Task, Wait, BreakIf
 

@@ -9,8 +9,9 @@ from uuid import uuid4
 
 from qcodesplusplus.data.data_array import DataArray
 from qcodesplusplus.utils.helpers import NumpyJSONEncoder
+from qcodes import Parameter
 
-def live_plot(data_set, data_arrays=None):
+def live_plot(data_set, dataitems=None):
     """
     This function basically provides a shortcut to link the data set to a plot, so the user
     doesn't have to even know about the existance of data.publisher.
@@ -24,8 +25,16 @@ def live_plot(data_set, data_arrays=None):
     """
     plot = Plot()
     data_set.publisher=plot
-    if data_arrays is not None:
-        plot.add_multiple(*data_arrays)
+    if dataitems is not None:
+        new_items=[]
+        for item in dataitems:
+            if isinstance(item, Parameter):
+                for array in data_set.arrays:
+                    if item.full_name in array:
+                        new_items.append(data_set.arrays[array])
+            elif isinstance(item, DataArray):
+                new_items.append(item)
+        plot.add_multiple(*new_items)
     return plot
 
 class ControlListener(threading.Thread):

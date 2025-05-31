@@ -65,7 +65,7 @@ from qcodes.utils.helpers import full_class
 from qcodesplusplus.utils.helpers import wait_secs, tprint
 from qcodes.utils.metadata import Metadatable
 from qcodes.parameters import MultiParameter
-from qcodesplusplus.plotting.RemotePlot import Plot
+from qcodesplusplus.plotting.RemotePlot import live_plot
 
 from .actions import (_actions_snapshot, Task, Wait, _Measure, _Nest,
                       BreakIf, _QcodesBreak)
@@ -103,9 +103,8 @@ def loop1d(sweep_parameter,
         params_to_plot: a list of parameters to plot at each point in the loop.
 
     Returns:
-        The ActiveLoop,
-        The DataSet,
-        and a Plot object if params_to_plot is provided.
+        The ActiveLoop. The data is accessible as loop.data_set. This can then be used
+        for plotting, if necessary, e.g. pp=qc.live_plot(loop.data_set,params_to_plot)
     """
 
     if params_to_measure is None:
@@ -114,17 +113,14 @@ def loop1d(sweep_parameter,
     name=f'{device_info} {sweep_parameter.name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}'
     data=loop.get_data_set(name=name)
     if params_to_plot:
-        arrays= [data.arrays[param.full_name] for param in params_to_plot]
-        pp=Plot()
-        data.publisher=pp
-        pp.add_multiple(*arrays)
+        pp=live_plot(data,params_to_plot)
     
     print(data,loop.time_estimate())
 
     if run:
         loop.run()
-    
-    return loop, data, pp if params_to_plot else None
+
+    return loop
 
 def loop2d(sweep_parameter,
                 start, stop, num, delay,
@@ -165,9 +161,8 @@ def loop2d(sweep_parameter,
         params_to_plot: a list of parameters to plot at each point in the loop.
 
     Returns:
-        An ActiveLoop that can be run,
-        A DataSet,
-        and a Plot object if params_to_plot is provided.
+        The ActiveLoop. The data is accessible as loop.data_set. This can then be used
+        for plotting, if necessary, e.g. pp=qc.live_plot(loop.data_set,params_to_plot)
     """
 
     if params_to_measure is None:
@@ -185,17 +180,14 @@ def loop2d(sweep_parameter,
     data=loop2d.get_data_set(name=name)
 
     if params_to_plot:
-        arrays= [data.arrays[param.full_name] for param in params_to_plot]
-        pp=Plot()
-        data.publisher=pp
-        pp.add_multiple(*arrays)
+        pp=live_plot(data,params_to_plot)
 
     print(data,loop2d.time_estimate())
 
     if run:
         loop2d.run()
-    
-    return loop2d, data, pp if params_to_plot else None
+
+    return loop2d
 
 def loop2dUD(sweep_parameter,
                 start, stop, num, delay,
@@ -236,9 +228,8 @@ def loop2dUD(sweep_parameter,
         params_to_plot: a list of parameters to plot at each point in the loop.
 
     Returns:
-        An ActiveLoop that can be run,
-        A DataSet,
-        and a Plot object if params_to_plot is provided.
+        The ActiveLoop. The data is accessible as loop.data_set. This can then be used
+        for plotting, if necessary, e.g. pp=qc.live_plot(loop.data_set,params_to_plot)
     """
 
     if params_to_measure is None:
@@ -247,9 +238,9 @@ def loop2dUD(sweep_parameter,
     loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*params_to_measure)
 
     if fast_down:
-        loop_down=Loop(sweep_parameter.sweep(stop,start,num=int(num/fast_down)), delay).each(*params_to_measure)
+        loop_down=Loop(sweep_parameter.sweep(stop,start,num=int(num/fast_down),print_warning=False), delay).each(*params_to_measure)
     else:
-        loop_down=Loop(sweep_parameter.sweep(stop,start,num=num), delay).each(*params_to_measure)
+        loop_down=Loop(sweep_parameter.sweep(stop,start,num=num,print_warning=False), delay).each(*params_to_measure)
 
     if step_action:
         loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay).each(step_action,loop,loop_down)
@@ -261,23 +252,14 @@ def loop2dUD(sweep_parameter,
     data=loop2d.get_data_set(name=name)
 
     if params_to_plot:
-        if step_action:
-            arrays1= [data.arrays[param.full_name+'_1'] for param in params_to_plot]
-            arrays2= [data.arrays[param.full_name+'_2'] for param in params_to_plot]
-        else:
-            arrays1= [data.arrays[param.full_name+'_0'] for param in params_to_plot]
-            arrays2= [data.arrays[param.full_name+'_1'] for param in params_to_plot]
-        arrays=[*arrays1,*arrays2]
-        pp=Plot()
-        data.publisher=pp
-        pp.add_multiple(*arrays)
+        pp=live_plot(data,params_to_plot)
 
     print(data,loop2d.time_estimate())
 
     if run:
         loop2d.run()
     
-    return loop2d, data, pp if params_to_plot else None
+    return loop2d
 
 class Loop(Metadatable):
     """
@@ -930,25 +912,6 @@ class ActiveLoop(Metadatable):
 
 
         #return estimate
-    
-    def plot(self, *dataitems, run=False):
-        """
-        Shortcut to live plotting for this loop.
-        Args:
-            dataitems (list): List of items within the dataset to be plotted.
-                Should be data.item, where item is a DataArray in the DataSet.
-                Note: NOT a parameter (anymore!)
-
-        Returns:
-            The plot object. The user can add subplots, etc before running the loop,
-            or specify run=True to run the loop immediately.
-        """
-        pp = Plot()#title=self.data_set.name, name=self.data_set.name)
-        self.data_set.publisher=pp
-        pp.add_multiple(*dataitems)
-        if run:
-            self.run()
-        return pp
 
     def run_temp(self, **kwargs):
         """
@@ -958,7 +921,7 @@ class ActiveLoop(Metadatable):
         """
         return self.run(quiet=True, location=False, **kwargs)
 
-    def run(self, plot=None, use_threads=False, quiet=False, station=None,
+    def run(self, params_to_plot=None, use_threads=False, quiet=False, station=None,
             progress_interval=False, set_active=True, publisher=None,
             progress_bar=True, check_written_data=True,
             *args, **kwargs):
@@ -966,6 +929,8 @@ class ActiveLoop(Metadatable):
         Execute this loop.
 
         Args:
+            params_to_plot: a list of parameters to plot at each point in the loop.
+                Can either be the DataArray objects, or the parameters themselves.
             use_threads: (default False): whenever there are multiple `get` calls
                 back-to-back, execute them in separate threads so they run in
                 parallel (as long as they don't block each other)
@@ -999,8 +964,8 @@ class ActiveLoop(Metadatable):
         returns:
             a DataSet object that we can use to plot
         """
-        if plot is not None:
-            self.plot(*plot, run=False)
+        if params_to_plot is not None:
+            live_plot(self.data_set,params_to_plot)
 
         self.progress_bar=progress_bar
         if progress_interval is not False:
@@ -1068,7 +1033,9 @@ class ActiveLoop(Metadatable):
             # again. But also if something went wrong during the loop execution
             # we want to clear the data_set attribute so we don't try to reuse
             # this one later.
-            self.data_set = None
+            # DC disagrees with the above, so I comment out the below.
+            # If it becomes a major problem we can revisit it. 31/05/2025
+            #self.data_set = None
             if set_active:
                 ActiveLoop.active_loop = None
 
