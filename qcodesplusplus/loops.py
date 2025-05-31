@@ -7,42 +7,48 @@ The general scheme is:
 delays
 
 2. activate the loop (which changes it to an ActiveLoop object),
-or omit this step to use the default measurement as given by the
-Loop.set_measurement class method.
+by attaching one or more actions to it, using the .each method.
+Actions can be: parameters to measure, tasks to run, waits, or other loops.
 
-3. run it with the .run method, which creates a DataSet to hold the data,
-and defines how and where to save the data.
+3. Associate the ActiveLoop with a DataSet, which will hold the data collected,
+using ActiveLoop.get_data_set().
+
+4. Run the ActiveLoop with the .run method, which additionally can be passed
+parameters to be plotted using live_plot.
 
 Some examples:
 
-- set default measurements for later Loop's to use
+- 1D sweep, specifying parameters to measure and plot
 
->>> Loop.set_measurement(param1, param2, param3)
+>>> loop=Loop(sweep_parameter.sweep(0,1,num=101), delay=0.1).each(measure_param1, measure_param2)
+>>> data=loop.get_data_set(name='My 1D sweep')
+>>> loop.run([measure_param1, measure_param2])
 
-- 1D sweep, using the default measurement set
+- 2D sweep, using station.set_measurement to set the default measurement
 
->>> Loop(sweep_values, delay).run()
+>>> station.set_measurement(measure_param1, measure_param2)
+>>> loop=Loop(parameter1.sweep(0,1,num=11), delay=0.1).loop(parameter2.sweep(-1,0,num=101), delay=0.1).each(*station.measure())
+>>> data=loop.get_data_set(name='My 2D sweep')
+>>> loop.run([measure_param1, measure_param2])
 
-- 2D sweep, using the default measurement set sv1 is the outer loop, sv2 is the
-  inner.
+However, these simple examples are covered by the convenience functions
+loop1d and loop2d, which also take care of data_set definition and naming and live plotting.
+A more realistic example of a 2D loop would be:
+>>> loop,data,plot = loop2d(
+    parameter1, 0, 1, 11, 0.1,
+    parameter2, -1, 0, 101, 0.1,
+    device_info='My device',
+    instrument_info='My setup',
+    params_to_measure=[measure_param1, measure_param2],
+    params_to_plot=[measure_param1, measure_param2])
+>>> loop.run()
 
->>> Loop(sv1, delay1).loop(sv2, delay2).run()
+Supported commands to .each are:
 
-- 1D sweep with specific measurements to take at each point
-
->>> Loop(sv, delay).each(param4, param5).run()
-
-- Multidimensional sweep: 1D measurement of param6 on the outer loop, and the
-  default measurements in a 2D loop
-
->>> Loop(sv1, delay).each(param6, Loop(sv2, delay)).run()
-
-Supported commands to .set_measurement or .each are:
-
-    - Parameter: anything with a .get method and .name or .names see
-      parameter.py for options
+    - Parameter: anything with a .get method and .name or .names
     - ActiveLoop (or Loop, will be activated with default measurement)
-    - Task: any callable that does not generate data
+    - Task: any callable that does not generate data, e.g. a function
+    - BreakIf: a condition that will break the loop if True, e.g. BreakIf(lambda: param1()>10)
     - Wait: a delay
 """
 
@@ -64,21 +70,8 @@ from qcodesplusplus.plotting.RemotePlot import Plot
 from .actions import (_actions_snapshot, Task, Wait, _Measure, _Nest,
                       BreakIf, _QcodesBreak)
 
-
 log = logging.getLogger(__name__)
 
-
-def active_loop():
-    return ActiveLoop.active_loop
-
-
-def active_data_set():
-    loop = active_loop()
-    if loop is not None and loop.data_set is not None:
-        return loop.data_set
-    else:
-        return None
-    
 def loop1d(sweep_parameter,
                 start, stop, num, delay,
                 device_info='', instrument_info='',
@@ -87,9 +80,12 @@ def loop1d(sweep_parameter,
                 run=False):
     
     """
-    A 1D loop, which is a Loop with a single sweep value.
+    A 1D loop has a single independent parameter, swept over a range of values.
+    At each point in the loop, a set of parameters is measured, either those
+    given as the argument params_to_measure, or the default measurement set by
+    station.set_measurement
 
-    In addition to creating the loop, it also
+    In addition to creating the loop, this function also
     initiates the data set and live plotting window.
 
     Args:
@@ -107,8 +103,8 @@ def loop1d(sweep_parameter,
         params_to_plot: a list of parameters to plot at each point in the loop.
 
     Returns:
-        An ActiveLoop that can be run,
-        A DataSet,
+        The ActiveLoop,
+        The DataSet,
         and a Plot object if params_to_plot is provided.
     """
 
@@ -144,9 +140,6 @@ def loop2d(sweep_parameter,
     """
     A 2D loop, where at each point in the step parameter, the sweep parameter performs a loop.
 
-    In addition to creating the loop, it also
-    initiates the data set and live plotting window.
-
     Args:
         sweep_parameter: The parameter to sweep over.
         start: the start value of the sweep.
@@ -179,14 +172,18 @@ def loop2d(sweep_parameter,
 
     if params_to_measure is None:
         params_to_measure = Station.default.default_measurement
+
     loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*params_to_measure)
+
     if step_action:
         loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay,snake=snake).each(step_action,loop)
     else:
         loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay,snake=snake).each(loop)
+
     name=(f'{device_info} {step_parameter.name}({step_start:.6g} {step_stop:.6g}){sweep_parameter.unit} '
         f'{sweep_parameter.name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}')
     data=loop2d.get_data_set(name=name)
+
     if params_to_plot:
         arrays= [data.arrays[param.full_name] for param in params_to_plot]
         pp=Plot()
@@ -214,9 +211,6 @@ def loop2dUD(sweep_parameter,
     """
     A 2D loop, where at each point in the step parameter, the sweep parameter performs a loop
     in two directions: up and down.
-
-    In addition to creating the loop, it also
-    initiates the data set and live plotting window.
 
     Args:
         sweep_parameter: The parameter to sweep over.
@@ -249,18 +243,23 @@ def loop2dUD(sweep_parameter,
 
     if params_to_measure is None:
         params_to_measure = Station.default.default_measurement
+
     loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*params_to_measure)
+
     if fast_down:
         loop_down=Loop(sweep_parameter.sweep(stop,start,num=int(num/fast_down)), delay).each(*params_to_measure)
     else:
         loop_down=Loop(sweep_parameter.sweep(stop,start,num=num), delay).each(*params_to_measure)
+
     if step_action:
         loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay).each(step_action,loop,loop_down)
     else:
         loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay).each(loop,loop_down)
+
     name=(f'{device_info} {step_parameter.name}({step_start:.6g} {step_stop:.6g}){sweep_parameter.unit} '
         f'{sweep_parameter.name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}')
     data=loop2d.get_data_set(name=name)
+
     if params_to_plot:
         if step_action:
             arrays1= [data.arrays[param.full_name+'_1'] for param in params_to_plot]
@@ -1272,3 +1271,15 @@ class ActiveLoop(Metadatable):
             finish_clock = time.perf_counter() + delay
             t = wait_secs(finish_clock)
             time.sleep(t)
+
+# Cannot find anything that uses the below. Marked for deletion.
+
+# def active_loop():
+#     return ActiveLoop.active_loop
+
+# def active_data_set():
+#     loop = active_loop()
+#     if loop is not None and loop.data_set is not None:
+#         return loop.data_set
+#     else:
+#         return None
