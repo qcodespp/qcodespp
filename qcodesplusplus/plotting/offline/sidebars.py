@@ -479,27 +479,24 @@ class Sidebar1D(QtWidgets.QWidget):
 
     def apply_colormap(self):
         # Apply the colormap to the selected lines in the traces table.
-        # The colormap is applied to the linetrace number, not the index.
         self.trace_table.itemChanged.disconnect(self.trace_table_edited)
         selected_colormap = cm.get_cmap(self.colormap_box.currentText())
         applymethod = self.apply_colormap_to_box.currentText()
-        if applymethod == 'All':
-            for row in range(self.trace_table.rowCount()):
-                linetrace = int(self.trace_table.item(row,0).text())
-                line_colors = selected_colormap(np.linspace(0.1,0.9,self.trace_table.rowCount()))
-                self.parent.plotted_lines[linetrace]['linecolor'] = line_colors[row]
-                rgbavalue = [int(line_colors[linetrace][0]*255), int(line_colors[linetrace][1]*255), int(line_colors[linetrace][2]*255),int(line_colors[linetrace][3]*255)]
-                self.trace_table.item(row,4).setBackground(QtGui.QColor(*rgbavalue))
 
+        if applymethod == 'All':
+            lines_to_color = [int(self.trace_table.item(row,0).text()) for row in range(self.trace_table.rowCount())]
 
         elif applymethod == 'Checked':
-            checked_items = self.get_checked_items(traces_or_fits='traces')
-            for linetrace in checked_items:
-                line_colors = selected_colormap(np.linspace(0.1,0.9,len(checked_items)))
-                self.parent.plotted_lines[linetrace]['linecolor'] = line_colors[linetrace]
-                rgbavalue = [int(line_colors[linetrace][0]*255), int(line_colors[linetrace][1]*255), int(line_colors[linetrace][2]*255),int(line_colors[linetrace][3]*255)]
-                self.trace_table.item(linetrace,4).setBackground(QtGui.QColor(*rgbavalue))
+            lines_to_color = self.get_checked_items(traces_or_fits='traces')
 
+        line_colors = selected_colormap(np.linspace(0.1,0.9,len(lines_to_color)))
+        rows = [self.trace_table.row(self.trace_table.findItems(str(line), QtCore.Qt.MatchExactly)[0]) for line in lines_to_color]
+
+        for i,line in enumerate(lines_to_color):
+            self.parent.plotted_lines[line]['linecolor'] = line_colors[i]
+            rgbavalue = [int(line_colors[i][0]*255), int(line_colors[i][1]*255), int(line_colors[i][2]*255),int(line_colors[i][3]*255)]
+            self.trace_table.item(rows[i],4).setBackground(QtGui.QColor(*rgbavalue))
+            
         self.trace_table.itemChanged.connect(self.trace_table_edited)
         self.editor_window.update_plots(update_data=False)
 

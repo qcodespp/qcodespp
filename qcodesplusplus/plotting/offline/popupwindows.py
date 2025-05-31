@@ -73,7 +73,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.apply_colormap_to_box = QtWidgets.QComboBox() # All by index, all by num, selected by ind, selected by num, checked by ind, checked by num
         self.apply_button = QtWidgets.QPushButton('Apply')
 
-        applymethods=['All by #', 'All by ind', 'Chkd by #','Chkd by ind']
+        applymethods=['All by order', 'All by ind', 'Chkd by order','Chkd by ind']
         self.apply_colormap_to_box.addItems(applymethods)
         for cmap_type in cmaps:    
             self.colormap_type_box.addItem(cmap_type)
@@ -301,7 +301,6 @@ class LineCutWindow(QtWidgets.QWidget):
         self.fit_buttons_layout.addWidget(self.clear_all_fits_button)
         self.fit_buttons_layout.addWidget(self.save_parameters_dependency_button)
 
-
     def set_main_layout(self):
         self.main_layout = QtWidgets.QVBoxLayout()
         self.top_half_layout = QtWidgets.QHBoxLayout()
@@ -358,7 +357,6 @@ class LineCutWindow(QtWidgets.QWidget):
 
         self.cuts_table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.cuts_table.customContextMenuRequested.connect(self.open_cuts_table_menu)
-
 
     def item_clicked(self, item):
         # displays the fit result and/or information.
@@ -745,7 +743,7 @@ class LineCutWindow(QtWidgets.QWidget):
 
     def reorder_cuts(self):
         # Reorder the cuts in the list based on the data index.
-        # Super broken; the spin box really affects everything. It will be hard to make it work I think.
+        # Not implemented in the GUI since it's super broken; the spin box really affects everything. It will be hard to make it work I think.
         self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
         self.cuts_table.setSortingEnabled(False)
         for row in range(self.cuts_table.rowCount()):
@@ -772,56 +770,44 @@ class LineCutWindow(QtWidgets.QWidget):
         self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
         selected_colormap = cm.get_cmap(self.colormap_box.currentText())
         applymethod = self.apply_colormap_to_box.currentText()
-        if applymethod == 'All by #':
-            for row in range(self.cuts_table.rowCount()):
-                linecut = int(self.cuts_table.item(row,0).text())
-                line_colors = selected_colormap(np.linspace(0.1,0.9,self.cuts_table.rowCount()))
-                self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor'] = line_colors[row]
-                rgbavalue = [int(line_colors[linecut][0]*255), int(line_colors[linecut][1]*255), int(line_colors[linecut][2]*255),int(line_colors[linecut][3]*255)]
-                self.cuts_table.item(row,4).setBackground(QtGui.QColor(*rgbavalue))
-                if 'draggable_points' in self.parent.linecuts[self.orientation]['lines'][linecut].keys():
-                    self.update_draggable_points(linecut,replot=True)
-        elif applymethod == 'All by ind':
-            for row in range(self.cuts_table.rowCount()):
-                index = int(self.cuts_table.cellWidget(row,1).value())
-                linecut = int(self.cuts_table.item(row,0).text())
-                if self.orientation == 'horizontal':
-                    line_colors = selected_colormap(np.linspace(0.1,0.9,len(self.parent.processed_data[1][0,:])))
-                    self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor'] = line_colors[index]
-                    rgbavalue = [int(line_colors[index][0]*255), int(line_colors[index][1]*255), int(line_colors[index][2]*255),int(line_colors[index][3]*255)]
-                    self.cuts_table.item(row,4).setBackground(QtGui.QColor(*rgbavalue))
-                elif self.orientation == 'vertical':
-                    line_colors = selected_colormap(np.linspace(0.1,0.9,len(self.parent.processed_data[0][:,0])))
-                    self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor'] = line_colors[index]
-                    rgbavalue = [int(line_colors[index][0]*255), int(line_colors[index][1]*255), int(line_colors[index][2]*255),int(line_colors[index][3]*255)]
-                    self.cuts_table.item(row,4).setBackground(QtGui.QColor(*rgbavalue))
 
-        elif applymethod == 'Chkd by #':
-            checked_items = self.get_checked_items(cuts_or_fits='cuts')
-            for linecut in checked_items:
-                line_colors = selected_colormap(np.linspace(0.1,0.9,len(checked_items)))
-                self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor'] = line_colors[linecut]
-                rgbavalue = [int(line_colors[linecut][0]*255), int(line_colors[linecut][1]*255), int(line_colors[linecut][2]*255),int(line_colors[linecut][3]*255)]
-                self.cuts_table.item(linecut,4).setBackground(QtGui.QColor(*rgbavalue))
-                if 'draggable_points' in self.parent.linecuts[self.orientation]['lines'][linecut].keys():
-                    self.update_draggable_points(linecut,replot=True)
-        elif applymethod == 'Chkd by ind':
-            checked_items = self.get_checked_items(cuts_or_fits='cuts')
-            for linecut in checked_items:
-                index = int(self.cuts_table.cellWidget(linecut,1).value())
-                if self.orientation == 'horizontal':
-                    line_colors = selected_colormap(np.linspace(0.1,0.9,len(self.parent.processed_data[1][0,:])))
-                    self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor'] = line_colors[index]
-                    rgbavalue = [int(line_colors[index][0]*255), int(line_colors[index][1]*255), int(line_colors[index][2]*255),int(line_colors[index][3]*255)]
-                    self.cuts_table.item(linecut,4).setBackground(QtGui.QColor(*rgbavalue))
-                elif self.orientation == 'vertical':
-                    line_colors = selected_colormap(np.linspace(0.1,0.9,len(self.parent.processed_data[0][:,0])))
-                    self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor'] = line_colors[index]
-                    rgbavalue = [int(line_colors[index][0]*255), int(line_colors[index][1]*255), int(line_colors[index][2]*255),int(line_colors[index][3]*255)]
-                    self.cuts_table.item(linecut,4).setBackground(QtGui.QColor(*rgbavalue))
+        try:
 
-        self.cuts_table.itemChanged.connect(self.cuts_table_edited)
-        self.update()
+            if applymethod == 'All by order':
+                lines_to_color = [int(self.cuts_table.item(row,0).text()) for row in range(self.cuts_table.rowCount())]
+
+            elif applymethod == 'Chkd by order':
+                lines_to_color = self.get_checked_items(cuts_or_fits='cuts')
+
+            elif applymethod == 'All by ind':
+                indexes= [int(self.cuts_table.cellWidget(row,1).value()) for row in range(self.cuts_table.rowCount())]
+                lines_to_color = [int(self.cuts_table.item(row,0).text()) for row in range(self.cuts_table.rowCount())]
+
+            elif applymethod == 'Chkd by ind':
+                indexes = [int(self.cuts_table.cellWidget(row,1).value()) for row in range(self.cuts_table.rowCount()) if self.cuts_table.item(row,0).checkState() == QtCore.Qt.Checked]
+                lines_to_color = self.get_checked_items(cuts_or_fits='cuts')
+
+            if applymethod in ['All by ind', 'Chkd by ind']:
+                # Reorder lines_to_color based on the order of indexes
+                sorted_pairs = sorted(zip(indexes, lines_to_color))
+                indexes, lines_to_color = zip(*sorted_pairs)
+                indexes = list(indexes)
+                lines_to_color = list(lines_to_color)
+
+            line_colors = selected_colormap(np.linspace(0.1,0.9,len(lines_to_color)))
+            rows = [self.cuts_table.row(self.cuts_table.findItems(str(line), QtCore.Qt.MatchExactly)[0]) for line in lines_to_color]
+            
+            for i,line in enumerate(lines_to_color):
+                self.parent.linecuts[self.orientation]['lines'][line]['linecolor'] = line_colors[i]
+                rgbavalue = [int(line_colors[i][0]*255), int(line_colors[i][1]*255), int(line_colors[i][2]*255),int(line_colors[i][3]*255)]
+                self.cuts_table.item(rows[i],4).setBackground(QtGui.QColor(*rgbavalue))
+                if 'draggable_points' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+                    self.update_draggable_points(line,replot=True)
+
+            self.cuts_table.itemChanged.connect(self.cuts_table_edited)
+            self.update()
+        except Exception as e:
+            print(e)
 
     def colormap_type_edited(self):
         self.colormap_box.clear()
