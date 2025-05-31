@@ -78,6 +78,207 @@ def active_data_set():
         return loop.data_set
     else:
         return None
+    
+def loop1d(sweep_parameter,
+                start, stop, num, delay,
+                device_info='', instrument_info='',
+                params_to_measure=None,
+                params_to_plot=None,
+                run=False):
+    
+    """
+    A 1D loop, which is a Loop with a single sweep value.
+
+    In addition to creating the loop, it also
+    initiates the data set and live plotting window.
+
+    Args:
+        sweep_parameter: The parameter to sweep over.
+        start: the start value of the sweep.
+        stop: the stop value of the sweep.
+        num: the number of points in the sweep.
+        delay: the number of seconds to wait after setting a value before
+            measuring.
+        device_info: a string with information about the device
+        instrument_info: a string with information about the setup that will not
+            be captured by the metadata (e.g. voltage dividers, preamp settings)
+        params_to_measure: a list of parameters to measure at each point in the
+            loop. If None, will use the default measurement set by the default station
+        params_to_plot: a list of parameters to plot at each point in the loop.
+
+    Returns:
+        An ActiveLoop that can be run,
+        A DataSet,
+        and a Plot object if params_to_plot is provided.
+    """
+
+    if params_to_measure is None:
+        params_to_measure = Station.default.default_measurement
+    loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*params_to_measure)
+    name=f'{device_info} {sweep_parameter.name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}'
+    data=loop.get_data_set(name=name)
+    if params_to_plot:
+        arrays= [data.arrays[param.full_name] for param in params_to_plot]
+        pp=Plot()
+        data.publisher=pp
+        pp.add_multiple(*arrays)
+    
+    print(data,loop.time_estimate())
+
+    if run:
+        loop.run()
+    
+    return loop, data, pp if params_to_plot else None
+
+def loop2d(sweep_parameter,
+                start, stop, num, delay,
+                step_parameter,
+                step_start, step_stop, step_num, step_delay,
+                step_action=None,
+                device_info='', instrument_info='',
+                params_to_measure=None,
+                params_to_plot=None,
+                run=False):
+    
+    """
+    A 2D loop, where at each point in the step parameter, the sweep parameter performs a loop.
+
+    In addition to creating the loop, it also
+    initiates the data set and live plotting window.
+
+    Args:
+        sweep_parameter: The parameter to sweep over.
+        start: the start value of the sweep.
+        stop: the stop value of the sweep.
+        num: the number of points in the sweep.
+        delay: the number of seconds to wait after setting a value before
+            measuring.
+        step_parameter: The parameter to step over.
+        step_start: the start value of the step.
+        step_stop: the stop value of the step.
+        step_num: the number of points in the step.
+        step_delay: the number of seconds to wait after setting a value before
+            starting the inner loop.
+        step_action: an action (e.g. qcodes Task) to run at each point in the step loop AFTER the step parameter
+            has been set, but BEFORE the inner loop starts
+        device_info: a string with information about the device
+        instrument_info: a string with information about the setup that will not
+            be captured by the metadata (e.g. voltage dividers, preamp settings)
+        params_to_measure: a list of parameters to measure at each point in the
+            loop. If None, will use the default measurement set by the default station
+        params_to_plot: a list of parameters to plot at each point in the loop.
+
+    Returns:
+        An ActiveLoop that can be run,
+        A DataSet,
+        and a Plot object if params_to_plot is provided.
+    """
+
+    if params_to_measure is None:
+        params_to_measure = Station.default.default_measurement
+    loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*params_to_measure)
+    if step_action:
+        loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay).each(step_action,loop)
+    else:
+        loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay).each(loop)
+    name=(f'{device_info} {step_parameter.name}({step_start:.6g} {step_stop:.6g}){sweep_parameter.unit} '
+        f'{sweep_parameter.name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}')
+    data=loop2d.get_data_set(name=name)
+    if params_to_plot:
+        if step_action:
+            arrays= [data.arrays[param.full_name+'_1'] for param in params_to_plot]
+        else:
+            arrays= [data.arrays[param.full_name] for param in params_to_plot]
+        pp=Plot()
+        data.publisher=pp
+        pp.add_multiple(*arrays)
+
+    print(data,loop2d.time_estimate())
+
+    if run:
+        loop2d.run()
+    
+    return loop2d, data, pp if params_to_plot else None
+
+def loop2dUD(sweep_parameter,
+                start, stop, num, delay,
+                step_parameter,
+                step_start, step_stop, step_num, step_delay,
+                step_action=None,
+                fast_down=False,
+                device_info='', instrument_info='', 
+                params_to_measure=None,
+                params_to_plot=None,
+                run=False):
+    
+    """
+    A 2D loop, where at each point in the step parameter, the sweep parameter performs a loop
+    in two directions: up and down.
+
+    In addition to creating the loop, it also
+    initiates the data set and live plotting window.
+
+    Args:
+        sweep_parameter: The parameter to sweep over.
+        start: the start value of the sweep.
+        stop: the stop value of the sweep.
+        num: the number of points in the sweep.
+        delay: the number of seconds to wait after setting a value before
+            measuring.
+        step_parameter: The parameter to step over.
+        step_start: the start value of the step.
+        step_stop: the stop value of the step.
+        step_num: the number of points in the step.
+        step_delay: the number of seconds to wait after setting a value before
+            starting the inner loop.
+        step_action: an action (e.g. qcodes Task) to run at each point in the step loop AFTER the step parameter
+            has been set, but BEFORE the inner loop starts
+        fast_down: If a number, the down loop will be shortened by this factor.
+        device_info: a string with information about the device
+        instrument_info: a string with information about the setup that will not
+            be captured by the metadata (e.g. voltage dividers, preamp settings)
+        params_to_measure: a list of parameters to measure at each point in the
+            loop. If None, will use the default measurement set by the default station
+        params_to_plot: a list of parameters to plot at each point in the loop.
+
+    Returns:
+        An ActiveLoop that can be run,
+        A DataSet,
+        and a Plot object if params_to_plot is provided.
+    """
+
+    if params_to_measure is None:
+        params_to_measure = Station.default.default_measurement
+    loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*params_to_measure)
+    if fast_down:
+        loop_down=Loop(sweep_parameter.sweep(stop,start,num=int(num/fast_down)), delay).each(*params_to_measure)
+    else:
+        loop_down=Loop(sweep_parameter.sweep(stop,start,num=num), delay).each(*params_to_measure)
+    if step_action:
+        loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay).each(step_action,loop,loop_down)
+    else:
+        loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay).each(loop,loop_down)
+    name=(f'{device_info} {step_parameter.name}({step_start:.6g} {step_stop:.6g}){sweep_parameter.unit} '
+        f'{sweep_parameter.name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}')
+    data=loop2d.get_data_set(name=name)
+    if params_to_plot:
+        if step_action:
+            arrays1= [data.arrays[param.full_name+'_1'] for param in params_to_plot]
+            arrays2= [data.arrays[param.full_name+'_2'] for param in params_to_plot]
+        else:
+            arrays1= [data.arrays[param.full_name+'_0'] for param in params_to_plot]
+            arrays2= [data.arrays[param.full_name+'_1'] for param in params_to_plot]
+        arrays=[*arrays1,*arrays2]
+        pp=Plot()
+        data.publisher=pp
+        pp.add_multiple(*arrays)
+
+    print(data,loop2d.time_estimate())
+
+    if run:
+        loop2d.run()
+    
+    return loop2d, data, pp if params_to_plot else None
 
 
 class Loop(Metadatable):
@@ -204,6 +405,7 @@ class Loop(Metadatable):
                     if isinstance(action, ActiveLoop):
                         action.actions = [self.sweep_values.parameter,*action.actions]
             else:
+                # If this loop is the inner loop, add the MultiParameter components to the actions directly.
                 actions=[self.sweep_values.parameter,*actions]
 
         self.validate_actions(*actions)
