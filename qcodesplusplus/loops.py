@@ -134,6 +134,7 @@ def loop2d(sweep_parameter,
                 start, stop, num, delay,
                 step_parameter,
                 step_start, step_stop, step_num, step_delay,
+                snake=False,
                 step_action=None,
                 device_info='', instrument_info='',
                 params_to_measure=None,
@@ -159,6 +160,8 @@ def loop2d(sweep_parameter,
         step_num: the number of points in the step.
         step_delay: the number of seconds to wait after setting a value before
             starting the inner loop.
+        snake: Whether to run a normal raster scan (False) or a snake scan (True). If True, the inner loop will
+            be run in reverse order on every other step of the outer loop.
         step_action: an action (e.g. qcodes Task) to run at each point in the step loop AFTER the step parameter
             has been set, but BEFORE the inner loop starts
         device_info: a string with information about the device
@@ -178,17 +181,14 @@ def loop2d(sweep_parameter,
         params_to_measure = Station.default.default_measurement
     loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*params_to_measure)
     if step_action:
-        loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay).each(step_action,loop)
+        loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay,snake=snake).each(step_action,loop)
     else:
-        loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay).each(loop)
+        loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay,snake=snake).each(loop)
     name=(f'{device_info} {step_parameter.name}({step_start:.6g} {step_stop:.6g}){sweep_parameter.unit} '
         f'{sweep_parameter.name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}')
     data=loop2d.get_data_set(name=name)
     if params_to_plot:
-        if step_action:
-            arrays= [data.arrays[param.full_name+'_1'] for param in params_to_plot]
-        else:
-            arrays= [data.arrays[param.full_name] for param in params_to_plot]
+        arrays= [data.arrays[param.full_name] for param in params_to_plot]
         pp=Plot()
         data.publisher=pp
         pp.add_multiple(*arrays)
@@ -280,7 +280,6 @@ def loop2dUD(sweep_parameter,
     
     return loop2d, data, pp if params_to_plot else None
 
-
 class Loop(Metadatable):
     """
     The entry point for creating measurement loops
@@ -292,23 +291,18 @@ class Loop(Metadatable):
             continuing. 0 (default) means no waiting and no warnings. > 0
             means to wait, potentially filling the delay time with monitoring,
             and give an error if you wait longer than expected.
-        progress_interval: should progress of the loop every x seconds. Default
+        progress_interval: show progress of the loop every x seconds. Default
             is None (no output)
 
     After creating a Loop, you attach one or more ``actions`` to it, making an
     ``ActiveLoop``
-
-    TODO:
-        how? Maybe obvious but not specified! that you can ``.run()``,
-        or you can ``.run()`` a ``Loop`` directly, in which
-        case it takes the default ``actions`` from the default ``Station``
 
     ``actions`` is a sequence of things to do at each ``Loop`` step: that can be
     a ``Parameter`` to measure, a ``Task`` to do (any callable that does not
     yield data), ``Wait`` times, or another ``ActiveLoop`` or ``Loop`` to nest
     inside this one.
     """
-    def __init__(self, sweep_values, delay=0, station=None,
+    def __init__(self, sweep_values, delay=0, snake=False, station=None,
                  progress_interval=None,progress_bar=True):
         super().__init__()
         if delay < 0:
@@ -325,6 +319,8 @@ class Loop(Metadatable):
         self.bg_min_delay = None
         self.progress_interval = progress_interval
         self.progress_bar=progress_bar
+        # snake should ONLY be used for 2D loops. For 1D loops nothing will happen, but for higher dimensions unexpected results may occur.
+        self.snake = snake
 
     def __getitem__(self, item):
         """
@@ -374,11 +370,10 @@ class Loop(Metadatable):
     
     def each(self, *actions):
         """
-        Perform a set of actions at each setting of this loop.
-        TODO(setting vs setpoints) ? better be verbose.
+        Perform a set of actions at each setpoint of this loop.
 
         Args:
-            *actions (Any): actions to perform at each setting of the loop
+            *actions (Any): actions to perform at each setpoint of the loop
 
         Each action can be:
 
@@ -416,7 +411,7 @@ class Loop(Metadatable):
 
         return ActiveLoop(self.sweep_values, self.delay, *actions,
                           then_actions=self.then_actions, station=self.station,
-                          progress_interval=self.progress_interval,
+                          progress_interval=self.progress_interval, snake=self.snake,
                           bg_task=self.bg_task, bg_final_task=self.bg_final_task, bg_min_delay=self.bg_min_delay)
 
     def with_bg_task(self, task, bg_final_task=None, min_delay=0.01):
@@ -552,7 +547,6 @@ def _attach_bg_task(loop, task, bg_final_task, min_delay):
 
     return loop
 
-
 class ActiveLoop(Metadatable):
     """
     Created by attaching ``actions`` to a ``Loop``, this is the object that
@@ -570,7 +564,7 @@ class ActiveLoop(Metadatable):
 
     def __init__(self, sweep_values, delay, *actions, then_actions=(),
                  station=None, progress_interval=None, bg_task=None,
-                 bg_final_task=None, bg_min_delay=None,progress_bar=True):
+                 bg_final_task=None, bg_min_delay=None,progress_bar=True,snake=False):
         super().__init__()
         self.sweep_values = sweep_values
         self.delay = delay
@@ -584,6 +578,11 @@ class ActiveLoop(Metadatable):
         self.data_set = None
         self.progress_bar=progress_bar
         self.was_broken=False
+        self.snake = snake
+        self.flip = False  # used for 2D loops to flip the order of the inner loop if snake is True. Should never be defined by the user.
+        
+        if snake and len([action for action in self.actions if isinstance(action, ActiveLoop)]) > 1:
+            print('Careful! Using snake for a loop with multiple nested loops may result in strange behavior. Make sure you know what you are doing.')
 
         # if the first action is another loop, it changes how delays
         # happen - the outer delay happens *after* the inner var gets
@@ -1161,7 +1160,10 @@ class ActiveLoop(Metadatable):
         else:
             iterator=self.sweep_values
 
-        i=0
+        if self.flip:
+            i=len(self.sweep_values._values)-1
+        else:
+            i=0
         for value in iterator:
             if self.progress_interval is not None:
                 tprint('loop %s: %d/%d (%.1f [s])' % (
@@ -1207,12 +1209,16 @@ class ActiveLoop(Metadatable):
 
             try:
                 for f in callables:
-                    # below is useful but too verbose even at debug
-                    # log.debug('Going through callables at this sweep step.'
-                    #           ' Calling {}'.format(f))
+                    # Callables are everything: the actual measurements, any inner loops, any tasks, etc.
                     f(first_delay=delay,
                       loop_indices=new_indices,
                       current_values=new_values)
+                    
+                    # Very special case; flip both the indices and sweep_values of the inner loop after running it,
+                    # if this is an outer snake loop
+                    if self.snake and isinstance(f,_Nest):
+                        f.inner_loop.sweep_values.reverse()
+                        f.inner_loop.flip = not f.inner_loop.flip
 
                     # after the first action, no delay is inherited
                     delay = 0
@@ -1241,7 +1247,10 @@ class ActiveLoop(Metadatable):
                         log.exception("Failed to execute bg task")
 
                     last_task = t
-            i=i+1
+            if self.flip:
+                i=i-1
+            else:
+                i=i+1
         # run the background task one last time to catch the last setpoint(s)
         if self.bg_task is not None:
             log.debug('Running the background task one last time.')
