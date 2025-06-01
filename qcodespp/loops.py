@@ -495,7 +495,8 @@ class Loop(Metadatable):
             '__class__': full_class(self),
             'sweep_values': self.sweep_values.snapshot(update=update),
             'delay': self.delay,
-            'then_actions': _actions_snapshot(self.then_actions, update)
+            'then_actions': _actions_snapshot(self.then_actions, update),
+            'snake': self.snake
         }
 
 
@@ -629,7 +630,8 @@ class ActiveLoop(Metadatable):
             'sweep_values': self.sweep_values.snapshot(update=update),
             'delay': self.delay,
             'actions': _actions_snapshot(self.actions, update),
-            'then_actions': _actions_snapshot(self.then_actions, update)
+            'then_actions': _actions_snapshot(self.then_actions, update),
+            'snake': self.snake
         }
 
     def containers(self):
