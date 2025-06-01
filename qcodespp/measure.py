@@ -15,8 +15,11 @@ class Measure(Metadatable):
         *actions (any): sequence of actions to perform. Any action that is
             valid in a ``Loop`` can be used here. If an action is a gettable
             ``Parameter``, its output will be included in the DataSet.
-            Scalars returned by an action will be saved as length-1 arrays,
-            with a dummy setpoint for consistency with other DataSets.
+            The typical use case is to store data from one or more ArrayParameter(s) 
+            or ParameterWithSetpoints(s), i.e. non-scalar data, returned
+            from an instrument buffer such as an oscilloscope, although scalars are also supported.
+            Since the dataset forces us to include an array that acts as 'setpoints',
+            a set of dummy setpoints is created for each dimension that is found in the actions.
     """
     dummy_parameter = Parameter(name='single',
                                 label='Single Measurement',
@@ -36,6 +39,11 @@ class Measure(Metadatable):
 
     def get_data_set(self, *args, **kwargs):
         return self._dummyLoop.get_data_set(*args, **kwargs)
+        # What this should actually do:
+        # 1) Go through all actions, and if the action is a Parameter,
+        #  find the dimension of the data it returns. check if dummy setpoints
+        #  already exist, and if not, create them.
+        # 2) Create a DataSet with the correct setpoints and actions
 
     def run(self, use_threads=False, quiet=False, station=None, **kwargs):
         """

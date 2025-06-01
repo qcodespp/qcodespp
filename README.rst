@@ -8,7 +8,7 @@ and a flexible - but complex - database-based method for collecting data
 and running measurement loops.
 See https://qcodes.github.io/ for more info.
 
-This package, qcodes++ (aka qcodespp), provides user-friendly
+This package, qcodes++ (aka qcodespp, qcpp, qc++), provides user-friendly
 frontend to the solid backend of qcodes. If you have always wanted to run 
 your measurements using python but found qcodes too daunting, qcodes++ is 
 the package for you. Qcodes++ features
@@ -17,21 +17,27 @@ the package for you. Qcodes++ features
 
 - A simple yet powerful method for taking data and running measurements and loops
 
-- True live plotting and tightly integrated offline plotting
+- True live plotting and an integrated offline plotting/analysis tool
 
-- Improvements to core qcodes functions (such as the Station) to streamline data acquisition, protect (meta)data integtrity and minimise user error
+- Improvements to core qcodes functions (e.g. Station, Parameters) to streamline data acquisition, protect (meta)data integtrity and minimise user error
 
 - Improved drivers for certain instruments
 
 - and other user-friendliness improvements outlined in the documentation.
 
-All features of qcodes are preserved in a qcodes++ installation. Even those
-features that qcodes++ does not rely on can be used seamlessly within the same
-notebook/environment. This means you lose nothing by installing qcodes++ ontop of qcodes.
+qcodes++ is installed on top of QCoDeS, meaning all features of both packages can be used 
+seamlessly within the same notebook/environment. e.g. you could still use the mainline qcodes 
+dataset and measurement process for some experiments while relying on qcodes++ in other instances.
+TL;DR, you lose nothing by installing qcodes++ ontop of qcodes.
 
-QCoDeS and qcodes++ are compatible with Python 3.5+. It is primarily intended for use
-from Jupyter notebooks and jupyter lab, but can also be used from Spyder, traditional terminal-based
+QCoDeS and qcodes++ are compatible with Python 3.5+. They are primarily intended for use
+from Jupyter notebooks and Jupyter lab, but can also be used from Spyder, traditional terminal-based
 shells and in stand-alone scripts.
+
+In addition to being a really stupid pun on q(c++), the name reflects the fact that the main purpose 
+of this package is really just to add some cool stuff our lab has worked on over the years. 
+And it also makes me happy because totally coincidentally we have always named our plotting windows 
+pp, e.g. pp = qcpp.live_plot().
 
 Docs
 ====
