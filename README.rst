@@ -52,38 +52,28 @@ Install
 
 Git is versioning software that allows multiple developers to contribute to pieces of software. It's used when software is likely to be changing quickly and flexibility and collaboration is key.
 
-- Open the newly installed git bash, navigate to the desired folder (usually C:/git. You may have to create this folder), and clone the repository
+- We will then use the Anaconda prompt to install qcodes++. First, we will create a 'virtual environment' for qcodes++. This is a separate python installation that will not interfere with your base python installation. Then we will download (aka 'clone') the qcodes++ code and install it.
+
+- Open the Anaconda prompt and type:
+
+	conda create –n qcpp python
+	
+	activate qcpp
 
 	cd C:/git
 
-	git clone https://github.com/djcarrad/qcodesplusplus.git
-
-'cloning' the repository effectively downloads the latest version of the software, and tells git to keep track of changes you might make to it. If you prefer to use the git gui, use Source Location: https://github.com/djcarrad/qcodesplusplus.git and Target Directory: C:/git/qcodesplusplus (or the directory of your choice)
-
-- Now open the Anaconda prompt and type:
-
-	conda create –n qcodes python
+	git clone https://github.com/qcodespp/qcodespp
 	
-	activate qcodes
-	
-	pip install –e *path to repository* qcodes
-
-	(for example: pip install -e C:/git/qcodesplusplus)
-
-This does a couple of things; it creates an 'environment' that is effectively a separate python installation. qcodes requires that some packages are not updated to the latest version. Running qcodes in its own environment means your 'base' python installation can remain completely up-to-date, and that qcodes can run smoothly. Calling 'activate qcodes' puts you in the qcodes environment. You can 'deactivate qcodes' if you want to return to the base environment. The *path to repository* is usually just 'C:/git/qcodesplusplus'
+	pip install –e qcodespp
 
 - Optionally install useful packages from the anaconda prompt:
 
-	pip install scipy zhinst
+	pip install scipy zhinst zhinst-qcodes
 
-You can now run qcodes in jupyter notebook or jupyter lab by opening the anaconda prompt, and typing
+You can now run qcodes in jupyter lab by opening the anaconda prompt, and typing
 
-	activate qcodes
+	activate qcpp
 	
-	jupyter notebook
-
-or
-
 	jupyter lab
 	
 Additionally...
@@ -100,7 +90,7 @@ https://www.ni.com/en/support/downloads/drivers/download.ni-488-2.html
 	
 Updating
 --------
-Open git bash, navigate to the install folder (usually cd C:/git/qcodesplusplus), and use 
+Open git bash, navigate to the install folder (usually cd C:/git/qcodespp), and use 
 
 	git pull
 
