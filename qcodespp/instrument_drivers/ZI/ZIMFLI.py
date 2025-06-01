@@ -1,8 +1,8 @@
 from zhinst.ziPython import ziDAQServer
 from zhinst.utils import utils
-from qcodesplusplus import Instrument
+from qcodespp import Instrument
 from qcodes.validators import Numbers, Enum, Ints
-from qcodesplusplus import DataArray
+from qcodespp import DataArray
 from functools import partial
 import numpy as np
 import time

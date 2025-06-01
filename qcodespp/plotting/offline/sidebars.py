@@ -4,7 +4,7 @@ from json import dump as jsondump
 
 import copy
 
-import qcodesplusplus.plotting.offline.fits as fits
+import qcodespp.plotting.offline.fits as fits
 
 from matplotlib import colormaps as cm
 import numpy as np

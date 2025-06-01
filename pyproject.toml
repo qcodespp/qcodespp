@@ -4,8 +4,8 @@ requires = ["flit_core >=3.2,<4"]
 build-backend = 'flit_core.buildapi'
 
 [project]
-name = "qcodesplusplus"
-version = '1.0.0'
+name = "qcodespp"
+version = '0.1.0'
 maintainers = [{name = "Damon Carrad", email = "damonc@dtu.dk"}]
 description = "Wrapper to provide additional functions for QCoDeS"
 classifiers = [
@@ -47,4 +47,4 @@ file = "README.rst"
 content-type = "text/x-rst"
 
 [project.urls]
-Homepage = "https://github.com/djcarrad/qcodesplusplus"
+Homepage = "https://github.com/qcodespp/qcodespp"

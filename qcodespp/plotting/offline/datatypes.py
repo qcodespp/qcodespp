@@ -4,9 +4,9 @@ import os
 import copy
 from matplotlib.widgets import Cursor
 from matplotlib import cm, rcParams
-from .helpers import MidpointNormalize,DraggablePoint
-from .sidebars import Sidebar1D
-from .popupwindows import LineCutWindow
+from qcodespp.plotting.offline.helpers import MidpointNormalize,DraggablePoint
+from qcodespp.plotting.offline.sidebars import Sidebar1D
+from qcodespp.plotting.offline.popupwindows import LineCutWindow
 
 from lmfit.model import save_modelresult, load_modelresult
 
@@ -809,7 +809,7 @@ class MixedInternalData(BaseClassData):
         self.show_2d_data = True
 
         # Reload both datasets to ensure completely distinct objects.
-        from qcodesplusplus.plotting.offline.qcodes_pp_extension import qcodesppData
+        from qcodespp.plotting.offline.qcodes_pp_extension import qcodesppData
 
         if dataset2d_type == qcodesppData:
             self.dataset2d = qcodesppData(dataset2d_filepath,canvas,os.path.dirname(dataset2d_filepath)+'/snapshot.json',load_the_data=True)

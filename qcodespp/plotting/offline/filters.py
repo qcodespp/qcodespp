@@ -2,7 +2,7 @@
 """
 Created on Thu Nov 9 20:05:23 2017
 
-@author: Joeri de Bruijckere
+@author: Joeri de Bruijckere, Damon Carrad
 """
 
 import numpy as np

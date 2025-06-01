@@ -5,11 +5,11 @@ import time
 
 from qcodes.metadatable import MetadatableWithName
 
-from qcodesplusplus import Instrument, Parameter
+from qcodespp import Instrument, Parameter
 from qcodes.parameters import ParameterBase , ElapsedTimeParameter
 
 from qcodes import Station as QStation
-from qcodesplusplus.actions import _actions_snapshot
+from qcodespp.actions import _actions_snapshot
 '''
 This code wraps the QCoDeS Station class and adds some functionality to it.
 It allows for the automatic addition of instruments and parameters to the station,

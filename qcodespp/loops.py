@@ -58,16 +58,16 @@ import time
 import numpy as np
 from tqdm.auto import tqdm
 
-from qcodesplusplus.station import Station
-from qcodesplusplus.data.data_set import new_data, load_data
-from qcodesplusplus.data.data_array import DataArray
+from qcodespp.station import Station
+from qcodespp.data.data_set import new_data, load_data
+from qcodespp.data.data_array import DataArray
 from qcodes.utils.helpers import full_class
-from qcodesplusplus.utils.helpers import wait_secs, tprint
+from qcodespp.utils.helpers import wait_secs, tprint
 from qcodes.utils.metadata import Metadatable
 from qcodes.parameters import MultiParameter
-from qcodesplusplus.plotting.RemotePlot import live_plot
+from qcodespp.plotting.RemotePlot import live_plot
 
-from .actions import (_actions_snapshot, Task, Wait, _Measure, _Nest,
+from qcodespp.actions import (_actions_snapshot, Task, Wait, _Measure, _Nest,
                       BreakIf, _QcodesBreak)
 
 log = logging.getLogger(__name__)

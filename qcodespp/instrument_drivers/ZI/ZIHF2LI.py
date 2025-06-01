@@ -1,7 +1,7 @@
 
 from zhinst.ziPython import ziDAQServer
 from zhinst.utils import utils
-from qcodesplusplus import Instrument
+from qcodespp import Instrument
 from qcodes.validators import Numbers, Enum, Ints
 from functools import partial
 import numpy as np

@@ -8,18 +8,16 @@ and a flexible - but complex - database-based method for collecting data
 and running measurement loops.
 See https://qcodes.github.io/ for more info.
 
-This package, qcodes++ (aka qcodesplusplus or qcpp), provides user-friendly
+This package, qcodes++ (aka qcodespp), provides user-friendly
 frontend to the solid backend of qcodes. If you have always wanted to run 
 your measurements using python but found qcodes too daunting, qcodes++ is 
 the package for you. Qcodes++ features
 
-- text-based data (i.e. readable by e.g. notepad, excel, origin pro, etc)
+- Text-based data (i.e. readable by e.g. notepad, excel, origin pro, etc)
 
-- a simple yet powerful method for taking data and running measurement loops
+- A simple yet powerful method for taking data and running measurements and loops
 
-- superior live plotting
-
-- powerful offline plotting
+- True live plotting and tightly integrated offline plotting
 
 - Improvements to core qcodes functions (such as the Station) to streamline data acquisition, protect (meta)data integtrity and minimise user error
 

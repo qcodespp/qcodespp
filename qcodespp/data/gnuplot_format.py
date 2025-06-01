@@ -5,9 +5,9 @@ import json
 import logging
 
 from qcodes.utils.helpers import deep_update
-from qcodesplusplus.utils.helpers import NumpyJSONEncoder
-from .data_array import DataArray
-from .format import Formatter
+from qcodespp.utils.helpers import NumpyJSONEncoder
+from qcodespp.data.data_array import DataArray
+from qcodespp.data.format import Formatter
 
 
 log = logging.getLogger(__name__)

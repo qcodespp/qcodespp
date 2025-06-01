@@ -1,8 +1,8 @@
 import numpy as np
 import os
 import json
-from qcodesplusplus.data.data_set import load_data
-import qcodesplusplus.plotting.offline.main as main
+from qcodespp.data.data_set import load_data
+import qcodespp.plotting.offline.main as main
 
 
 class qcodesppData(main.BaseClassData):

@@ -39,15 +39,15 @@ mplstyle.use('fast')
 
 from lmfit.model import save_modelresult, load_modelresult
 
-import qcodesplusplus.plotting.offline.design as design
-from .popupwindows import LineCutWindow, MetadataWindow, StatsWindow
-from .sidebars import Sidebar1D
-from .helpers import (cmaps, MidpointNormalize,NavigationToolbarMod,
+import qcodespp.plotting.offline.design as design
+from qcodespp.plotting.offline.popupwindows import LineCutWindow, MetadataWindow, StatsWindow
+from qcodespp.plotting.offline.sidebars import Sidebar1D
+from qcodespp.plotting.offline.helpers import (cmaps, MidpointNormalize,NavigationToolbarMod,
                       rcParams_to_dark_theme,rcParams_to_light_theme,
                       NoScrollQComboBox,DraggablePoint)
-from .filters import Filter
-from .datatypes import DataItem, BaseClassData, NumpyData, InternalData, MixedInternalData
-from .qcodes_pp_extension import qcodesppData
+from qcodespp.plotting.offline.filters import Filter
+from qcodespp.plotting.offline.datatypes import DataItem, BaseClassData, NumpyData, InternalData, MixedInternalData
+from qcodespp.plotting.offline.qcodes_pp_extension import qcodesppData
 
 # UI settings
 DARK_THEME = True

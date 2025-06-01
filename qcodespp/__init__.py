@@ -52,31 +52,31 @@ from qcodes.utils import deprecate
 from qcodes.parameters import ElapsedTimeParameter
 
 # modules from qcodes that have been extended/modified
-from .parameters import Parameter
+from qcodespp.parameters import Parameter
 
-from .station import Station
+from qcodespp.station import Station
 
 # new modules not included in qcodes
-from .version import __version__
+from qcodespp.version import __version__
 
-from .loops import Loop, loop1d,loop2d,loop2dUD
-from .measure import Measure
-from .actions import Task, Wait, BreakIf
+from qcodespp.loops import Loop, loop1d,loop2d,loop2dUD
+from qcodespp.measure import Measure
+from qcodespp.actions import Task, Wait, BreakIf
 
-from .plotting.RemotePlot import Plot, live_plot
-from .plotting.offline.main import offline_plotting
+from qcodespp.plotting.RemotePlot import Plot, live_plot
+from qcodespp.plotting.offline.main import offline_plotting
 
-from .data.data_set import DataSet, new_data, load_data, load_data_num, load_data_nums, set_data_format, set_data_folder
-from .data.location import FormatLocation
-from .data.data_array import DataArray
-from .data.format import Formatter
-from .data.gnuplot_format import GNUPlotFormat
-from .data.hdf5_format import HDF5Format
-from .data.io import DiskIO
+from qcodespp.data.data_set import DataSet, new_data, load_data, load_data_num, load_data_nums, set_data_format, set_data_folder
+from qcodespp.data.location import FormatLocation
+from qcodespp.data.data_array import DataArray
+from qcodespp.data.format import Formatter
+from qcodespp.data.gnuplot_format import GNUPlotFormat
+from qcodespp.data.hdf5_format import HDF5Format
+from qcodespp.data.io import DiskIO
 
-from .utils.visa_helpers import listVISAinstruments
+from qcodespp.utils.visa_helpers import listVISAinstruments
 
-from .parameters import MultiParameterWrapper, ArrayParameterWrapper
+from qcodespp.parameters import MultiParameterWrapper, ArrayParameterWrapper
 
 # ensure to close all instruments when interpreter is closed
 import atexit

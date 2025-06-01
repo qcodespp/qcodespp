@@ -1,5 +1,5 @@
 import logging
-from .hdf5_format import HDF5Format
+from qcodespp.data.hdf5_format import HDF5Format
 import hickle
 from qcodes.utils.helpers import deep_update
 

@@ -7,9 +7,9 @@ import zmq
 import json
 from uuid import uuid4
 
-from qcodesplusplus.data.data_array import DataArray
-from qcodesplusplus.utils.helpers import NumpyJSONEncoder
-from qcodes import Parameter
+from qcodespp.data.data_array import DataArray
+from qcodespp.utils.helpers import NumpyJSONEncoder
+from qcodespp import Parameter
 
 def live_plot(data_set, dataitems=None):
     """
