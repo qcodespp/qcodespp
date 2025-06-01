@@ -177,6 +177,10 @@ class DataArray(DelegateAttributes):
         elif shape is None:
             self.shape = ()
 
+        if self.array_id is None and self.full_name:
+            # if no array_id is provided, use the full_name
+            self.array_id = self.full_name
+
     @property
     def data_set(self):
         """

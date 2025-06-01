@@ -897,7 +897,7 @@ class DataSet(DelegateAttributes):
         for var, val in attrs:
             out += attr_template.format(var, val)
 
-        arr_info = [['<Type>', '<array_id>', '<array.name>', '<array.shape>']]
+        arr_info = [['<Type>', '<array_id>', '<array.shape>']]
 
         if hasattr(self, 'action_id_map'):
             id_items = [
@@ -908,15 +908,14 @@ class DataSet(DelegateAttributes):
         for array_id in id_items:
             array = self.arrays[array_id]
             setp = 'Setpoint' if array.is_setpoint else 'Measured'
-            name = array.name or 'None'
             array_id = array_id or 'None'
-            arr_info.append([setp, array_id, name, repr(array.shape)])
+            arr_info.append([setp, array_id, repr(array.shape)])
 
         column_lengths = [max(len(row[i]) for row in arr_info)
                           for i in range(len(arr_info[0]))]
         out_template = ('\n   '
                         '{info[0]:{lens[0]}} | {info[1]:{lens[1]}} | '
-                        '{info[2]:{lens[2]}} | {info[3]}')
+                        '{info[2]}')
 
         for arr_info_i in arr_info:
             out += out_template.format(info=arr_info_i, lens=column_lengths)

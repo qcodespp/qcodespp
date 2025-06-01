@@ -115,7 +115,7 @@ def loop1d(sweep_parameter,
     if params_to_plot:
         pp=live_plot(data,params_to_plot)
     
-    print(data,loop.time_estimate())
+    print(data,'\n'+loop.time_estimate())
 
     if run:
         loop.run()
@@ -182,7 +182,7 @@ def loop2d(sweep_parameter,
     if params_to_plot:
         pp=live_plot(data,params_to_plot)
 
-    print(data,loop2d.time_estimate())
+    print(data,'\n'+loop2d.time_estimate())
 
     if run:
         loop2d.run()
@@ -254,7 +254,7 @@ def loop2dUD(sweep_parameter,
     if params_to_plot:
         pp=live_plot(data,params_to_plot)
 
-    print(data,loop2d.time_estimate())
+    print(data,'\n'+loop2d.time_estimate())
 
     if run:
         loop2d.run()
@@ -909,11 +909,9 @@ class ActiveLoop(Metadatable):
             if isinstance(action, ActiveLoop):
                 estimate=estimate+self.sweep_values.snapshot()['values'][0]['num']*action.sweep_values.snapshot()['values'][0]['num']*(commtime+action.delay+extra_delay[1])
         
-        print(f'Estimated time: {estimate} s, {estimate/60} mins, {estimate/3600} hours')
-        print(f'Done at: {time.asctime(time.localtime(time.time()+estimate))}')
-
-
-        #return estimate
+        string=(f'Estimated time: {estimate} s, {estimate/60} mins, {estimate/3600} hours\n'
+                f'Done at: {time.asctime(time.localtime(time.time()+estimate))}')
+        return string
 
     def run_temp(self, **kwargs):
         """
