@@ -176,7 +176,7 @@ SETTINGS_MENU_OPTIONS['columns'] = ['0,1,2','0,1,3','0,2,3','1,2,4']
 AXIS_SCALING_OPTIONS = ['linear', 'log', 'symlog', 'logit']
 
 class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
-    def __init__(self):
+    def __init__(self,folder=None):
         super().__init__()
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.window_title = 'Inspectra Gadget'
@@ -211,10 +211,16 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.global_text_size='12'
         self.global_text_lineedit.setText(self.global_text_size)
 
-        try:
-            self.update_link_to_folder(folder=DataSet.default_folder)
-        except:
-            pass
+        if folder:
+            try:
+                self.update_link_to_folder(folder=folder)
+            except Exception as e:
+                print(f'Failed to link to folder {folder}:', e)
+        else:
+            try:
+                self.update_link_to_folder(folder=DataSet.default_folder)
+            except:
+                pass
     
     def init_plot_settings(self):
         self.settings_table.setColumnCount(2)
@@ -2959,23 +2965,23 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.figure.tight_layout()
         self.canvas.draw()
 
-def offline_plotting(use_thread=True):
+def offline_plotting(folder=None,use_thread=True):
     if use_thread and sys.platform != 'darwin': #This way of threading doesn't work on macOS.
         try:
-            plot_thread = threading.Thread(target = main)
+            plot_thread = threading.Thread(target = main, args=(folder,))
             plot_thread.start()
         except Exception as e:
             print(f"Error running offline_plotting using threading: {e}\n"
                   "Try offline_plotting(use_thread=False)")
     else:
-        main()
+        main(folder=folder)
 
-def main():
+def main(folder=None):
     app = QtWidgets.QApplication(sys.argv)
     app.aboutToQuit.connect(app.deleteLater)
     app.lastWindowClosed.connect(app.quit)
     
-    edit_window = Editor()
+    edit_window = Editor(folder=folder)
     
     if DARK_THEME and qdarkstyle_imported:
         app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
