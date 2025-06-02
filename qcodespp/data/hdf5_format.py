@@ -11,7 +11,7 @@ from .format import Formatter
 
 class HDF5Format(Formatter):
     """
-    HDF5 formatter for saving qcodes datasets.
+    HDF5 formatter for saving qcodespp datasets.
 
     Capable of storing (write) and recovering (read) qcodes datasets.
 

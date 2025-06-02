@@ -7,17 +7,17 @@ from qcodes.utils.helpers import DelegateAttributes, full_class, warn_units
 class DataArray(DelegateAttributes):
 
     """
-    A container for one parameter in a measurement loop.
+    A container for one parameter in a DataSet.
 
-    If this is a measured parameter, This object doesn't contain
+    If this is a measured parameter, this object doesn't contain
     the data of the setpoints it was measured at, but it references
     the DataArray objects of these parameters. Those objects only have
     the dimensionality at which they were set - ie the inner loop setpoint
     the same dimensionality as the measured parameter, but the outer
     loop setpoint(s) have lower dimensionality
 
-    When it's first created, a DataArray has no dimensionality, you must call
-    .nest for each dimension.
+    When it's first created, a DataArray has no dimensionality,
+    .nest must be called for each dimension.
 
     If preset_data is provided it is used to initialize the data, and the array
     can still be nested around it (making many copies of the data).

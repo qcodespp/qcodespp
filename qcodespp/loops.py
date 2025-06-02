@@ -306,6 +306,7 @@ class Loop(Metadatable):
     def __getitem__(self, item):
         """
         Retrieves action with index `item`
+
         Args:
             item: actions index
 
@@ -531,13 +532,21 @@ def _attach_bg_task(loop, task, bg_final_task, min_delay):
 
 class ActiveLoop(Metadatable):
     """
-    Created by attaching ``actions`` to a ``Loop``, this is the object that
-    actually runs a measurement loop. An ``ActiveLoop`` can no longer be nested,
-    only run, or used as an action inside another ``Loop`` which will run the
-    whole thing.
+    Automatically generated object returned when attaching ``actions`` to a ``Loop`` using e.g. `.each()`.
 
-    The ``ActiveLoop`` determines what ``DataArrays`` it will need to hold the
-    data it collects, and it creates a ``DataSet`` holding these ``DataArrays``
+    When calling ActiveLoop.get_data_set(), the ActiveLoop will determine which ``DataArrays`` it 
+    will need to hold the  data it collects, and it creates a ``DataSet`` holding these ``DataArrays``.
+    Thus: a ``Loop`` returns an ``ActiveLoop`` when actions are attached to it, and an ``ActiveLoop`` 
+    returns a ``DataSet`` from ActiveLoop.get_data_set().
+
+    Example:
+        loop = Loop(sweep_parameter.sweep(0, 1, num=101), delay=0.1).each(*station.measure())
+        data = loop.get_data_set(name='My 1D sweep')
+
+    The ActiveLoop.run() then runs the loop to perform the experiment.
+
+    Args:
+        Should only be accessed automatically by the ``Loop`` class.
     """
 
     # Currently active loop, is set when calling loop.run(set_active=True)
@@ -574,6 +583,7 @@ class ActiveLoop(Metadatable):
     def __getitem__(self, item):
         """
         Retrieves action with index `item`
+
         Args:
             item: actions index
 
@@ -831,7 +841,8 @@ class ActiveLoop(Metadatable):
 
     def set_common_attrs(self, data_set, use_threads):
         """
-        set a couple of common attributes that the main and nested loops
+        Set a couple of common attributes that the main and nested loops
+
         all need to have:
         - the DataSet collecting all our measurements
         - a queue for communicating with the main process
@@ -891,9 +902,20 @@ class ActiveLoop(Metadatable):
 
     def time_estimate(self,station=None,extra_delay=[0,0]):
         """
-        Give the user an estimate of how long their measurement will take
-        extra_delay must be an array with the same shape as the loop. Outerloop as 0, inner loop(s) as 1
-        Currently only works for 1D or 2D loops, including 2D loops with multiple subloops.
+        Estimates the time it will take to run this loop. Currently only works for 1D or 2D loops, including 2D loops with multiple subloops.
+
+        Args:
+            station: a Station instance for snapshots (omit to use a previously
+                provided Station, or the default Station)
+            extra_delay: an array with extra delay per action in the loop.
+                The first element is the extra delay for the outer loop, the second
+                element is the extra delay for the inner loop(s). If there are more
+                inner loops, they will all have the same extra delay as the second
+                element. If there are no inner loops, this will be ignored.
+
+        Returns:
+            A string with the estimated time in seconds, minutes and hours, and the
+            estimated time of completion.
         """
         if self.data_set is None:
             raise RuntimeError('No DataSet yet defined for this loop')
@@ -902,7 +924,7 @@ class ActiveLoop(Metadatable):
             print('Note: Station not declared. Estimate does not include'
                     'an estimate of communication time.')
         else:
-            commtime=np.average(station.communication_time(measurement_num=10))
+            commtime=station.communication_time(measurement_num=10)
 
         estimate=self.sweep_values.snapshot()['values'][0]['num']*(commtime+self.delay+extra_delay[0])
         for action in self.actions:
@@ -939,7 +961,12 @@ class ActiveLoop(Metadatable):
                 provided Station, or the default Station)
             progress_interval (default None): show progress of the loop every x
                 seconds. If provided here, will override any interval provided
-                with the Loop definition
+                with the Loop definition. Default false, since the next item is better...
+            progress_bar (default True): show a progress bar during the loop using tqdm
+            check_written_data: At loop completion, check that the data written to file
+                matches the data in memory. If not, write a copy of the data in memory
+                and warn the user.
+            
 
         kwargs are passed along to data_set.new_data. These can only be
         provided when the `DataSet` is first created; giving these during `run`

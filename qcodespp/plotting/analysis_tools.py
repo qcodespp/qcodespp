@@ -6,8 +6,30 @@ from matplotlib.ticker import MultipleLocator
 
 def colourplot(data,figsize=0,cmap=0,labels=0,xlim=0,ylim=0,zlim=0,xmajor=0,xminor=0,ymajor=0,yminor=0,font_size=0,label_size=0):
     """
-    Make a nice colourplot from a three-dimensional data array using matplotlib. First argument data=[x,y,z]. 
-    Arguments: (data,figsize=0,cmap=0,labels=0,xlim=0,ylim=0,zlim=0,xmajor=0,xminor=0,ymajor=0,yminor=0,font_size=0,label_size=0)
+    Make a nice colourplot from a three-dimensional data array using matplotlib. 
+    
+    Args:
+        data (list or array): A list or array containing three elements: [x, y, z], where:
+            - x: 1D or 2D array of x-coordinates
+            - y: 1D or 2D array of y-coordinates
+            - z: 2D array of z-values corresponding to the x and y coordinates.
+
+        figsize (tuple, optional): Size of the figure in inches. Default is (8, 8).
+        cmap (str, optional): Colormap to use for the plot. Default is 'hot'.
+        labels (list, optional): Labels for the x, y, and z axes. Default is ['x', 'y', 'z'].
+        xlim (tuple, optional): Limits for the x-axis. Default is None.
+        ylim (tuple, optional): Limits for the y-axis. Default is None.
+        zlim (tuple, optional): Limits for the z-axis (color scale). Default is None.
+        xmajor (float, optional): Major tick interval for the x-axis. Default is None.
+        xminor (float, optional): Minor tick interval for the x-axis. Default is None.
+        ymajor (float, optional): Major tick interval for the y-axis. Default is None.
+        yminor (float, optional): Minor tick interval for the y-axis. Default is None.
+        font_size (int, optional): Font size for the axis labels. Default is 12.
+        label_size (int, optional): Font size for the tick labels. Default is 12.
+
+    Returns:
+        tuple: A tuple containing the figure, axis, and colorbar axis objects.
+
     """
     plt.rcParams["font.family"] = "Arial"
     plt.rcParams['axes.linewidth'] = 1.5

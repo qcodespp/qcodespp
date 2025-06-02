@@ -14,6 +14,14 @@ from qcodes.parameters import (
 )
 
 def move(self,end_value,steps=101,step_time=0.03):
+    """
+    Move the parameter to a new value in a number of steps without taking data.
+    
+    Args:
+        end_value (float): The value to move to.
+        steps (int, optional): Number of steps to take. Defaults to 101.
+        step_time (float, optional): Time in seconds between each step. Defaults to 0.03.
+    """
     start_value = self.get()
     for i in range(0,steps):
         self.set(start_value + (end_value - start_value)/(steps-1) * i)
@@ -42,21 +50,31 @@ def sweep(self, start, stop, step=None, num=None, print_warning=True):
         >>> sweep(15, 10.5, step=1.5)
         >[15.0, 13.5, 12.0, 10.5]
     """
-    if self.get()!=start:
-        if print_warning==True:
-            print('Are you sure? Start value for {}.sweep is {} {} but {}()={} {}'.format(self.name,start,self.unit,self.name,self.get(),self.unit))
+    if self.get()!=start and print_warning:
+        print('Are you sure? Start value for {}.sweep is {} {} but {}()={} {}'.format(self.name,start,self.unit,self.name,self.get(),self.unit))
     return SweepFixedValues(self, start=start, stop=stop,
                             step=step, num=num)
-def logsweep(self, start, stop, num=None):
+
+def logsweep(self, start, stop, num=None, print_warning=True):
     """
     Create a collection of parameter values to be iterated over in a log scale
     
+    Requires `start` and `stop` and or `num`
+    Note that `step` cannot be used here.
+    Args:
+        start (Union[int, float]): The starting value of the sequence.
+        stop (Union[int, float]): The end value of the sequence.
+        num (Optional[int]): Number of values to generate.
+    Returns:
+        SweepFixedValues: collection of parameter values to be
+            iterated over
     """
-    if self.get()!=start:
+    if self.get()!=start and print_warning:
         print('Are you sure? Start value for {}.sweep is {} {} but {}()={} {}'.format(self.name,start,self.unit,self.name,self.get(),self.unit))
     setpoints=numpy.geomspace(start,stop,num=num)
     return SweepFixedValues(self, setpoints)
-def arbsweep(self, setpoints):
+
+def arbsweep(self, setpoints, print_warning=True):
     """
     Create a collection of parameter values to be iterated over from a list of arbitrary values.
 
@@ -71,10 +89,11 @@ def arbsweep(self, setpoints):
         values = [0.0, 2.5, 5.0, 7.5, 10.0]
         loop=qc.Loop(parameter.arbsweep(values),delay=0.1).each(*station.measure())
     """
-    if self.get()!=setpoints[0]:
+    if self.get()!=setpoints[0] and print_warning:
         print('Are you sure? Start value for {}.sweep is {} {} but {}()={} {}'.format(self.name,setpoints[0],self.unit,self.name,self.get(),self.unit))
     return SweepFixedValues(self, setpoints)
-def returnsweep(self, start, stop, step=None, num=None):
+
+def returnsweep(self, start, stop, step=None, num=None, print_warning=True):
     """
     Create a collection of parameter values to be iterated over.
     Must be an array or list of values
@@ -95,20 +114,19 @@ def returnsweep(self, start, stop, step=None, num=None):
         step=-step
     setpointsup=numpy.linspace(stop+step,start,num-1)
     setpoints=numpy.hstack((setpointsdown,setpointsup))
-    if self.get()!=start:
+    if self.get()!=start and print_warning:
         print('Are you sure? Start value for {}.sweep is {} {} but {}()={} {}'.format(self.name,start,self.unit,self.name,self.get(),self.unit))
     return SweepFixedValues(self, setpoints)
 
 def set_data_type(self,data_type=float):
     """
-    Set the data type of the parameter.
+    Set the data type of the parameter. Gets passed to DataArray and the underlying numpy ndarray.
 
     Args:
         data_type : The data type of the parameter. Can be 'float' or 'str'.
     """
-    if data_type != float:
-        if data_type != str:
-            raise ValueError('Parameter data_type must be either float or str')
+    if data_type not in [float,str]:
+        raise ValueError('Parameter data_type must be either float or str')
     else:
         self.data_type=data_type
 
@@ -157,13 +175,12 @@ class MultiParameterWrapper(MultiParameter):
     Class to wrap multiple pre-existing parameters into MultiParameter. Enables getting, setting, sweeping and moving.
 
     Args:
-        parameters (list): List of Parameter objects to wrap.
-        name (str, optional): Name of the MultiParameter. Defaults to None.
-        instrument (Instrument, optional): Instrument this MultiParameter belongs to. Defaults to None.
+        parameters (list or tuple): List of Parameters to wrap.
+        name (str, optional): Name of the MultiParameter.
+        instrument (Instrument, optional): Instrument this MultiParameter belongs to, if any.
 
-    Usage:
-        parameters = [param1, param2, param3]  # List of Parameter objects
-        multi_param = MultiParameterWrapper(parameters, name='MyMultiParam', instrument=my_instrument)
+    Examples:
+        multi_param = MultiParameterWrapper((param1, param2, param3), name='multi_param', instrument=my_instrument)
 
         # Get values
         values = multi_param()

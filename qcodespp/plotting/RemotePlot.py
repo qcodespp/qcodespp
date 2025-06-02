@@ -7,25 +7,30 @@ import zmq
 import json
 from uuid import uuid4
 
+from qcodespp.data.data_set import DataSet
 from qcodespp.data.data_array import DataArray
 from qcodespp.utils.helpers import NumpyJSONEncoder
 from qcodespp import Parameter
 
-def live_plot(data_set, dataitems=None):
+def live_plot(data_set=None, dataitems=None):
     """
-    This function basically provides a shortcut to link the data set to a plot, so the user
-    doesn't have to even know about the existance of data.publisher.
+    Entry point for live plotting of a data set.
 
     Args:
-        data_set (DataSet): The data set to plot.
-        *data_arrays (DataArray, optional): The data arrays to plot.
-
+        data_set (DataSet, optional): The DataSet to link to the live plot.
+            If not provided, it will use the default dataset.
+        *data_arrays (DataArray, optional): List of DataArray or Parameter objects to plot.
+            If not provided, nothing will be plotted initially, the user can use Plot.add() later.
     Returns:
         None
     """
     plot = Plot()
+    if data_set is None and DataSet.default_dataset is not None:
+        data_set = DataSet.default_dataset
+    else:
+        print('No default dataset found; please provide a dataset to plot.')
     data_set.publisher=plot
-    if dataitems is not None:
+    if dataitems:
         new_items=[]
         for item in dataitems:
             if isinstance(item, Parameter):
@@ -80,6 +85,16 @@ class ControlListener(threading.Thread):
 
 
 class Plot():
+    """
+    Main class for remote plotting.
+
+    Most methods of this class should not be called directly; only add(), add_multiple(), clear() and close()
+    should be used by the user.
+
+    Args:
+        title (str, optional): Title of the plot window.
+        name (str, optional): Name of the plot instance. If not provided, a random UUID will be used.
+    """
 
     context = zmq.Context()
     socket = context.socket(zmq.PUB)
@@ -176,8 +191,31 @@ class Plot():
             size=None,# antialias=None,
             **kwargs):
         """
-            position (str):
-                'bottom', 'top', 'left', 'right', 'above', or 'below'
+        Add a trace to the plot.
+
+        Args:
+            *args (DataArray): positional arguments, can be:
+                - ``y`` or ``z``: specify just the 1D or 2D data independent parameter, with the setpoint
+                    axis or axes implied from the DataSet setpoints.
+                - ``x, y`` or ``x, y, z``: specify all axes of the data.
+            x (DataArray, optional): x-axis data.
+            y (DataArray, optional): y-axis data.
+            z (DataArray, optional): z-axis data.
+            subplot (int, optional): Subplot index to add the trace to. Defaults to 0.
+            name (str, optional): Name of the trace. If not provided, the name of the DataArray will be used.
+            title (str, optional): Title of the trace. If not provided, the name of the DataArray will be used.
+            position (str): Position of the subplot in the plot window. Options are 'bottom', 'top', 'left', 'right', 'above', or 'below'.
+            relativeto (str, optional): Position relative to which the subplot should be placed.
+            xlabel (str, optional): Label for the x-axis. If not provided, the label of the DataArray will be used.
+            ylabel (str, optional): Label for the y-axis. If not provided, the label of the DataArray will be used.
+            zlabel (str, optional): Label for the z-axis. If not provided, the label of the DataArray will be used.
+            xunit (str, optional): Unit for the x-axis. If not provided, the unit of the DataArray will be used.
+            yunit (str, optional): Unit for the y-axis. If not provided, the unit of the DataArray will be used.
+            zunit (str, optional): Unit for the z-axis. If not provided, the unit of the DataArray will be used.
+            silent (bool, optional): If True, do not wait for the client to be ready. Defaults to True.
+            linecuts (bool, optional): If True, plot line cuts instead of a 2D image. Defaults to False.
+            symbol (str, optional): Symbol to use for the trace. Defaults to None.
+            size (int, optional): Size of the symbol. Defaults to None.
         """
 
         if x is not None:

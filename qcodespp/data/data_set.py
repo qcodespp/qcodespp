@@ -387,6 +387,9 @@ class DataSet(DelegateAttributes):
                     self.location = self.location_provider(io, record=loc_record)
                     log.warning('DataSet filename has been automatically shortened to avoid Windows maximum character limit')
 
+        # Make this dataset a class attribute so that it can be accessed by other functions, most notably to set its publisher in live plotting.
+        DataSet.default_dataset = self
+
     def sync(self):
         """
         Synchronize this DataSet with the DataServer or storage.

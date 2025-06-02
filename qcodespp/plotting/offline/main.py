@@ -2969,7 +2969,11 @@ import threading
 
 def offline_plotting(use_thread=True):
     if use_thread:
-        plot_thread = threading.Thread(target = main)
-        plot_thread.start()
+        try:
+            plot_thread = threading.Thread(target = main)
+            plot_thread.start()
+        except Exception as e:
+            print(f"Error running offline_plotting using threading: {e}\n"
+                  "Try offline_plotting(use_thread=False)")
     else:
         main()

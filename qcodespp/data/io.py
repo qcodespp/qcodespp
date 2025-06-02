@@ -1,5 +1,5 @@
 """
-IO managers for QCodes.
+IO managers for QCodespp.
 
 IO managers wrap whatever physical storage layer the user wants to use
 in an interface mimicking the built-in <open> context manager, with

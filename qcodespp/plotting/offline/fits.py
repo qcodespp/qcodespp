@@ -6,20 +6,57 @@ from functools import partial
 # Fit functions
 
 # Polynomials and powers
-def linear(xdata,ydata,p0,inputinfo):
+def linear(xdata,ydata,p0=None,inputinfo=None):
+    """
+    Fit a linear model to the data.
+    Args:
+        xdata: x data to fit
+        ydata: y data to fit
+        
+        Initial guesses and inputinfo not used.
+        
+    Returns:
+        result: lmfit result object.
+    """
+    
     model=lmm.LinearModel()
     params=model.guess(ydata, x=xdata)
     result = model.fit(ydata, params, x=xdata)
     return result
 
-def polynomial(xdata,ydata,p0,inputinfo):
+def polynomial(xdata,ydata,p0=None,inputinfo=2):
+    """Fit a polynomial model to the data.
+    Args:
+        xdata: x data to fit
+        ydata: y data to fit
+        inputinfo (int): degree of the polynomial to fit. Default 2
+
+        Initial guesses (p0) are not used.
+    
+    Returns:
+        result: lmfit result object.
+    """
+
     degree = int(inputinfo[0]) or int(inputinfo)
     model=lmm.PolynomialModel(degree=degree)
     params=model.guess(ydata, x=xdata)
     result = model.fit(ydata, params, x=xdata)
     return result
 
-def fit_powerlaw(xdata,ydata, p0,inputinfo):
+def fit_powerlaw(xdata,ydata, p0=None,inputinfo=[1,0]):
+    """
+    Fit a power law model to the data.
+    
+    Args:
+        xdata: x data to fit
+        ydata: y data to fit
+        p0 (opt.): initial guesses for the parameters. Should be a list of floats.
+        inputinfo: a list containing the number of terms in the power law and whether to include a constant offset.
+    Returns:
+        result: lmfit result object.
+    """
+
+
     order=inputinfo[0]
     constant=inputinfo[1]
 
@@ -50,7 +87,20 @@ def fit_powerlaw(xdata,ydata, p0,inputinfo):
     result = model.fit(ydata, params, x=xdata)
     return result
 
-def fit_exponentials(xdata,ydata, p0,inputinfo):
+def fit_exponentials(xdata,ydata, p0=None,inputinfo=[1,0]):
+    """
+    Fit one or more exponential terms to the data, with or without a constant offset.
+
+    Args:
+        xdata: x data to fit
+        ydata: y data to fit
+        p0 (opt.): initial guesses for the parameters. Should be a list of floats.
+        inputinfo: a list containing the number of terms in the exponential and whether to include a constant offset.
+    
+    Returns:
+        result: lmfit result object.
+    """
+
     order=inputinfo[0]
     constant=inputinfo[1]
 
@@ -87,10 +137,21 @@ def fit_exponentials(xdata,ydata, p0,inputinfo):
 
 
 #Peak fitting
-def fit_lorgausstype(modeltype,xdata,ydata,p0,inputinfo):
-    #Fits x,y data with peaks characterised by amplitude, fwhm and position.
-    #Custom starting amplitudes (proportional to height) and sigmas (proportional to width) may also be given
-    #Returns the entire lmfit result.
+def fit_lorgausstype(modeltype,xdata,ydata,p0=None,inputinfo=[1,0]):
+    '''
+    Fits x,y data with peaks characterised by amplitude, fwhm and position.
+
+    Args:
+        modeltype: lmfit model to use for fitting. Options are:
+            LorentzianModel, GaussianModel, LognormalModel, StudentsTModel, DampedOscillatorModel
+        xdata: x data to fit
+        ydata: y data to fit
+        p0 (opt.): initial guesses for the parameters. Should be a list of strings.
+        inputinfo: a list containing the number of peaks to fit and whether to include a constant offset.
+    Returns:
+        result: lmfit result object.
+    '''
+
     numofpeaks=inputinfo[0]
     usebackground=inputinfo[1]
     sigmas=None
@@ -157,10 +218,22 @@ def fit_lorgausstype(modeltype,xdata,ydata,p0,inputinfo):
 
 
 # Function for lmfit peaks with four parameters.
-def fit_voigttype(modeltype,xdata,ydata,p0,inputinfo):
-    #Fits x,y data with peaks characterised by amplitude, fwhm and position.
-    #Custom starting amplitudes (proportional to height) and sigmas (proportional to width) may also be given
-    #Returns the entire lmfit result.
+def fit_voigttype(modeltype,xdata,ydata,p0=None,inputinfo=[1,0]):
+    """
+    Fits x,y data with peaks characterised by amplitude, fwhm, position and gamma.
+
+    Args:
+        modeltype: lmfit model to use for fitting. Options are:
+            VoigtModel, PseudoVoigtModel, BreitWignerModel, SplitLorentzianModel, ExponentialGaussianModel,
+            SkewedGaussianModel, MoffatModel, Pearson7Model, DampedHarmonicOscillatorModel, DoniachModel
+        xdata: x data to fit
+        ydata: y data to fit
+        p0 (opt.): initial guesses for the parameters. Should be a list of strings.
+        inputinfo: a list containing the number of peaks to fit and whether to include a constant offset.
+
+    Returns:
+        result: lmfit result object.
+    """
     fourthparamdict={'SplitLorentzianModel':'sigma_r',
                 'PseudoVoigtModel':'fraction',
                 'MoffatModel':'beta',
@@ -242,10 +315,19 @@ def fit_voigttype(modeltype,xdata,ydata,p0,inputinfo):
     return result
 
 # Function for lmfit peaks with five parameters.
-def fit_skewedpeaks(modeltype,xdata,ydata,p0,inputinfo):
-    #Fits x,y data with peaks characterised by amplitude, fwhm and position.
-    #Custom starting amplitudes (proportional to height) and sigmas (proportional to width) may also be given
-    #Returns the entire lmfit result.
+def fit_skewedpeaks(modeltype,xdata,ydata,p0=None,inputinfo=[1,0]):
+    """
+    Fits x,y data with peaks characterised by amplitude, fwhm, position, gamma and skew.
+    Args:
+        modeltype: lmfit model to use for fitting. Options are:
+            Pearson4Model, SkewedVoigtModel
+        xdata: x data to fit
+        ydata: y data to fit
+        p0 (opt.): initial guesses for the parameters. Should be a list of strings.
+        inputinfo: a list containing the number of peaks to fit and whether to include a constant offset.
+    Returns:
+        result: lmfit result object.
+    """
     fourthparamdict={'Pearson4Model':'expon'}
     if modeltype.__name__ in fourthparamdict.keys():
         fourthparam=fourthparamdict[modeltype.__name__]
@@ -327,7 +409,18 @@ def fit_skewedpeaks(modeltype,xdata,ydata,p0,inputinfo):
     return result
 
 #Multiple sine wave fitting
-def fit_sines(xdata,ydata,p0,inputinfo):
+def fit_sines(xdata,ydata,p0=None,inputinfo=[1,0]):
+    """
+    Fits x,y data with multiple sine waves characterised by amplitude, frequency, phase and position.
+    Args:
+        xdata: x data to fit
+        ydata: y data to fit
+        p0 (opt.): initial guesses for the parameters. Should be a list of strings.
+        inputinfo: a list containing the number of sine waves to fit and whether to include a constant offset.
+    Returns:
+        result: lmfit result object.
+    """
+
     modeltype=lmm.SineModel
     #Fits x,y data with peaks characterised by amplitude, fwhm and position.
     #Custom starting amplitudes (proportional to height) and sigmas (proportional to width) may also be given
@@ -394,7 +487,21 @@ def fit_sines(xdata,ydata,p0,inputinfo):
 
 
 #Fit a thermal distribution of MB, FD or BE type.
-def thermal_fit(modeltype,xdata,ydata,p0,inputinfo):
+def thermal_fit(modeltype,xdata,ydata,p0=None,inputinfo=None):
+    """
+    Fits x,y data with a thermal distribution characterised by temperature and amplitude.
+    Args:
+        modeltype (str): the type of thermal distribution to fit. Options are:
+            maxwell, fermi, bose.
+        xdata: x data to fit
+        ydata: y data to fit
+        p0 (opt.): initial guesses for the parameters. Should be a list of floats.
+        inputinfo: not used.
+    Returns:
+        result: lmfit result object.
+    """
+
+
     model=lmm.ThermalDistributionModel(form=modeltype)
     
     if p0:
@@ -408,7 +515,21 @@ def thermal_fit(modeltype,xdata,ydata,p0,inputinfo):
 
 
 #Fit a step function.
-def step_fit(modeltype,xdata,ydata,p0,inputinfo):
+def step_fit(modeltype,xdata,ydata,p0=None,inputinfo=None):
+    """
+    Fits x,y data with a step function characterised by amplitude, center and sigma.
+    Args:
+        modeltype (str): the type of step function to fit. Options are:
+            linear, arctan, erf, logistic
+
+        xdata: x data to fit
+        ydata: y data to fit
+        p0 (opt.): initial guesses for the parameters. Should be a list of floats.
+        inputinfo: not used.
+
+    Returns:
+        result: lmfit result object.
+    """
     # if xdata[0]>xdata[-1]:
     #     xdata=xdata[::-1]
     #     ydata=ydata[::-1]
@@ -429,7 +550,20 @@ def step_fit(modeltype,xdata,ydata,p0,inputinfo):
     return result
 
 #Fit a rectangle function.
-def rectangle_fit(modeltype,xdata,ydata,p0,inputinfo):
+def rectangle_fit(modeltype,xdata,ydata,p0=None,inputinfo=None):
+
+    """
+    Fits x,y data with a rectangle function characterised by amplitude, center1, center2, sigma1 and sigma2.
+    Args:
+        modeltype (str): the type of rectangle function to fit. Options are:
+         linear, arctan, erf, logistic
+        xdata: x data to fit
+        ydata: y data to fit
+        p0 (opt.): initial guesses for the parameters. Should be a list of floats.
+        inputinfo: not used.
+    Returns:
+        result: lmfit result object.
+    """
     # if xdata[0]>xdata[-1]:
     #     xdata=xdata[::-1]
     #     ydata=ydata[::-1]
@@ -454,8 +588,17 @@ def rectangle_fit(modeltype,xdata,ydata,p0,inputinfo):
 
 # Arbitrary expressions get fitted using the below:
 def expression_fit(xdata,ydata,p0,inputinfo):
-    #Fit an arbitrary function given in inputinfo. 
-    #Initial guesses for parameters are given in p0 in a string form.
+    """ Fits x,y data with an arbitrary expression using lmfit's ExpressionModel.
+    Args:
+        xdata: x data to fit
+        ydata: y data to fit
+        p0 (opt.): initial guesses for the parameters. Should be a list of strings.
+            Format should be: ['x0=x0_value', 'G0=G0_value', ...]
+        inputinfo: The expression to fit, as a string. Should be a valid lmfit expression.
+    Returns:
+        result: lmfit result object.
+    """
+
     model=lmm.ExpressionModel(inputinfo)
     params=model.make_params()
     for i,whatever in enumerate(p0):
@@ -465,7 +608,20 @@ def expression_fit(xdata,ydata,p0,inputinfo):
     return result
 
 #Custom fits
-def QD_fit(xdata,ydata,p0,inputinfo):
+def QD_fit(xdata,ydata,p0=None,inputinfo=[1,0.01]):
+    """
+    Fits one or more Coulomb blockade peaks in the limit of low tunnel coupling: 'G = G_0 * cosh(e*alpha*(Vg - V_0)/(2*k_B*T))**(-2)
+
+    Args:
+        xdata: x data to fit
+        ydata: y data to fit
+        p0 (opt.): initial guesses for the parameters. Should be a list of strings.
+            Format should be: ['x0 x0 ... x0','G0 G0 ... G0','T']
+        inputinfo: a list containing the number of peaks to fit and the alpha parameter.
+            Format should be: [numofpeaks, alpha]
+    Returns:
+        result: lmfit result object.
+    """
     numofpeaks=inputinfo[0]
     alpha=inputinfo[1]
     G0s=None
@@ -507,6 +663,19 @@ def QD_fit(xdata,ydata,p0,inputinfo):
     return result
 
 def FET_mobility(xdata,ydata,p0,inputinfo):
+    """
+    Fits x,y data with a FET mobility model: '1/(R_s + L**2/(C*mu*(x-V_th)))'
+    Args:
+        xdata: x data to fit
+        ydata: y data to fit
+        p0 (opt.): List of initial guesses for the parameters.
+            Format should be: [mu, V_th, R_s]
+        inputinfo: a list containing the capacitance C and device length L.
+            Format should be: [C, L]
+    Returns:
+        result: lmfit result object.
+    """
+
     C=float(inputinfo[0])
     L=float(inputinfo[1])
     def FET_model(x, mu, V_th, R_s):
@@ -525,7 +694,18 @@ def FET_mobility(xdata,ydata,p0,inputinfo):
     result=model.fit(ydata,params,x=xdata)
     return result
 
-def dynes_fit(xdata,ydata,p0,inputinfo):
+def dynes_fit(xdata,ydata,p0=None,inputinfo=None):
+    """
+    Fits x,y data with a Dynes model for a superconducting gap: 'G_N * abs((e*x - i*gamma*e)/(sqrt((e*x - i*gamma*e)**2 - (delta*e)**2)))'
+    Args:
+        xdata: x data to fit
+        ydata: y data to fit
+        p0 (opt.): initial guesses for the parameters. Should be a list of floats.
+            Format should be: [G_N, gamma, delta]
+        inputinfo: not used.
+    Returns:
+        result: lmfit result object.
+    """
     electron=1.60217663e-19
     def dynes_model(x, G_N, gamma, delta):
         return np.abs(G_N*((electron*x-1j*gamma*electron)/np.sqrt((electron*x-1j*gamma*electron)**2-(delta*electron)**2)).real)
@@ -543,6 +723,18 @@ def dynes_fit(xdata,ydata,p0,inputinfo):
     return result
 
 def ramsey_fit(xdata,ydata,p0,inputinfo):
+    '''
+    Fits x,y data with a Ramsey model for T2 of a qubit: 'A*cos(2*pi*f*x + phi)*exp(-x/T2) + B + C*x'
+
+    Args:
+        xdata: x data to fit
+        ydata: y data to fit
+        p0 (opt.): initial guesses for the parameters. Should be a list of floats.
+            Format should be: [A, B, C, f, phi, T2]
+        inputinfo: not used.
+    Returns:
+        result: lmfit result object.
+    '''
     def ramsey_model(x, A, B, C, f, phi, T2):
         return A*np.cos(2*np.pi*f*x + phi)*np.exp(-x/T2)+B+C*x
     
