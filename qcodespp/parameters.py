@@ -19,9 +19,11 @@ def move(self,end_value,steps=101,step_time=0.03):
         self.set(start_value + (end_value - start_value)/(steps-1) * i)
         time.sleep(step_time)
     self.set(end_value)
+    
 def sweep(self, start, stop, step=None, num=None, print_warning=True):
     """
     Create a collection of parameter values to be iterated over.
+
     Requires `start` and `stop` and (`step` or `num`)
     The sign of `step` is not relevant.
     Args:
@@ -56,8 +58,18 @@ def logsweep(self, start, stop, num=None):
     return SweepFixedValues(self, setpoints)
 def arbsweep(self, setpoints):
     """
-    Create a collection of parameter values to be iterated over.
-    Must be an array or list of values
+    Create a collection of parameter values to be iterated over from a list of arbitrary values.
+
+    Args:
+        setpoints (list or array): The setpoints to sweep over.
+
+    Returns:
+        SweepFixedValues: collection of parameter values to be
+            iterated over
+
+    Example:
+        values = [0.0, 2.5, 5.0, 7.5, 10.0]
+        loop=qc.Loop(parameter.arbsweep(values),delay=0.1).each(*station.measure())
     """
     if self.get()!=setpoints[0]:
         print('Are you sure? Start value for {}.sweep is {} {} but {}()={} {}'.format(self.name,setpoints[0],self.unit,self.name,self.get(),self.unit))
@@ -90,6 +102,7 @@ def returnsweep(self, start, stop, step=None, num=None):
 def set_data_type(self,data_type=float):
     """
     Set the data type of the parameter.
+
     Args:
         data_type : The data type of the parameter. Can be 'float' or 'str'.
     """
@@ -106,11 +119,20 @@ Parameter.arbsweep=arbsweep
 Parameter.returnsweep=returnsweep
 
 class ArrayParameterWrapper(ArrayParameter):
-
     """
-    Wrapper to easily declare ArrayParameters. 
-    Example usage where an instrument has a get_buffer() function which returns an array
-    VoltageBuffer=qc.ArrayParameterWrapper(name='VoltageBuffer',
+    Wrapper to easily declare ArrayParameters.
+
+    Args:
+        name (str, optional): Name of the ArrayParameter. Defaults to None.
+        label (str, optional): Label for the ArrayParameter. Defaults to None.
+        unit (str, optional): Unit for the ArrayParameter. Defaults to None.
+        instrument (Instrument, optional): Instrument this ArrayParameter belongs to. Defaults to None.
+        shape (tuple, optional): Shape of the array. If not provided, it will be inferred from the get_cmd.
+        get_cmd (callable, optional): Function that returns the array data. If provided, shape will be inferred from its output.
+
+    Usage:
+        Example usage where an instrument has a get_buffer() function which returns an array
+        VoltageBuffer=qc.ArrayParameterWrapper(name='VoltageBuffer',
                                             label='Voltage',
                                             unit='V',
                                             get_cmd=VoltageInstrument.get_buffer)
@@ -132,7 +154,40 @@ class ArrayParameterWrapper(ArrayParameter):
 
 class MultiParameterWrapper(MultiParameter):
     """
-    Class to wrap multiple pre-existing parameters into MultiParameter. Enables getting, setting and sweeping.
+    Class to wrap multiple pre-existing parameters into MultiParameter. Enables getting, setting, sweeping and moving.
+
+    Args:
+        parameters (list): List of Parameter objects to wrap.
+        name (str, optional): Name of the MultiParameter. Defaults to None.
+        instrument (Instrument, optional): Instrument this MultiParameter belongs to. Defaults to None.
+
+    Usage:
+        parameters = [param1, param2, param3]  # List of Parameter objects
+        multi_param = MultiParameterWrapper(parameters, name='MyMultiParam', instrument=my_instrument)
+
+        # Get values
+        values = multi_param()
+
+        # Set all constituent parameters to the same value
+        multi_param(value)
+
+        # Set each parameter to different values
+        multi_param([1.0, 2.0, 3.0])
+
+        # Move to new values
+        multi_param.move([new_value1, new_value2, new_value3])
+
+        # Sweeping all parameters with the same start and stop values
+        multi_param.sweep(start_val, stop_val, num=num)
+
+        # Sweeping each parameter with different start and stop values
+        multi_param.sweep([start_val1, start_val2], [stop_val1, stop_val2], num=num)
+
+        When used in a qcodespp Loop, if all parameters are swept with the same values, 
+        the setpoint array will be the setpoints.
+        If the parameters are swept with different values, the setpoints will be indices, 
+        and the constituent parameters will be automatically added to the measurement, so that 
+        each parameter gets measured at each setpoint.
     """
     def __init__(self,parameters,name=None, instrument=None):
 
