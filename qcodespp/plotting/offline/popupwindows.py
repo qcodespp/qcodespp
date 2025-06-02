@@ -8,7 +8,6 @@ from scipy.ndimage import map_coordinates
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
-from matplotlib.colors import LogNorm
 from matplotlib.widgets import Cursor
 from matplotlib import rcParams
 from matplotlib import colormaps as cm

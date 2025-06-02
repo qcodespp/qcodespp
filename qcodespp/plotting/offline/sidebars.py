@@ -13,7 +13,7 @@ from lmfit.model import save_modelresult
 import matplotlib.style as mplstyle
 mplstyle.use('fast')
 
-from .helpers import cmaps
+from qcodespp.plotting.offline.helpers import cmaps
 
 class Sidebar1D(QtWidgets.QWidget):
     def __init__(self, parent, editor_window=None):

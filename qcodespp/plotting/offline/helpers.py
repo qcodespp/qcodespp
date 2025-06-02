@@ -1,6 +1,4 @@
 from PyQt5 import QtWidgets, QtCore
-import copy
-import os
 import numpy as np
 from collections import OrderedDict
 from matplotlib import rcParams

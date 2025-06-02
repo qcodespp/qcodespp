@@ -2,10 +2,9 @@ import numpy as np
 import os
 import json
 from qcodespp.data.data_set import load_data
-import qcodespp.plotting.offline.main as main
+from qcodespp.plotting.offline.datatypes import BaseClassData
 
-
-class qcodesppData(main.BaseClassData):
+class qcodesppData(BaseClassData):
 
     def __init__(self, filepath, canvas, metapath, load_the_data=True):
         super().__init__(filepath, canvas)
