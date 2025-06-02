@@ -235,6 +235,7 @@ def set_data_format(fmt='data/#{counter}_{name}_{date}_{time}'):
 
 def set_data_folder(folder='data'):
     fmt=folder+'/#{counter}_{name}_{date}_{time}'
+    DataSet.default_folder=folder
     DataSet.location_provider=FormatLocation(fmt=fmt)
 
 class DataSet(DelegateAttributes):

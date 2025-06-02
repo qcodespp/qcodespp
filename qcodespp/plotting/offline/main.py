@@ -14,6 +14,7 @@ import os
 import copy
 import io
 import tarfile
+import threading
 from webbrowser import open as href_open
 from csv import writer as csvwriter
 from json import load as jsonload
@@ -48,6 +49,8 @@ from qcodespp.plotting.offline.helpers import (cmaps, MidpointNormalize,Navigati
 from qcodespp.plotting.offline.filters import Filter
 from qcodespp.plotting.offline.datatypes import DataItem, BaseClassData, NumpyData, InternalData, MixedInternalData
 from qcodespp.plotting.offline.qcodes_pp_extension import qcodesppData
+
+from qcodespp.data.data_set import DataSet
 
 # UI settings
 DARK_THEME = True
@@ -207,6 +210,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         self.global_text_size='12'
         self.global_text_lineedit.setText(self.global_text_size)
+
+        try:
+            self.update_link_to_folder(folder=DataSet.default_folder)
+        except:
+            pass
     
     def init_plot_settings(self):
         self.settings_table.setColumnCount(2)
@@ -603,8 +611,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 loaded=True
         return loaded
         
-    def update_link_to_folder(self, new_folder=True):
-        if new_folder:
+    def update_link_to_folder(self, new_folder=True, folder=None):
+        if folder is not None:
+            self.linked_folder = folder
+        elif new_folder:
             self.linked_folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory to Link")
         if self.linked_folder:
             self.window_title = f'InSpectra Gadget - Linked to folder {self.linked_folder}'
@@ -2949,6 +2959,17 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.figure.tight_layout()
         self.canvas.draw()
 
+def offline_plotting(use_thread=True):
+    if use_thread and sys.platform != 'darwin': #This way of threading doesn't work on macOS.
+        try:
+            plot_thread = threading.Thread(target = main)
+            plot_thread.start()
+        except Exception as e:
+            print(f"Error running offline_plotting using threading: {e}\n"
+                  "Try offline_plotting(use_thread=False)")
+    else:
+        main()
+
 def main():
     app = QtWidgets.QApplication(sys.argv)
     app.aboutToQuit.connect(app.deleteLater)
@@ -2964,16 +2985,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-import threading
-
-def offline_plotting(use_thread=True):
-    if use_thread:
-        try:
-            plot_thread = threading.Thread(target = main)
-            plot_thread.start()
-        except Exception as e:
-            print(f"Error running offline_plotting using threading: {e}\n"
-                  "Try offline_plotting(use_thread=False)")
-    else:
-        main()
