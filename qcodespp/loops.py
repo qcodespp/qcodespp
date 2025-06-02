@@ -80,6 +80,8 @@ def loop1d(sweep_parameter,
                 run=False):
     
     """
+    Create a 1D loop, the associated data set, and optionally, live plotting.
+
     A 1D loop has a single independent parameter, swept over a range of values.
     At each point in the loop, a set of parameters is measured, either those
     given as the argument params_to_measure, or the default measurement set by
@@ -108,7 +110,7 @@ def loop1d(sweep_parameter,
     """
 
     if params_to_measure is None:
-        params_to_measure = Station.default.default_measurement
+        params_to_measure = Station.default.measure()
     loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*params_to_measure)
     name=f'{device_info} {sweep_parameter.name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}'
     data=loop.get_data_set(name=name)
@@ -134,7 +136,10 @@ def loop2d(sweep_parameter,
                 run=False):
     
     """
-    A 2D loop, where at each point in the step parameter, the sweep parameter performs a loop.
+    Create a 2D loop, the associated data set, and optionally, live plotting.
+
+    A 2D loop has two independent parameters, a 'sweep' parameter and a 'step' parameter.
+    At each point in the step parameter, the sweep parameter performs a loop.
 
     Args:
         sweep_parameter: The parameter to sweep over.
@@ -166,7 +171,7 @@ def loop2d(sweep_parameter,
     """
 
     if params_to_measure is None:
-        params_to_measure = Station.default.default_measurement
+        params_to_measure = Station.default.measure()
 
     loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*params_to_measure)
 
@@ -201,8 +206,8 @@ def loop2dUD(sweep_parameter,
                 run=False):
     
     """
-    A 2D loop, where at each point in the step parameter, the sweep parameter performs a loop
-    in two directions: up and down.
+    Create a 2D loop where at each point in the step parameter, the sweep parameter performs a loop
+    in two directions: up and down. Create also a data set, and optionally, live plotting.
 
     Args:
         sweep_parameter: The parameter to sweep over.
@@ -233,7 +238,7 @@ def loop2dUD(sweep_parameter,
     """
 
     if params_to_measure is None:
-        params_to_measure = Station.default.default_measurement
+        params_to_measure = Station.default.measure()
 
     loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*params_to_measure)
 

@@ -56,7 +56,6 @@ def fit_powerlaw(xdata,ydata, p0=None,inputinfo=[1,0]):
         result: lmfit result object.
     """
 
-
     order=inputinfo[0]
     constant=inputinfo[1]
 
@@ -662,7 +661,7 @@ def QD_fit(xdata,ydata,p0=None,inputinfo=[1,0.01]):
     result=model.fit(ydata,params,x=xdata)
     return result
 
-def FET_mobility(xdata,ydata,p0,inputinfo):
+def FET_mobility(xdata,ydata,p0=None,inputinfo=None):
     """
     Fits x,y data with a FET mobility model: '1/(R_s + L**2/(C*mu*(x-V_th)))'
     Args:
@@ -676,6 +675,8 @@ def FET_mobility(xdata,ydata,p0,inputinfo):
         result: lmfit result object.
     """
 
+    if inputinfo is None or len(inputinfo) < 2:
+        raise ValueError("inputinfo must contain values for capacitance and device Length: [C, L]")
     C=float(inputinfo[0])
     L=float(inputinfo[1])
     def FET_model(x, mu, V_th, R_s):
@@ -697,6 +698,7 @@ def FET_mobility(xdata,ydata,p0,inputinfo):
 def dynes_fit(xdata,ydata,p0=None,inputinfo=None):
     """
     Fits x,y data with a Dynes model for a superconducting gap: 'G_N * abs((e*x - i*gamma*e)/(sqrt((e*x - i*gamma*e)**2 - (delta*e)**2)))'
+    
     Args:
         xdata: x data to fit
         ydata: y data to fit
