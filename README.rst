@@ -25,12 +25,17 @@ the package for you. Qcodes++ features
 
 - and other user-friendliness improvements outlined in the documentation.
 
-qcodes++ is installed on top of QCoDeS, meaning all features of both packages can be used 
+qcodes++ is installed alongside/around QCoDeS, meaning all features of both packages can be used 
 seamlessly within the same notebook/environment. e.g. you could still use the mainline qcodes 
 dataset and measurement process for some experiments while relying on qcodes++ in other instances.
+In addition, all top level qcodes functions are available in qcodes++ with the same names, so if you
+are used to doing 'import qcodes as qc', and then e.g. using qc.Station, you should simply replace the import with
+'import qcodespp as qc', and continute to use qc.Station, qc.Parameter, etc. as before. For deeper-level
+functions (most importantly instrument drivers), you can simply continue to use e.g. 
+qcodes.instrument_drivers.tektronix.Keithley2400, or migrate to the qcodes++ version if one is available, and you prefer to.
 TL;DR, you lose nothing by installing qcodes++ ontop of qcodes.
 
-QCoDeS and qcodes++ are compatible with Python 3.5+. They are primarily intended for use
+QCoDeS and qcodes++ are compatible with Python 3.9+. They are primarily intended for use
 from Jupyter notebooks and Jupyter lab, but can also be used from Spyder, traditional terminal-based
 shells and in stand-alone scripts.
 
