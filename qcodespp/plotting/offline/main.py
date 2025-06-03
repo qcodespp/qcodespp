@@ -11,7 +11,7 @@ except ModuleNotFoundError:
 
 def offline_plotting(folder=None,link_to_default=True,use_thread=True):
     """	
-    Entry point for qcodespp offline plotting.
+    Entry point for qcodespp offline plotting. Call qcodespp.offline_plotting() to start the application.
 
     Args:
         folder (str): Path (inc relative) to a folder containing the data files to be plotted.
