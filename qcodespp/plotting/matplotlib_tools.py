@@ -50,7 +50,7 @@ def colorplot(x,y,z,figsize=0,cmap=0,labels=0,xlim=0,ylim=0,zlim=0,xmajor=0,xmin
 
     if np.shape(z)[1] != np.shape(x)[0] and np.shape(z)[0] == np.shape(x)[0]:
         z= z.T
-    if np.shape(y)[1] != np.shape(x)[0] and np.shape(y)[0] == np.shape(x)[0]:
+    if np.shape(np.shape(y))==(2,) and np.shape(y)[1] != np.shape(x)[0] and np.shape(y)[0] == np.shape(x)[0]:
         y= y.T
 
     if zlim!=0:
