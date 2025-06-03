@@ -709,18 +709,20 @@ def dynes_fit(xdata,ydata,p0=None,inputinfo=None):
         result: lmfit result object.
     """
     electron=1.60217663e-19
-    def dynes_model(x, G_N, gamma, delta):
-        return np.abs(G_N*((electron*x-1j*gamma*electron)/np.sqrt((electron*x-1j*gamma*electron)**2-(delta*electron)**2)).real)
+    def dynes_model(x,x0, G_N, gamma, delta):
+        return np.abs(G_N*((electron*(x-x0)-1j*gamma*electron)/np.sqrt((electron*(x-x0)-1j*gamma*electron)**2-(delta*electron)**2)).real)
     model=Model(dynes_model)
     params=model.make_params()
     if p0:
-        params['G_N'].set(value=float(p0[0]))
-        params['gamma'].set(value=float(p0[1]))
-        params['delta'].set(value=float(p0[2]))
+        params['x0'].set(value=float(p0[0]))
+        params['G_N'].set(value=float(p0[1]))
+        params['gamma'].set(value=float(p0[2]))
+        params['delta'].set(value=float(p0[3]))
     else:
-        params['G_N'].set(value=(ydata.max()-ydata.min())/2)
-        params['gamma'].set(value=(xdata.max()-xdata.min())/200)
-        params['delta'].set(value=(xdata.max()-xdata.min())/2)
+        params['x0'].set(value=(np.max(xdata)+np.min(xdata))/2)
+        params['G_N'].set(value=(np.max(ydata)-np.min(ydata))/2)
+        params['gamma'].set(value=(np.max(xdata)-np.min(xdata))/200)
+        params['delta'].set(value=(np.max(xdata)-np.min(xdata))/2)
     result=model.fit(ydata,params,x=xdata)
     return result
 
@@ -1006,12 +1008,13 @@ functions['Custom']['FET mobility']['description']=('Fit a FET mobility curve of
                                                 'Note; all units in SI! i.e. S and m, not e2/h and cm.\n'
                                                 'See doi.org/10.1088/0957-4484/26/21/215202')
 
-functions['Custom']['BCS/Dynes']['parameters']='G_N, gamma, delta'
+functions['Custom']['BCS/Dynes']['parameters']='V0, G_N, gamma, delta'
 functions['Custom']['BCS/Dynes']['description']=('Fit the BCS/Dynes model to a tunnel spectrum of a superconducting gap. '
                                                  'The Dynes model is given by:\n'
-                                                 'dI/dV(V) = G_N*Re[(e*V-i*gamma)/sqrt((e*V-i*gamma)^2-(delta)^2)]\n'
+                                                 'dI/dV(V) = G_N*Re[(e*(V-V0)-i*gamma)/sqrt((e*(V-V0)-i*gamma)^2-(delta)^2)]\n'
                                                  'where G_N is the normal state conductance, gamma is broadening and '
-                                                 'delta is the superconducting gap. Delta and gamma are in electronvolts\n'
+                                                 'delta is the superconducting gap. V0 accounts for any offset due to e.g. miscalibrated current preamplifier\n'
+                                                 'Delta and gamma are in electronvolts\n'
                                                  'see doi.org/10.1103/PhysRevLett.41.1509\n or doi.org/10.1038/s41467-021-25100-w')
 
 functions['Custom']['Ramsey']['parameters']='A, B, C, f, phi, T2'
