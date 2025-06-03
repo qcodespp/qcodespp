@@ -1251,7 +1251,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 linewidth=1.5)
             if self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_uncertainty_checkstate']==QtCore.Qt.Checked:
                 uncertainty=fit_result.eval_uncertainty()
-                self.axes.fill_between(x_forfit, y_fit-uncertainty+offset, y_fit+uncertainty+offset,
+                self.axes.fill_between(x_forfit, y_fit-uncertainty, y_fit+uncertainty,
                                         color='grey', alpha=0.5, linewidth=0)
             if self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_components_checkstate']==QtCore.Qt.Checked:
                 fit_components=fit_result.eval_components()
