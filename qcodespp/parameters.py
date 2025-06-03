@@ -2,8 +2,8 @@ import time
 
 import numpy
 
-# To make the modules work within qcodespp
-from qcodes.parameters import *
+# # To make the modules work within qcodespp
+# from qcodes.parameters import *
 
 # Specific modules used below, for traceability.
 from qcodes.parameters import (

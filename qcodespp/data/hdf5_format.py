@@ -4,9 +4,9 @@ import h5py
 import os
 import json
 
-from ..version import __version__ as _qcodes_version
-from .data_array import DataArray
-from .format import Formatter
+from qcodespp.version import __version__ as _qcodes_version
+from qcodespp.data.data_array import DataArray
+from qcodespp.data.format import Formatter
 
 
 class HDF5Format(Formatter):

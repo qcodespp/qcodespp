@@ -27,15 +27,26 @@ def _actions_snapshot(actions, update):
 
 class Task:
     """
-    A predefined task to be executed within a measurement Loop.
+    Execute a function within a measurement Loop, e.g. .each(Task(func, *args, **kwargs)).
 
-    The first argument should be a callable, to which any subsequent
+    The first argument should be a callable function, to which any subsequent
     args and kwargs (which are evaluated before the loop starts) are passed.
 
-    The args and kwargs are first evaluated if they are found to be callable.
+    e.g.:
+    Define a function to wait for a temperature setpoint to be reached:
 
-    Keyword Args passed when the Task is called are ignored,
-    but are accepted for compatibility with other things happening in a Loop.
+    >>> def wait_for_temperature(target_T, measured_T, tolerance):
+    >>>     while abs(measured_T - target_T) > tolerance:
+    >>>         time.sleep(1)
+
+    Then use it in a Loop, inside each, before measuring.
+
+    >>> loop = Loop(temperature_setpoint.sweep(0,2,101),delay=0.1).each(
+    >>>     Task(wait_for_temperature, temperature_setpoint(), temperature(), 0.1),
+    >>>     *station.measure())
+
+    If the args and kwargs are also callable, then they are evaluated
+    before being passed to the func.
 
     Args:
         func (callable): Function to executed
@@ -197,7 +208,7 @@ class BreakIf:
         TypeError: if condition is not a callable with no aguments.
 
     Examples:
-            >>> BreakIf(lambda: gates.chan1.get() >= 3)
+            >>> BreakIf(lambda: np.abs(chan1.curr()) >= 3e-9)
     """
 
     def __init__(self, condition):

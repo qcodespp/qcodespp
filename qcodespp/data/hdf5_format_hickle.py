@@ -3,8 +3,6 @@ from qcodespp.data.hdf5_format import HDF5Format
 import hickle
 from qcodes.utils.helpers import deep_update
 
-#%%
-
 log = logging.getLogger(__name__)
 
 

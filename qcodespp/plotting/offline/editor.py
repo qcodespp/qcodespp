@@ -174,7 +174,7 @@ SETTINGS_MENU_OPTIONS['columns'] = ['0,1,2','0,1,3','0,2,3','1,2,4']
 AXIS_SCALING_OPTIONS = ['linear', 'log', 'symlog', 'logit']
 
 class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
-    def __init__(self,folder=None):
+    def __init__(self,folder=None,link_to_default=True):
         super().__init__()
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.window_title = 'Inspectra Gadget'
@@ -210,12 +210,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.global_text_lineedit.setText(self.global_text_size)
 
         if folder:
+            print(f'Linking to {folder}... This may take some time.')
             try:
                 self.update_link_to_folder(folder=folder)
             except Exception as e:
                 print(f'Failed to link to folder {folder}:', e)
-        else:
+        elif link_to_default and os.path.isdir(DataSet.default_folder):
             try:
+                print(f'Linking to qcodespp data folder at {DataSet.default_folder}... This may take some time.')
                 self.update_link_to_folder(folder=DataSet.default_folder)
             except:
                 pass
