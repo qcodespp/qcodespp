@@ -7,7 +7,7 @@ from qcodes.utils.helpers import DelegateAttributes, full_class, warn_units
 class DataArray(DelegateAttributes):
 
     """
-    A container for one parameter in a DataSet.
+    A container for one parameter in a qcodespp DataSetPP
 
     If this is a measured parameter, this object doesn't contain
     the data of the setpoints it was measured at, but it references
@@ -45,10 +45,10 @@ class DataArray(DelegateAttributes):
         snapshot (Optional[dict]): Metadata snapshot to save with this array.
 
         array_id (Optional[str]): A name for this array that's unique within
-            its ``DataSet``. Typically the full_name, but when the ``DataSet``
+            its ``DataSetPP``. Typically the full_name, but when the ``DataSetPP``
             is constructed we will append '_<i>' (``i`` is an integer starting
             from 1) if necessary to differentiate arrays with the same id.
-            TODO: this only happens for arrays provided to the DataSet
+            TODO: this only happens for arrays provided to the DataSetPP
             constructor, not those added with add_array. Fix this!
             Also, do we really need array_id *and* full_name (let alone name
             but I've already said we should remove this)?
@@ -135,8 +135,8 @@ class DataArray(DelegateAttributes):
 
         self._preset = False
 
-        # store a reference up to the containing DataSet
-        # this also lets us make sure a DataArray is only in one DataSet
+        # store a reference up to the containing DataSetPP
+        # this also lets us make sure a DataArray is only in one DataSetPP
         self._data_set = None
 
         self.last_saved_index = None
@@ -184,9 +184,9 @@ class DataArray(DelegateAttributes):
     @property
     def data_set(self):
         """
-        The DataSet this array belongs to.
+        The DataSetPP this array belongs to.
 
-        A DataArray can belong to at most one DataSet.
+        A DataArray can belong to at most one DataSetPP.
         TODO: make this a weakref
         """
         return self._data_set
@@ -196,7 +196,7 @@ class DataArray(DelegateAttributes):
         if (self._data_set is not None and
                 new_data_set is not None and
                 self._data_set != new_data_set):
-            raise RuntimeError('A DataArray can only be part of one DataSet')
+            raise RuntimeError('A DataArray can only be part of one DataSetPP')
         self._data_set = new_data_set
 
     def nest(self, size, action_index=None, set_array=None):
@@ -425,7 +425,7 @@ class DataArray(DelegateAttributes):
         Make previously saved parts of this array look unsaved (modified).
 
         This can be used to force overwrite or rewrite, like if we're
-        moving or copying the ``DataSet``.
+        moving or copying the ``DataSetPP``.
         """
         if self.last_saved_index is not None:
             self._update_modified_range(0, self.last_saved_index)
@@ -486,7 +486,7 @@ class DataArray(DelegateAttributes):
         """
         Insert new synced values into the array.
 
-        To be be called in a ``PULL_FROM_SERVER`` ``DataSet`` using results
+        To be be called in a ``PULL_FROM_SERVER`` ``DataSetPP`` using results
         returned by ``get_changes`` from the ``DataServer``.
 
         TODO: check that vals has the right length?

@@ -84,7 +84,7 @@ def colorplot(x,y,z,figsize=0,cmap=0,labels=0,xlim=0,ylim=0,zlim=0,xmajor=0,xmin
 
 def colored_traces(x,y, offset=0,figsize=0, cmap=0, labels=0, xlim=0, ylim=0, xmajor=0, xminor=0, ymajor=0, yminor=0, font_size=0, label_size=0):
     """
-    Make a nice 1D colour plot from a two-dimensional data array using matplotlib.
+    Plot a series of 1D traces where the lines are colored according to a matplotlib colormap.
 
     Args:
         x: 1D or 2D array of x-coordinates

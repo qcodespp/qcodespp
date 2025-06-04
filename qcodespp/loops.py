@@ -10,7 +10,7 @@ delays
 by attaching one or more actions to it, using the .each method.
 Actions can be: parameters to measure, tasks to run, waits, or other loops.
 
-3. Associate the ActiveLoop with a DataSet, which will hold the data collected,
+3. Associate the ActiveLoop with a DataSetPP, which will hold the data collected,
 using ActiveLoop.get_data_set().
 
 4. Run the ActiveLoop with the .run method, which additionally can be passed
@@ -540,9 +540,9 @@ class ActiveLoop(Metadatable):
     Automatically generated object returned when attaching ``actions`` to a ``Loop`` using e.g. `.each()`.
 
     When calling ActiveLoop.get_data_set(), the ActiveLoop will determine which ``DataArrays`` it 
-    will need to hold the  data it collects, and it creates a ``DataSet`` holding these ``DataArrays``.
+    will need to hold the  data it collects, and it creates a ``DataSetPP`` holding these ``DataArrays``.
     Thus: a ``Loop`` returns an ``ActiveLoop`` when actions are attached to it, and an ``ActiveLoop`` 
-    returns a ``DataSet`` from ActiveLoop.get_data_set().
+    returns a ``DataSetPP`` from ActiveLoop.get_data_set().
 
     Example:
         loop = Loop(sweep_parameter.sweep(0, 1, num=101), delay=0.1).each(*station.measure())
@@ -849,7 +849,7 @@ class ActiveLoop(Metadatable):
         Set a couple of common attributes that the main and nested loops
 
         all need to have:
-        - the DataSet collecting all our measurements
+        - the DataSetPP collecting all our measurements
         - a queue for communicating with the main process
         """
         self.data_set = data_set
@@ -864,7 +864,7 @@ class ActiveLoop(Metadatable):
 
         If no data set has been created yet, a new one will be created and
         returned. Note that all arguments can only be provided when the
-        `DataSet` is first created; giving these during `run` when
+        `DataSetPP` is first created; giving these during `run` when
         `get_data_set` has already been called on its own is an error.
 
         Args:
@@ -874,21 +874,21 @@ class ActiveLoop(Metadatable):
         kwargs are passed along to data_set.new_data. The key ones are:
 
         Args:
-            location: the location of the DataSet, a string whose meaning
+            location: the location of the DataSetPP, a string whose meaning
                 depends on formatter and io, or False to only keep in memory.
                 May be a callable to provide automatic locations. If omitted, will
-                use the default DataSet.location_provider
+                use the default DataSetPP.location_provider
             name: if location is default or another provider function, name is
                 a string to add to location to make it more readable/meaningful
                 to users
             formatter: knows how to read and write the file format
-                default can be set in DataSet.default_formatter
+                default can be set in DataSetPP.default_formatter
             io: knows how to connect to the storage (disk vs cloud etc)
             write_period: how often to save to storage during the loop.
                 default 5 sec, use None to write only at the end
 
         returns:
-            a DataSet object that we can use to plot
+            a DataSetPP object that we can use to plot
         """
         if self.data_set is None:
             data_set = new_data(arrays=self.containers(), *args, **kwargs)
@@ -898,10 +898,10 @@ class ActiveLoop(Metadatable):
             has_args = len(kwargs) or len(args)
             if has_args:
                 raise RuntimeError(
-                    'The DataSet for this loop already exists. '
-                    'You can only provide DataSet attributes, such as '
+                    'The DataSetPP for this loop already exists. '
+                    'You can only provide DataSetPP attributes, such as '
                     'data_manager, location, name, formatter, io, '
-                    'write_period, when the DataSet is first created.')
+                    'write_period, when the DataSetPP is first created.')
 
         return self.data_set
 
@@ -923,7 +923,7 @@ class ActiveLoop(Metadatable):
             estimated time of completion.
         """
         if self.data_set is None:
-            raise RuntimeError('No DataSet yet defined for this loop')
+            raise RuntimeError('No DataSetPP yet defined for this loop')
         station = station or self.station or Station.default
         if station is None:
             print('Note: Station not declared. Estimate does not include'
@@ -974,27 +974,27 @@ class ActiveLoop(Metadatable):
             
 
         kwargs are passed along to data_set.new_data. These can only be
-        provided when the `DataSet` is first created; giving these during `run`
+        provided when the `DataSetPP` is first created; giving these during `run`
         when `get_data_set` has already been called on its own is an error.
         The key ones are:
 
         Args:
-            location: the location of the DataSet, a string whose meaning
+            location: the location of the DataSetPP, a string whose meaning
                 depends on formatter and io, or False to only keep in memory.
                 May be a callable to provide automatic locations. If omitted, will
-                use the default DataSet.location_provider
+                use the default DataSetPP.location_provider
             name: if location is default or another provider function, name is
                 a string to add to location to make it more readable/meaningful
                 to users
             formatter: knows how to read and write the file format
-                default can be set in DataSet.default_formatter
+                default can be set in DataSetPP.default_formatter
             io: knows how to connect to the storage (disk vs cloud etc)
                 write_period: how often to save to storage during the loop.
                 default 5 sec, use None to write only at the end
 
 
         returns:
-            a DataSet object that we can use to plot
+            a DataSetPP object that we can use to plot
         """
         if params_to_plot is not None:
             live_plot(self.data_set,params_to_plot)

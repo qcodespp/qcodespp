@@ -1,4 +1,4 @@
-"""DataSet class and factory functions."""
+"""DataSetPP class and factory functions."""
 
 import time
 from datetime import datetime, date
@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 def new_data(location=None, loc_record=None, name=None, overwrite=False,
              io=None, backup_location=None, force_write=False, **kwargs):
     """
-    Create a new DataSet.
+    Create a new DataSetPP, the text-based data set of qcodespp.
 
     Args:
         location (str or callable or False, optional): If you provide a string,
@@ -35,12 +35,12 @@ def new_data(location=None, loc_record=None, name=None, overwrite=False,
             - a callable ``location provider`` with one required parameter
               (the io manager), and one optional (``record`` dict),
               which returns a location string when called
-            - ``False`` - denotes an only-in-memory temporary DataSet.
+            - ``False`` - denotes an only-in-memory temporary DataSetPP.
 
             Note that the full path to or physical location of the data is a
             combination of io + location. the default ``DiskIO`` sets the base
             directory, which this location is a relative path inside.
-            Default ``DataSet.location_provider`` which is initially
+            Default ``DataSetPP.location_provider`` which is initially
             ``FormatLocation()``
 
         loc_record (dict, optional): If location is a callable, this will be
@@ -51,28 +51,28 @@ def new_data(location=None, loc_record=None, name=None, overwrite=False,
         overwrite (bool): Are we allowed to overwrite an existing location?
             Default False.
 
-        io (io_manager, optional): base physical location of the ``DataSet``.
-            Default ``DataSet.default_io`` is initially ``DiskIO('.')`` which
+        io (io_manager, optional): base physical location of the ``DataSetPP``.
+            Default ``DataSetPP.default_io`` is initially ``DiskIO('.')`` which
             says the root data directory is the current working directory, ie
             where you started the python session.
 
-        arrays (Optional[List[qcodes.DataArray]): arrays to add to the DataSet.
+        arrays (Optional[List[qcodes.DataArray]): arrays to add to the DataSetPP.
                 Can be added later with ``self.add_array(array)``.
 
         formatter (Formatter, optional): sets the file format/structure to
-            write (and read) with. Default ``DataSet.default_formatter`` which
+            write (and read) with. Default ``DataSetPP.default_formatter`` which
             is initially ``GNUPlotFormat()``.
 
         write_period (float or None, optional):seconds
             between saves to disk.
     Returns:
-        A new ``DataSet`` object ready for storing new data in.
+        A new ``DataSetPP`` object ready for storing new data in.
     """
     if io is None:
-        io = DataSet.default_io
+        io = DataSetPP.default_io
 
     if location is None:
-        location = DataSet.location_provider
+        location = DataSetPP.location_provider
 
     if name is not None:
         if not loc_record:
@@ -85,11 +85,11 @@ def new_data(location=None, loc_record=None, name=None, overwrite=False,
     if location and (not overwrite) and io.list(location):
         raise FileExistsError('"' + location + '" already has data')
 
-    return DataSet(location=location, io=io, backup_location=backup_location, force_write=force_write, name=name, **kwargs)
+    return DataSetPP(location=location, io=io, backup_location=backup_location, force_write=force_write, name=name, **kwargs)
 
 def data_set_from_arrays(datasetname=None,arrays=None,arraynames=None,labels=None,units=None,station=None):
     """
-    Create and return a new DataSet filled with data from pre-existing python arrays. 
+    Create and return a new DataSetPP filled with data from pre-existing python arrays. 
     Typically used for recording arrays of time-coincident measurements from an instrument buffer.
     Data is assumed to be one dimensional and first array in arrays is assumed to be the setpoint.
     Example: 
@@ -137,32 +137,32 @@ def data_set_from_arrays(datasetname=None,arrays=None,arraynames=None,labels=Non
 
 def load_data(location=None, formatter=None, io=None, include_metadata=True):
     """
-    Load an existing DataSet.
+    Load an existing DataSetPP.
 
     Args:
         location (str, optional): the location to load from. Default is the
-            current live DataSet.
+            current live DataSetPP.
             Note that the full path to or physical location of the data is a
             combination of io + location. the default ``DiskIO`` sets the base
             directory, which this location is a relative path inside.
 
         formatter (Formatter, optional): sets the file format/structure to
-            read with. Default ``DataSet.default_formatter`` which
+            read with. Default ``DataSetPP.default_formatter`` which
             is initially ``GNUPlotFormat()``.
 
-        io (io_manager, optional): base physical location of the ``DataSet``.
-            Default ``DataSet.default_io`` is initially ``DiskIO('.')`` which
+        io (io_manager, optional): base physical location of the ``DataSetPP``.
+            Default ``DataSetPP.default_io`` is initially ``DiskIO('.')`` which
             says the root data directory is the current working directory, ie
             where you started the python session.
 
     Returns:
-        A new ``DataSet`` object loaded with pre-existing data.
+        A new ``DataSetPP`` object loaded with pre-existing data.
     """
     if location is False:
-        raise ValueError('location=False means a temporary DataSet, '
+        raise ValueError('location=False means a temporary DataSetPP, '
                          'which is incompatible with load_data')
 
-    data = DataSet(location=location, formatter=formatter, io=io)
+    data = DataSetPP(location=location, formatter=formatter, io=io)
     if include_metadata==True:
         data.read_metadata()
         data.read()
@@ -177,7 +177,7 @@ def load_data_num(number, datafolder="data", delimiter='_',leadingzeros=3,includ
     Args:
         number (str or int): the dataset's number
         datafolder (str, optional): the folder to load from. Default is the
-            current live DataSet.
+            current live DataSetPP.
             Note that the full path to or physical location of the data is a
             combination of io + location. the default ``DiskIO`` sets the base
             directory, which this location is a relative path inside.
@@ -185,7 +185,7 @@ def load_data_num(number, datafolder="data", delimiter='_',leadingzeros=3,includ
             underscore but may be specified if necessary.
 
     Returns:
-        A new ``DataSet`` object loaded with pre-existing data.
+        A new ``DataSetPP`` object loaded with pre-existing data.
     """
     number=str(number).split('_')[0].zfill(leadingzeros) #Split included here to account for a potential fail point in backwards compatibility. 
                                                 #There were cases where the user had to explicitly include the delimiter.
@@ -205,7 +205,7 @@ def load_data_nums(listofnumbers, datafolder="data",delimiter='_',leadingzeros=3
     Args:
         litsofnumbers (list of strings or ints): list of desired dataset numbers.
         datafolder (str, optional): the folder to load from. Default is the
-            current live DataSet.
+            current live DataSetPP.
             Note that the full path to or physical location of the data is a
             combination of io + location. the default ``DiskIO`` sets the base
             directory, which this location is a relative path inside.
@@ -213,7 +213,7 @@ def load_data_nums(listofnumbers, datafolder="data",delimiter='_',leadingzeros=3
             underscore but may be specified if necessary.
 
     Returns:
-        An array containing ``DataSet`` objects loaded with pre-existing data.
+        An array containing ``DataSetPP`` objects loaded with pre-existing data.
     """
 
     data=[]
@@ -231,41 +231,41 @@ def load_data_nums(listofnumbers, datafolder="data",delimiter='_',leadingzeros=3
     return data
 
 def set_data_format(fmt='data/#{counter}_{name}_{date}_{time}'):
-    DataSet.location_provider=FormatLocation(fmt=fmt)
+    DataSetPP.location_provider=FormatLocation(fmt=fmt)
 
 def set_data_folder(folder='data'):
     fmt=folder+'/#{counter}_{name}_{date}_{time}'
-    DataSet.default_folder=folder
-    DataSet.location_provider=FormatLocation(fmt=fmt)
+    DataSetPP.default_folder=folder
+    DataSetPP.location_provider=FormatLocation(fmt=fmt)
 
-class DataSet(DelegateAttributes):
+class DataSetPP(DelegateAttributes):
 
     """
-    A container for one complete measurement loop.
+    A container for one complete measurement from measure.Measure or loops.Loop.
 
     May contain many individual arrays with potentially different
     sizes and dimensionalities.
 
-    Normally a DataSet should not be instantiated directly, but through
+    Normally a DataSetPP should not be instantiated directly, but through
     ``new_data`` or ``load_data``.
 
     Args:
         location (str or False): A location in the io manager, or ``False`` for
-            an only-in-memory temporary DataSet.
+            an only-in-memory temporary DataSetPP.
             Note that the full path to or physical location of the data is a
             combination of io + location. the default ``DiskIO`` sets the base
             directory, which this location is a relative path inside.
 
-        io (io_manager, optional): base physical location of the ``DataSet``.
-            Default ``DataSet.default_io`` is initially ``DiskIO('.')`` which
+        io (io_manager, optional): base physical location of the ``DataSetPP``.
+            Default ``DataSetPP.default_io`` is initially ``DiskIO('.')`` which
             says the root data directory is the current working directory, ie
             where you started the python session.
 
-        arrays (Optional[List[qcodes.DataArray]): arrays to add to the DataSet.
+        arrays (Optional[List[qcodes.DataArray]): arrays to add to the DataSetPP.
                 Can be added later with ``self.add_array(array)``.
 
         formatter (Formatter, optional): sets the file format/structure to
-            write (and read) with. Default ``DataSet.default_formatter`` which
+            write (and read) with. Default ``DataSetPP.default_formatter`` which
             is initially ``GNUPlotFormat()``.
 
         write_period (float or None, optional): Only if ``mode=LOCAL``, seconds
@@ -279,12 +279,12 @@ class DataSet(DelegateAttributes):
             ``key`` is a name to identify the function and help you attach and
             remove it.
 
-            In ``DataSet.complete`` we call each of these periodically, in the
+            In ``DataSetPP.complete`` we call each of these periodically, in the
             order that they were attached.
 
             Note that because this is a class attribute, the functions will
-            apply to every DataSet. If you want specific functions for one
-            DataSet you can override this with an instance attribute.
+            apply to every DataSetPP. If you want specific functions for one
+            DataSetPP you can override this with an instance attribute.
     """
 
     # ie data_set.arrays['vsd'] === data_set.vsd
@@ -386,20 +386,20 @@ class DataSet(DelegateAttributes):
                     loc_record={}
                     loc_record['name'] = self.name[:-(pathlength-246)]
                     self.location = self.location_provider(io, record=loc_record)
-                    log.warning('DataSet filename has been automatically shortened to avoid Windows maximum character limit')
+                    log.warning('DataSetPP filename has been automatically shortened to avoid Windows maximum character limit')
 
         # Make this dataset a class attribute so that it can be accessed by other functions, most notably to set its publisher in live plotting.
-        DataSet.default_dataset = self
+        DataSetPP.default_dataset = self
 
     def sync(self):
         """
-        Synchronize this DataSet with the DataServer or storage.
+        Synchronize this DataSetPP with the DataServer or storage.
 
-        If this DataSet is on the server, asks the server for changes.
-        If not, reads the entire DataSet from disk.
+        If this DataSetPP is on the server, asks the server for changes.
+        If not, reads the entire DataSetPP from disk.
 
         Returns:
-            bool: True if this DataSet is live on the server
+            bool: True if this DataSetPP is live on the server
         """
         # TODO: sync implies bidirectional... and it could be!
         # we should keep track of last sync timestamp and last modification
@@ -408,12 +408,12 @@ class DataSet(DelegateAttributes):
         # could find a robust and intuitive way to make modifications to the
         # version on the DataServer from the main copy)
 
-        # LOCAL DataSet - no need to sync just use local data
+        # LOCAL DataSetPP - no need to sync just use local data
         return False
 
     def fraction_complete(self):
         """
-        Get the fraction of this DataSet which has data in it.
+        Get the fraction of this DataSetPP which has data in it.
 
         Returns:
             float: the average of all measured (not setpoint) arrays'
@@ -431,7 +431,7 @@ class DataSet(DelegateAttributes):
 
     def complete(self, delay=1.5):
         """
-        Periodically sync the DataSet and display percent complete status.
+        Periodically sync the DataSetPP and display percent complete status.
 
         Also, each period, execute functions stored in (class attribute)
         ``self.background_functions``. If a function fails, we log its
@@ -442,13 +442,13 @@ class DataSet(DelegateAttributes):
             delay (float): seconds between iterations. Default 1.5
         """
         log.info(
-            'waiting for DataSet <{}> to complete'.format(self.location))
+            'waiting for DataSetPP <{}> to complete'.format(self.location))
 
         failing = {key: False for key in self.background_functions}
 
         completed = False
         while True:
-            log.info('DataSet: {:.0f}% complete'.format(
+            log.info('DataSetPP: {:.0f}% complete'.format(
                 self.fraction_complete() * 100))
 
             # first check if we're done
@@ -477,16 +477,16 @@ class DataSet(DelegateAttributes):
             # but only sleep if we're not already finished
             time.sleep(delay)
 
-        log.info('DataSet <{}> is complete'.format(self.location))
+        log.info('DataSetPP <{}> is complete'.format(self.location))
 
     def get_changes(self, synced_indices):
         """
-        Find changes since the last sync of this DataSet.
+        Find changes since the last sync of this DataSetPP.
 
         Args:
             synced_indices (dict): ``{array_id: synced_index}`` where
                 synced_index is the last flat index which has already
-                been synced, for any (usually all) arrays in the DataSet.
+                been synced, for any (usually all) arrays in the DataSetPP.
 
         Returns:
             Dict[dict]: keys are ``array_id`` for each array with changes,
@@ -506,11 +506,11 @@ class DataSet(DelegateAttributes):
 
     def add_array(self, data_array):
         """
-        Add one DataArray to this DataSet, and mark it as part of this DataSet.
+        Add one DataArray to this DataSetPP, and mark it as part of this DataSetPP.
 
         Note: DO NOT just set ``data_set.arrays[id] = data_array``, because
         this will not check if we are overwriting another array, nor set the
-        reference back to this DataSet, nor that the ``array_id`` in the array
+        reference back to this DataSetPP, nor that the ``array_id`` in the array
         matches how you're storing it here.
 
         Args:
@@ -522,10 +522,10 @@ class DataSet(DelegateAttributes):
         # TODO: mask self.arrays so you *can't* set it directly?
         if data_array.array_id in self.arrays:
             raise ValueError('array_id {} already exists in this '
-                             'DataSet'.format(data_array.array_id))
+                             'DataSetPP'.format(data_array.array_id))
         self.arrays[data_array.array_id] = data_array
 
-        # back-reference to the DataSet
+        # back-reference to the DataSetPP
         data_array.data_set = self
 
     def remove_array(self, array_id):
@@ -676,7 +676,7 @@ class DataSet(DelegateAttributes):
         return getattr(self, paramname, None)
 
     def read(self,include_metadata=True):
-        """Read the whole DataSet from storage, overwriting the local data."""
+        """Read the whole DataSetPP from storage, overwriting the local data."""
         if self.location is False:
             return
         self.formatter.read(self,include_metadata)
@@ -689,8 +689,8 @@ class DataSet(DelegateAttributes):
 
     def write(self, write_metadata=False, only_complete=True, filename=None, force_rewrite=False):
         """
-        Writes updates to the DataSet to storage.
-        N.B. it is recommended to call data_set.finalize() when a DataSet is
+        Writes updates to the DataSetPP to storage.
+        N.B. it is recommended to call data_set.finalize() when a DataSetPP is
         no longer expected to change to ensure files get closed
 
         Args:
@@ -757,7 +757,7 @@ class DataSet(DelegateAttributes):
 
     def write_copy(self, path=None, io_manager=None, location=None):
         """
-        Write a new complete copy of this DataSet to storage.
+        Write a new complete copy of this DataSetPP to storage.
 
         Args:
             path (str, optional): An absolute path on this system to write to.
@@ -765,10 +765,10 @@ class DataSet(DelegateAttributes):
                 or ``location``.
 
             io_manager (io_manager, optional): A new ``io_manager`` to use with
-                either the ``DataSet``'s same or a new ``location``.
+                either the ``DataSetPP``'s same or a new ``location``.
 
             location (str, optional): A new ``location`` to write to, using
-                either this ``DataSet``'s same or a new ``io_manager``.
+                either this ``DataSetPP``'s same or a new ``io_manager``.
         """
         if io_manager is not None or location is not None:
             if path is not None:
@@ -813,7 +813,7 @@ class DataSet(DelegateAttributes):
 
     def add_metadata(self, new_metadata):
         """
-        Update DataSet.metadata with additional data.
+        Update DataSetPP.metadata with additional data.
 
         Args:
             new_metadata (dict): new data to be deep updated into
@@ -825,7 +825,7 @@ class DataSet(DelegateAttributes):
             self.publisher.add_metadata(new_metadata, uuid=self.uuid)
 
     def save_metadata(self):
-        """Evaluate and save the DataSet's metadata."""
+        """Evaluate and save the DataSetPP's metadata."""
         if self.publisher is not None:
             self.publisher.add_metadata(self.metadata, uuid=self.uuid)
 
@@ -835,7 +835,7 @@ class DataSet(DelegateAttributes):
 
     def finalize(self, filename=None, write_metadata=True, force_rewrite=False):
         """
-        Mark the DataSet complete and write any remaining modifications.
+        Mark the DataSetPP complete and write any remaining modifications.
 
         Also closes the data file(s), if the ``Formatter`` we're using
         supports that.
@@ -846,7 +846,7 @@ class DataSet(DelegateAttributes):
             write_metadata (bool): Whether to save a snapshot. For e.g. dumping
                 raw data inside a loop, a snapshot is not wanted.
         """
-        log.debug('Finalising the DataSet. Writing.')
+        log.debug('Finalising the DataSetPP. Writing.')
         # write all new data, not only (to?) complete columns
         self.write(only_complete=False, filename=filename, force_rewrite=force_rewrite)
 
@@ -862,7 +862,7 @@ class DataSet(DelegateAttributes):
         self.finalized=True
 
     def snapshot(self, update=False):
-        """JSON state of the DataSet."""
+        """JSON state of the DataSetPP."""
         array_snaps = {}
         for array_id, array in self.arrays.items():
             array_snaps[array_id] = array.snapshot(update=update)
@@ -893,7 +893,7 @@ class DataSet(DelegateAttributes):
             return None
         
     def __repr__(self):
-        """Rich information about the DataSet and contained arrays."""
+        """Rich information about the DataSetPP and contained arrays."""
         out = type(self).__name__ + ':'
 
         attrs = [['location', repr(self.location)]]

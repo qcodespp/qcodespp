@@ -124,7 +124,7 @@ class _Measure:
     """
     def __init__(self, params_indices, data_set, use_threads):
         self.use_threads = use_threads and len(params_indices) > 1
-        # the applicable DataSet.store function
+        # the applicable DataSetPP.store function
         self.store = data_set.store
 
         # for performance, pre-calculate which params return data for

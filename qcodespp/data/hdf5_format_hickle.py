@@ -13,10 +13,10 @@ class HDF5FormatHickle(HDF5Format):
 
     def write_metadata(self, data_set, io_manager=None, location=None, read_first=False):
         """
-        Write all metadata in this DataSet to storage.
+        Write all metadata in this DataSetPP to storage.
 
         Args:
-            data_set (DataSet): the data we're storing
+            data_set (DataSetPP): the data we're storing
 
             io_manager (io_manager): the base location to write to
 
@@ -51,7 +51,7 @@ class HDF5FormatHickle(HDF5Format):
         """ Reads in the metadata
 
         Args:
-            data_set (DataSet): Dataset object to read the metadata into
+            data_set (DataSetPP): Dataset object to read the metadata into
         """
         io_manager = data_set.io
         location = data_set.location

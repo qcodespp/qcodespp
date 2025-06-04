@@ -7,7 +7,7 @@ import zmq
 import json
 from uuid import uuid4
 
-from qcodespp.data.data_set import DataSet
+from qcodespp.data.data_set import DataSetPP
 from qcodespp.data.data_array import DataArray
 from qcodespp.utils.helpers import NumpyJSONEncoder
 from qcodespp import Parameter
@@ -17,7 +17,7 @@ def live_plot(data_set=None, dataitems=None):
     Entry point for live plotting of a data set.
 
     Args:
-        data_set (DataSet, optional): The DataSet to link to the live plot.
+        data_set (DataSetPP, optional): The DataSetPP to link to the live plot.
             If not provided, it will use the default dataset.
         *data_arrays (DataArray, optional): List of DataArray or Parameter objects to plot.
             If not provided, nothing will be plotted initially, the user can use Plot.add() later.
@@ -25,8 +25,8 @@ def live_plot(data_set=None, dataitems=None):
         None
     """
     plot = Plot()
-    if data_set is None and DataSet.default_dataset is not None:
-        data_set = DataSet.default_dataset
+    if data_set is None and DataSetPP.default_dataset is not None:
+        data_set = DataSetPP.default_dataset
     else:
         print('No default dataset found; please provide a dataset to plot.')
     data_set.publisher=plot
@@ -196,7 +196,7 @@ class Plot():
         Args:
             *args (DataArray): positional arguments, can be:
                 - ``y`` or ``z``: specify just the 1D or 2D data independent parameter, with the setpoint
-                    axis or axes implied from the DataSet setpoints.
+                    axis or axes implied from the DataSetPP setpoints.
                 - ``x, y`` or ``x, y, z``: specify all axes of the data.
             x (DataArray, optional): x-axis data.
             y (DataArray, optional): y-axis data.

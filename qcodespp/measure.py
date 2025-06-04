@@ -9,12 +9,12 @@ from qcodes.metadatable import Metadatable
 
 class Measure(Metadatable):
     """
-    Create a DataSet from a single (non-looped) set of actions.
+    Create a DataSetPP from a single (non-looped) set of actions.
 
     Args:
         *actions (any): sequence of actions to perform. Any action that is
             valid in a ``Loop`` can be used here. If an action is a gettable
-            ``Parameter``, its output will be included in the DataSet.
+            ``Parameter``, its output will be included in the DataSetPP.
             The typical use case is to store data from one or more ArrayParameter(s) 
             or ParameterWithSetpoints(s), i.e. non-scalar data, returned
             from an instrument buffer such as an oscilloscope, although scalars are also supported.
@@ -43,11 +43,11 @@ class Measure(Metadatable):
         # 1) Go through all actions, and if the action is a Parameter,
         #  find the dimension of the data it returns. check if dummy setpoints
         #  already exist, and if not, create them.
-        # 2) Create a DataSet with the correct setpoints and actions
+        # 2) Create a DataSetPP with the correct setpoints and actions
 
     def run(self, use_threads=False, quiet=False, station=None, **kwargs):
         """
-        Run the actions in this measurement and return their data as a DataSet
+        Run the actions in this measurement and return their data as a DataSetPP
 
         Args:
             quiet (Optional[bool]): Set True to not print anything except
@@ -64,28 +64,28 @@ class Measure(Metadatable):
             are:
 
             location (Optional[Union[str, False]]): the location of the
-                DataSet, a string whose meaning depends on formatter and io,
+                DataSetPP, a string whose meaning depends on formatter and io,
                 or False to only keep in memory. May be a callable to provide
                 automatic locations. If omitted, will use the default
-                DataSet.location_provider
+                DataSetPP.location_provider
 
             name (Optional[str]): if location is default or another provider
                 function, name is a string to add to location to make it more
                 readable/meaningful to users
 
             formatter (Optional[Formatter]): knows how to read and write the
-                file format. Default can be set in DataSet.default_formatter
+                file format. Default can be set in DataSetPP.default_formatter
 
             io (Optional[io_manager]): knows how to connect to the storage
                 (disk vs cloud etc)
 
         returns:
-            a DataSet object containing the results of the measurement
+            a DataSetPP object containing the results of the measurement
         """
 
         data_set = self._dummyLoop.get_data_set(**kwargs)
 
-        # set the DataSet to local for now so we don't save it, since
+        # set the DataSetPP to local for now so we don't save it, since
         # we're going to massage it afterward
         original_location = data_set.location
         data_set.location = False
@@ -128,7 +128,7 @@ class Measure(Metadatable):
             if hasattr(data_set, 'action_id_map'):
                 del data_set.action_id_map[dummy_setpoint.action_indices]
 
-        # now put back in the DataSet location and save it
+        # now put back in the DataSetPP location and save it
         data_set.location = original_location
         data_set.write()
 

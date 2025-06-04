@@ -1,4 +1,4 @@
-"""Standard location_provider class(es) for creating DataSet locations."""
+"""Standard location_provider class(es) for creating DataSetPP locations."""
 from datetime import datetime
 import re
 import string
@@ -20,9 +20,9 @@ class SafeFormatter(string.Formatter):
 class FormatLocation:
 
     """
-    This is the default DataSet Location provider.
+    This is the default DataSetPP Location provider.
 
-    It provides a callable that returns a new (not used by another DataSet)
+    It provides a callable that returns a new (not used by another DataSetPP)
     location string, based on a format string ``fmt`` and a dict ``record`` of
     information to pass to ``fmt``.
 
@@ -71,7 +71,7 @@ class FormatLocation:
             '{time}' in ``fmt``. Default '%H-%M-%S'.
 
         fmt_counter (str, optional): a format string for the counter (integer)
-            which is automatically generated from existing DataSets that the
+            which is automatically generated from existing DataSetPPs that the
             io manager can see. Default '{03}'.
 
         record (dict, optional): A dict of default values to provide when
@@ -114,7 +114,7 @@ class FormatLocation:
         Call the location provider to get a new location.
 
         Args:
-            io (io manager): where we intend to put the new DataSet.
+            io (io manager): where we intend to put the new DataSetPP.
 
             record (dict, optional): information to insert in the format string
                 Any key provided here will override the default record

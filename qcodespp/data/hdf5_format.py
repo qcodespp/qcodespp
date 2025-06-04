@@ -24,7 +24,7 @@ class HDF5Format(Formatter):
         Closes the hdf5 file open in the dataset.
 
         Args:
-            data_set (DataSet): DataSet object
+            data_set (DataSetPP): DataSetPP object
         """
         if hasattr(data_set, '_h5_base_group'):
             data_set._h5_base_group.close()
@@ -59,7 +59,7 @@ class HDF5Format(Formatter):
 
 
         Args:
-            data_set (DataSet): the data to read into. Should already have
+            data_set (DataSetPP): the data to read into. Should already have
                 attributes ``io`` (an io manager), ``location`` (string),
                 and ``arrays`` (dict of ``{array_id: array}``, can be empty
                 or can already have some or all of the arrays present, they
@@ -401,7 +401,7 @@ class HDF5Format(Formatter):
         statement so there should be no need to call this explicitly.
 
         Args:
-            data_set (DataSet): Dataset object to read the metadata into
+            data_set (DataSetPP): Dataset object to read the metadata into
         """
         # checks if there is an open file in the dataset as load_data does
         # reading of metadata before reading the complete dataset
@@ -493,10 +493,10 @@ class HDF5FormatMetadata(HDF5Format):
 
     def write_metadata(self, data_set, io_manager=None, location=None, read_first=False):
         """
-        Write all metadata in this DataSet to storage.
+        Write all metadata in this DataSetPP to storage.
 
         Args:
-            data_set (DataSet): the data we're storing
+            data_set (DataSetPP): the data we're storing
 
             io_manager (io_manager): the base location to write to
 

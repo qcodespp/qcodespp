@@ -10,7 +10,7 @@ class Formatter:
     """
     Data file formatters
 
-    Formatters translate between DataSets and data files.
+    Formatters translate between DataSetPPs and data files.
 
     Each Formatter is expected to implement writing methods:
 
@@ -34,16 +34,16 @@ class Formatter:
       as a separate method because it occasionally gets called independently.
 
     All of these methods accept a ``data_set`` argument, which should be a
-    ``DataSet`` object. Even if you are loading a new data set from disk, this
+    ``DataSetPP`` object. Even if you are loading a new data set from disk, this
     object should already have attributes:
 
         - io: an IO manager (see qcodes.data.io)
-          location: a string, like a file path, that identifies the DataSet and
+          location: a string, like a file path, that identifies the DataSetPP and
           tells the IO manager where to store it
         - arrays: a dict of ``{array_id:DataArray}`` to read into.
 
     - read will create entries that don't yet exist.
-    - write will write ALL DataArrays in the DataSet, using
+    - write will write ALL DataArrays in the DataSetPP, using
       last_saved_index and modified_range, as well as whether or not
       it found the specified file, to determine how much to write.
     """
@@ -52,7 +52,7 @@ class Formatter:
     def write(self, data_set, io_manager, location, write_metadata=True,
               force_write=False, only_complete=True):
         """
-        Write the DataSet to storage.
+        Write the DataSetPP to storage.
 
         Subclasses must override this method.
 
@@ -60,7 +60,7 @@ class Formatter:
         and when to just append or otherwise update the file(s).
 
         Args:
-            data_set (DataSet): the data we are writing.
+            data_set (DataSetPP): the data we are writing.
             io_manager (io_manager): base physical location to write to.
             location (str): the file location within the io_manager.
             write_metadata (bool): if True, then the metadata is written to disk
@@ -72,7 +72,7 @@ class Formatter:
 
     def read(self, data_set, include_metadata=True):
         """
-        Read the entire ``DataSet``.
+        Read the entire ``DataSetPP``.
 
         Find all files matching ``data_set.location`` (using io_manager.list)
         and call ``read_one_file`` on each. Subclasses may either override
@@ -81,7 +81,7 @@ class Formatter:
         initialization functionality defined here.
 
         Args:
-            data_set (DataSet): the data to read into. Should already have
+            data_set (DataSetPP): the data to read into. Should already have
                 attributes ``io`` (an io manager), ``location`` (string),
                 and ``arrays`` (dict of ``{array_id: array}``, can be empty
                 or can already have some or all of the arrays present, they
@@ -113,12 +113,12 @@ class Formatter:
 
     def write_metadata(self, data_set, io_manager, location, read_first=True):
         """
-        Write the metadata for this DataSet to storage.
+        Write the metadata for this DataSetPP to storage.
 
         Subclasses must override this method.
 
         Args:
-            data_set (DataSet): the data we are writing.
+            data_set (DataSetPP): the data we are writing.
             io_manager (io_manager): base physical location to write to.
             location (str): the file location within the io_manager.
             read_first (bool, optional): whether to first look for previously
@@ -129,25 +129,25 @@ class Formatter:
 
     def read_metadata(self, data_set):
         """
-        Read the metadata from this DataSet from storage.
+        Read the metadata from this DataSetPP from storage.
 
         Subclasses must override this method.
 
         Args:
-            data_set (DataSet): the data to read metadata into
+            data_set (DataSetPP): the data to read metadata into
         """
         raise NotImplementedError
 
     def read_one_file(self, data_set, f, ids_read):
         """
-        Read data from a single file into a ``DataSet``.
+        Read data from a single file into a ``DataSetPP``.
 
-        Formatter subclasses that break a DataSet into multiple data files may
+        Formatter subclasses that break a DataSetPP into multiple data files may
         choose to override either this method, which handles one file at a
         time, or ``read`` which finds matching files on its own.
 
         Args:
-            data_set (DataSet): the data we are reading into.
+            data_set (DataSetPP): the data we are reading into.
 
             f (file-like): a file-like object to read from, as provided by
                 ``io_manager.open``.
@@ -291,7 +291,7 @@ class Formatter:
         together in one file.
 
         Args:
-            arrays (Dict[DataArray]): all the arrays in a DataSet
+            arrays (Dict[DataArray]): all the arrays in a DataSetPP
 
         Returns:
             List[Formatter.ArrayGroup]: namedtuples giving:

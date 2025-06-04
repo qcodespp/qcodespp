@@ -48,7 +48,7 @@ from qcodespp.plotting.offline.filters import Filter
 from qcodespp.plotting.offline.datatypes import DataItem, BaseClassData, NumpyData, InternalData, MixedInternalData
 from qcodespp.plotting.offline.qcodes_pp_extension import qcodesppData
 
-from qcodespp.data.data_set import DataSet
+from qcodespp.data.data_set import DataSetPP
 
 # UI settings
 DARK_THEME = True
@@ -215,10 +215,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.update_link_to_folder(folder=folder)
             except Exception as e:
                 print(f'Failed to link to folder {folder}:', e)
-        elif link_to_default and os.path.isdir(DataSet.default_folder):
+        elif link_to_default and os.path.isdir(DataSetPP.default_folder):
             try:
-                print(f'Linking to qcodespp data folder at {DataSet.default_folder}... This may take some time.')
-                self.update_link_to_folder(folder=DataSet.default_folder)
+                print(f'Linking to qcodespp data folder at {DataSetPP.default_folder}... This may take some time.')
+                self.update_link_to_folder(folder=DataSetPP.default_folder)
             except:
                 pass
     
