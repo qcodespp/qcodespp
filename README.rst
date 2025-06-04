@@ -13,9 +13,9 @@ frontend to the solid backend of qcodes. If you have always wanted to run
 your measurements using python but found qcodes too daunting, qcodes++ is 
 the package for you. Qcodes++ features
 
-- Text-based data (i.e. readable by e.g. notepad, excel, origin pro, etc)
+- Text-based data (i.e. readable by e.g. notepad, excel, origin pro, etc) (note 1)
 
-- A simple yet powerful method for taking data and running measurements and loops
+- A simple yet powerful method for taking data and running measurements and loops (note 1)
 
 - True live plotting and an integrated offline plotting/analysis tool
 
@@ -33,16 +33,19 @@ are used to doing 'import qcodes as qc', and then e.g. using qc.Station, you sho
 'import qcodespp as qc', and continute to use qc.Station, qc.Parameter, etc. as before. For deeper-level
 functions (most importantly instrument drivers), you can simply continue to use e.g. 
 qcodes.instrument_drivers.tektronix.Keithley2400, or migrate to the qcodes++ version if one is available, and you prefer to.
-TL;DR, you lose nothing by installing qcodes++ ontop of qcodes.
+TL;DR, you lose nothing by installing qcodes++ ontop of qcodes, but hopefully gain a bunch of user-friendly features.
 
 QCoDeS and qcodes++ are compatible with Python 3.9+. They are primarily intended for use
 from Jupyter notebooks and Jupyter lab, but can also be used from Spyder, traditional terminal-based
 shells and in stand-alone scripts.
 
-In addition to being a really stupid pun on q(c++), the name reflects the fact that the main purpose 
-of this package is really just to add some cool stuff our lab has worked on over the years. 
-And it also makes me happy because totally coincidentally we have always named our plotting windows 
-pp, e.g. pp = qcpp.live_plot().
+The name: In addition to being a really stupid pun on q(c++), it reflects the fact that really we just want 
+to add some nice features to the main package, and also it makes me happy because totally 
+coincidentally we have always named our plotting windows pp, e.g. pp = qcpp.live_plot().
+
+Note 1: These features actually used to be part of QCoDeS but were replaced by the database-based dataset.
+In some sense, this package is an 'OG' qcodes; it may be more limited on the backend, but those limitations 
+mean we have instead been able to focus on things like user-friendliness and making cool plotting tools.
 
 Docs
 ====

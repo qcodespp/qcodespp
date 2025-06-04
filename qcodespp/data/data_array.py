@@ -9,6 +9,7 @@ class DataArray(DelegateAttributes):
     """
     A container for one parameter in a qcodespp DataSetPP
 
+    A DataArray can either be a setpoint array or a measured parameter.
     If this is a measured parameter, this object doesn't contain
     the data of the setpoints it was measured at, but it references
     the DataArray objects of these parameters. Those objects only have

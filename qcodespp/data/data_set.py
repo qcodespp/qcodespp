@@ -89,7 +89,8 @@ def new_data(location=None, loc_record=None, name=None, overwrite=False,
 
 def data_set_from_arrays(datasetname=None,arrays=None,arraynames=None,labels=None,units=None,station=None):
     """
-    Create and return a new DataSetPP filled with data from pre-existing python arrays. 
+    Create and return a new DataSetPP filled with data from pre-existing python arrays.
+
     Typically used for recording arrays of time-coincident measurements from an instrument buffer.
     Data is assumed to be one dimensional and first array in arrays is assumed to be the setpoint.
     Example: 
@@ -172,10 +173,14 @@ def load_data(location=None, formatter=None, io=None, include_metadata=True):
 
 def load_data_num(number, datafolder="data", delimiter='_',leadingzeros=3,include_metadata=True):
     """
-    Loads data in the datafolder using only the data's number.
+    Load a qcodespp DataSetPP using the counter as identifier.
+
+    Typically qcodespp DataSetPPs are forced to use the format counter_name_date_time,
+    where the counter is a zero-padded integer. This function will search for
+    a folder with the given counter number, and load the data from it.
 
     Args:
-        number (str or int): the dataset's number
+        number (str or int): the dataset's counter number
         datafolder (str, optional): the folder to load from. Default is the
             current live DataSetPP.
             Note that the full path to or physical location of the data is a
@@ -200,7 +205,7 @@ def load_data_num(number, datafolder="data", delimiter='_',leadingzeros=3,includ
 
 def load_data_nums(listofnumbers, datafolder="data",delimiter='_',leadingzeros=3,include_metadata=True):
     """
-    Loads numerous datasets from the datafolder by number alone.
+    Loads numerous DataSetPPs from the specified folder by counter number.
 
     Args:
         litsofnumbers (list of strings or ints): list of desired dataset numbers.
@@ -241,9 +246,9 @@ def set_data_folder(folder='data'):
 class DataSetPP(DelegateAttributes):
 
     """
-    A container for one complete measurement from measure.Measure or loops.Loop.
+    A container for one complete measurement from qcodespp.Measure or qcodespp.Loop.
 
-    May contain many individual arrays with potentially different
+    Typically contains many individual DataArrays with potentially different
     sizes and dimensionalities.
 
     Normally a DataSetPP should not be instantiated directly, but through
