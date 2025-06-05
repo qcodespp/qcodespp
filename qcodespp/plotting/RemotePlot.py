@@ -12,33 +12,42 @@ from qcodespp.data.data_array import DataArray
 from qcodespp.utils.helpers import NumpyJSONEncoder
 from qcodespp import Parameter
 
-def live_plot(data_set=None, dataitems=None):
+def live_plot(data_set=None, data_items=None):
     """
-    Entry point for live plotting of a data set.
+    Entry point for live plotting of qcodespp data.
 
     Args:
         data_set (DataSetPP, optional): The DataSetPP to link to the live plot.
-            If not provided, it will use the default dataset.
-        *data_arrays (DataArray, optional): List of DataArray or Parameter objects to plot.
+            If not provided, it will try to use the default dataset.
+            If no data_set, one can add items to the plot, but the data will not be tracked.
+        *data_items (DataArray, optional): List of DataArray or Parameter objects to plot.
             If not provided, nothing will be plotted initially, the user can use Plot.add() later.
     Returns:
-        None
+        The Plot instance.
     """
     plot = Plot()
     if data_set is None and DataSetPP.default_dataset is not None:
         data_set = DataSetPP.default_dataset
-    else:
-        print('No default dataset found; please provide a dataset to plot.')
-    data_set.publisher=plot
-    if dataitems:
+    if data_set:
+        data_set.publisher=plot
+    if data_items:
         new_items=[]
-        for item in dataitems:
-            if isinstance(item, Parameter):
+        for item in data_items:
+            if isinstance(item, Parameter) and not data_set:
+                raise ValueError('Parameters only accepted to data_items if a data_set is also provided.')
+            elif isinstance(item, Parameter):
                 for array in data_set.arrays:
                     if item.full_name in array:
                         new_items.append(data_set.arrays[array])
             elif isinstance(item, DataArray):
                 new_items.append(item)
+                if not data_set:
+                    try: # Try ONE more time to link some kind of data set to the plot.
+                        item.data_set.publisher = plot
+                    except:
+                        pass
+            else:
+                raise TypeError('data_items must be either DataArray or Parameter objects, not %s.' % type(item))
         plot.add_multiple(*new_items)
     return plot
 

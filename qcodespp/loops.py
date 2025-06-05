@@ -670,9 +670,8 @@ class ActiveLoop(Metadatable):
         else:
             if hasattr(self.sweep_values.parameter, 'data_type'):
                 data_type = self.sweep_values.parameter.data_type
-                if data_type != float:
-                    if data_type != str:
-                        raise ValueError('Parameter data_type must be either float or str')
+                if data_type not in [float, str]:
+                    raise ValueError('Parameter data_type must be either float or str')
             else:
                 data_type=float
             loop_array = DataArray(parameter=self.sweep_values.parameter,

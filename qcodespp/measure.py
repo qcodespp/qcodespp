@@ -109,15 +109,11 @@ class Measure(Metadatable):
                 setpoint_arrays.append(setpoint_array)
             
         # Then the actions
-        if self.actions:
-            actions= self.actions
-        else:
-            actions = self.station.measure()
-            self.acions = actions
+        if not self.actions:
+            self.actions = self.station.measure()
         if self.timer==False:
-            actions = [action for action in actions if action.name != 'timer']
-            self.actions = actions
-        for action in actions:
+            self.actions = [action for action in self.actions if action.name != 'timer']
+        for action in self.actions:
             if isinstance(action, Parameter):
                 if hasattr(action, 'shape'):
                     action_shape = action.shape
