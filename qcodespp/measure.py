@@ -32,17 +32,19 @@ class Measure(Metadatable):
         data = measure.run()
 
     Args:
-        setpoints (Optional, Parameter or Array): sequence of setpoints to
-            use for the DataSetPP. Can be an array of values, or a gettable Parameter, from which
+        setpoints (Optional, Sequence[Parameter or Array]): sequence of setpoint arrays
+            use for the DataSetPP. Can be array(s) of values, or gettable Parameter(s), from which
             Measure will deduce the dimension. The latter is useful if you 
             have a parameter which you measure, but is considered the independent variable.
             e.g. time on an oscilloscope, or a voltage ramp on a source.
-            If not provided, dummy setpoints are created for each dimension found in the actions.
-        parameters (Opetional, Sequence[Parameter]): Sequence of gettable Parameters.
+            As a minimum, you must provide a setpoint array with the same shape as the measured parameters.
+            You may also provide multiple setpoints to cover all dimensions of the measured parameters.
+            If not provided, dummy setpoints are created for each dimension found in the parameters.
+        parameters (Optional, Sequence[Parameter]): Sequence of gettable Parameters.
             If no actions are provided, the default station.measure() is used.
     """
 
-    def __init__(self, name=None,setpoints=None, parameters=None,station=None, timer=False, use_threads=False):
+    def __init__(self, setpoints=None, parameters=None,use_threads=False,station=None,name=None, timer=False):
         super().__init__()
         self.station = station or Station.default
         self.use_threads = use_threads
@@ -75,74 +77,89 @@ class Measure(Metadatable):
     
     def _containers(self):
         """
-        Finds the data arrays that will be created by the actions and setpoints
+        Makes the DataArrays to hold the setpoints and measured parameters.
         """
+        setpoint_arrays=[]
+        action_arrays=[]
         arrays=[]
+        self.params_to_measure=[] # Keep track of the parameters that will eventually need to be measured
         setpoints=self.setpoints
         # Start with the setpoints. If no setpoints are provided, they will be automatically created
         # when the actions are processed.
 
-        if np.shape(setpoints): # Then the setpoints are a list or array of values
-            setpoint_array=DataArray(label='Setpoints',
-                                    unit='',
-                                    array_id='setpoints',
-                                    name='setpoints',
-                                    is_setpoint=True,
-                                    preset_data=setpoints)
-            setpoint_array.init_data()
-            arrays.append(setpoint_array)
-
-        elif setpoints and isinstance(setpoints, Parameter):
-            # arrays.append(DataArray(label=setpoints.label,unit=setpoints.unit,array_id=setpoints.full_name,
-            #                         name=setpoints.name,is_setpoint=True))
-            if hasattr(setpoints, 'shape'):
-                shape = setpoints.shape
-            else:
-                shape = np.shape(setpoints.get_latest())
-            setpoint_array= DataArray(parameter=setpoints, shape=shape, is_setpoint=True)
-            setpoint_array.init_data()
-            arrays.append(setpoint_array)
-
-        elif setpoints:
-            raise TypeError("setpoints must be a Parameter or an array-like object")
+        if setpoints:
+            for i,sp in enumerate(setpoints):
+                if np.shape(sp): # If sp has a shape, it is an array-like object
+                    setpoint_array = DataArray(label='Setpoints',
+                                            unit='',
+                                            array_id=f'setpoints_{i}',
+                                            name=f'setpoints_{i}',
+                                            is_setpoint=True,
+                                            preset_data=sp)
+                elif isinstance(sp, Parameter):
+                    if hasattr(sp, 'shape'):
+                        shape = sp.shape
+                    else:
+                        shape = np.shape(sp.get_latest())
+                    setpoint_array = DataArray(parameter=sp, shape=shape, is_setpoint=True)
+                    self.params_to_measure.append(sp)
+                else:
+                    raise TypeError("Setpoints element must be a Parameter or an array-like object")
+                setpoint_array.init_data()
+                setpoint_arrays.append(setpoint_array)
             
         # Then the actions
         if self.actions:
             actions= self.actions
         else:
             actions = self.station.measure()
+            self.acions = actions
         if self.timer==False:
             actions = [action for action in actions if action.name != 'timer']
+            self.actions = actions
         for action in actions:
             if isinstance(action, Parameter):
                 if hasattr(action, 'shape'):
-                    shape = action.shape
+                    action_shape = action.shape
                 else:
-                    shape = np.shape(action.get_latest())
+                    action_shape = np.shape(action.get_latest())
+                if action_shape == ():
+                    # If the action is a scalar, we need to make it a 1D array
+                    action_shape = (1,)
 
-                # Try to find the appropriate setpoint array for this action
-                setpoint_array=False
-                for array in arrays:
-                    if array.is_setpoint and array.shape == shape:
-                        setpoint_array=array
-                        break
+                # Try to find the appropriate setpoint arrays for this action
+                action_setpoint_arrays=()
+                for i in range(np.shape(action_shape)[0]):
+                    sub_shape = action_shape[:i+1] # Find arrays with appropriate shape for each dimension
+                                                    #e.g. (10, 20, 30) -> (10,), (10, 20), (10, 20, 30)
+                    setpoint_array=False
+                    for array in setpoint_arrays:
+                        if array.shape == sub_shape:
+                            setpoint_array=array
+                            break
 
-                if not setpoint_array:
-                    # If no setpoint array found, create a dummy setpoint array for this action
-                    num_setpoint_arrays = len([array for array in arrays if array.is_setpoint])
-                    init_array=np.arange(0,shape[0],1)
-                    dummy_setpoints=np.tile(init_array,shape[1:]).reshape(shape[::-1])
-                    setpoint_array=DataArray(label='Setpoints',
-                                            unit='',
-                                            array_id=f'setpoints_{num_setpoint_arrays}',
-                                            name=f'setpoints_{num_setpoint_arrays}',
-                                            is_setpoint=True,
-                                            preset_data=dummy_setpoints)
-                    setpoint_array.init_data()
-                    arrays.append(setpoint_array)
-                action_array=DataArray(parameter=action, shape=shape, is_setpoint=False, set_arrays=(setpoint_array,))
+                    if not setpoint_array:
+                        # If no setpoint array found, create a dummy setpoint array for this action with the approrpriate dimension/shape.
+                        num_setpoint_arrays = len(setpoint_arrays)
+                        init_array=np.arange(0,sub_shape[-1],1)
+                        dummy_setpoints=np.tile(init_array,sub_shape[:-1]).reshape(sub_shape)
+                        setpoint_array=DataArray(label='Setpoints',
+                                                unit='',
+                                                array_id=f'setpoints_{num_setpoint_arrays}',
+                                                name=f'setpoints_{num_setpoint_arrays}',
+                                                is_setpoint=True,
+                                                preset_data=dummy_setpoints)
+                        setpoint_array.init_data()
+                        setpoint_arrays.append(setpoint_array)
+
+                    action_setpoint_arrays=action_setpoint_arrays + (setpoint_array,)
+                action_array=DataArray(parameter=action, shape=action_shape, is_setpoint=False, set_arrays=action_setpoint_arrays)
                 action_array.init_data()
-                arrays.append(action_array)
+                action_arrays.append(action_array)
+                self.params_to_measure.append(action)
+        arrays = setpoint_arrays + action_arrays
+
+        # Once all the arrays are created, need to put them in the 'right' order.
         return arrays
 
     def _get_data_set(self):
@@ -166,7 +183,7 @@ class Measure(Metadatable):
                 raise TypeError(f"Expected DataArray, got {type(array)}")
         return self.data_set
 
-    def run(self, params_to_plot=None,use_threads=False, quiet=False, station=None, 
+    def run(self, name=None,params_to_plot=None,use_threads=None, quiet=False, station=None, 
             publisher=None,**kwargs):
         """
         Run the actions in this measurement and return their data as a DataSetPP
@@ -206,7 +223,8 @@ class Measure(Metadatable):
         returns:
             a DataSetPP object containing the results of the measurement
         """
-
+        if name:
+            self.name = name
         data_set = self._get_data_set()
         if publisher:
             data_set.publisher = publisher
@@ -227,6 +245,9 @@ class Measure(Metadatable):
         if 'timer' in self.data_set.arrays:
             station.timer.reset_clock()
 
+        if use_threads is not None:
+            self.use_threads = use_threads
+
         try:
             self._measure()
                 
@@ -246,8 +267,8 @@ class Measure(Metadatable):
         Actually perform the measurement.
         """
         out_dict = {}
-        param_ids = [action.full_name for action in self.actions if isinstance(action, Parameter)]
-        getters=[action.get for action in self.actions if isinstance(action, Parameter)]
+
+        param_ids, getters = zip(*((param.full_name, param.get) for param in self.params_to_measure))
 
         if self.use_threads:
             out = thread_map(self.getters)
@@ -255,6 +276,9 @@ class Measure(Metadatable):
             out = [g() for g in getters]
 
         for param_out, param_id in zip(out, param_ids):
+            # if np.shape(np.shape(param_out))[0] >1:
+            #     print('yes')
+            #     param_out.flatten()
             out_dict[param_id] = param_out
 
         self.data_set.store(loop_indices='all', ids_values=out_dict)
@@ -264,3 +288,4 @@ class Measure(Metadatable):
             '__class__': full_class(self),
             'actions': _actions_snapshot(self.actions, update)
         }
+
