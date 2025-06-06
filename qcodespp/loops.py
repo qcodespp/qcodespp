@@ -1064,9 +1064,8 @@ class ActiveLoop(Metadatable):
             # again. But also if something went wrong during the loop execution
             # we want to clear the data_set attribute so we don't try to reuse
             # this one later.
-            # DC disagrees with the above, so I comment out the below.
-            # If it becomes a major problem we can revisit it. 31/05/2025
-            #self.data_set = None
+
+            self.data_set = None
             if set_active:
                 ActiveLoop.active_loop = None
 

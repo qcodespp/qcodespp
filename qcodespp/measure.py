@@ -18,30 +18,58 @@ class Measure(Metadatable):
     """
     Class to create a DataSetPP from a single (non-looped) set of measured parameters.
 
-    This class is used exclusively to measure a set of parameters at a singple point in time.
+    Measure is used to measure a set of parameters at a single point in time.
     The typical use case is where the parameter(s)'s get function(s) return(s) an array, e.g. 
     an oscilloscope trace, or a spectrum analyser trace.
-    The class is initiated with a sequence of setpoints and parameters. If no parameters are 
+    At init, you can provide the parameters to measure and (very optionally, because it's hard to 
+    get it right) the relevant setpoints. If no parameters are 
     provided, the default station.measure() is used.
     If no setpoints are provided, dummy setpoints are created for each dimension
     found in the parameters.
-    Measure.run() will then execute the measurement and return and save a DataSetPP
 
-    Usage:
-        measure = Measure(name='Name for dataset filename',setpoints=Param_1)
-        data = measure.run()
+    Measure.run() will execute the measurement, and return and save a DataSetPP
+
+    Examples:
+        Measure two parameters:
+        >>> station.set_measurement(array_param1, array_param2)
+        >>> data = Measure(name='Name for dataset filename').run()
+
+        Measure two parameters twice, changing some value in between:
+        >>> station.set_measurement(array_param1, array_param2)
+        >>> measure = Measure()
+        >>> data=measure.run(name='instrument parameter value = 0')
+        >>> instrument.some_parameter(1.0)  # Set some parameter to a value
+        >>> data=measure.run(name='instrument parameter value = 1')
+
+        Iteratively:
+        >>> station.set_measurement(array_param1, array_param2)
+        >>> measure = Measure()
+        >>> for i in range(10):
+        >>>     instrument.some_parameter(i)  # Set some parameter to a value
+        >>>     data=measure.run(name=f'iteration {i}')
 
     Args:
-        setpoints (Optional, Sequence[Parameter or Array]): sequence of setpoint arrays
-            use for the DataSetPP. Can be array(s) of values, or gettable Parameter(s), from which
-            Measure will deduce the dimension. The latter is useful if you 
-            have a parameter which you measure, but is considered the independent variable.
-            e.g. time on an oscilloscope, or a voltage ramp on a source.
-            As a minimum, you must provide a setpoint array with the same shape as the measured parameters.
-            You may also provide multiple setpoints to cover all dimensions of the measured parameters.
-            If not provided, dummy setpoints are created for each dimension found in the parameters.
         parameters (Optional, Sequence[Parameter]): Sequence of gettable Parameters.
             If no actions are provided, the default station.measure() is used.
+
+        name (Optional, str): String to send to the filename of the DataSet.
+
+        station (Optional, Station): The ``Station`` to use if not the default.
+
+        use_threads (Optional, bool): Use threading to parallelize getting parameters from instruments.
+
+        setpoints (Optional, Sequence[Parameter or Array]): sequence of setpoint arrays
+            use for the DataSetPP. Can be array(s) of values, or gettable Parameter(s). 
+            If not provided, dummy setpoints are created for each dimension found in the parameters.
+            Providing a setpoint parameter may be useful if you measure a parameter that is considered the 
+            independent variable. e.g. time on an oscilloscope, or a voltage ramp on a source. live_plot 
+            and offline_plotting will then be able to plot the correct dependencies automatically. However; 
+            it can be tricky to get all the dimensions right, so in most instances it's better to just pass 
+            all measured parameters to the parameters argument, and then plot whatever parameter against 
+            whatever other parameter manually. 
+    
+        timer (Optional, bool): The default station.measure() includes a timer parameter, which is useful for
+            Loops but essentially useless here. If you really want it, set timer=True.
     """
 
     def __init__(self, setpoints=None, parameters=None,use_threads=False,station=None,name=None, timer=False):
@@ -83,12 +111,11 @@ class Measure(Metadatable):
         action_arrays=[]
         arrays=[]
         self.params_to_measure=[] # Keep track of the parameters that will eventually need to be measured
-        setpoints=self.setpoints
         # Start with the setpoints. If no setpoints are provided, they will be automatically created
         # when the actions are processed.
 
-        if setpoints:
-            for i,sp in enumerate(setpoints):
+        if self.setpoints:
+            for i,sp in enumerate(self.setpoints):
                 if np.shape(sp): # If sp has a shape, it is an array-like object
                     setpoint_array = DataArray(label='Setpoints',
                                             unit='',
@@ -108,10 +135,10 @@ class Measure(Metadatable):
                 setpoint_array.init_data()
                 setpoint_arrays.append(setpoint_array)
             
-        # Then the actions
+        # Then the actions (aka measured parameters).
         if not self.actions:
             self.actions = self.station.measure()
-        if self.timer==False:
+        if self.timer==False: # Useful in the Loop, so is included in station.measure() by default, but is completely useless here.
             self.actions = [action for action in self.actions if action.name != 'timer']
         for action in self.actions:
             if isinstance(action, Parameter):
@@ -120,7 +147,7 @@ class Measure(Metadatable):
                 else:
                     action_shape = np.shape(action.get_latest())
                 if action_shape == ():
-                    # If the action is a scalar, we need to make it a 1D array
+                    # If the action is a scalar, make it a 1D array with a single element.
                     action_shape = (1,)
 
                 # Try to find the appropriate setpoint arrays for this action
@@ -155,7 +182,9 @@ class Measure(Metadatable):
                 self.params_to_measure.append(action)
         arrays = setpoint_arrays + action_arrays
 
-        # Once all the arrays are created, need to put them in the 'right' order.
+        # A potential TODO here: I feel like that in general the setpoints and measurement arrays will be created in the 'right' order,
+        # but maybe there are cases when this doesn't happen? If we run into such unintuitive cases, we could sort the arrays.
+        # Eg at the moment it's ALL setpoints, then ALL measured params, but maybe it's more intuative to group the setpoints and measured params.
         return arrays
 
     def _get_data_set(self):
@@ -165,12 +194,6 @@ class Measure(Metadatable):
         In contrast to Loop, this should not be called directly, but only
         when the user calls Measure.run()
         """
-        #return self._dummyLoop.get_data_set(*args, **kwargs)
-        # What this should actually do:
-        # 1) Go through all actions, and if the action is a Parameter,
-        #  find the dimension of the data it returns. check if dummy setpoints
-        #  already exist, and if not, create them.
-        # 2) Create a DataSetPP with the correct setpoints and actions
         self.data_set=new_data(name=self.name)
         for array in self._containers():
             if isinstance(array, DataArray):
@@ -262,24 +285,24 @@ class Measure(Metadatable):
         """
         Actually perform the measurement.
         """
+        # TODO: At the moment there is none of the optimisations that (allegedly) exist in Loop,
+        # such as trying to group gettable parameters that have the same source.
         out_dict = {}
 
         param_ids, getters = zip(*((param.full_name, param.get) for param in self.params_to_measure))
 
-        if self.use_threads:
+        if self.use_threads: # Not tested
             out = thread_map(self.getters)
         else:
             out = [g() for g in getters]
 
         for param_out, param_id in zip(out, param_ids):
-            # if np.shape(np.shape(param_out))[0] >1:
-            #     print('yes')
-            #     param_out.flatten()
             out_dict[param_id] = param_out
 
         self.data_set.store(loop_indices='all', ids_values=out_dict)
 
     def snapshot_base(self, update=False):
+        # TODO: Make sure the snapshot contains all the necessary information
         return {
             '__class__': full_class(self),
             'actions': _actions_snapshot(self.actions, update)
