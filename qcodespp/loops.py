@@ -732,14 +732,18 @@ class ActiveLoop(Metadatable):
         else:
             units = tuple(['']*len(names))
         num_arrays = len(names)
-        shapes = getattr(action, 'shapes', None)
+        shapes = getattr(action, 'shapes', None) #MultiParameter
         sp_vals = getattr(action, 'setpoints', None)
         sp_names = getattr(action, 'setpoint_names', None)
         sp_labels = getattr(action, 'setpoint_labels', None)
         sp_units = getattr(action, 'setpoint_units', None)
 
-        if shapes is None:
-            shapes = (getattr(action, 'shape', ()),) * num_arrays
+        if shapes is None: #then it's not a MultiParameter
+            #shapes = (getattr(action, 'shape', ()),) * num_arrays
+            if hasattr(action, 'shape'): # ArrayParameter
+                shapes = (action.shape,) * num_arrays
+            else: # Parameter. Should only ever be a scalar, but there is currently nothing preventing the user from making a get_cmd that returns an array.
+                shapes = (np.shape(action.get_latest()),) * num_arrays
             sp_vals = (sp_vals,) * num_arrays
             sp_names = (sp_names,) * num_arrays
             sp_labels = (sp_labels,) * num_arrays

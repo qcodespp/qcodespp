@@ -21,11 +21,10 @@ class Measure(Metadatable):
     Measure is used to measure a set of parameters at a single point in time.
     The typical use case is where the parameter(s)'s get function(s) return(s) an array, e.g. 
     an oscilloscope trace, or a spectrum analyser trace.
-    At init, you can provide the parameters to measure and (very optionally, because it's hard to 
-    get it right) the relevant setpoints. If no parameters are 
+    At init, you can provide the parameters to measure and (optionally) setpoints. If no parameters are 
     provided, the default station.measure() is used.
     If no setpoints are provided, dummy setpoints are created for each dimension
-    found in the parameters.
+    found in the parametersn (recommended, see below).
 
     Measure.run() will execute the measurement, and return and save a DataSetPP
 
@@ -141,8 +140,8 @@ class Measure(Metadatable):
         if self.timer==False: # Useful in the Loop, so is included in station.measure() by default, but is completely useless here.
             self.actions = [action for action in self.actions if action.name != 'timer']
         for action in self.actions:
-            if isinstance(action, Parameter):
-                if hasattr(action, 'shape'):
+            if hasattr(action, '_gettable') and action._gettable: # basically, is this any kind of gettable parameter.
+                if hasattr(action, 'shape'): # for ArrayParameter
                     action_shape = action.shape
                 else:
                     action_shape = np.shape(action.get_latest())
