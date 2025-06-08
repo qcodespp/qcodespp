@@ -118,7 +118,7 @@ class DataArray(DelegateAttributes):
     def __init__(self, parameter=None, name=None, full_name=None, label=None,
                  snapshot=None, array_id=None, set_arrays=(), shape=None,
                  action_indices=(), unit=None, units=None, is_setpoint=False,
-                 preset_data=None,data_type=float):
+                 preset_data=None,data_type=None):
         self.name = name
         self.full_name = full_name or name
         self.label = label
@@ -132,6 +132,13 @@ class DataArray(DelegateAttributes):
         self.is_setpoint = is_setpoint
         self.action_indices = action_indices
         self.set_arrays = set_arrays
+        if data_type is None and parameter:
+            try:
+                data_type = type(parameter.get_latest())
+            except:
+                data_type = float
+        if data_type not in [float, str]:
+            data_type = float
         self.data_type=data_type
 
         self._preset = False

@@ -87,55 +87,6 @@ def new_data(location=None, loc_record=None, name=None, overwrite=False,
 
     return DataSetPP(location=location, io=io, backup_location=backup_location, force_write=force_write, name=name, **kwargs)
 
-def data_set_from_arrays(datasetname=None,arrays=None,arraynames=None,labels=None,units=None,station=None):
-    """
-    Create and return a new DataSetPP filled with data from pre-existing python arrays.
-
-    Typically used for recording arrays of time-coincident measurements from an instrument buffer.
-    Data is assumed to be one dimensional and first array in arrays is assumed to be the setpoint.
-    Example: 
-    data=data_set_from_arrays(datasetname='Dev1 4pt scope measurement',
-                                arrays=[scope_time,scope_input1,scope_input2],
-                                arraynames=['time','input1','input2'],
-                                labels=['time','Voltage','Voltage']
-                                units=['s','V','V'])
-
-    TODO: Work out multi-dimensional, in case it one day becomes relevant
-    """
-
-    if arraynames is None:
-        arraynames=[f'array{i}' for i,array in enumerate(arrays)]
-    if labels is None:
-        labels=arraynames
-    if units is None:
-        units=['' for array in arrays]
-
-    # if np.shape(arraynames)[0]!=np.shape(arrays)[0] or np.shape(labels)[0]!=np.shape(arrays)[0] or np.shape(units)[0]!=np.shape(arrays)[0]:
-    #     raise ValueError('Number of arraynames, labels and units must match number of arrays')
-    
-    data=new_data(name=datasetname)
-    
-    for i,array in enumerate(arrays):
-        if i==0:
-            xarray=DataArray(label=labels[i],unit=units[i],array_id=arraynames[i],name=arraynames[i],preset_data=arrays[i],is_setpoint=True)
-            data.add_array(xarray)
-        else:
-            data.add_array(DataArray(label=labels[i],unit=units[i],array_id=arraynames[i],name=arraynames[i],preset_data=arrays[i],set_arrays=(xarray,)))
-
-    station = station or Station.default
-    if station is not None:
-        data.add_metadata({'station': station.snapshot()})
-
-    ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    data.add_metadata({'measurement': {
-        'timestamp': ts,
-    }})
-
-    data.save_metadata()
-    data.finalize()
-
-    return data
-
 def load_data(location=None, formatter=None, io=None, include_metadata=True):
     """
     Load an existing DataSetPP.
@@ -248,11 +199,20 @@ class DataSetPP(DelegateAttributes):
     """
     A container for one complete measurement from qcodespp.Measure or qcodespp.Loop.
 
-    Typically contains many individual DataArrays with potentially different
-    sizes and dimensionalities.
+    A DataSetPP consists of multiple DataArrays with potentially different 
+    sizes and dimensionalities. It is accompanied by metadata containing snapshots 
+    of different qcodespp classes, e.g. Instruments and Parameters in the Station.
 
-    Normally a DataSetPP should not be instantiated directly, but through
-    ``new_data`` or ``load_data``.
+    A DataSetPP should not be instantiated directly, but constructed by qcodespp.Measure 
+    or qcodespp.Loop. A pre-existing DataSetPP can be loaded with qcodespp.load_data, 
+    load_data_num, or load_data_nums.
+
+    The default format for storage is (a) text file(s) with GNUPlotFormat, where the 
+    DataArrays are converted to numpy arrays. This means that each DataArray must be 
+    rectangular, and all elements must be of the same type. Currently, types are limited 
+    to float or str; however, almost any type other than str can be converted to a float, 
+    and this is done automatically; e.g. boolean --> (0,1). 
+    DataArrays which are also Setpoints can only be of type float.
 
     Args:
         location (str or False): A location in the io manager, or ``False`` for
@@ -604,7 +564,7 @@ class DataSetPP(DelegateAttributes):
         for array_id, value in ids_values.items():
             if type(loop_indices) is tuple:
                 self.arrays[array_id][loop_indices] = value
-            elif loop_indices=='all':
+            elif loop_indices=='all': # from Measure
                 self.arrays[array_id][:] = value
         self.last_store = time.time()
 
@@ -698,6 +658,7 @@ class DataSetPP(DelegateAttributes):
     def write(self, write_metadata=False, only_complete=True, filename=None, force_rewrite=False):
         """
         Writes updates to the DataSetPP to storage.
+
         N.B. it is recommended to call data_set.finalize() when a DataSetPP is
         no longer expected to change to ensure files get closed
 
