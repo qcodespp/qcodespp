@@ -126,7 +126,7 @@ def colored_traces(x,y, offset=0,figsize=0, cmap=0, labels=0, xlim=0, ylim=0, xm
     elif np.shape(np.shape(x)) == (1,):
         x = np.tile(x, (np.shape(y)[0], 1))
     
-    colors= plt.cm.get_cmap(cmap)(np.linspace(0.1,0.9, np.shape(y)[0]))
+    colors= plt.get_cmap(cmap)(np.linspace(0.1,0.9, np.shape(y)[0]))
     for i in range(np.shape(y)[0]):
         ax1.plot(x[i], y[i]+offset*i, color=colors[i])
 
