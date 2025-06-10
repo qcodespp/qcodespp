@@ -11,7 +11,7 @@ by attaching one or more actions to it, using the .each method.
 Actions can be: parameters to measure, tasks to run, waits, or other loops.
 
 3. Associate the ActiveLoop with a DataSetPP, which will hold the data collected,
-using ActiveLoop.get_data_set().
+using the .get_data_set method.
 
 4. Run the ActiveLoop with the .run method, which additionally can be passed
 parameters to be plotted using live_plot.
@@ -34,6 +34,7 @@ Some examples:
 However, these simple examples are covered by the convenience functions
 loop1d and loop2d, which also take care of data_set definition and naming and live plotting.
 A more realistic example of a 2D loop would be:
+
 >>> loop,data,plot = loop2d(
     parameter1, 0, 1, 11, 0.1,
     parameter2, -1, 0, 101, 0.1,
@@ -45,11 +46,11 @@ A more realistic example of a 2D loop would be:
 
 Supported commands to .each are:
 
-    - Parameter: anything with a .get method and .name or .names
-    - ActiveLoop (or Loop, will be activated with default measurement)
-    - Task: any callable that does not generate data, e.g. a function
-    - BreakIf: a condition that will break the loop if True, e.g. BreakIf(lambda: param1()>10)
-    - Wait: a delay
+- Parameter: anything with a .get method and .name or .names
+- ActiveLoop (or Loop, will be activated with default measurement)
+- Task: any callable that does not generate data, e.g. a function
+- BreakIf: a condition that will break the loop if True, e.g. BreakIf(lambda: param1()>10)
+- Wait: a delay
 """
 
 from datetime import datetime
@@ -91,22 +92,31 @@ def loop1d(sweep_parameter,
     initiates the data set and live plotting window.
 
     Args:
-        sweep_parameter: The parameter to sweep over.
-        start: the start value of the sweep.
-        stop: the stop value of the sweep.
-        num: the number of points in the sweep.
-        delay: the number of seconds to wait after setting a value before
-            measuring.
-        device_info: a string with information about the device
-        instrument_info: a string with information about the setup that will not
+        sweep_parameter (Parameter): The qcodes parameter to sweep over.
+
+        start (float): the start value of the sweep.
+
+        stop (float): the stop value of the sweep.
+
+        num (int): the number of points in the sweep.
+
+        delay (float): the number of seconds to wait after setting a value before measuring.
+
+        device_info (str): a string with information about the device
+
+        instrument_info (str): a string with information about the setup that will not
             be captured by the metadata (e.g. voltage dividers, preamp settings)
-        params_to_measure: a list of parameters to measure at each point in the
+
+        params_to_measure (list): a list of parameters to measure at each point in the
             loop. If None, will use the default measurement set by the default station
-        params_to_plot: a list of parameters to plot at each point in the loop.
+
+        params_to_plot (list): a list of parameters to plot at each point in the loop.
+
+        run (bool, default False): run the loop immediately after creation.
 
     Returns:
         The ActiveLoop. The data is accessible as loop.data_set. This can then be used
-        for plotting, if necessary, e.g. pp=qc.live_plot(loop.data_set,params_to_plot)
+            for plotting, if necessary, e.g. pp=qc.live_plot(loop.data_set,params_to_plot)
     """
 
     if params_to_measure is None:
@@ -142,32 +152,49 @@ def loop2d(sweep_parameter,
     At each point in the step parameter, the sweep parameter performs a loop.
 
     Args:
-        sweep_parameter: The parameter to sweep over.
-        start: the start value of the sweep.
-        stop: the stop value of the sweep.
-        num: the number of points in the sweep.
-        delay: the number of seconds to wait after setting a value before
+        sweep_parameter (Parameter): The qcodes parameter to sweep over.
+
+        start (float): the start value of the sweep.
+
+        stop (float): the stop value of the sweep.
+
+        num (int): the number of points in the sweep.
+
+        delay (float): the number of seconds to wait after setting a value before
             measuring.
-        step_parameter: The parameter to step over.
-        step_start: the start value of the step.
-        step_stop: the stop value of the step.
-        step_num: the number of points in the step.
-        step_delay: the number of seconds to wait after setting a value before
+
+        step_parameter (Parameter): The parameter to step over.
+
+        step_start (float): the start value of the step.
+
+        step_stop (float): the stop value of the step.
+
+        step_num (int): the number of points in the step.
+
+        step_delay (float): the number of seconds to wait after setting a value before
             starting the inner loop.
-        snake: Whether to run a normal raster scan (False) or a snake scan (True). If True, the inner loop will
+
+        snake (bool, default False): Whether to run a normal raster scan (False) or a snake scan (True). If True, the inner loop will
             be run in reverse order on every other step of the outer loop.
+
         step_action: an action (e.g. qcodes Task) to run at each point in the step loop AFTER the step parameter
             has been set, but BEFORE the inner loop starts
-        device_info: a string with information about the device
-        instrument_info: a string with information about the setup that will not
+
+        device_info (str): a string with information about the device
+
+        instrument_info (str): a string with information about the setup that will not
             be captured by the metadata (e.g. voltage dividers, preamp settings)
-        params_to_measure: a list of parameters to measure at each point in the
+
+        params_to_measure (list): a list of parameters to measure at each point in the
             loop. If None, will use the default measurement set by the default station
-        params_to_plot: a list of parameters to plot at each point in the loop.
+
+        params_to_plot (list): a list of parameters to plot at each point in the loop.
+
+        run (bool, default False): run the loop immediately after creation.
 
     Returns:
         The ActiveLoop. The data is accessible as loop.data_set. This can then be used
-        for plotting, if necessary, e.g. pp=qc.live_plot(loop.data_set,params_to_plot)
+            for plotting, if necessary, e.g. pp=qc.live_plot(loop.data_set,params_to_plot)
     """
 
     if params_to_measure is None:
@@ -210,31 +237,48 @@ def loop2dUD(sweep_parameter,
     in two directions: up and down. Create also a data set, and optionally, live plotting.
 
     Args:
-        sweep_parameter: The parameter to sweep over.
-        start: the start value of the sweep.
-        stop: the stop value of the sweep.
-        num: the number of points in the sweep.
-        delay: the number of seconds to wait after setting a value before
+        sweep_parameter (Parameter): The qcodes parameter to sweep over.
+
+        start (float): the start value of the sweep.
+
+        stop (float): the stop value of the sweep.
+
+        num (int): the number of points in the sweep.
+
+        delay (float): the number of seconds to wait after setting a value before
             measuring.
-        step_parameter: The parameter to step over.
-        step_start: the start value of the step.
-        step_stop: the stop value of the step.
-        step_num: the number of points in the step.
-        step_delay: the number of seconds to wait after setting a value before
+
+        step_parameter (Parameter): The parameter to step over.
+
+        step_start (float): the start value of the step.
+
+        step_stop (float): the stop value of the step.
+
+        step_num (int): the number of points in the step.
+
+        step_delay (float): the number of seconds to wait after setting a value before
             starting the inner loop.
-        step_action: an action (e.g. qcodes Task) to run at each point in the step loop AFTER the step parameter
-            has been set, but BEFORE the inner loop starts
-        fast_down: If a number, the down loop will be shortened by this factor.
-        device_info: a string with information about the device
-        instrument_info: a string with information about the setup that will not
+
+        step_action: an action (e.g. qcodes Task) to run at each point in the step loop AFTER 
+            the step parameter has been set, but BEFORE the inner loop starts
+
+        fast_down (int): If provided, the down loop will be shortened by this factor.
+
+        device_info (str): a string with information about the device
+
+        instrument_info (str): a string with information about the setup that will not
             be captured by the metadata (e.g. voltage dividers, preamp settings)
-        params_to_measure: a list of parameters to measure at each point in the
+
+        params_to_measure (list): a list of parameters to measure at each point in the
             loop. If None, will use the default measurement set by the default station
-        params_to_plot: a list of parameters to plot at each point in the loop.
+
+        params_to_plot (list): a list of parameters to plot at each point in the loop.
+
+        run (bool, default False): run the loop immediately after creation.
 
     Returns:
         The ActiveLoop. The data is accessible as loop.data_set. This can then be used
-        for plotting, if necessary, e.g. pp=qc.live_plot(loop.data_set,params_to_plot)
+            for plotting, if necessary, e.g. pp=qc.live_plot(loop.data_set,params_to_plot)
     """
 
     if params_to_measure is None:
@@ -268,7 +312,8 @@ def loop2dUD(sweep_parameter,
 
 class Loop(Metadatable):
     """
-    The entry point for creating measurement loops
+    Create a measurement loop to sweep over a parameter and store measured data from other
+    parameters. The results are stored in a qcodespp.data.data_set.DataSetPP container.
 
     Args:
         sweep_values: a SweepValues or compatible object describing what

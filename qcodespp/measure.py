@@ -2,14 +2,12 @@ from datetime import datetime
 import numpy as np
 
 from qcodespp.parameters import Parameter
-from qcodespp.loops import Loop
 from qcodespp.actions import _actions_snapshot
 from qcodes.utils.helpers import full_class
 from qcodes.metadatable import Metadatable
 from qcodespp.station import Station
 from qcodespp.data.data_set import new_data
 from qcodespp.data.data_array import DataArray
-from qcodespp.actions import _Measure
 from qcodespp.actions import _QcodesBreak
 from qcodes.utils.threading import thread_map
 
@@ -30,10 +28,12 @@ class Measure(Metadatable):
 
     Examples:
         Measure two parameters:
+
         >>> station.set_measurement(array_param1, array_param2)
         >>> data = Measure(name='Name for dataset filename').run()
 
         Measure two parameters twice, changing some value in between:
+
         >>> station.set_measurement(array_param1, array_param2)
         >>> measure = Measure()
         >>> data=measure.run(name='instrument parameter value = 0')
@@ -41,6 +41,7 @@ class Measure(Metadatable):
         >>> data=measure.run(name='instrument parameter value = 1')
 
         Iteratively:
+
         >>> station.set_measurement(array_param1, array_param2)
         >>> measure = Measure()
         >>> for i in range(10):
@@ -67,8 +68,8 @@ class Measure(Metadatable):
             all measured parameters to the parameters argument, and then plot whatever parameter against 
             whatever other parameter manually. 
     
-        timer (Optional, bool): The default station.measure() includes a timer parameter, which is useful for
-            Loops but essentially useless here. If you really want it, set timer=True.
+        timer (Optional, bool, default False): The default station.measure() includes a timer parameter, which is
+            useful for Loops but essentially useless here. If you really want it, set timer=True.
     """
 
     def __init__(self, setpoints=None, parameters=None,use_threads=False,station=None,name=None, timer=False):

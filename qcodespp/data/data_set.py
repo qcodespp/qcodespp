@@ -187,9 +187,24 @@ def load_data_nums(listofnumbers, datafolder="data",delimiter='_',leadingzeros=3
     return data
 
 def set_data_format(fmt='data/#{counter}_{name}_{date}_{time}'):
+    """
+    Set the default format for storing DataSetPPs. It is not recommended to alter this: instead use set_data_folder.
+
+    Args:
+        fmt (str): A format string for the location of the data, with wildcards determined by the FormatLocation class.
+    """
+
     DataSetPP.location_provider=FormatLocation(fmt=fmt)
 
 def set_data_folder(folder='data'):
+    """
+    Set the default folder for storing DataSetPPs.
+
+    Args:
+        folder (str): Folder name relative to the current working directory, e.g. location of the current
+            Jupyter notebook. The folder will be created if it does not exist.
+    """
+    
     fmt=folder+'/#{counter}_{name}_{date}_{time}'
     DataSetPP.default_folder=folder
     DataSetPP.location_provider=FormatLocation(fmt=fmt)

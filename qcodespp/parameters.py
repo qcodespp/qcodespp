@@ -1,11 +1,11 @@
+"""A collection of functions that get added to the QCoDeS Parameter class.
+
+In addition, two wrapper classes are provided to easily create ArrayParameters and MultiParameters."""
+
 import time
 
 import numpy
 
-# # To make the modules work within qcodespp
-# from qcodes.parameters import *
-
-# Specific modules used below, for traceability.
 from qcodes.parameters import (
     ArrayParameter,
     MultiParameter,
@@ -19,7 +19,9 @@ def move(self,end_value,steps=101,step_time=0.03):
     
     Args:
         end_value (float): The value to move to.
+
         steps (int, optional): Number of steps to take. Defaults to 101.
+
         step_time (float, optional): Time in seconds between each step. Defaults to 0.03.
     """
     start_value = self.get()
@@ -34,14 +36,19 @@ def sweep(self, start, stop, step=None, num=None, print_warning=True):
 
     Requires `start` and `stop` and (`step` or `num`)
     The sign of `step` is not relevant.
+
     Args:
         start (Union[int, float]): The starting value of the sequence.
+
         stop (Union[int, float]): The end value of the sequence.
+
         step (Optional[Union[int, float]]):  Spacing between values.
+
         num (Optional[int]): Number of values to generate.
+
     Returns:
-        SweepFixedValues: collection of parameter values to be
-            iterated over
+        SweepFixedValues: collection of parameter values to be iterated over
+
     Examples:
         >>> sweep(0, 10, num=5)
          [0.0, 2.5, 5.0, 7.5, 10.0]
@@ -59,15 +66,17 @@ def logsweep(self, start, stop, num=None, print_warning=True):
     """
     Create a collection of parameter values to be iterated over in a log scale
     
-    Requires `start` and `stop` and or `num`
-    Note that `step` cannot be used here.
+    Requires `start` and `stop` and or `num`. Note that `step` cannot be used here.
+
     Args:
         start (Union[int, float]): The starting value of the sequence.
+
         stop (Union[int, float]): The end value of the sequence.
+
         num (Optional[int]): Number of values to generate.
+
     Returns:
-        SweepFixedValues: collection of parameter values to be
-            iterated over
+        SweepFixedValues: collection of parameter values to be iterated over
     """
     if self.get()!=start and print_warning:
         print('Are you sure? Start value for {}.sweep is {} {} but {}()={} {}'.format(self.name,start,self.unit,self.name,self.get(),self.unit))
@@ -82,12 +91,11 @@ def arbsweep(self, setpoints, print_warning=True):
         setpoints (list or array): The setpoints to sweep over.
 
     Returns:
-        SweepFixedValues: collection of parameter values to be
-            iterated over
+        SweepFixedValues: collection of parameter values to be iterated over
 
     Example:
-        values = [0.0, 2.5, 5.0, 7.5, 10.0]
-        loop=qc.Loop(parameter.arbsweep(values),delay=0.1).each(*station.measure())
+        >>> values = [0.0, 2.5, 5.0, 7.5, 10.0]
+        >>> loop=qc.Loop(parameter.arbsweep(values),delay=0.1).each(*station.measure())
     """
     if self.get()!=setpoints[0] and print_warning:
         print('Are you sure? Start value for {}.sweep is {} {} but {}()={} {}'.format(self.name,setpoints[0],self.unit,self.name,self.get(),self.unit))
@@ -95,8 +103,23 @@ def arbsweep(self, setpoints, print_warning=True):
 
 def returnsweep(self, start, stop, step=None, num=None, print_warning=True):
     """
-    Create a collection of parameter values to be iterated over.
-    Must be an array or list of values
+    Create a collection of parameter values to be iterated over,
+    where the parameter sweeps from `start` to `stop` and then back up to `start`.
+
+    The total number of points will be `2*num-1` if `num` is provided,
+    or `2*(stop-start)/step+1` if `step` is provided.
+
+    Args:
+        start (Union[int, float]): The starting value of the sequence.
+
+        stop (Union[int, float]): The end value of the sequence.
+
+        step (Optional[Union[int, float]]):  Spacing between values.
+
+        num (Optional[int]): Number of values to generate.
+
+    Returns:
+        SweepFixedValues: collection of parameter values to be iterated over
     """
     if step is not None:
         if num is not None:
@@ -120,6 +143,8 @@ def returnsweep(self, start, stop, step=None, num=None, print_warning=True):
 
 def set_data_type(self,data_type=float):
     """
+    Should no longer be necessary: marked for deprecation.
+
     Set the data type of the parameter. Gets passed to DataArray and the underlying numpy ndarray.
 
     Args:
@@ -142,14 +167,20 @@ class ArrayParameterWrapper(ArrayParameter):
 
     Args:
         name (str, optional): Name of the ArrayParameter. Defaults to None.
+
         label (str, optional): Label for the ArrayParameter. Defaults to None.
+
         unit (str, optional): Unit for the ArrayParameter. Defaults to None.
+
         instrument (Instrument, optional): Instrument this ArrayParameter belongs to. Defaults to None.
+
         shape (tuple, optional): Shape of the array. If not provided, it will be inferred from the get_cmd.
+
         get_cmd (callable, optional): Function that returns the array data. If provided, shape will be inferred from its output.
 
     Usage:
         Example usage where an instrument has a get_buffer() function which returns an array
+
         VoltageBuffer=qc.ArrayParameterWrapper(name='VoltageBuffer',
                                             label='Voltage',
                                             unit='V',
@@ -176,29 +207,31 @@ class MultiParameterWrapper(MultiParameter):
 
     Args:
         parameters (list or tuple): List of Parameters to wrap.
+
         name (str, optional): Name of the MultiParameter.
+
         instrument (Instrument, optional): Instrument this MultiParameter belongs to, if any.
 
     Examples:
         multi_param = MultiParameterWrapper((param1, param2, param3), name='multi_param', instrument=my_instrument)
 
-        # Get values
-        values = multi_param()
+        Get values
+        >>> values = multi_param()
 
-        # Set all constituent parameters to the same value
-        multi_param(value)
+        Set all constituent parameters to the same value
+        >>> multi_param(value)
 
-        # Set each parameter to different values
-        multi_param([1.0, 2.0, 3.0])
+        Set each parameter to different values
+        >>> multi_param([1.0, 2.0, 3.0])
 
-        # Move to new values
-        multi_param.move([new_value1, new_value2, new_value3])
+        Move to new values
+        >>> multi_param.move([new_value1, new_value2, new_value3])
 
-        # Sweeping all parameters with the same start and stop values
-        multi_param.sweep(start_val, stop_val, num=num)
+        Sweeping all parameters with the same start and stop values
+        >>> multi_param.sweep(start_val, stop_val, num=num)
 
-        # Sweeping each parameter with different start and stop values
-        multi_param.sweep([start_val1, start_val2], [stop_val1, stop_val2], num=num)
+        Sweeping each parameter with different start and stop values
+        >>> multi_param.sweep([start_val1, start_val2], [stop_val1, stop_val2], num=num)
 
         When used in a qcodespp Loop, if all parameters are swept with the same values, 
         the setpoint array will be the setpoints.

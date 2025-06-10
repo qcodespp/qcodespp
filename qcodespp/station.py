@@ -5,10 +5,11 @@ import time
 
 from qcodes.metadatable import MetadatableWithName
 
-from qcodespp import Instrument, Parameter
+from qcodespp.parameters import Parameter
 from qcodes.parameters import ParameterBase , ElapsedTimeParameter
 
 from qcodes import Station as QStation
+from qcodes import Instrument
 from qcodespp.actions import _actions_snapshot
 from numpy import mean
 
