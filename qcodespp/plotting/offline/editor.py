@@ -348,7 +348,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.down_file_button.clicked.connect(lambda: self.move_file('down'))
         self.file_list.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.file_list.customContextMenuRequested.connect(self.open_item_menu)
-        self.actionOnline_help.triggered.connect(lambda: href_open('https://github.com/djcarrad/qcodesplusplus/wiki/Offline-plotting:-InSpectra-Gadget'))
+        self.actionOnline_help.triggered.connect(lambda: href_open('https://qcodespp.github.io/offline_plotting.html'))
 
         # Keyboard shortcuts
         self.open_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+O"), self)
