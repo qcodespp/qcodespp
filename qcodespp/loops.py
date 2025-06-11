@@ -3,18 +3,26 @@ Data acquisition loops.
 
 The general scheme is:
 
-1. create a (potentially nested) Loop, which defines the sweep setpoints and
+1. create a (potentially nested) ``Loop``, which defines the sweep setpoints and
 delays
 
-2. activate the loop (which changes it to an ActiveLoop object),
-by attaching one or more actions to it, using the .each method.
+2. activate the loop (which changes it to an ``ActiveLoop`` object),
+by attaching one or more actions to it, using the ``.each`` method.
 Actions can be: parameters to measure, tasks to run, waits, or other loops.
 
-3. Associate the ActiveLoop with a DataSetPP, which will hold the data collected,
-using the .get_data_set method.
+3. Associate the ``ActiveLoop`` with a ``DataSetPP``, which will hold the data collected,
+using the ``.get_data_set`` method.
 
-4. Run the ActiveLoop with the .run method, which additionally can be passed
-parameters to be plotted using live_plot.
+4. Run the ``ActiveLoop`` with the ``.run`` method, which additionally can be passed
+parameters to be plotted using ``live_plot``.
+
+Supported commands to ``.each`` are:
+
+- ``Parameter``: anything with a ``.get`` method and ``.name`` or ``.names``
+- ``ActiveLoop`` (or ``Loop``, will be activated with default measurement)
+- ``Task``: any callable that does not generate data, e.g. a function
+- ``BreakIf``: a condition that will break the loop if True, e.g. ``BreakIf(lambda: param1()>10)``
+- ``Wait``: a delay
 
 Some examples:
 
@@ -32,10 +40,10 @@ Some examples:
 >>> loop.run([measure_param1, measure_param2])
 
 However, these simple examples are covered by the convenience functions
-loop1d and loop2d, which also take care of data_set definition and naming and live plotting.
-A more realistic example of a 2D loop would be:
+``loop1d`` and ``loop2d``, which also take care of data set definition and naming and live plotting.
+An example of a 2D loop would be:
 
->>> loop,data,plot = loop2d(
+>>> loop = loop2d(
     parameter1, 0, 1, 11, 0.1,
     parameter2, -1, 0, 101, 0.1,
     device_info='My device',
@@ -44,13 +52,6 @@ A more realistic example of a 2D loop would be:
     params_to_plot=[measure_param1, measure_param2])
 >>> loop.run()
 
-Supported commands to .each are:
-
-- Parameter: anything with a .get method and .name or .names
-- ActiveLoop (or Loop, will be activated with default measurement)
-- Task: any callable that does not generate data, e.g. a function
-- BreakIf: a condition that will break the loop if True, e.g. BreakIf(lambda: param1()>10)
-- Wait: a delay
 """
 
 from datetime import datetime
@@ -932,10 +933,11 @@ class ActiveLoop(Metadatable):
             formatter: knows how to read and write the file format
                 default can be set in DataSetPP.default_formatter
             io: knows how to connect to the storage (disk vs cloud etc)
-            write_period: how often to save to storage during the loop.
-                default 5 sec, use None to write only at the end
 
-        returns:
+            write_period: how often to save to storage during the loop.
+                default 5 sec, use None to write only at the end. 
+                
+        Returns:
             a DataSetPP object that we can use to plot
         """
         if self.data_set is None:
@@ -1006,16 +1008,22 @@ class ActiveLoop(Metadatable):
         Args:
             params_to_plot: a list of parameters to plot at each point in the loop.
                 Can either be the DataArray objects, or the parameters themselves.
+
             use_threads: (default False): whenever there are multiple `get` calls
                 back-to-back, execute them in separate threads so they run in
                 parallel (as long as they don't block each other)
+
             quiet: (default False): set True to not print anything except errors
+
             station: a Station instance for snapshots (omit to use a previously
                 provided Station, or the default Station)
+
             progress_interval (default None): show progress of the loop every x
                 seconds. If provided here, will override any interval provided
                 with the Loop definition. Default false, since the next item is better...
+
             progress_bar (default True): show a progress bar during the loop using tqdm
+
             check_written_data: At loop completion, check that the data written to file
                 matches the data in memory. If not, write a copy of the data in memory
                 and warn the user.
@@ -1031,11 +1039,14 @@ class ActiveLoop(Metadatable):
                 depends on formatter and io, or False to only keep in memory.
                 May be a callable to provide automatic locations. If omitted, will
                 use the default DataSetPP.location_provider
+
             name: if location is default or another provider function, name is
                 a string to add to location to make it more readable/meaningful
                 to users
+
             formatter: knows how to read and write the file format
                 default can be set in DataSetPP.default_formatter
+
             io: knows how to connect to the storage (disk vs cloud etc)
                 write_period: how often to save to storage during the loop.
                 default 5 sec, use None to write only at the end

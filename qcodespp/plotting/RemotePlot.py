@@ -17,13 +17,15 @@ def live_plot(data_set=None, data_items=None):
     Entry point for live plotting of qcodespp data.
 
     Args:
-        data_set (DataSetPP, optional): The DataSetPP to link to the live plot.
+        data_set (``DataSetPP``, optional): The ``DataSetPP`` to link to the live plot.
             If not provided, it will try to use the default dataset.
             If no data_set, one can add items to the plot, but the data will not be tracked.
-        *data_items (DataArray, optional): List of DataArray or Parameter objects to plot.
-            If not provided, nothing will be plotted initially, the user can use Plot.add() later.
+        *data_items (Sequence[``DataArray``, ``Parameter``], optional): List of ``DataArray``
+            or ``Parameter`` objects to plot. If not provided, nothing will be plotted initially,
+            the user can use ``Plot.add()`` later.
+
     Returns:
-        The Plot instance.
+        The ``Plot`` instance.
     """
     plot = Plot()
     if data_set is None and DataSetPP.default_dataset is not None:

@@ -14,9 +14,9 @@ from qcodes.utils.threading import thread_map
 
 class Measure(Metadatable):
     """
-    Class to create a DataSetPP from a single (non-looped) set of measured parameters.
+    Class to create a ``DataSetPP`` from a single (non-looped) set of measured parameters.
 
-    Measure is used to measure a set of parameters at a single point in time.
+    ``Measure`` is used to measure a set of parameters at a single point in time.
     The typical use case is where the parameter(s)'s get function(s) return(s) an array, e.g. 
     an oscilloscope trace, or a spectrum analyser trace.
     At init, you can provide the parameters to measure and (optionally) setpoints. If no parameters are 
@@ -24,7 +24,7 @@ class Measure(Metadatable):
     If no setpoints are provided, dummy setpoints are created for each dimension
     found in the parametersn (recommended, see below).
 
-    Measure.run() will execute the measurement, and return and save a DataSetPP
+    ``Measure.run()`` will execute the measurement, and return and save a ``DataSetPP``
 
     Examples:
         Measure two parameters:

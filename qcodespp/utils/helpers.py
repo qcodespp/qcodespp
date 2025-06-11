@@ -227,8 +227,11 @@ def make_sweep(start, stop, step=None, num=None):
 
     Args:
         start (Union[int, float]): The starting value of the sequence.
+        
         stop (Union[int, float]): The end value of the sequence.
+        
         step (Optional[Union[int, float]]):  Spacing between values.
+        
         num (Optional[int]): Number of values to generate.
 
     Returns:

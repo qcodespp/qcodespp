@@ -1,4 +1,6 @@
-
+'''
+Back-end functions used in live plotting. Not intended to be used directly.
+'''
 
 
 import sys

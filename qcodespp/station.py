@@ -32,20 +32,24 @@ class Station(QStation):
 
     Args:
         components: List of Instruments, Parameters, or other components to add to the station.
-        add_variables: Automatically adds previously defined Instruments and Parameters to the station.
-            Typically, add_variables=globals() to look through all previously defined variables.
-        config_file: Path to YAML files to load the station config from.
 
+        add_variables: Automatically adds previously defined Instruments and Parameters to the station.
+        Typically, add_variables=globals() to look through all previously defined variables.
+
+        config_file: Path to YAML files to load the station config from.
             - If only one yaml file needed to be loaded, it should be passed
               as a string, e.g., '~/station.yaml'
             - If more than one yaml file needed, they should be supplied as
               a sequence of strings, e.g. ['~/station1.yaml', '~/station2.yaml']
 
         use_monitor: Should the QCoDeS monitor be activated for this station.
+
         default: Is this station the default?
-        update_snapshot: Immediately update the snapshot of each
-            component as it is added to the Station.
+
+        update_snapshot: Immediately update the snapshot of each component as it is added to the Station.
+
         inc_timer: Include a timer parameter in the station and the default measurement.
+
     """
 
     def __init__(
@@ -102,12 +106,15 @@ class Station(QStation):
 
     def auto_add(self,variables,add_instruments: bool=True,add_parameters: bool=True,update_snapshot: bool=True):
         """
-        Automatically add previously defined instruments and parameters to the station. Usually, auto_add=globals()
+        Automatically add previously defined instruments and parameters to the station. Usually, auto_add=globals().
 
         Args:
             variables: Dictionary of variables to check for Instruments and Parameters. e.g. globals(), locals(), etc.
+            
             add_instruments: If True, add Instruments to the station.
+            
             add_parameters: If True, add Parameters to the station.
+            
             update_snapshot: If True, update the snapshot of each component as it is added to the Station.
         """
         print('Automatically adding components to Station...')
@@ -183,6 +190,7 @@ class Station(QStation):
         These actions will be executed by default by a Loop if this is the
         default Station, and any measurements among them can be done once
         by .measure
+
         Args:
             *actions: parameters to set as default  measurement
         """
