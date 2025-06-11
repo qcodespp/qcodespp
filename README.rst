@@ -49,83 +49,19 @@ mean we have instead been able to focus on things like user-friendliness and mak
 
 Docs
 ====
-Check out the wiki https://github.com/djcarrad/qcodesplusplus/wiki for an introduction. The 
-accompanying jupyter notebooks are under 'tutorials'. As of yet, there is no separate, comprehensive
-documentation; this is high on the to-do list. However, all the code is quite well self-documented and 
-everything is open source. If you need to know which arguments a function takes, or which capabilities 
-an instrument driver has, just open up the file! Or ask a friend
+Comprehensive documentation, including examples is available at https://qcodespp.github.io
 
-Install
-=======
+Installation
+============
 
-- Install anaconda from anaconda website: if you want to be able to call python from the command line, you should add the anaconda PATH to environment variables during install. Anaconda is a suite of software can be used to manage a python installation. 
-
-- Install git: https://git-scm.com/download/win
-
-Git is versioning software that allows multiple developers to contribute to pieces of software. It's used when software is likely to be changing quickly and flexibility and collaboration is key.
-
-- We will then use the Anaconda prompt to install qcodes++. First, we will create a 'virtual environment' for qcodes++. This is a separate python installation that will not interfere with your base python installation. Then we will download (aka 'clone') the qcodes++ code and install it.
-
-- Open the Anaconda prompt and type:
-
-	conda create –n qcpp python
-	
-	activate qcpp
-
-	cd C:/git
-
-	git clone https://github.com/qcodespp/qcodespp
-	
-	pip install –e qcodespp
-
-- Optionally install useful packages from the anaconda prompt:
-
-	pip install scipy zhinst zhinst-qcodes
-
-You can now run qcodes in jupyter lab by opening the anaconda prompt, and typing
-
-	activate qcpp
-	
-	jupyter lab
-	
-Additionally...
----------------
-
-- If you are going to use VISA instruments (e.g. ones that communicate via GPIB, USB, RS232) you should install the NI VISA and GPIB(488.2) backends from the National Instruments website
-
-https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html
-
-https://www.ni.com/en/support/downloads/drivers/download.ni-488-2.html
-
-- If the qcodes install fails, you may need to install Visual Studio C++ build tools. https://visualstudio.microsoft.com/downloads/ --> Tools for Visual Studio --> Build Tools for Visual Studio.
-	
-	
-Updating
---------
-Open git bash, navigate to the install folder (usually cd C:/git/qcodespp), and use 
-
-	git pull
-
-
-Status
-======
-As of 24/6/2024, latest versions of all packages required by qcodes are working, except:
-The current version of ipykernel closes all plot windows when the kernel is restarted. Will be difficult to fix given the lack of documentation for ipykernel.
-
-On the to-do list is improving analysis functions, such as tighter integration with InspectraGadget
-and incorporation of fitting tools.
-
-If there is a feature that you desire, feel free to contact me, damonc@dtu.dk. We can try to make it happen together!
+See https://qcodespp.github.io/installation.html
 
 License
 =======
 
 See `License <https://github.com/QCoDeS/Qcodes/tree/master/LICENSE.rst>`__.
 
-Differences from qcodes-elab
+Contact and contributing
 ==================================================
 
-Data_type cannot be declared to parameter on init. 
-It has to be declared after by parameter.data_type=float or parameter.data_type=str
-
-
+This package is largely maintained by Damon Carrad. If you have a question, or want to contribute, please don't hesitate to contact me at damonc@dtu.dk. Note I'm mainly doing it in my spare time, but I will always try to help.
