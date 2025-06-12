@@ -176,3 +176,20 @@ def colored_traces(x,y, offset=0,figsize=0, cmap=0, labels=0, xlim=0, ylim=0, xm
         ax1.set_ylim(ylim)
     
     return (fig,ax1)
+
+def sort_lists(X,Y):
+    '''
+    Sort two lists according to the ascending order of the first list.
+
+    Args:
+        X: List whose elements will be sorted in ascending order
+        Y: List whose elements will be sorted according to the new order of X
+
+    Returns
+        (X,Y): The sorted lists
+    '''
+    newlist=[(x,y) for x,y in zip(X,Y)]
+    newlist=sorted(newlist,key=lambda element: element[0])
+    X=[newlist[i][0] for i,val in enumerate(newlist)]
+    Y=[newlist[i][1] for i,val in enumerate(newlist)]
+    return X,Y
