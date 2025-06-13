@@ -202,10 +202,14 @@ class Station(QStation):
         Loop.validate_actions(*actions)
 
         for action in actions:
-            if action not in self.components.values():
+            if hasattr(action,'get') and action not in self.components.values():
                 if hasattr(action, 'instrument') and action.instrument not in self.components.values():
                     raise ValueError(f'Could not find {action.full_name} nor a possible parent instrument in the specified Station. '
                         'Please add the parameter and/or instrument to the Station before measuring to avoid loss of metadata.')
+            elif hasattr(action, 'instrument') and action.instrument and action.instrument not in self.components.values():
+                    raise ValueError(f'{action.full_name} belongs to the instrument {action.instrument.name}, but this instrument '
+                        'is not in the specified Station. '
+                        'Please add this instrument to the Station before measuring to avoid loss of metadata.')
 
         self.default_measurement = actions
 
