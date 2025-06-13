@@ -57,7 +57,8 @@ def sweep(self, start, stop, step=None, num=None, print_warning=True):
         >>> sweep(15, 10.5, step=1.5)
         >[15.0, 13.5, 12.0, 10.5]
     """
-    if self.get()!=start and print_warning:
+    sweeprange= numpy.abs(stop - start)
+    if numpy.abs(self.get()-start)>sweeprange*1e-3 and print_warning:
         print('Are you sure? Start value for {}.sweep is {} {} but {}()={} {}'.format(self.name,start,self.unit,self.name,self.get(),self.unit))
     return SweepFixedValues(self, start=start, stop=stop,
                             step=step, num=num)
@@ -78,8 +79,8 @@ def logsweep(self, start, stop, num=None, print_warning=True):
     Returns:
         SweepFixedValues: collection of parameter values to be iterated over
     """
-    if self.get()!=start and print_warning:
-        print('Are you sure? Start value for {}.sweep is {} {} but {}()={} {}'.format(self.name,start,self.unit,self.name,self.get(),self.unit))
+    if numpy.abs(self.get()-start)>start*1e-3 and print_warning:
+        print('Are you sure? Start value for {}.logsweep is {} {} but {}()={} {}'.format(self.name,start,self.unit,self.name,self.get(),self.unit))
     setpoints=numpy.geomspace(start,stop,num=num)
     return SweepFixedValues(self, setpoints)
 
@@ -97,8 +98,9 @@ def arbsweep(self, setpoints, print_warning=True):
         >>> values = [0.0, 2.5, 5.0, 7.5, 10.0]
         >>> loop=qc.Loop(parameter.arbsweep(values),delay=0.1).each(*station.measure())
     """
-    if self.get()!=setpoints[0] and print_warning:
-        print('Are you sure? Start value for {}.sweep is {} {} but {}()={} {}'.format(self.name,setpoints[0],self.unit,self.name,self.get(),self.unit))
+    sweeprange=numpy.abs(numpy.max(setpoints) - numpy.min(setpoints))
+    if numpy.abs(self.get()-setpoints[0])>sweeprange*1e-3 and print_warning:
+        print('Are you sure? Start value for {}.arbsweep is {} {} but {}()={} {}'.format(self.name,setpoints[0],self.unit,self.name,self.get(),self.unit))
     return SweepFixedValues(self, setpoints)
 
 def returnsweep(self, start, stop, step=None, num=None, print_warning=True):
@@ -137,8 +139,9 @@ def returnsweep(self, start, stop, step=None, num=None, print_warning=True):
         step=-step
     setpointsup=numpy.linspace(stop+step,start,num-1)
     setpoints=numpy.hstack((setpointsdown,setpointsup))
-    if self.get()!=start and print_warning:
-        print('Are you sure? Start value for {}.sweep is {} {} but {}()={} {}'.format(self.name,start,self.unit,self.name,self.get(),self.unit))
+    sweeprange= numpy.abs(stop - start)
+    if numpy.abs(self.get()-start)>sweeprange*1e-3 and print_warning:
+        print('Are you sure? Start value for {}.returnsweep is {} {} but {}()={} {}'.format(self.name,start,self.unit,self.name,self.get(),self.unit))
     return SweepFixedValues(self, setpoints)
 
 def set_data_type(self,data_type=float):
