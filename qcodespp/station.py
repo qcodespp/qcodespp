@@ -183,7 +183,7 @@ class Station(QStation):
 
         return snap
 
-    def set_measurement(self, *actions):
+    def set_measurement(self, *actions, check_in_station=True):
         """
         Save a set of ``*actions``` as the default measurement for this Station.
 
@@ -201,15 +201,16 @@ class Station(QStation):
         from .loops import Loop
         Loop.validate_actions(*actions)
 
-        for action in actions:
-            if hasattr(action,'get') and action not in self.components.values():
-                if hasattr(action, 'instrument') and action.instrument not in self.components.values():
-                    raise ValueError(f'Could not find {action.full_name} nor a possible parent instrument in the specified Station. '
-                        'Please add the parameter and/or instrument to the Station before measuring to avoid loss of metadata.')
-            elif hasattr(action, 'instrument') and action.instrument and action.instrument not in self.components.values():
-                    raise ValueError(f'{action.full_name} belongs to the instrument {action.instrument.name}, but this instrument '
-                        'is not in the specified Station. '
-                        'Please add this instrument to the Station before measuring to avoid loss of metadata.')
+        if check_in_station:
+            for action in actions:
+                if hasattr(action,'get') and action not in self.components.values():
+                    if hasattr(action, 'instrument') and action.instrument not in self.components.values():
+                        raise ValueError(f'Could not find {action.full_name} nor a possible parent instrument in the specified Station. '
+                            'Please add the parameter and/or instrument to the Station before measuring to avoid loss of metadata.')
+                elif hasattr(action, 'instrument') and action.instrument and action.instrument not in self.components.values():
+                        raise ValueError(f'{action.full_name} belongs to the instrument {action.instrument.name}, but this instrument '
+                            'is not in the specified Station. '
+                            'Please add this instrument to the Station before measuring to avoid loss of metadata.')
 
         self.default_measurement = actions
 
