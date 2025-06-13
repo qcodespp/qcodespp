@@ -42,14 +42,14 @@ def listVISAinstruments(baudrates='qdac'):
     for resource in resman.list_resources():
         try:
             res=resman.open_resource(resource)
-            print(f'Instrument IDN: {res.query('*IDN?')}\nVISA Address: {resource}')
+            print(f'Instrument IDN: {res.query('*IDN?')} VISA Address: {resource}\n')
         except:
             for baudrate in baudrates:
                 connected=False
                 try:
                     res=resman.open_resource(resource)
                     res.baud_rate=baudrate
-                    print(f'Instrument IDN: {res.query('*IDN?')}\nVISA Address: {resource}')
+                    print(f'Instrument IDN: {res.query('*IDN?')} VISA Address: {resource}\n')
                     connected=True
                     break
                 except Exception as e:
@@ -58,4 +58,4 @@ def listVISAinstruments(baudrates='qdac'):
                     res.baud_rate=9600
             if connected==False:
                 print(f'Cannot access instrument with address {resource}. Likely the instrument '
-                    'is already connected, possibly in another program or ipython kernel.')
+                    'is already connected, possibly in another program or ipython kernel.\n')

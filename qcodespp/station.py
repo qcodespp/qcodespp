@@ -201,6 +201,12 @@ class Station(QStation):
         from .loops import Loop
         Loop.validate_actions(*actions)
 
+        for action in actions:
+            if action not in self.components.values():
+                if hasattr(action, 'instrument') and action.instrument not in self.components.values():
+                    raise ValueError(f'Could not find {action.full_name} nor a possible parent instrument in the specified Station. '
+                        'Please add the parameter and/or instrument to the Station before measuring to avoid loss of metadata.')
+
         self.default_measurement = actions
 
         if 'timer' in self.components:

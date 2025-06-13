@@ -122,6 +122,8 @@ def loop1d(sweep_parameter,
 
     if params_to_measure is None:
         params_to_measure = Station.default.measure()
+    else: #Do this to ensure the parameters get checked that they and their instruments are part of the station.
+        Station.default.set_measurement(*params_to_measure)
     loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*params_to_measure)
     name=f'{device_info} {sweep_parameter.name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}'
     data=loop.get_data_set(name=name)
@@ -200,6 +202,9 @@ def loop2d(sweep_parameter,
 
     if params_to_measure is None:
         params_to_measure = Station.default.measure()
+
+    else: #Do this to ensure the parameters get checked that they and their instruments are part of the station.
+        Station.default.set_measurement(*params_to_measure)
 
     loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*params_to_measure)
 
@@ -284,6 +289,9 @@ def loop2dUD(sweep_parameter,
 
     if params_to_measure is None:
         params_to_measure = Station.default.measure()
+
+    else: #Do this to ensure the parameters get checked that they and their instruments are part of the station.
+        Station.default.set_measurement(*params_to_measure)
 
     loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*params_to_measure)
 
