@@ -48,8 +48,8 @@ An example of a 2D loop would be:
     parameter2, -1, 0, 101, 0.1,
     device_info='My device',
     instrument_info='My setup',
-    params_to_measure=[measure_param1, measure_param2],
-    params_to_plot=[measure_param1, measure_param2])
+    measure=[measure_param1, measure_param2],
+    plot=[measure_param1, measure_param2])
 >>> loop.run()
 
 """
@@ -86,7 +86,7 @@ def loop1d(sweep_parameter,
 
     A 1D loop has a single independent parameter, swept over a range of values.
     At each point in the loop, a set of parameters is measured, either those
-    given as the argument params_to_measure, or the default measurement set by
+    given as the argument measure, or the default measurement set by
     station.set_measurement
 
     In addition to creating the loop, this function also
@@ -120,12 +120,10 @@ def loop1d(sweep_parameter,
             for plotting, if necessary, e.g. pp=qc.live_plot(loop.data_set,params_to_plot)
     """
 
-    if measure is None:
-        measure = Station.default.measure()
-    else: #Do this to ensure the parameters get checked that they and their instruments are part of the station.
+    if measure:
         Station.default.set_measurement(*measure)
-    loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*measure)
-    name=f'{device_info} {sweep_parameter.name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}'
+    loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*Station.default.measure())
+    name=f'{device_info} {sweep_parameter.full_name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}'
     data=loop.get_data_set(name=name)
     if plot:
         pp=live_plot(data,plot)
@@ -200,21 +198,18 @@ def loop2d(sweep_parameter,
             for plotting, if necessary, e.g. pp=qc.live_plot(loop.data_set,params_to_plot)
     """
 
-    if measure is None:
-        measure = Station.default.measure()
-
-    else: #Do this to ensure the parameters get checked that they and their instruments are part of the station.
+    if measure:
         Station.default.set_measurement(*measure)
 
-    loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*measure)
+    loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*Station.default.measure())
 
     if step_action:
         loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay,snake=snake).each(step_action,loop)
     else:
         loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay,snake=snake).each(loop)
 
-    name=(f'{device_info} {step_parameter.name}({step_start:.6g} {step_stop:.6g}){sweep_parameter.unit} '
-        f'{sweep_parameter.name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}')
+    name=(f'{device_info} {step_parameter.full_name}({step_start:.6g} {step_stop:.6g}){sweep_parameter.unit} '
+        f'{sweep_parameter.full_name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}')
     data=loop2d.get_data_set(name=name)
 
     if plot:
@@ -287,26 +282,23 @@ def loop2dUD(sweep_parameter,
             for plotting, if necessary, e.g. pp=qc.live_plot(loop.data_set,params_to_plot)
     """
 
-    if measure is None:
-        measure = Station.default.measure()
-
-    else: #Do this to ensure the parameters get checked that they and their instruments are part of the station.
+    if measure:
         Station.default.set_measurement(*measure)
 
-    loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*measure)
+    loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*Station.default.measure())
 
     if fast_down:
-        loop_down=Loop(sweep_parameter.sweep(stop,start,num=int(num/fast_down),print_warning=False), delay).each(*measure)
+        loop_down=Loop(sweep_parameter.sweep(stop,start,num=int(num/fast_down),print_warning=False), delay).each(*Station.default.measure())
     else:
-        loop_down=Loop(sweep_parameter.sweep(stop,start,num=num,print_warning=False), delay).each(*measure)
+        loop_down=Loop(sweep_parameter.sweep(stop,start,num=num,print_warning=False), delay).each(*Station.default.measure())
 
     if step_action:
         loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay).each(step_action,loop,loop_down)
     else:
         loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay).each(loop,loop_down)
 
-    name=(f'{device_info} {step_parameter.name}({step_start:.6g} {step_stop:.6g}){sweep_parameter.unit} '
-        f'{sweep_parameter.name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}')
+    name=(f'{device_info} {step_parameter.full_name}({step_start:.6g} {step_stop:.6g}){sweep_parameter.unit} '
+        f'{sweep_parameter.full_name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}')
     data=loop2d.get_data_set(name=name)
 
     if plot:
@@ -1006,7 +998,7 @@ class ActiveLoop(Metadatable):
         """
         return self.run(quiet=True, location=False, **kwargs)
 
-    def run(self, params_to_plot=None, use_threads=False, quiet=False, station=None,
+    def run(self, plot=None, use_threads=False, quiet=False, station=None,
             progress_interval=False, set_active=True, publisher=None,
             progress_bar=True, check_written_data=True,
             *args, **kwargs):
@@ -1014,7 +1006,7 @@ class ActiveLoop(Metadatable):
         Execute this loop.
 
         Args:
-            params_to_plot: a list of parameters to plot at each point in the loop.
+            plot: a list of parameters to plot at each point in the loop.
                 Can either be the DataArray objects, or the parameters themselves.
 
             use_threads: (default False): whenever there are multiple `get` calls
@@ -1063,8 +1055,8 @@ class ActiveLoop(Metadatable):
         returns:
             a DataSetPP object that we can use to plot
         """
-        if params_to_plot is not None:
-            live_plot(self.data_set,params_to_plot)
+        if plot is not None:
+            live_plot(self.data_set,plot)
 
         self.progress_bar=progress_bar
         if progress_interval is not False:
