@@ -118,23 +118,25 @@ class Station(QStation):
             update_snapshot: If True, update the snapshot of each component as it is added to the Station.
         """
         print('Automatically adding components to Station...')
-        for variable in variables:
-            if add_instruments and isinstance(variables[variable],Instrument):
-                if 'instruments' not in self.snapshot_base():
-                    self.add_component(variables[variable],update_snapshot=update_snapshot)
-                elif variables[variable].name not in self.snapshot_base()['instruments']:
-                    self.add_component(variables[variable],update_snapshot=update_snapshot)
-            elif add_parameters and isinstance(variables[variable],ParameterBase):
-                if 'parameters' not in self.snapshot_base():
-                    self.add_component(variables[variable],update_snapshot=update_snapshot)
-                elif variables[variable].name not in self.snapshot_base()['parameters']:
-                    self.add_component(variables[variable],update_snapshot=update_snapshot)
-        if add_instruments and 'instruments' in self.snapshot_base():
-            names=[name for name in self.snapshot_base()['instruments']]
-            print('Instruments in station: '+str(names))
+        for variable in variables.values():
+            if add_instruments and isinstance(variable,Instrument) and variable not in self.components.values():
+                self.add_component(variable,update_snapshot=update_snapshot)
+            elif add_parameters and isinstance(variable,ParameterBase) and variable not in self.components.values():
+                self.add_component(variable,update_snapshot=update_snapshot)
+
+        if add_instruments:
+            inststring='Instruments in station:'
+            for component in self.components.values():
+                if isinstance(component,Instrument):
+                    inststring+=f' {component.name},'
+            print(inststring[:-1])
+
         if add_parameters and 'parameters' in self.snapshot_base():
-            names=[name for name in self.snapshot_base()['parameters']]
-            print('Parameters in station: '+str(names))
+            paramstring='Parameters in station:'
+            for component in self.components.values():
+                if isinstance(component,ParameterBase):
+                    paramstring+=f' {component.full_name},'
+            print(paramstring[:-1])
 
     def snapshot_base(self, update: bool=False,
                       params_to_skip_update: Sequence[str]=None) -> dict:
