@@ -77,8 +77,8 @@ log = logging.getLogger(__name__)
 def loop1d(sweep_parameter,
                 start, stop, num, delay,
                 device_info='', instrument_info='',
-                params_to_measure=None,
-                params_to_plot=None,
+                measure=None,
+                plot=None,
                 run=False):
     
     """
@@ -108,10 +108,10 @@ def loop1d(sweep_parameter,
         instrument_info (str): a string with information about the setup that will not
             be captured by the metadata (e.g. voltage dividers, preamp settings)
 
-        params_to_measure (list): a list of parameters to measure at each point in the
+        measure (list): a list of parameters to measure at each point in the
             loop. If None, will use the default measurement set by the default station
 
-        params_to_plot (list): a list of parameters to plot at each point in the loop.
+        plot (list): a list of parameters to plot at each point in the loop.
 
         run (bool, default False): run the loop immediately after creation.
 
@@ -120,15 +120,15 @@ def loop1d(sweep_parameter,
             for plotting, if necessary, e.g. pp=qc.live_plot(loop.data_set,params_to_plot)
     """
 
-    if params_to_measure is None:
-        params_to_measure = Station.default.measure()
+    if measure is None:
+        measure = Station.default.measure()
     else: #Do this to ensure the parameters get checked that they and their instruments are part of the station.
-        Station.default.set_measurement(*params_to_measure)
-    loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*params_to_measure)
+        Station.default.set_measurement(*measure)
+    loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*measure)
     name=f'{device_info} {sweep_parameter.name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}'
     data=loop.get_data_set(name=name)
-    if params_to_plot:
-        pp=live_plot(data,params_to_plot)
+    if plot:
+        pp=live_plot(data,plot)
     
     print(data,'\n'+loop.time_estimate())
 
@@ -144,8 +144,8 @@ def loop2d(sweep_parameter,
                 snake=False,
                 step_action=None,
                 device_info='', instrument_info='',
-                params_to_measure=None,
-                params_to_plot=None,
+                measure=None,
+                plot=None,
                 run=False):
     
     """
@@ -188,10 +188,10 @@ def loop2d(sweep_parameter,
         instrument_info (str): a string with information about the setup that will not
             be captured by the metadata (e.g. voltage dividers, preamp settings)
 
-        params_to_measure (list): a list of parameters to measure at each point in the
+        measure (list): a list of parameters to measure at each point in the
             loop. If None, will use the default measurement set by the default station
 
-        params_to_plot (list): a list of parameters to plot at each point in the loop.
+        plot (list): a list of parameters to plot at each point in the loop.
 
         run (bool, default False): run the loop immediately after creation.
 
@@ -200,13 +200,13 @@ def loop2d(sweep_parameter,
             for plotting, if necessary, e.g. pp=qc.live_plot(loop.data_set,params_to_plot)
     """
 
-    if params_to_measure is None:
-        params_to_measure = Station.default.measure()
+    if measure is None:
+        measure = Station.default.measure()
 
     else: #Do this to ensure the parameters get checked that they and their instruments are part of the station.
-        Station.default.set_measurement(*params_to_measure)
+        Station.default.set_measurement(*measure)
 
-    loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*params_to_measure)
+    loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*measure)
 
     if step_action:
         loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay,snake=snake).each(step_action,loop)
@@ -217,8 +217,8 @@ def loop2d(sweep_parameter,
         f'{sweep_parameter.name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}')
     data=loop2d.get_data_set(name=name)
 
-    if params_to_plot:
-        pp=live_plot(data,params_to_plot)
+    if plot:
+        pp=live_plot(data,plot)
 
     print(data,'\n'+loop2d.time_estimate())
 
@@ -234,8 +234,8 @@ def loop2dUD(sweep_parameter,
                 step_action=None,
                 fast_down=False,
                 device_info='', instrument_info='', 
-                params_to_measure=None,
-                params_to_plot=None,
+                measure=None,
+                plot=None,
                 run=False):
     
     """
@@ -275,10 +275,10 @@ def loop2dUD(sweep_parameter,
         instrument_info (str): a string with information about the setup that will not
             be captured by the metadata (e.g. voltage dividers, preamp settings)
 
-        params_to_measure (list): a list of parameters to measure at each point in the
+        measure (list): a list of parameters to measure at each point in the
             loop. If None, will use the default measurement set by the default station
 
-        params_to_plot (list): a list of parameters to plot at each point in the loop.
+        plot (list): a list of parameters to plot at each point in the loop.
 
         run (bool, default False): run the loop immediately after creation.
 
@@ -287,18 +287,18 @@ def loop2dUD(sweep_parameter,
             for plotting, if necessary, e.g. pp=qc.live_plot(loop.data_set,params_to_plot)
     """
 
-    if params_to_measure is None:
-        params_to_measure = Station.default.measure()
+    if measure is None:
+        measure = Station.default.measure()
 
     else: #Do this to ensure the parameters get checked that they and their instruments are part of the station.
-        Station.default.set_measurement(*params_to_measure)
+        Station.default.set_measurement(*measure)
 
-    loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*params_to_measure)
+    loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*measure)
 
     if fast_down:
-        loop_down=Loop(sweep_parameter.sweep(stop,start,num=int(num/fast_down),print_warning=False), delay).each(*params_to_measure)
+        loop_down=Loop(sweep_parameter.sweep(stop,start,num=int(num/fast_down),print_warning=False), delay).each(*measure)
     else:
-        loop_down=Loop(sweep_parameter.sweep(stop,start,num=num,print_warning=False), delay).each(*params_to_measure)
+        loop_down=Loop(sweep_parameter.sweep(stop,start,num=num,print_warning=False), delay).each(*measure)
 
     if step_action:
         loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay).each(step_action,loop,loop_down)
@@ -309,8 +309,8 @@ def loop2dUD(sweep_parameter,
         f'{sweep_parameter.name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}')
     data=loop2d.get_data_set(name=name)
 
-    if params_to_plot:
-        pp=live_plot(data,params_to_plot)
+    if plot:
+        pp=live_plot(data,plot)
 
     print(data,'\n'+loop2d.time_estimate())
 
