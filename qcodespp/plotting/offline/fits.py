@@ -766,14 +766,34 @@ def RCSJfit(xdata,ydata,p0=None,inputinfo=None):
     '''
     Fits the differential conductance, dI/dV of a Josephson junction vs the dc voltage, Vdc applied across it.
 
+    The model is fitted to the derivative of:
+
+    (Rj/(Rj+Rc))*(jc*Im(I_(1-in(v)(B))/I_(-in(V)(B))) + (Vdc-Vdc_0)/Rj)
+
+    where:
+    - Rj is the junction resistance,
+    - Rc is the shunt resistance,
+    - jc is the critical current density,
+    - Vdc_0 is the offset voltage,
+    - I_(1-in(v)(B)) and I_(-in(V)(B)) are modified Bessel functions of the first kind.
+    - n(V) = hbar*(Vdc-Vdc_0)/(2*e*Rc*k_B*T), where hbar is the reduced Planck's constant, e is the electron charge, k_B is the Boltzmann constant, and T is the temperature
+    - B = jc*hbar/(2*e*k_B*T)
+
+    See e.g. https://www.science.org/doi/suppl/10.1126/sciadv.aav1235/suppl_file/aav1235_sm.pdf, page 14 onwards.
+
     Args:
         xdata: x data to fit (Vdc)
         ydata: y data to fit (dI/dV)
+        p0 (opt.): Initial guesses for jc, Rj, Rc, Vdc_0 and c (the constant offset).
+            Format should be: [jc, Rj, Rc, Vdc_0, c]
+        inputinfo: A list containing the temperature in Kelvin. If not provided, defaults to 0.02 K.
+            Format should be: [T]
     '''
     try:
         from mpmath import besseli
     except ImportError:
-        raise ImportError("The mpmath library is required for RCSJ fitting. Please install it using 'pip install mpmath'.")
+        print("The mpmath library is required for RCSJ fitting. Please install it using 'pip install mpmath'.")
+    
     T=inputinfo[0] if inputinfo else 0.02  # Temperature in Kelvin
     def besselfuncdiff(x, jc, Rj, Rc, x_0):
         hbar=1.0545718e-34
@@ -789,7 +809,7 @@ def RCSJfit(xdata,ydata,p0=None,inputinfo=None):
             imagine = (bess1/bess2).imag
             bess[i]=(Rj/(Rj+Rc))*(jc*imagine+((x[i]-x_0)/Rj))
         return np.gradient(bess,x)
-    
+
     if p0:
         jc_init= float(p0[0])
         Rj_init= float(p0[1])
@@ -798,12 +818,14 @@ def RCSJfit(xdata,ydata,p0=None,inputinfo=None):
         c_init=float(p0[4])
     else:
         x_0_init=np.mean(xdata)
-        jc_init=1e-9 #honestly have no idea how to provide good initial guesses for this model.
+        jc_init=1e-9 #honestly have no idea how to provide good initial guesses for this model based only on the data. I think the model is too complex to ever do so.
         Rj_init=1e10
         Rc_init=3600
-        c_init=1e-4 #This should be quite possible to guess; do better.
+        c_init=np.min(ydata)
+
     model = Model(besselfuncdiff)+lmm.ConstantModel()
     params = model.make_params(jc=jc_init,Rj=Rj_init, Rc=Rc_init, x_0=x_0_init,c=c_init)#, bkg_c=conductance[-1])
+
     result = model.fit(ydata, params, x=xdata)
     return result
 
@@ -1067,6 +1089,31 @@ functions['Custom']['Ramsey']['description']=('Fit a Ramsey oscillation of the f
                                                 'Initial guesses for the parameters are given in the form:\n'
                                                 'A, B, C, f, phi, T2\n'
                                                 'e.g., 0.01, -50, -4e6, 40e6, 0, 50e-9\n')
+
+functions['Custom']['RCSJ fit']={'function':RCSJfit}
+functions['Custom']['RCSJ fit']['inputs'] = 'T'
+functions['Custom']['RCSJ fit']['default_inputs'] = '0.02'
+functions['Custom']['RCSJ fit']['parameters'] = 'jc, Rj, Rc, Vdc_0, c'
+functions['Custom']['RCSJ fit']['description'] = ('Fit the differential conductance, dI/dV, of a Josephson junction vs the dc voltage, Vdc applied across it.\n'
+                                                'The model is fitted to the derivative of:\n'
+                                                '(Rj/(Rj+Rc))*(jc*Im(I_(1-in(v)(B))/I_(-in(V)(B))) + (Vdc-Vdc_0)/Rj)\n'
+                                                'where:\n'
+                                                '- Rj is the junction resistance,\n'
+                                                '- Rc is the shunt resistance,\n'
+                                                '- jc is the critical current density,\n'
+                                                '- Vdc_0 is the offset voltage,\n'
+                                                '- I_(1-in(v)(B)) and I_(-in(V)(B)) are modified Bessel functions of the first kind.\n'
+                                                '- n(V) = hbar*(Vdc-Vdc_0)/(2*e*Rc*k_B*T), where hbar is the reduced Planck\'s constant, e is the electron charge, k_B is the Boltzmann constant, and T is the temperature\n'
+                                                '- B = jc*hbar/(2*e*k_B*T)\n'
+                                                '- Additionally, there is a constant offset, c used in the fit.\n'
+                                                'See e.g. https://www.science.org/doi/suppl/10.1126/sciadv.aav1235/suppl_file/aav1235_sm.pdf, page 14 onwards.\n'
+                                                'Input the temperature in Kelvin, T, and the initial guesses for jc, Rj, Rc, Vdc_0 and c.\n'
+                                                'It is strongly recommended to give your own initial guesses for this fit, there is no general way to define good guesses based solely on the data. Give guesses in the form:\n'
+                                                'jc, Rj, Rc, Vdc_0, c\n'
+                                                'e.g., 1e-9, 12000, 3600, 0, 1e-4\n'
+                                                'Note: the mpmath library is required for this fit, to handle the Bessel functions. Install it with '
+                                                'pip install mpmath".\n')
+
 
 #Wrap the ExpressionModel to allow arbitrary input.
 functions['User input']={'Expression':{}}
