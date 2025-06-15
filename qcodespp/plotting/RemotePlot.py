@@ -191,6 +191,12 @@ class Plot():
         self.publish({'clear_plot': True})
 
     def add_multiple(self,*z_params):
+        """Add multiple ``DataArray`` s to the ``Plot``.
+        
+        Args:
+            *z_params (Sequence [DataArray]): DataArrays to be added to the Plot.
+                Each DataArray is added to a separate subplot.
+        """
         for i,z_param in enumerate(z_params):
             self.add(z_param,subplot=i) #title=z_param.full_name,name=z_param.name,
 
