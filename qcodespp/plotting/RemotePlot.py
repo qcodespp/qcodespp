@@ -114,7 +114,7 @@ class ControlListener(threading.Thread):
 
 class Plot():
     """
-    Main class for remote plotting.
+    Class to create live plot instances.
 
     Most methods of this class should not be called directly; only add(), add_multiple(), clear() and close()
     should be used by the user.
