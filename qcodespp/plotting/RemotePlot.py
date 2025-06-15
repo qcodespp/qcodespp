@@ -12,7 +12,7 @@ from qcodespp.data.data_array import DataArray
 from qcodespp.utils.helpers import NumpyJSONEncoder
 from qcodespp.parameters import Parameter
 
-def live_plot(*args, data_set=None, data_items=None):
+def live_plot(*args,data_set=None, data_items=None):
     """
     Entry point for live plotting of qcodespp data.
 
@@ -31,8 +31,9 @@ def live_plot(*args, data_set=None, data_items=None):
     Returns:
         The ``Plot`` instance.
     """
-    data_set = None
-    data_items=[]
+
+    if data_items is None:
+        data_items = []
 
     for arg in args:
         if isinstance(arg, DataSetPP):
@@ -66,6 +67,7 @@ def live_plot(*args, data_set=None, data_items=None):
             else:
                 raise TypeError('data_items must be either DataArray or Parameter objects, not %s.' % type(item))
         plot.add_multiple(*new_items)
+
     return plot
 
 class ControlListener(threading.Thread):
