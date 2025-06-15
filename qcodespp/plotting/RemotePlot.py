@@ -12,21 +12,36 @@ from qcodespp.data.data_array import DataArray
 from qcodespp.utils.helpers import NumpyJSONEncoder
 from qcodespp.parameters import Parameter
 
-def live_plot(data_set=None, data_items=None):
+def live_plot(*args, data_set=None, data_items=None):
     """
     Entry point for live plotting of qcodespp data.
 
     Args:
+        *args (DataSetPP, DataArray, Parameter, list, tuple): Positional arguments can be:
+            - ``DataSetPP``: The dataset to link to the live plot.
+            - ``DataArray`` or ``Parameter``: The data items to plot.
+            - A list or tuple of ``DataArray`` or ``Parameter`` objects to plot.
         data_set (``DataSetPP``, optional): The ``DataSetPP`` to link to the live plot.
             If not provided, it will try to use the default dataset.
             If no data_set, one can add items to the plot, but the data will not be tracked.
-        *data_items (Sequence[``DataArray``, ``Parameter``], optional): List of ``DataArray``
+        data_items (Sequence[``DataArray``, ``Parameter``], optional): List of ``DataArray``
             or ``Parameter`` objects to plot. If not provided, nothing will be plotted initially,
             the user can use ``Plot.add()`` later.
 
     Returns:
         The ``Plot`` instance.
     """
+    data_set = None
+    data_items=[]
+
+    for arg in args:
+        if isinstance(arg, DataSetPP):
+            data_set = arg
+        elif isinstance(arg, (DataArray, Parameter)):
+            data_items.append(arg)
+        elif isinstance(arg, (list, tuple)):
+            data_items.extend(arg)
+
     plot = Plot()
     if data_set is None and DataSetPP.default_dataset is not None:
         data_set = DataSetPP.default_dataset
