@@ -2,7 +2,7 @@ from zhinst.ziPython import ziDAQServer
 from zhinst.utils import utils
 from qcodespp import Instrument
 from qcodes.validators import Numbers, Enum, Ints
-from qcodespp import DataArray
+from qcodespp.data.data_array import DataArray
 from functools import partial
 import numpy as np
 import time
@@ -90,7 +90,6 @@ class ZIMFLI(Instrument):
             raise ValueError('Server should be either internal or local')
         super().__init__(name, **kwargs)
 
-        self.name = name
         self.serial = serial
         self.digi = digi #Set to true if digi option installed.
 

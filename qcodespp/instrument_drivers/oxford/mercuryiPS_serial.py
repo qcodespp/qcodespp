@@ -4,7 +4,7 @@ import time
 import numpy as np
 import collections
 
-from qcodes import VisaInstrument
+from .serial import SerialInstrument
 from qcodes.utils.validators import Enum, Anything
 from qcodes import MultiParameter
 
@@ -24,7 +24,7 @@ class MercuryiPSArray(MultiParameter):
     def get_raw(self):
         try:
             value = self._get()
-            self._save_val(value)
+            # self._save_val(value)
             return value
         except Exception as e:
             e.args = e.args + ('getting {}'.format(self.full_name),)
@@ -34,7 +34,7 @@ class MercuryiPSArray(MultiParameter):
         return self._set(setpoint)
 
 
-class MercuryiPS_120(VisaInstrument):
+class MercuryiPS_120(SerialInstrument):
 
     """
     This is the qcodes driver for the Oxford MercuryiPS magnet power supply.
@@ -122,7 +122,7 @@ class MercuryiPS_120(VisaInstrument):
                        "Both contactors closed": 4}
 
     def __init__(self, name, address, **kwargs):
-        super().__init__(name, address, stopbits=2, terminator='\r', **kwargs)
+        super().__init__(name, address,stopbits=2, terminator='\r', **kwargs)
         print(self.serial_handle.read_all())
 
         self.axes = 'xyz'
@@ -135,7 +135,7 @@ class MercuryiPS_120(VisaInstrument):
                                'y': 58.019,
                                'z': 18.21}
 
-        self.add_parameter('setpoint',
+        self.add_parameter(name='setpoint',
                            names=tuple('B' + ax.lower() + '_setpoint' for ax in self.axes),
                            units=tuple('T' for ax in self.axes),
                            get_cmd=partial(self._do_magnet, self.axes, '_field_setpoint'),
@@ -143,7 +143,7 @@ class MercuryiPS_120(VisaInstrument):
                            # vals=Anything(),
                            parameter_class=MercuryiPSArray)
 
-        self.add_parameter('rate',
+        self.add_parameter(name='rate',
                            names=tuple('B' + ax.lower() + '_rate' for ax in self.axes),
                            units=tuple('T/m' for ax in self.axes),
                            get_cmd=partial(self._do_magnet, self.axes, '_field_rate'),
@@ -151,7 +151,7 @@ class MercuryiPS_120(VisaInstrument):
                            # vals=Anything(),
                            parameter_class=MercuryiPSArray)
 
-        self.add_parameter('field',
+        self.add_parameter(name='field',
                            names=tuple('B'+ax.lower() for ax in self.axes),
                            units=tuple('T'for ax in self.axes),
                            get_cmd=partial(self._do_magnet, self.axes, '_field'),
@@ -170,7 +170,7 @@ class MercuryiPS_120(VisaInstrument):
                            get_cmd=partial(self._do_magnet, self.axes, '_remote_status'),
                            parameter_class=MercuryiPSArray)
 
-        self.add_parameter('rtp',
+        self.add_parameter(name='rtp',
                            names=['radius', 'theta', 'phi'],
                            get_cmd=partial(self._get_rtp,
                                            self.axes),

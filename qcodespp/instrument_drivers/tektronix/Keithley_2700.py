@@ -87,7 +87,6 @@ class Keithley_2700(VisaInstrument):
         # self._change_autozero = change_autozero
         self._averaging_types = ['MOV', 'REP']
         self._trigger_sent = False
-        self._name=name
         self._address=address
 
         # Force the K2700 to provide only the raw value rather than a complicated string
@@ -212,7 +211,7 @@ class Keithley_2700(VisaInstrument):
                 'The parameter measurement() will return the measured value but units and labels will be generic')
             self.add_parameter('measurement',
                                 unit='arb',
-                                label=self._name,
+                                label=self.name,
                                 get_cmd=':DATA:FRESH?',
                                 get_parser=float)
 
@@ -346,7 +345,7 @@ class Keithley_2700(VisaInstrument):
         self.get_all()
         self.trigger_continuous(True)
         self.remove_instance(self)
-        self.__init__(self._name,self._address)
+        self.__init__(self.name,self._address)
 
     def _mode_par_value(self, mode, par, val):
         '''
