@@ -491,7 +491,7 @@ class MercuryiPS_120(SerialInstrument):
             for n, ax in enumerate(axes):
                 if ok[n] == 0:
                     # print(ax)
-                    fld[n] = self.get(ax+'_field')
+                    fld[n] = self.parameters[ax+'_field'].get()
                     if abs(fld[n]-setpoint[n])<=1e-5:
                         ok[n] = 1
 
