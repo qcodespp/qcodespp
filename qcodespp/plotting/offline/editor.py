@@ -215,7 +215,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.update_link_to_folder(folder=folder)
             except Exception as e:
                 print(f'Failed to link to folder {folder}:', e)
-        elif link_to_default and os.path.isdir(DataSetPP.default_folder):
+        elif link_to_default and DataSetPP.default_folder and os.path.isdir(DataSetPP.default_folder):
             try:
                 print(f'Linking to qcodespp data folder at {DataSetPP.default_folder}... This may take some time.')
                 self.update_link_to_folder(folder=DataSetPP.default_folder)

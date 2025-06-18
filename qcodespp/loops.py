@@ -986,7 +986,7 @@ class ActiveLoop(Metadatable):
             if isinstance(action, ActiveLoop):
                 estimate=estimate+self.sweep_values.snapshot()['values'][0]['num']*action.sweep_values.snapshot()['values'][0]['num']*(commtime+action.delay+extra_delay[1])
         
-        string=(f'Estimated time: {estimate} s, {estimate/60} mins, {estimate/3600} hours\n'
+        string=(f'Estimated time: {estimate:.2f} s / {estimate/60:.2f} mins / {estimate/3600:.2f} hours\n'
                 f'Done at: {time.asctime(time.localtime(time.time()+estimate))}')
         return string
 

@@ -274,6 +274,8 @@ class DataSetPP(DelegateAttributes):
     default_formatter = GNUPlotFormat()
     location_provider = FormatLocation()
 
+    default_folder=None
+
     background_functions: Dict[str, Callable] = OrderedDict()
 
     def __init__(self, location=None, arrays=None, formatter=None, io=None,
