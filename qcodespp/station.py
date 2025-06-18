@@ -1,4 +1,13 @@
-"""Station objects - collect all the equipment you use to do an experiment."""
+"""Station objects - collect all the equipment you use to do an experiment.
+
+The Station class contained herein wraps the QCoDeS Station class and adds some functionality to it.
+It allows for the automatic addition of instruments and parameters to the station,
+and underlies the data acquisition. In qcodesplusplus there is no separate measurement
+context, since all measurements should be done in the context of a station anyway.
+Doing it like this forces the user to only measure parameters in the station,
+without the need for a separate measurement context.
+"""
+
 from typing import List, Sequence, Any
 
 import time
@@ -13,14 +22,9 @@ from qcodes import Instrument
 from qcodespp.actions import _actions_snapshot
 from numpy import mean
 
-'''
-This code wraps the QCoDeS Station class and adds some functionality to it.
-It allows for the automatic addition of instruments and parameters to the station,
-and underlies the data acquisition. In qcodesplusplus there is no separate measurement
-context, since all measurements should be done in the context of a station anyway.
-Doing it like this forces the user to only measure parameters in the station,
-without the need for a separate measurement context.
-'''
+import logging
+log = logging.getLogger(__name__)
+
 
 class Station(QStation):
     """
@@ -203,16 +207,13 @@ class Station(QStation):
         from .loops import Loop
         Loop.validate_actions(*actions)
 
-        # if check_in_station:
-        #     for action in actions:
-        #         if hasattr(action,'get') and action not in self.components.values():
-        #             if hasattr(action, 'instrument') and action.instrument not in self.components.values():
-        #                 raise ValueError(f'Could not find {action.full_name} nor a possible parent instrument in the specified Station. '
-        #                     'Please add the parameter and/or instrument to the Station before measuring to avoid loss of metadata.')
-        #         elif hasattr(action, 'instrument') and action.instrument and action.instrument not in self.components.values():
-        #                 raise ValueError(f'{action.full_name} belongs to the instrument {action.instrument.name}, but this instrument '
-        #                     'is not in the specified Station. '
-        #                     'Please add this instrument to the Station before measuring to avoid loss of metadata.')
+        if check_in_station:
+            vals=self.components.values()
+            for action in actions:
+                # If the action is a gettable parameter and neither it nor any of its ancestors are in the Station, warn the user.
+                if hasattr(action,'get') and action not in vals and hasattr(action, 'instrument') and not any([ancestor in vals for ancestor in action.instrument.ancestors]):
+                    log.warning(f'Could not find {action.full_name} nor a possible parent instrument in the specified Station. '
+                            'It is recommended to add the Parameter and/or Instrument to the Station before measuring to avoid loss of metadata.')
 
         self.default_measurement = actions
 
