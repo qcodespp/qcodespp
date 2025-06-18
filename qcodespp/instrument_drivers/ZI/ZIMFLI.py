@@ -594,6 +594,8 @@ class ZIMFLI(Instrument):
         print('Connected to: Zurich Instruments MFLI (serial:{}, firmware:{}) as {} in {:.2f}s'.format(self.serial,self.fwrevision,self.name,t))
     ## commands
 
+    def get_idn(self):
+        return self.serial
 
     def _demod_unit(self,n):
         if partial(self.daq.getInt,'/{}/demods/{}/adcselect'.format(self.serial, n))()==1:
