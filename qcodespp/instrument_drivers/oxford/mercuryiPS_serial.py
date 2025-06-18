@@ -1,3 +1,9 @@
+'''
+Driver that supports very old mercuryiPS instruments still communicating via serial.
+
+Most newer iPS's will use the standard QCoDeS driver
+'''
+
 from functools import partial
 import re
 import time
@@ -15,7 +21,7 @@ class MercuryiPSArray(MultiParameter):
     """
     def __init__(self, name, instrument, names, get_cmd, set_cmd, units=None, **kwargs):
         shapes = tuple(() for i in names)
-        super().__init__(name, names, shapes, **kwargs)
+        super().__init__(name, names, shapes,instrument=instrument, **kwargs)
         self._get = get_cmd
         self._set = set_cmd
         self._instrument = instrument
@@ -237,8 +243,7 @@ class MercuryiPS_120(SerialInstrument):
                                    'Extended resolution': 4,
                                    'Extended resolution LF': 6, })
 
-            self.set(ax.lower()+'_communication_protocol',
-                     'Extended resolution')
+            self.parameters[ax.lower()+'_communication_protocol'].set('Extended resolution')
 
             self.add_parameter(name=ax.lower()+'_mode',
                                set_cmd=partial(
@@ -444,7 +449,7 @@ class MercuryiPS_120(SerialInstrument):
         if setpoint is None:
             val = [None]*len(axes)
             for n, ax in enumerate(axes):
-                    val[n] = self.get(ax+cmd)
+                    val[n] = self.parameters[ax+cmd].get()
             return val
         else:
 
@@ -460,7 +465,7 @@ class MercuryiPS_120(SerialInstrument):
                 raise ValueError('Axes and setpoint do not work together %s %s'%(axes, setpoint))
 
             for n, ax in enumerate(axes):
-                self.set(ax+cmd, setpoint[n])
+                self.parameters[ax+cmd].set(setpoint[n])
 
 
     def _set_field(self, axes, setpoint):
@@ -565,7 +570,7 @@ class MercuryiPS_120(SerialInstrument):
         return value
 
     def _get_X(self, ax, req):
-        rep = self.get(ax+'_status')
+        rep = self.parameters[ax+'_status'].get()
 
         if req == 'system_status_map_m':
             return rep[1]
