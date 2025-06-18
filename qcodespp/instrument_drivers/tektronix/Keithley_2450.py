@@ -4,7 +4,7 @@ from qcodes.utils.validators import Strings, Enum,Bool
 
 class Keithley_2450(VisaInstrument):
     """
-    QCoDeS driver for the Keithley 2450 voltage source.
+    qcodes++ driver for the Keithley 2450 voltage source. Behaves similarly to the K2400 series driver.
     """
 
     def __init__(self, name, address, **kwargs):
