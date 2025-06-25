@@ -1,6 +1,8 @@
 """A collection of functions that get added to the QCoDeS Parameter class.
 
-In addition, two wrapper classes are provided to easily create ArrayParameters and MultiParameters."""
+In addition, two wrapper classes are provided to easily create ArrayParameters and MultiParameters.
+MultiParameters created with this method become settable, sweepable and movable.
+"""
 
 import time
 
@@ -10,8 +12,14 @@ from qcodes.parameters import (
     ArrayParameter,
     MultiParameter,
     Parameter,
-    SweepFixedValues,
+    ParameterBase,
+    SweepFixedValues
 )
+
+from typing import Any
+
+from qcodes.parameters.sequence_helpers import is_sequence
+from qcodes.parameters.sweep_values import make_sweep
 
 def move(self,end_value,steps=101,step_time=0.03):
     """
@@ -216,6 +224,52 @@ class ArrayParameterWrapper(ArrayParameter):
 
         super().__init__(name=name, shape=shape,instrument=instrument,label=label,unit=unit)
 
+class SweepMultiValues(SweepFixedValues):
+    '''
+    Class to enable sweeping MultiParameters with different values for each parameter.
+
+    Simply a subclass of SweepFixedValues with a restricted set of options to ensure that the
+    setpoints are constructed correctly.
+    
+    Args:
+        parameter (MultiParameter): The MultiParameter to sweep.
+        keys (list): A list of lists, where each inner list contains the setpoints for each 
+        parameter at that sweep index.
+    '''
+    def __init__(
+        self,
+        parameter: ParameterBase,
+        keys: Any | None = None):
+
+        super().__init__(parameter,keys)
+        # Initialising the parent class constructs the setpoints incorrectly, 
+        # so reset self._values to an empty list.
+        self._values: list[Any] = []
+        self._snapshot: dict[str, Any] = {}
+        self._value_snapshot: list[dict[str, Any]] = []
+
+        if isinstance(keys, slice):
+            self._add_slice(keys)
+            self._add_linear_snapshot(self._values)
+
+        elif is_sequence(keys):
+            for key in keys:
+                if isinstance(key, slice):
+                    self._add_slice(key)
+                else:
+                    # assume a single value
+                    self._values.append(key)
+            # we dont want the snapshot to go crazy on big data
+            if self._values:
+                self._add_sequence_snapshot(self._values)
+
+        else:
+            # assume a single value
+            self._values.append(keys)
+            self._value_snapshot.append({"item": keys})
+
+        self.validate(self._values)
+
 class MultiParameterWrapper(MultiParameter):
     """
     Class to wrap multiple pre-existing parameters into MultiParameter. Enables getting, setting, sweeping and moving.
@@ -271,12 +325,28 @@ class MultiParameterWrapper(MultiParameter):
 
         self.labels=tuple(labels)
         self.units=tuple(units)
+        self.unit='' # Mainly to be compatible with automatic naming in loop1d,loop2d, etc.
 
     def get_raw(self):
+        '''
+        Method to get the values of all parameters in the MultiParameter.
+
+        Returns:
+            tuple: A tuple containing the values of all parameters in the MultiParameter.
+        '''
         return tuple([param.get() for param in self.parameters])
 
     def set_raw(self, values):
-        if type(values) is int or type(values) is float:
+        """
+        Method to set the values of all parameters in the MultiParameter.
+
+        Args:
+            values (list, tuple, int, float): The values to set for the parameters.
+                If a single value is provided, it will be set for all parameters.
+                If a list or tuple is provided, it must match the number of parameters.
+        """
+
+        if type(values) in [int, float]:
             for parameter in self.parameters:
                 parameter.set(values)
         elif numpy.array(values).shape != numpy.array(self.parameters).shape:
@@ -286,26 +356,90 @@ class MultiParameterWrapper(MultiParameter):
                 self.parameters[i].set(value)
 
     def move(self,end_values,steps=101,step_time=0.03):
-        if type(end_values) is int or type(end_values) is float:
+        """
+        Move all parameters to new values in a number of steps without taking data.
+
+        Args:
+            end_values (list, tuple, int, float): The values to move to.
+                If a single value is provided, it will be moved for all parameters.
+                If a list or tuple is provided, it must match the number of parameters.
+            steps (int, optional): Number of steps to take. Defaults to 101.
+            step_time (float, optional): Time in seconds between each step. Defaults to 0.03.
+        """
+
+        if type(end_values) in [int, float]:
             for i,param in enumerate(self.parameters):
                 param.move(end_values,steps,step_time)       
         else:
             for i,param in enumerate(self.parameters):
                 param.move(list(end_values)[i],steps,step_time)
 
-    def sweep(self, start_vals,stop_vals,num):
+    def sweep(self, start_vals,stop_vals,num,print_warning=True):
+        """
+        Create a collection of parameter values to be iterated over for all parameters in the MultiParameter.
+
+        Args:
+            start_vals (list, tuple, int, float): The starting values of the sequence.
+                If a single value is provided, it will be used for all parameters.
+                If a list or tuple is provided, it must match the number of parameters.
+
+            stop_vals (list, tuple, int, float): The end values of the sequence.
+                If a single value is provided, it will be used for all parameters.
+                If a list or tuple is provided, it must match the number of parameters.
+
+            num (int): Number of values to generate.
+
+            print_warning (bool): Whether to print a warning if the start value is different from the 
+                current value. Defaults to True.
+
+        Returns:
+            SweepFixedValues or SweepMultiValues: A collection of parameter values to be iterated over which can be passed to a Loop.
+
+        Raises:
+            ValueError: If the number of start_vals or stop_vals does not match the number of parameters, 
+            or if they are not a single value.
+        """
+
         #If the user is sweeping all params with the same values, the case is the same as Parameter.sweep
-        if numpy.array(start_vals).shape == ():
+        if type(start_vals) in [int, float]:
+            # Check that the start and stop values are the same shape
             if numpy.array(start_vals).shape != numpy.array(stop_vals).shape:
                 raise ValueError('Number of start values must match number of stop values')
+            
+            # Warn the user if the start value is different from any of the current values
+            sweeprange= numpy.abs(stop_vals - start_vals)
+            for i,parameter in enumerate(self.parameters):
+                try:
+                    if print_warning and numpy.abs(parameter.get()-start_vals)>sweeprange*1e-3:
+                        print(f'Are you sure? Start value for {parameter.name} sweep is '
+                            f'{start_vals} {parameter.unit} but '
+                            f'{parameter.name}()={parameter.get()} {parameter.unit}')
+                except TypeError: #Sometimes a parameter (especially a dummy parameter) will return None if it has not been set yet.
+                    pass
+            
+            # return SweepFixedValues as for a Parameter
             return SweepFixedValues(self, start=start_vals, stop=stop_vals,num=num)
         
-        #Otherwise, check that the shapes are correct, and make a setpointarray of the appropriate size for SweepFixedValues
+        # Otherwise, check that the shapes are correct, and make a setpointarray of the appropriate size 
+        # for SweepMultiValues, after checking the start values are close to the current values.
         elif numpy.array(start_vals).shape != numpy.array(self.parameters).shape:
-            raise ValueError('Number of start_vals must match number of parameters')
+            raise ValueError('Number of start_vals must match number of parameters, or be a signle value')
         elif numpy.array(stop_vals).shape != numpy.array(self.parameters).shape:
-            raise ValueError('Number of stop_vals must match number of parameters')
-        setpointarray=[]
-        for j in range(num):
-            setpointarray.append([start_vals[i] + (stop_vals[i] - start_vals[i])/(num-1) * j for i in range(numpy.array(self.parameters).shape[0])])
-        return SweepFixedValues(self,setpointarray)
+            raise ValueError('Number of stop_vals must match number of parameters, or be a signle value')
+        
+        else:
+            for i,parameter in enumerate(self.parameters):
+                sweeprange= numpy.abs(stop_vals[i] - start_vals[i])
+                try:
+                    if print_warning and numpy.abs(parameter.get()-start_vals[i])>sweeprange*1e-3:
+                        print(f'Are you sure? Start value for {parameter.name} sweep is '
+                                f'{start_vals[i]} {parameter.unit} but '
+                                f'{parameter.name}()={parameter.get()} {parameter.unit}')
+                except TypeError: #Sometimes a parameter (especially a dummy parameter) will return None if it has not been set yet.
+                    pass
+
+            setpointarray=[]
+            for j in range(num):
+                setpointarray.append([start_vals[i] + (stop_vals[i] - start_vals[i])/(num-1) * j for i in range(numpy.array(self.parameters).shape[0])])
+            return SweepMultiValues(self,setpointarray)
+

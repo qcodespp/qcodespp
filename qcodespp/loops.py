@@ -123,7 +123,10 @@ def loop1d(sweep_parameter,
     if measure:
         Station.default.set_measurement(*measure)
     loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*Station.default.measure())
-    name=f'{device_info} {sweep_parameter.full_name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}'
+    
+    start_text, stop_text, unit_text = _filename_text(start, stop, sweep_parameter)
+
+    name=f'{device_info} {sweep_parameter.full_name}({start_text} {stop_text}){unit_text} with {instrument_info}'
     data=loop.get_data_set(name=name)
     if plot:
         pp=live_plot(data,plot)
@@ -208,8 +211,11 @@ def loop2d(sweep_parameter,
     else:
         loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay,snake=snake).each(loop)
 
-    name=(f'{device_info} {step_parameter.full_name}({step_start:.6g} {step_stop:.6g}){sweep_parameter.unit} '
-        f'{sweep_parameter.full_name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}')
+    start_text, stop_text, unit_text = _filename_text(start, stop, sweep_parameter)
+    step_start_text, step_stop_text, step_unit_text = _filename_text(step_start, step_stop, step_parameter)
+
+    name=(f'{device_info} {step_parameter.full_name}({step_start_text} {step_stop_text}){step_unit_text} '
+        f'{sweep_parameter.full_name}({start_text} {stop_text}){unit_text} with {instrument_info}')
     data=loop2d.get_data_set(name=name)
 
     if plot:
@@ -297,8 +303,11 @@ def loop2dUD(sweep_parameter,
     else:
         loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay).each(loop,loop_down)
 
-    name=(f'{device_info} {step_parameter.full_name}({step_start:.6g} {step_stop:.6g}){sweep_parameter.unit} '
-        f'{sweep_parameter.full_name}({start:.6g} {stop:.6g}){sweep_parameter.unit} with {instrument_info}')
+    start_text, stop_text, unit_text = _filename_text(start, stop, sweep_parameter)
+    step_start_text, step_stop_text, step_unit_text = _filename_text(step_start, step_stop, step_parameter)
+
+    name=(f'{device_info} {step_parameter.full_name}({step_start_text} {step_stop_text}){step_unit_text} '
+        f'{sweep_parameter.full_name}({start_text} {stop_text}){unit_text} with {instrument_info}')
     data=loop2d.get_data_set(name=name)
 
     if plot:
@@ -310,6 +319,23 @@ def loop2dUD(sweep_parameter,
         loop2d.run()
     
     return loop2d
+
+def _filename_text(start,stop,parameter):
+    '''
+    Function to deal with MultiParameter sweeps, where the filename text can become complicted
+    '''
+    if isinstance(start, tuple):
+        start_text= ','.join([f'{s:.6g}' for s in start])
+        start_text=f'({start_text})'
+        stop_text= ','.join([f'{s:.6g}' for s in stop])
+        stop_text=f'({stop_text})'
+        unit_text= ','.join([unit for unit in parameter.units])
+        unit_text=f'({unit_text})'
+    else:
+        start_text= f'{start:.6g}'
+        stop_text= f'{stop:.6g}'
+        unit_text= parameter.unit
+    return start_text, stop_text, unit_text
 
 class Loop(Metadatable):
     """
