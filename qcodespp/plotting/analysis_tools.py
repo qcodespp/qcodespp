@@ -7,7 +7,8 @@ from matplotlib.ticker import MultipleLocator
 import numpy as np
 
 
-def colorplot(x,y,z,figsize=0,cmap=0,labels=0,xlim=0,ylim=0,zlim=0,xmajor=0,xminor=0,ymajor=0,yminor=0,font_size=0,label_size=0):
+def colorplot(x,y,z,figsize=0,cmap=0,labels=0,xlim=0,ylim=0,zlim=0,xmajor=0,
+              xminor=0,ymajor=0,yminor=0,font_size=0,label_size=0,check_shapes=True):
     """
     Make a nice colourplot from a three-dimensional data array using matplotlib. 
     
@@ -43,6 +44,7 @@ def colorplot(x,y,z,figsize=0,cmap=0,labels=0,xlim=0,ylim=0,zlim=0,xmajor=0,xmin
         
         label_size (int, optional): Font size for the tick labels. Default is 12.
 
+        check_shapes (bool, optional): If True, checks the shapes of x, y, and z arrays and transposes if necessary. Default is True.
 
     Returns:
         tuple: A tuple containing the figure, axis, and colorbar axis objects.
@@ -65,10 +67,11 @@ def colorplot(x,y,z,figsize=0,cmap=0,labels=0,xlim=0,ylim=0,zlim=0,xmajor=0,xmin
     fig, (ax1, cax)=plt.subplots(nrows=1,ncols=2,figsize=figsize,dpi=300,gridspec_kw={'width_ratios':[1,0.02]}) #This allows us better control over the colourbar. Note you can then 'easily' generalise this to more subplots (see below)
     fig.tight_layout(h_pad=None, w_pad=-2)
 
-    if np.shape(z)[1] != np.shape(x)[0] and np.shape(z)[0] == np.shape(x)[0]:
-        z= z.T
-    if np.shape(np.shape(y))==(2,) and np.shape(y)[1] != np.shape(x)[0] and np.shape(y)[0] == np.shape(x)[0]:
-        y= y.T
+    if check_shapes:
+        if np.shape(z)[1] != np.shape(x)[0] and np.shape(z)[0] == np.shape(x)[0]:
+            z= z.T
+        if np.shape(np.shape(y))==(2,) and np.shape(y)[1] != np.shape(x)[0] and np.shape(y)[0] == np.shape(x)[0]:
+            y= y.T
 
     if zlim!=0:
         sdbs=ax1.pcolormesh(x,y,z,cmap=cmap,rasterized=True,linewidth=0,vmin=zlim[0],vmax=zlim[1])

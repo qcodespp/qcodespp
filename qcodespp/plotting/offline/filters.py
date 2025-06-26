@@ -9,6 +9,8 @@ import numpy as np
 from scipy import ndimage, signal
 from scipy.interpolate import interp1d, interp2d
 
+from qcodespp.plotting.analysis_tools import sort_lists
+
 
 # Filter definitions
 
@@ -405,6 +407,22 @@ def interpolate(data, method, n_x, n_y):
         data[0] = np.linspace(min_x, max_x, n_x)
         data[1] = f(data[0])
     return data
+
+def sort(data, method, setting1, setting2):
+    if len(data) == 3:
+        if method == 'X':
+            xsort,zsort=np.zeros_like(data[-1]),np.zeros_like(data[-1])
+            for i in range(data[-1].shape[1]):
+                xsort[:,i],zsort[:,i]=sort_lists(data[0][:,i],data[-1][:,i])
+            data=[xsort, data[1], zsort]
+        elif method == 'Y':
+            ysort,zsort=np.zeros_like(data[-1]),np.zeros_like(data[-1])
+            for i in range(data[-1].shape[0]):
+                ysort[i,:],zsort[i,:]=sort_lists(data[1][i],data[-1][i])
+            data=[data[0], ysort, zsort]
+    elif len(data) == 2:
+        data[0], data[1] = sort_lists(data[0], data[1])
+    return data
     
 def add_slope(data, method, a_x, a_y):
     if len(data) == 3:
@@ -511,6 +529,10 @@ class Filter:
                                    'Settings': ['800', '600'],
                                    'Function': interpolate,
                                    'Checkstate': 0},
+                        'Sort': {'Method': ['X','Y'],
+                                   'Settings': ['', ''],
+                                   'Function': sort,
+                                   'Checkstate': 2},
                         'Roll X': {'Method': ['Index'],
                                    'Settings': ['0', '0'],
                                    'Function': roll_x,
