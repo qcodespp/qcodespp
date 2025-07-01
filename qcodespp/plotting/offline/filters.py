@@ -55,7 +55,6 @@ def integrate_rectangle(x, y):
     Numerically integrate y with respect to x. Should be the same as cumulative sum for regularly spaced x.
     """
     integrated_y = np.zeros_like(y)
-    integrated_y[0] = 0
     for i in range(1, len(y)):
         integrated_y[i] = integrated_y[i-1] + y[i] * (x[i] - x[i-1])
     return integrated_y
@@ -65,8 +64,7 @@ def integrate_trapezoid(x,y):
     Numerically integrate y with respect to x using the trapezoidal rule.
     """
     integrated_y = np.zeros_like(y)
-    integrated_y[0] = 0
-    for i in range(1,len(y)-1):
+    for i in range(1,len(y)):
         integrated_y[i] = integrated_y[i-1] + (y[i] + y[i-1]) * (x[i] - x[i-1]) / 2.0
     return integrated_y
 
@@ -75,8 +73,7 @@ def integrate_simpson(x, y):
     Numerically integrate y with respect to x using Simpson's rule.
     """
     integrated_y = np.zeros_like(y)
-    integrated_y[0] = 0
-    for i in range(1,len(y) - 2):
+    for i in range(1,len(y) - 1):
         integrated_y[i] = integrated_y[i-1] + (y[i-1] + 4 * y[i] + y[i+1]) * (x[i+1] - x[i-1])/6
     # Use trapezoidal rule for the last segment
     integrated_y[-1] = integrated_y[-2] + (y[-1] + y[-2]) * (x[-1] - x[-2]) / 2.0
@@ -503,38 +500,47 @@ def invert(data, method, setting1, setting2):
 class Filter:   
     DEFAULT_SETTINGS = {'Derivative': {'Method': [''],
                                        'Settings': ['0', '1'],
+                                       'tooltips': ['Order in X', 'Order in Y'],
                                        'Function': derivative,
                                        'Checkstate': 2},
                         'Integrate': {'Method': ['Trapezoid','Simpson','Rectangle'],
                                        'Settings': ['0', '1'],
+                                       'tooltips': ['Order in X', 'Order in Y'],
                                        'Function': integrate,
                                        'Checkstate': 2},
                         'Cumulative sum': {'Method': ['Z','Y','X'],
                                        'Settings': ['0', '1'],
+                                       'tooltips': ['Order in zero-th index', 'Order in first index'],
                                         'Function': cumulative_sum,
                                         'Checkstate': 2},
                         'Smoothen': {'Method': ['Gauss', 'Median'],
                                      'Settings': ['0', '2'],
+                                     'tooltips': ['Smoothing window in X', 'Smoothing window in Y'],
                                      'Function': smooth,
                                      'Checkstate': 2},
                         'Savitzy-Golay smoothing': {'Method': ['Y','X','dY','dX','ddY','ddX'],
                                     'Settings': ['7', '2'],
+                                    'tooltips': ['Smoothing window', 'Polynomial order'],
                                     'Function': sav_gol,
-                                    'Checkstate': 2},                               
+                                    'Checkstate': 2},
                         'Add/Subtract': {'Method': ['X','Y','Z'],
                                    'Settings': ['0', ''],
+                                   'tooltips': ['Value'],
                                    'Function': offset,
                                    'Checkstate': 2},
                         'Multiply': {'Method': ['X','Y','Z'],
                                      'Settings': ['1', ''],
+                                     'tooltips': ['Value'],
                                      'Function': multiply,
                                      'Checkstate': 2}, 
                         'Divide': {'Method': ['X','Y','Z'],
                                    'Settings': ['1', ''],
+                                   'tooltips': ['Value'],
                                    'Function': divide,
                                    'Checkstate': 0},
                         'Add Slope': {'Method': [''],
                                   'Settings': ['0', '-1'],
+                                  'tooltips': ['Slope value in X', 'Slope value in Y'],
                                   'Function': add_slope,
                                   'Checkstate': 2},
                         'Invert': {'Method': ['X','Y','Z'],
@@ -543,6 +549,7 @@ class Filter:
                                    'Checkstate': 0},
                         'Normalize': {'Method': ['Max', 'Min', 'Min to Max','Point'],
                                       'Settings': ['', ''],
+                                      'tooltips': ['X coordinate', 'Y coordinate'],
                                       'Function': normalize,
                                       'Checkstate': 2},
                         'Subtract average': {'Method': ['Z', 'Y', 'X'],
@@ -550,7 +557,8 @@ class Filter:
                                         'Function': subtract_average,
                                         'Checkstate': 2},
                         'Offset line by line': {'Method': ['Z', 'Y'],
-                                      'Settings': ['', ''],
+                                      'Settings': ['0', ''],
+                                      'tooltips': ['Index'],
                                       'Function': offset_line_by_line,
                                       'Checkstate': 2},
                         'Subtract average line by line': {'Method': ['Z', 'Y'],
@@ -559,18 +567,22 @@ class Filter:
                                         'Checkstate': 2},
                         'Subtract trace': {'Method': ['Ver', 'Hor'],
                                      'Settings': ['0', ''],
+                                     'tooltips': ['Index'],
                                      'Function': subtract_trace,
                                      'Checkstate': 0},
                         'Logarithm': {'Method': ['Mask','Shift','Abs'],
                                       'Settings': ['10', ''],
+                                      'tooltips': ['Base; 10, 2 or e'],
                                       'Function': logarithm,
                                       'Checkstate': 2}, 
                         'Power': {'Method': ['X','Y','Z'],
                                  'Settings': ['2', ''],
+                                 'tooltips': ['Exponent'],
                                  'Function': power,
                                  'Checkstate': 2}, 
                         'Root': {'Method': ['X','Y','Z'],
                                  'Settings': ['2', ''],
+                                 'tooltips': ['Exponent'],
                                  'Function': root,
                                  'Checkstate': 2}, 
                         'Absolute': {'Method': [''],
@@ -583,6 +595,7 @@ class Filter:
                                  'Checkstate': 2}, 
                         'Interp': {'Method': ['linear','cubic','quintic'],
                                    'Settings': ['800', '600'],
+                                   'tooltips': ['Number of points in X', 'Number of points in Y'],
                                    'Function': interpolate,
                                    'Checkstate': 0},
                         'Sort': {'Method': ['X','Y'],
@@ -591,26 +604,32 @@ class Filter:
                                    'Checkstate': 2},
                         'Roll X': {'Method': ['Index'],
                                    'Settings': ['0', '0'],
+                                    'tooltips': ['Position', 'Amount'],
                                    'Function': roll_x,
                                    'Checkstate': 0},                             
                         'Roll Y': {'Method': ['Index'],
                                    'Settings': ['0', '0'],
+                                    'tooltips': ['Position', 'Amount'],
                                    'Function': roll_y,
                                    'Checkstate': 0},
                         'Crop X': {'Method': ['Abs', 'Rel', 'Lim'],
                                    'Settings': ['-1', '1'],
+                                   'tooltips': ['Min', 'Max'],
                                    'Function': crop_x,
                                    'Checkstate': 0},                              
                         'Crop Y': {'Method': ['Abs', 'Rel', 'Lim'],
-                                   'Settings': ['-2', '2'],
+                                   'Settings': ['-1', '1'],
+                                   'tooltips': ['Min', 'Max'],
                                    'Function': crop_y,
                                    'Checkstate': 0},
                         'Cut X': {'Method': ['Index'],
                                   'Settings': ['0', '0'],
+                                    'tooltips': ['Left index', 'Width'],
                                   'Function': cut_x,
                                   'Checkstate': 0},                               
                         'Cut Y': {'Method': ['Index'],
                                   'Settings': ['0', '0'],
+                                    'tooltips': ['Bottom index', 'Width'],
                                   'Function': cut_y,
                                   'Checkstate': 0},                                
                         'Swap X/Y': {'Method': [''],
@@ -636,4 +655,6 @@ class Filter:
         else:
             self.checkstate = default_settings[name]['Checkstate']
         self.function = default_settings[name]['Function']
+        if 'tooltips' in default_settings[name]:
+            self.tooltips = default_settings[name]['tooltips']
         

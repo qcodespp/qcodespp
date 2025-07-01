@@ -2189,6 +2189,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             method_box.setCurrentIndex(filt.method_list.index(filt.method))
             setting_1 = QtWidgets.QTableWidgetItem(filt.settings[0])
             setting_2 = QtWidgets.QTableWidgetItem(filt.settings[1])
+            if hasattr(filt, 'tooltips'):
+                setting_1.setToolTip(filt.tooltips[0])
+                if len(filt.tooltips) > 1:
+                    setting_2.setToolTip(filt.tooltips[1])
             method_box.currentIndexChanged.connect(lambda: self.filters_table_edited(setting_1))
             self.filters_table.setItem(row, 0, filter_item)
             self.filters_table.setCellWidget(row, 1, method_box)
