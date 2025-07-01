@@ -401,7 +401,8 @@ class BaseClassData:
         
     def add_cbar_hist(self):
         self.hax=self.cbar.ax.inset_axes([-1.05, 0, 1, 1],picker=True)
-        counts, self.cbar_hist_bins = np.histogram(self.processed_data[-1],bins=int(self.settings['cmap levels']))
+        counts, self.cbar_hist_bins = np.histogram(self.processed_data[-1],bins=int(self.settings['cmap levels']),
+                                                   range=(np.nanmin(self.processed_data[-1]), np.nanmax(self.processed_data[-1])))
         midpoints = self.cbar_hist_bins[:-1] + np.diff(self.cbar_hist_bins)/2
         self.hax.fill_between(-counts, midpoints,0,color='mediumslateblue')
         self.haxfill=self.hax.fill_betweenx(np.linspace(self.view_settings['Minimum'], self.view_settings['Maximum'], 100), 
@@ -448,7 +449,7 @@ class BaseClassData:
                                                   norm=norm, cmap=cmap,
                                                   rasterized=self.settings['rasterized'])
                 if self.settings['colorbar'] == 'True':
-                    self.cbar = self.figure.colorbar(self.image, orientation='vertical')
+                    self.cbar = self.figure.colorbar(self.image)
                     if self.view_settings['CBarHist'] == True:
                         self.add_cbar_hist()
 
@@ -884,7 +885,7 @@ class MixedInternalData(BaseClassData):
                                                 norm=norm, cmap=cmap,
                                                 rasterized=self.dataset2d.settings['rasterized'])
             if self.dataset2d.settings['colorbar'] == 'True':
-                self.cbar = self.figure.colorbar(self.image, orientation='vertical')
+                self.cbar = self.figure.colorbar(self.image)
                 if self.view_settings['CBarHist'] == True:
                     self.add_cbar_hist()
 
