@@ -50,12 +50,22 @@ def cumulative_sum(data, method, times_x, times_y):
     
     return data
 
+def integrate_rectangle(x, y):
+    """
+    Numerically integrate y with respect to x. Should be the same as cumulative sum for regularly spaced x.
+    """
+    integrated_y = np.zeros_like(y)
+    integrated_y[0] = 0
+    for i in range(1, len(y)):
+        integrated_y[i] = integrated_y[i-1] + y[i] * (x[i] - x[i-1])
+    return integrated_y
+
 def integrate_trapezoid(x,y):
     """
     Numerically integrate y with respect to x using the trapezoidal rule.
     """
     integrated_y = np.zeros_like(y)
-    integrated_y[0] = 0.0
+    integrated_y[0] = 0
     for i in range(1,len(y)-1):
         integrated_y[i] = integrated_y[i-1] + (y[i] + y[i-1]) * (x[i] - x[i-1]) / 2.0
     return integrated_y
@@ -65,7 +75,7 @@ def integrate_simpson(x, y):
     Numerically integrate y with respect to x using Simpson's rule.
     """
     integrated_y = np.zeros_like(y)
-    integrated_y[0] = 0.0
+    integrated_y[0] = 0
     for i in range(1,len(y) - 2):
         integrated_y[i] = integrated_y[i-1] + (y[i-1] + 4 * y[i] + y[i+1]) * (x[i+1] - x[i-1])/6
     # Use trapezoidal rule for the last segment
@@ -76,7 +86,7 @@ def integrate_simpson(x, y):
 
 def integrate(data, method, times_x, times_y):
     times_x, times_y = int(times_x), int(times_y)
-    functions={'Trapezoid': integrate_trapezoid, 'Simpson': integrate_simpson}
+    functions={'Trapezoid': integrate_trapezoid, 'Simpson': integrate_simpson, 'Rectangle': integrate_rectangle}
     if len(data) == 3:
         for _ in range(times_x):
             data[-1] = np.array([functions[method](data[-1][:,i], data[0][:,i]) for i in range(data[-1].shape[1])]).T
@@ -495,11 +505,11 @@ class Filter:
                                        'Settings': ['0', '1'],
                                        'Function': derivative,
                                        'Checkstate': 2},
-                        'Integrate': {'Method': ['Trapezoid','Simpson'],
+                        'Integrate': {'Method': ['Trapezoid','Simpson','Rectangle'],
                                        'Settings': ['0', '1'],
                                        'Function': integrate,
                                        'Checkstate': 2},
-                        'Cumulative sum': {'Method': ['Y','X','Z'],
+                        'Cumulative sum': {'Method': ['Z','Y','X'],
                                        'Settings': ['0', '1'],
                                         'Function': cumulative_sum,
                                         'Checkstate': 2},
