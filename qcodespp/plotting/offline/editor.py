@@ -1024,8 +1024,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     
     def reinstate_markers(self, item, orientation):
         orientations={'horizontal':'horimarkers','vertical':'vertmarkers'}
-        arrayname=orientations[orientation]
-        setattr(item.data,arrayname,[])
+        if orientation != 'diagonal':
+            arrayname=orientations[orientation]
+            setattr(item.data,arrayname,[])
         if orientation == 'horizontal':
             for line in item.data.linecuts['horizontal']['lines']:
                 z=item.data.linecuts[orientation]['lines'][line]['cut_axis_value']
@@ -1041,6 +1042,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
                 item.data.vertmarkers.append(item.data.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymin=0.9,
                     color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
+                
+        elif orientation == 'diagonal':
+            for line in item.data.linecuts[orientation]['lines']:
+                points0= item.data.linecuts[orientation]['lines'][line]['points'][0]
+                points1= item.data.linecuts[orientation]['lines'][line]['points'][1]
+                item.data.linecuts[orientation]['lines'][line]['draggable_points']=[DraggablePoint(item.data, points0[0], points0[1],
+                                                                                            line,orientation),
+                                            DraggablePoint(item.data, points1[0], points1[1],line,orientation,draw_line=True)]
     
     def clear_sidebar1D(self):
         # clear the sidebar1D
@@ -1074,7 +1083,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     item.data.axes = item.data.figure.add_subplot(rows, cols, index+1)
                     item.data.add_plot(editor_window=self)
                     if hasattr(item.data, 'linecuts'):
-                        for orientation in ['horizontal','vertical']:#,'diagonal']:#,'circular']:
+                        for orientation in ['horizontal', 'vertical', 'diagonal']:
                             if len(item.data.linecuts[orientation]['lines']) > 0:
                                 self.reinstate_markers(item,orientation)
                             if item.data.linecuts[orientation]['linecut_window'] is not None and item==self.file_list.currentItem():
