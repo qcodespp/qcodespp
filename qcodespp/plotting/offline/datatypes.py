@@ -934,7 +934,9 @@ class MixedInternalData(BaseClassData):
 
     def add_cbar_hist(self):
         self.hax=self.cbar.ax.inset_axes([-1.05, 0, 1, 1],picker=True)
-        counts, self.cbar_hist_bins = np.histogram(self.dataset2d.processed_data[-1],bins=int(self.settings['cmap levels']))
+        counts, self.cbar_hist_bins = np.histogram(self.dataset2d.processed_data[-1],bins=int(self.settings['cmap levels']),
+                                                   range=(np.nanmin(self.dataset2d.processed_data[-1]), 
+                                                          np.nanmax(self.dataset2d.processed_data[-1])))
         midpoints = self.cbar_hist_bins[:-1] + np.diff(self.cbar_hist_bins)/2
         self.hax.fill_between(-counts, midpoints,0,color='mediumslateblue')
         self.haxfill=self.hax.fill_betweenx(np.linspace(self.view_settings['Minimum'], self.view_settings['Maximum'], 100), 
