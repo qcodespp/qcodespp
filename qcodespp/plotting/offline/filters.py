@@ -17,16 +17,16 @@ from qcodespp.plotting.analysis_tools import sort_lists
 def derivative(data, method, times_x, times_y):
     times_x, times_y = int(times_x), int(times_y)
     if len(data) == 3:
-        for _ in range(times_x):
-            data[-1] = np.gradient(data[-1], data[0][:,0], axis=0)
         for _ in range(times_y):
-            data[-1] = np.gradient(data[-1], data[1][0,:], axis=1)
+            data[-1]= np.array([np.gradient(data[-1][i,:], data[1][i,:]) for i in range(data[-1].shape[0])])
+        for _ in range(times_x):
+            data[-1]= np.array([np.gradient(data[-1][:,i], data[0][:,i]) for i in range(data[-1].shape[1])]).T
     elif len(data) == 2:
         for _ in range(times_y):
-            data[-1] = np.gradient(data[-1], data[0])        
+            data[-1] = np.gradient(data[-1], data[0])
     return data
 
-def integrate(data, method, times_x, times_y):
+def cumulative_sum(data, method, times_x, times_y):
     times_x, times_y = int(times_x), int(times_y)
     if len(data) == 3:
         if method=='Z':
@@ -48,7 +48,46 @@ def integrate(data, method, times_x, times_y):
             for _ in range(times_x):
                 data[0] = np.cumsum(data[0])
     
-    return data    
+    return data
+
+def integrate_trapezoid(x,y):
+    """
+    Numerically integrate y with respect to x using the trapezoidal rule.
+    """
+    integrated_y = np.zeros_like(y)
+    integrated_y[0] = 0.0
+    for i in range(1,len(y)-1):
+        integrated_y[i] = integrated_y[i-1] + (y[i] + y[i-1]) * (x[i] - x[i-1]) / 2.0
+    return integrated_y
+
+def integrate_simpson(x, y):
+    """
+    Numerically integrate y with respect to x using Simpson's rule.
+    """
+    integrated_y = np.zeros_like(y)
+    integrated_y[0] = 0.0
+    for i in range(1,len(y) - 2):
+        integrated_y[i] = integrated_y[i-1] + (y[i-1] + 4 * y[i] + y[i+1]) * (x[i+1] - x[i-1])/6
+    # Use trapezoidal rule for the last segment
+    integrated_y[-1] = integrated_y[-2] + (y[-1] + y[-2]) * (x[-1] - x[-2]) / 2.0
+    
+    return integrated_y
+
+
+def integrate(data, method, times_x, times_y):
+    times_x, times_y = int(times_x), int(times_y)
+    functions={'Trapezoid': integrate_trapezoid, 'Simpson': integrate_simpson}
+    if len(data) == 3:
+        for _ in range(times_x):
+            data[-1] = np.array([functions[method](data[-1][:,i], data[0][:,i]) for i in range(data[-1].shape[1])]).T
+        for _ in range(times_y):
+            data[-1] = np.array([functions[method](data[-1][i,:], data[1][i,:]) for i in range(data[-1].shape[0])])
+
+    elif len(data) == 2:
+        for _ in range(times_y):
+            data[-1] = functions[method](data[0], data[1])
+
+    return data
         
 def smooth(data, method, width_x, width_y):
     filters = {'Gauss': ndimage.gaussian_filter, 
@@ -165,7 +204,10 @@ def cut_y(data, method, bottom, width):
     return data 
 
 def swap_xy(data, method, setting1, setting2):
-    data[0], data[1] = data[1], data[0]
+    if len(data) == 3:
+        data[0], data[1], data[-1] = data[1].T, data[0].T, data[-1].T
+    elif len(data) == 2:
+        data[0], data[1] = data[1], data[0]
     return data
 
 def flip(data, method, setting1, setting2):
@@ -449,14 +491,18 @@ def invert(data, method, setting1, setting2):
         
         
 class Filter:   
-    DEFAULT_SETTINGS = {'Derivative': {'Method': ['Mid'],
+    DEFAULT_SETTINGS = {'Derivative': {'Method': [''],
                                        'Settings': ['0', '1'],
                                        'Function': derivative,
                                        'Checkstate': 2},
-                        'Integrate': {'Method': ['Z','Y','X'],
+                        'Integrate': {'Method': ['Trapezoid','Simpson'],
                                        'Settings': ['0', '1'],
                                        'Function': integrate,
                                        'Checkstate': 2},
+                        'Cumulative sum': {'Method': ['Y','X','Z'],
+                                       'Settings': ['0', '1'],
+                                        'Function': cumulative_sum,
+                                        'Checkstate': 2},
                         'Smoothen': {'Method': ['Gauss', 'Median'],
                                      'Settings': ['0', '2'],
                                      'Function': smooth,
