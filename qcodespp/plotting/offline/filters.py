@@ -7,7 +7,7 @@ Created on Thu Nov 9 20:05:23 2017
 
 import numpy as np
 from scipy import ndimage, signal
-from scipy.interpolate import interp1d, interp2d
+from scipy.interpolate import interp1d, LinearNDInterpolator, CloughTocher2DInterpolator
 
 from qcodespp.plotting.analysis_tools import sort_lists
 
@@ -439,16 +439,29 @@ def root(data, method, setting1, setting2):
                 data[axis[method]][j] = np.abs(data[axis[method]][j])**(1/float(setting1))
     return data
 
+def interp2d(x, y, z, kind='linear'):
+    """
+    Re-do the job that scipy used to do
+    """
+    x=x.flatten()
+    y=y.flatten()
+    z=z.flatten()
+    if kind == 'linear':
+        interpolator = LinearNDInterpolator(list(zip(x,y)), z)
+    elif kind == 'cubic':
+        interpolator = CloughTocher2DInterpolator(list(zip(x,y)), z)
+    return interpolator
+
 def interpolate(data, method, n_x, n_y):
     if len(data) == 3:
-        x, y = data[0][:,0], data[1][0,:]
-        f_z = interp2d(y, x, data[2], kind=method)
+        f_z = interp2d(data[0], data[1], data[2], kind=method)
         n_x, n_y = int(n_x), int(n_y)
-        min_x, max_x = np.amin(data[0]), np.amax(data[0]) 
-        min_y, max_y = np.amin(data[1]), np.amax(data[1])
-        yp, xp = np.linspace(min_y, max_y, n_y), np.linspace(min_x, max_x, n_x)
-        data[1], data[0] = np.meshgrid(yp, xp)
-        data[2] = f_z(yp, xp)
+        X, Y = np.linspace(np.min(data[0]), np.max(data[0]), n_x), np.linspace(np.min(data[1]), np.max(data[1]), n_y)
+        data[0], data[1] = np.meshgrid(X, Y)
+        data[2] = f_z(data[0], data[1]).T
+        data[0] = data[0].T
+        data[1] = data[1].T
+        print(np.shape(data[2]),np.shape(data[0]),np.shape(data[1]))
     elif len(data) == 2:
         f = interp1d(data[0], data[1], kind=method)
         n_x = int(n_x)
@@ -593,7 +606,7 @@ class Filter:
                                  'Settings': ['', ''],
                                  'Function': flip,
                                  'Checkstate': 2}, 
-                        'Interp': {'Method': ['linear','cubic','quintic'],
+                        'Interpolate': {'Method': ['linear','cubic'],
                                    'Settings': ['800', '600'],
                                    'tooltips': ['Number of points in X', 'Number of points in Y'],
                                    'Function': interpolate,
@@ -638,7 +651,7 @@ class Filter:
                                     'Checkstate': 2}, 
                                    } 
     
-    def __init__(self, name, method=None, settings=None, checkstate=None):
+    def __init__(self, name, method=None, settings=None, checkstate=None, dimension=2):
         self.name = name
         default_settings = self.DEFAULT_SETTINGS.copy()
         self.method_list = default_settings[name]['Method']

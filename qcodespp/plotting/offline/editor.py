@@ -1483,7 +1483,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             else:
                 item.data.filters = filters
 
-        else: # A filter is being appended
+        else: # A filter is being appended to the table
             if isinstance(item.data,MixedInternalData) and self.mixeddata_filter_box.currentIndex() == 0:
                 item.data.dataset2d.filters.append(filt)
             elif hasattr(item.data, 'sidebar1D'):
