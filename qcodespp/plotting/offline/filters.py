@@ -7,7 +7,7 @@ Created on Thu Nov 9 20:05:23 2017
 
 import numpy as np
 from scipy import ndimage, signal
-from scipy.interpolate import interp1d, LinearNDInterpolator, CloughTocher2DInterpolator
+from scipy.interpolate import LinearNDInterpolator, CloughTocher2DInterpolator, make_interp_spline
 
 from qcodespp.plotting.analysis_tools import sort_lists
 
@@ -450,22 +450,22 @@ def interp2d(x, y, z, kind='linear'):
     return interpolator
 
 def interpolate(data, method, n_x, n_y):
+    n_x, n_y = int(n_x), int(n_y)
     if len(data) == 3:
         x=data[0].flatten()
         y=data[1].flatten()
         z=data[2].flatten()
         f_z = interp2d(x,y,z, kind=method)
-        n_x, n_y = int(n_x), int(n_y)
         X, Y = np.linspace(min(x), max(x), n_x), np.linspace(min(y), max(y), n_y)
         X, Y = np.meshgrid(X, Y)
         data[2] = np.ma.masked_invalid(f_z(X,Y).T)
         data[0] = X.T
         data[1] = Y.T
     elif len(data) == 2:
-        f = interp1d(data[0], data[1], kind=method)
-        n_x = int(n_x)
-        min_x, max_x = np.amin(data[0]), np.amax(data[0]) 
-        data[0] = np.linspace(min_x, max_x, n_x)
+        kind={'linear': 1, 'cubic': 3}
+        x,y=sort_lists(data[0], data[1])
+        f = make_interp_spline(x, y, kind[method])
+        data[0] = np.linspace(np.min(x), np.max(x), n_x)
         data[1] = f(data[0])
     return data
 
