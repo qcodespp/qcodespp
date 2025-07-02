@@ -2235,13 +2235,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if ((row > 0 and to == -1) or
                 (row < self.filters_table.rowCount()-1 and to == 1)):
                 filters[row], filters[row+to] = filters[row+to], filters[row]
-                self.show_current_filters()
-                self.filters_table.setCurrentCell(row+to, 0)
                 if (self.filters_table.item(row,0).checkState() and 
                     self.filters_table.item(row+to,0).checkState()):
-                    current_item.data.apply_all_filters()
                     self.update_plots(update_color_limits=True)
-                    self.show_current_view_settings()
+                else:
+                    self.show_current_filters()
+                self.filters_table.setCurrentCell(row+to, 0)
 
     def save_image(self):
         current_item = self.file_list.currentItem()
