@@ -118,68 +118,6 @@ class PlotTrace(pg.PlotDataItem):
                 masky = np.isfinite(self.y)
                 super().setData(self.y[masky])
 
-class PlotLinecuts(pg.PlotDataItem):
-
-    '''
-    PlotDataItem with benefits
-
-    delete()
-    update()
-    - check if data has been updated
-    - call set_data() with the updated data
-
-
-
-    '''
-
-    def setData(self, *args, **kwargs):
-
-        y = None
-        x = None
-        if len(args) == 1:
-            kwargs['y'] = args[0]
-
-        elif len(args) == 2:
-            kwargs['x'] = args[0]
-            kwargs['y'] = args[1]
-
-        maskx = False
-        masky = False
-        if 'x' in kwargs:
-            x = kwargs['x']
-            maskx = np.isfinite(x)
-        if 'y' in kwargs:
-            y = kwargs['y']
-            masky = np.isfinite(y)
-
-        if ('x' in kwargs) and ('y' in kwargs):
-            if np.shape(maskx) == np.shape(masky):
-                maskx = maskx & masky
-                masky = maskx
-        if 'x' in kwargs:
-            kwargs['x'] = kwargs['x'][maskx]
-
-        if 'y' in kwargs:
-            kwargs['y'] = kwargs['y'][masky]
-
-        self.x = x
-        self.y = y
-        super().setData(**kwargs)
-
-    def update_data(self):
-        # self.updateItems()
-        if self.y is not None:
-            if self.x is not None:
-                maskx, masky = np.isfinite(self.x), np.isfinite(self.y)
-                if np.shape(maskx) == np.shape(masky):
-                    maskx = maskx & masky
-                    masky = maskx
-
-                super().setData(self.x[maskx], self.y[masky])
-            else:
-                masky = np.isfinite(self.y)
-                super().setData(self.y[masky])
-
 class PlotImage(pg.ImageItem):
 
     '''
@@ -547,7 +485,7 @@ class PlotDock(dockarea.Dock):
         if ('name' in kwargs) and ('z' not in kwargs):
             self.legend.show()
 
-        if ('z' in kwargs) and (kwargs['linecuts']==False):
+        if 'z' in kwargs:
             # TODO  or len(args)>2
             item = PlotImage()
             item._hist = self.hist_item
@@ -555,44 +493,7 @@ class PlotDock(dockarea.Dock):
             self.hist_item.setImageItem(item)
             self.hist_item.show()
 
-        elif ('z' in kwargs) and (kwargs['linecuts']==True):
-            color = kwargs.get('color', None)
-            width = kwargs.get('width', 1)
-            style = kwargs.get('style', None)
-            dash = kwargs.get('dash', None)
-            cosmetic = kwargs.get('cosmetic', True)
-            hsv = kwargs.get('hsv', None)
-
-            if (color is None) or (color not in 'rgbcmykw'):
-                cycle = color_cycle
-                color = cycle[len(self.plot_item.listDataItems()) % len(cycle)]
-
-            if pen is not None:
-                kwargs['pen'] = pg.mkPen(color=color, width=width, style=style, dash=dash, cosmetic=cosmetic, hsv=hsv)
-                color = kwargs['pen'].color()
-            else:
-                kwargs['pen'] = None
-
-            # If a marker symbol is desired use the same color as the line
-            symbol = kwargs.get('symbol', None)
-            if symbol == '.':
-                kwargs['symbol'] = 's'
-                if ('size' not in kwargs) and ('symbolSize' not in kwargs):
-                    kwargs['symbolSize'] = 5
-
-            if 'symbol' in kwargs or 'symbolPen' in kwargs or 'symbolSize' in kwargs:
-                if 'symbolBrush' not in kwargs:
-                    kwargs['symbolBrush'] = color
-
-            if ('size' in kwargs) and ('symbolSize' not in kwargs):
-                kwargs['symbolSize'] = kwargs['size']
-            
-            y=kwargs['y']
-            z=kwargs['z']
-            args=[y,z]
-
-            item = PlotLinecuts(*args, **kwargs)
-
+            self.plot_item.addItem(item)
 
         else:
             color = kwargs.get('color', None)
@@ -628,7 +529,7 @@ class PlotDock(dockarea.Dock):
 
             item = PlotTrace(*args, **kwargs)
 
-        self.plot_item.addItem(item)
+            self.plot_item.addItem(item)
 
         config = {}
         for ax in ['x', 'y', 'z']:
