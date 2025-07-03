@@ -359,7 +359,6 @@ class Plot():
                               uuid, meta, arrays)
         else:
             self.publish({'add_plot': arguments}, uuid)
-            print(uuid)
 
         if not silent:
             # self.client_ready_event.clear()
