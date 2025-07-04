@@ -293,13 +293,13 @@ class DataSetPP(DelegateAttributes):
                 try:
                     os.makedirs(self.backup_location)
                 except Exception as e:
-                    log.warning(f'Backup location specified in qcodes.config["core"]["backup_location"] '
+                    log.warning(f'Backup location specified in qcodespp.config["core"]["backup_location"] '
                         'could not be created. Try another location \n {e}')
             if os.access(self.backup_location, os.W_OK) is False:
-                log.warning('Backup location specified in qcodes.config["core"]["backup_location"] is not writable. '
+                log.warning('Backup location specified in qcodespp.config["core"]["backup_location"] is not writable. '
                     'Try another location')
         elif backup_location is None:
-            self.backup_location='C:/Users/'+os.getlogin()+'/AppData/Local/qcodes-elab/data_backup'
+            self.backup_location='C:/Users/'+os.getlogin()+'/AppData/Local/qcodespp/data_backup'
             if os.access(self.backup_location, os.W_OK) is False and os.path.exists(self.backup_location) is False:
                 try:
                     os.makedirs(self.backup_location)
@@ -307,18 +307,18 @@ class DataSetPP(DelegateAttributes):
                     log.warning(f'Default backup location {self.backup_location} '
                         'could not be created. \n {e} '
                         'This usually is not a problem but you may like to specify/create one. '
-                        'Specify it globally for this session using qcodes.config["core"]["backup_location"]="*your backup location*",'
+                        'Specify it globally for this session using qcodespp.config["core"]["backup_location"]="*your backup location*",'
                         'or specify it for this DataSet by specifying backup_location="*your backup location*" in e.g. new_data() or get_data_set()')
                     
             if os.access(self.backup_location, os.W_OK) is False:
-                log.warning(f'Default backup_location, C:/Users/'+os.getlogin()+'/AppData/Local/qcodes-elab/data_backup cannot be used. '
+                log.warning(f'Default backup_location, C:/Users/'+os.getlogin()+'/AppData/Local/qcodespp/data_backup cannot be used. '
                         'This usually is not a problem but you may like to specify one. '
-                        'Specify it globally for this session using qcodes.config["core"]["backup_location"]="*your backup location*",'
+                        'Specify it globally for this session using qcodespp.config["core"]["backup_location"]="*your backup location*",'
                         'or specify it for this DataSet by specifying backup_location="*your backup location*" in e.g. new_data() or get_data_set()')
         else:
             self.backup_location=self.location
             log.warning('No backup_location specified for saving data. This usually is not a problem but you may like to specify one. '
-                'Specify it globally for this session using qcodes.config["core"]["backup_location"]="*your backup location*",'
+                'Specify it globally for this session using qcodespp.config["core"]["backup_location"]="*your backup location*",'
                 'or specify it for this DataSet by specifying backup_location="*your backup location*" in e.g. new_data() or get_data_set()')
 
         self.backup_used=False
