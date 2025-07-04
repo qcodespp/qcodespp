@@ -105,11 +105,11 @@ class GNUPlotFormat(Formatter):
     def read_one_file(self, data_set, f, ids_read):
         """
         Called by Formatter.read to bring one data file into
-        a DataSet. Setpoint data may be duplicated across multiple files,
+        a DataSetPP. Setpoint data may be duplicated across multiple files,
         but each measured DataArray must only map to one file.
 
         args:
-            data_set: the DataSet we are reading into
+            data_set: the DataSetPP we are reading into
             f: a file-like object to read from
             ids_read: a `set` of array_ids that we have already read.
                 when you read an array, check that it's not in this set (except
@@ -265,18 +265,18 @@ class GNUPlotFormat(Formatter):
     def write(self, data_set, io_manager, location, force_write=False,
               write_metadata=True, only_complete=True, filename=None, force_rewrite=False):
         """
-        Write updates in this DataSet to storage.
+        Write updates in this DataSetPP to storage.
 
         Will choose append if possible, overwrite if not.
 
         Args:
-            data_set (DataSet): the data we're storing
+            data_set (DataSetPP): the data we're storing
             io_manager (io_manager): the base location to write to
             location (str): the file location within io_manager
             only_complete (bool): passed to match_save_range, answers the
                 following question: Should we write all available new data,
                 or only complete rows? Is used to make sure that everything
-                gets written when the DataSet is finalised, even if some
+                gets written when the DataSetPP is finalised, even if some
                 dataarrays are strange (like, full of nans)
             filename (Optional[str]): Filename to save to. Will override
                 the usual naming scheme and possibly overwrite files, so
@@ -359,10 +359,10 @@ class GNUPlotFormat(Formatter):
 
     def write_metadata(self, data_set, io_manager, location, read_first=True):
         """
-        Write all metadata in this DataSet to storage.
+        Write all metadata in this DataSetPP to storage.
 
         Args:
-            data_set (DataSet): the data we're storing
+            data_set (DataSetPP): the data we're storing
 
             io_manager (io_manager): the base location to write to
 

@@ -4,7 +4,7 @@ import h5py
 import os
 import json
 
-from qcodespp.version import __version__ as _qcodes_version
+from qcodespp.version import __version__ as _qcodespp_version
 from qcodespp.data.data_array import DataArray
 from qcodespp.data.format import Formatter
 
@@ -13,7 +13,7 @@ class HDF5Format(Formatter):
     """
     HDF5 formatter for saving qcodespp datasets.
 
-    Capable of storing (write) and recovering (read) qcodes datasets.
+    Capable of storing (write) and recovering (read) qcodespp datasets.
 
     """
 
@@ -147,7 +147,7 @@ class HDF5Format(Formatter):
         # name. This is useful for saving e.g. images in the same folder
         # I think this is a sane default (MAR).
         data_set._h5_base_group = self._create_file(filepath)
-        data_set._h5_base_group.attrs['__qcodes_version'] = _qcodes_version
+        data_set._h5_base_group.attrs['__qcodespp_version'] = _qcodespp_version
         data_set._h5_base_group.attrs['__format_tag'] = self._format_tag
 
         return data_set._h5_base_group
@@ -156,10 +156,10 @@ class HDF5Format(Formatter):
               force_write=False, flush=True, write_metadata=True,
               only_complete=False):
         """
-        Writes a data_set to an hdf5 file.
+        Writes a DataSetPP to an hdf5 file.
 
         Args:
-            data_set: qcodes data_set to write to hdf5 file
+            data_set: qcodespp DataSetPP to write to hdf5 file
             io_manager: io_manger used for providing path
             location: location can be used to specify custom location
             force_write (bool): if True creates a new file to write to
@@ -172,7 +172,7 @@ class HDF5Format(Formatter):
 
         N.B. It is recommended to close the file after writing, this can be
         done by calling ``HDF5Format.close_file(data_set)`` or
-        ``data_set.finalize()`` if the data_set formatter is set to an
+        ``data_set.finalize()`` if the DataSetPP formatter is set to an
         hdf5 formatter.  Note that this is not required if the dataset
         is created from a Loop as this includes a data_set.finalize()
         statement.
@@ -274,7 +274,7 @@ class HDF5Format(Formatter):
 
     def write_metadata(self, data_set, io_manager=None, location=None, read_first=True):
         """
-        Writes metadata of dataset to file using write_dict_to_hdf5 method
+        Writes metadata of DataSetPP to file using write_dict_to_hdf5 method
 
         Note that io and location are arguments that are only here because
         of backwards compatibility with the loop.
@@ -416,7 +416,7 @@ class HDF5Format(Formatter):
         """ Read a dictionary from HDF5 
 
         Args:
-            data_dict (dict): Dataset to read from
+            data_dict (dict): DataSetPP to read from
             h5_group (object): HDF5 object to read from
         """
 
@@ -483,7 +483,8 @@ def str_to_bool(s):
         raise ValueError("Cannot covert {} to a bool".format(s))
 
 
-from qcodes.utils.helpers import deep_update, NumpyJSONEncoder
+from qcodes.utils.helpers import deep_update
+from qcodespp.utils.helpers import NumpyJSONEncoder
 
 
 class HDF5FormatMetadata(HDF5Format):
