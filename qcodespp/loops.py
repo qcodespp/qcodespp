@@ -68,6 +68,8 @@ from qcodespp.utils.helpers import wait_secs, tprint
 from qcodes.utils.metadata import Metadatable
 from qcodes.parameters import MultiParameter
 from qcodespp.plotting.RemotePlot import live_plot
+import os
+import shutil
 
 from qcodespp.actions import (_actions_snapshot, Task, Wait, _Measure, _Nest,
                       BreakIf, _QcodesBreak)
@@ -1131,20 +1133,12 @@ class ActiveLoop(Metadatable):
                     for array in self.data_set.arrays:
                         if self.data_set.arrays[array].data_type==float:
                             if not np.array_equal(writtendata.arrays[array],self.data_set.arrays[array],equal_nan=True):
-                                self.data_set.write_copy(self.data_set.location+'/copy')
-                                #print(self.data_set.arrays[array],writtendata.arrays[array])
-                                log.warning('Data in memory found to be different from data written to file. '
-                                        'A copy of the data in memory has been saved at '
-                                        f'{self.data_set.location}/copy. Please check the data for consistency.')
+                                self._replace_saved_data()
                                 break
                 # If anything fails for any reason, write a copy anyway, since everything above should always work and
                 # there are almost certainly problems if something doesn't.
                 except Exception as e:
-                    self.data_set.write_copy(self.data_set.location+'/copy')
-                    log.warning('Data in memory found to be different from data written to file. '
-                                'A copy of the data in memory has been saved at '
-                                f'{self.data_set.location}/copy. Please check the data for consistency.\n'
-                                f'Exception: {e}')
+                    self._replace_saved_data()
 
             # After normal loop execution we clear the data_set so we can run
             # again. But also if something went wrong during the loop execution
@@ -1156,6 +1150,25 @@ class ActiveLoop(Metadatable):
                 ActiveLoop.active_loop = None
 
         return ds
+    
+    def _replace_saved_data(self):
+        """
+        Move saved data to a subfolder 'copy' and replace the saved data with the data in memory.
+        """
+        copy_folder = os.path.join(self.data_set.location, 'copy')
+        os.makedirs(copy_folder, exist_ok=True)
+
+        for filename in os.listdir(self.data_set.location):
+            src = os.path.join(self.data_set.location, filename)
+            dst = os.path.join(copy_folder, filename)
+            if os.path.isfile(src):
+                shutil.move(src, dst)
+
+        self.data_set.write_copy(self.data_set.location)
+        log.warning('Data in memory found to be different from data on disk.\n'
+                    'The data in memory has overwritten the data on disk.\n'
+                    'A copy of the data on disk has been saved at '
+                    f'{self.data_set.location}/copy.\n Please check the data for consistency.')
 
     def _compile_actions(self, actions, action_indices=()):
         callables = []

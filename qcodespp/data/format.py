@@ -217,11 +217,11 @@ class Formatter:
             if last_saved_index is None and file_exists:
                 log.warning(f"{datetime.now().replace(microsecond=0)}: Inconsistent file information. "
                             "last_save_index is None but file exists. "
-                            "Will overwrite")
+                            "Will try to overwrite")
             if last_saved_index is not None and not file_exists:
                 log.warning(f"{datetime.now().replace(microsecond=0)}: Inconsistent file information. "
                             "last_save_index is not None but file does not "
-                            "exist. Will rewrite from scratch")
+                            "exist. Will try to rewrite from scratch")
             return self._match_save_range_whole_file(
                 full_dim_data, only_complete)
         
