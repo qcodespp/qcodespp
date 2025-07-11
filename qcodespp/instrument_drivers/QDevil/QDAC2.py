@@ -3,8 +3,8 @@ import itertools
 import uuid
 import warnings
 from time import sleep as sleep_s
+from qcodes.parameters.cache import _Cache
 from qcodes import InstrumentChannel, ChannelList, VisaInstrument, MultiParameter
-from qcodes.parameters.parameter_base import GetLatest
 from datetime import date
 import time
 from json import dump as json_dump
@@ -1283,8 +1283,7 @@ class QDac2Channel(InstrumentChannel):
             label=f'ch{channum}',
             unit='A',
             get_cmd=f'read{channum}?',
-            get_parser=self._get_calibrated_current,
-            max_val_age = 1
+            get_parser=self._get_calibrated_current
         )
         self.add_parameter(
             name='curr_range',
@@ -2642,7 +2641,7 @@ class QDac2(VisaInstrument):
 
         loc_folder=os.path.dirname(__file__)
         if datafolder==0:
-            datafolder='C:/Users/'+os.getlogin()+'/AppData/Local/qcodespp/qdac_calibrations'
+            datafolder='~/.qcodespp/qdac_calibrations'
         if os.path.exists(datafolder)==False:
             os.makedirs(datafolder,exist_ok=True)
 
@@ -3086,11 +3085,11 @@ class QDac2(VisaInstrument):
         def outSelect(out):
             selectedOut.set(out)
             selectedOutStr.set(f"Out{selectedOut.get()}")
-            voltOutValue.set(self.channel(selectedOut.get()).volt._latest["value"])
-            measApertureValue.set(self.channel(selectedOut.get()).measurement_nplc._latest["value"]/50)
-            currRange.set(self.channel(selectedOut.get()).curr_range._latest["value"])
-            outputRange.set(self.channel(selectedOut.get()).output_range._latest["value"])
-            outputFilter.set(self.channel(selectedOut.get()).output_filter._latest["value"])
+            voltOutValue.set(self.channel(selectedOut.get()).volt.cache())
+            measApertureValue.set(self.channel(selectedOut.get()).measurement_nplc.cache()/50)
+            currRange.set(self.channel(selectedOut.get()).curr_range.cache())
+            outputRange.set(self.channel(selectedOut.get()).output_range.cache())
+            outputFilter.set(self.channel(selectedOut.get()).output_filter.cache())
 
             if outputRange.get() == "HIGH":
                 outputRangeInfoVar.set(u"\u00B1" + "10 V")
@@ -3141,7 +3140,7 @@ class QDac2(VisaInstrument):
             outEnables[f"out{out+1}"].set(0)
             outCheckButtons[f"out{out+1}"] = tk.Checkbutton(outCurrFrames[f"out{out+1}"], variable = outEnables[f"out{out+1}"])
 
-            outAmpGetters[f"out{out+1}"] = GetLatest(self.channel(out+1).curr, max_val_age = 0.3)
+            outAmpGetters[f"out{out+1}"] = _Cache(self.channel(out+1).curr,1) # Only update current every second
 
             outCheckButtons[f"out{out+1}"].pack(side = "left", anchor = "w")
             outAmpsLabels[f"out{out+1}"].pack(side = "left", anchor = "w")
@@ -3180,14 +3179,14 @@ class QDac2(VisaInstrument):
 
             # Update options frame
             if root.focus_get() != voltOutEntry:
-                voltOutValue.set(self.channel(selectedOut.get()).volt._latest["value"])
+                voltOutValue.set(self.channel(selectedOut.get()).volt.cache())
 
             if root.focus_get() != measApertureEntry:    
-                measApertureValue.set(self.channel(selectedOut.get()).measurement_nplc._latest["value"]/50)
+                measApertureValue.set(self.channel(selectedOut.get()).measurement_nplc.cache()/50)
 
-            currRange.set(self.channel(selectedOut.get()).curr_range._latest["value"])
-            outputRange.set(self.channel(selectedOut.get()).output_range._latest["value"])
-            outputFilter.set(self.channel(selectedOut.get()).output_filter._latest["value"])
+            currRange.set(self.channel(selectedOut.get()).curr_range.cache())
+            outputRange.set(self.channel(selectedOut.get()).output_range.cache())
+            outputFilter.set(self.channel(selectedOut.get()).output_filter.cache())
 
             if outputRange.get() == "HIGH":
                 outputRangeInfoVar.set(u"\u00B1" + "10 V")
@@ -3196,15 +3195,11 @@ class QDac2(VisaInstrument):
             
             # Update output frame
             for out in range(24):
+                outVolts[f"out{out+1}"].set(f"V: {self.channel(out+1).volt.cache():.6g} V")
                 if outEnables[f"out{out+1}"].get() == 1:
-                    outVolts[f"out{out+1}"].set(f"V: {self.channel(out+1).volt.get_latest():.6f} V")
-                    # outAmps[f"out{out+1}"].set(f"I: {self.channel(out+1).current_last_A()*1E6:.2f} uA")
-                    outAmps[f"out{out+1}"].set(f"I: {outAmpGetters[f'out{out+1}']()*1E6:.6f} uA")
+                    outAmps[f'out{out+1}'].set(f'I: {outAmpGetters[f'out{out+1}']():.6g} A')
                 else:
-                    outVolts[f"out{out+1}"].set(f"V: {self.channel(out+1).volt.get_latest():.6f} V")
-                    # outAmps[f"out{out+1}"].set(f"I: - uA")
-                    outAmps[f"out{out+1}"].set("I: {:.6f} uA".format(self.channel(out+1).curr._latest["value"]*1E6))
-
+                    outAmps[f"out{out+1}"].set(f"I: {self.channel(out+1).curr.cache():.6g} A")
 
                 root.after(0, root.update())
 
@@ -3226,4 +3221,4 @@ class QDac2(VisaInstrument):
             self._gui_open = True
             print('Control panel opened.')
         else:
-            raise RuntimeError("GUI already open. If it's not, set qdac._gui_open = False. I am not a real developer.")
+            raise RuntimeError("GUI already open. If it's not, set qdac._gui_open = False. This may have been a result of the GUI crashing.")
