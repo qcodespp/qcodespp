@@ -39,7 +39,7 @@ mplstyle.use('fast')
 from lmfit.model import save_modelresult, load_modelresult
 
 import qcodespp.plotting.offline.design as design
-from qcodespp.plotting.offline.popupwindows import LineCutWindow, MetadataWindow, StatsWindow
+from qcodespp.plotting.offline.popupwindows import LineCutWindow, MetadataWindow, StatsWindow, ErrorWindow
 from qcodespp.plotting.offline.sidebars import Sidebar1D
 from qcodespp.plotting.offline.helpers import (cmaps, MidpointNormalize,NavigationToolbarMod,
                       rcParams_to_dark_theme,rcParams_to_light_theme,
@@ -789,7 +789,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     file_list.append(attr_dict['filepath'])
                 self.open_files(file_list,load_the_data=False,attr_dicts=data,dirpath=dirpath)
             except Exception as e:
-                print('Error loading session:', e)
+                self.ew=ErrorWindow('Error loading session:', e)
 
             for filename in os.listdir(dirpath+'/igtemp'):
                 file_path = os.path.join(dirpath+'/igtemp', filename)
@@ -823,7 +823,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                             dat_file.write('{}\t{}\t{}\n'.format(current_item.data.processed_data[0][j,k],current_item.data.processed_data[1][j,k],current_item.data.processed_data[2][j,k]))
                                 elif current_item.data.dim == 2:
                                     if current_item.data.plot_type == 'Histogram':
-                                        print('Cannot save 1D histogram data as .dat. Use .json or .csv instead.')
+                                        self.ew=ErrorWindow('Cannot save 1D histogram data as .dat. Use .json or .csv instead.')
                                     else:
                                         processed_data=[]
                                         for line in current_item.data.plotted_lines.keys():
@@ -833,7 +833,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                                 processed_data.append(current_item.data.plotted_lines[line]['processed_data'][1])
                                         np.savetxt(filepath, np.column_stack(processed_data),header=header)
                             except Exception as e:
-                                print('Error saving processed data as .dat:', e)
+                                self.ew=ErrorWindow('Error saving processed data as .dat:', e)
 
                     else:
                         data={}
@@ -900,7 +900,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                                 row.append('')
                                         writer.writerow(row)
                 else:
-                    print('No processed data to export')
+                    self.ew=ErrorWindow('No processed data to export')
 
             elif which=='Z':
                 if hasattr(current_item.data,'processed_data'):
@@ -908,7 +908,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         with open(filepath,'w') as dat_file:
                             np.savetxt(filepath, current_item.data.processed_data[-1])
                 else:
-                    print('No processed data to export')
+                    self.ew=ErrorWindow('No processed data to export')
                
     def file_checked(self, item):
 
@@ -950,7 +950,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 
                     lineedits[which].setText(str(current_item.data.settings[f'bins{which}']))
                 except Exception as e:
-                    print('Error in plot_type_changed:', e)
+                    self.ew=ErrorWindow('Could not change plot type:', e)
             
             self.update_plots(update_data=True,update_color_limits=True)
 
@@ -1092,14 +1092,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     if hasattr(item.data, 'sidebar1D') and self.file_list.currentItem() == item:
                         self.oneD_layout.addWidget(item.data.sidebar1D)
                 except Exception as e:
-                    print(f'Could not plot {item.data.filepath}:', e)
+                    self.ew=ErrorWindow(f'Could not plot {item.data.filepath}:', e)
                     raise
         try:
             self.show_current_all()
             self.figure.tight_layout()
             self.canvas.draw()
         except Exception as e:
-            print('Error in update_plots:', e)
+            self.ew=ErrorWindow('Exception encountered updating plots:', e)
 
         if hasattr(self, 'live_track_item') and self.live_track_item:
             if (self.live_track_item.checkState() and 
@@ -1512,7 +1512,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 try:
                     self.append_filter_to_table()
                 except Exception as e:
-                    print('Error appending filter to table:', e)
+                    self.ew=ErrorWindow('Error appending filter:', e)
     
     def global_text_changed(self):
         self.global_text_size=self.global_text_lineedit.text()
@@ -1572,7 +1572,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 current_item.data.apply_plot_settings()
                 self.canvas.draw()
             except Exception as e: # if invalid value is typed: reset to previous settings
-                print('Invalid value of plot setting!', e)
+                self.ew=ErrorWindow('Invalid value of plot setting!', e)
                 self.paste_plot_settings(which='old')
 
     def axlim_setting_edited(self, edited_setting):
@@ -1603,7 +1603,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 current_item.data.apply_axlim_settings()
                 self.canvas.draw()
             except Exception as e:
-                print('Invalid axis limit!', e)
+                self.ew=ErrorWindow('Invalid axis limit!', e)
                 self.paste_axlim_settings(which='old')
 
     def reset_axlim_settings(self):
@@ -1679,7 +1679,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 current_item.data.apply_view_settings()
                 self.canvas.draw()
             except Exception as e:
-                print('Invalid value of view setting!', e)
+                self.ew=ErrorWindow('Invalid value of colourbar setting!', e)
                 self.paste_view_settings(which='old')
                 
     def fill_colormap_box(self):
@@ -1724,7 +1724,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.show_current_view_settings()
                     self.reset_axlim_settings()
             except Exception as e:
-                print('Invalid value of filter!', e)
+                self.ew=ErrorWindow('Invalid value of filter!', e)
                 self.paste_filters(which='old')
     
     def copy_plot_settings(self):
@@ -1853,7 +1853,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 try:
                     self.combine_plots()
                 except Exception as e:
-                    print('Cannot combine files:', e)
+                    self.ew=ErrorWindow('Could not combine files:', e)
                     
     def duplicate_item(self, new_plot_button=False):
         original_item = self.file_list.currentItem()
@@ -1865,13 +1865,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             # Copy over data if internal data, or else re-load it. 
             # The advantage of keeping it this way is that the new data gets the correct data class; it won't be InternalData.
             if isinstance(original_item.data, InternalData):
-                try:
-                    item=DataItem(InternalData(self.canvas,original_item.data.loaded_data,
-                                           original_item.data.label,
-                                           original_item.data.all_parameter_names,
-                                           dimension=original_item.data.dim))
-                except Exception as e:
-                    print(e)
+                item=DataItem(InternalData(self.canvas,original_item.data.loaded_data,
+                                        original_item.data.label,
+                                        original_item.data.all_parameter_names,
+                                        dimension=original_item.data.dim))
                 item.filepath = 'internal_data'
                 self.add_internal_data(item,check_item=False,uncheck_others=False)
             
@@ -1985,8 +1982,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 # If sets of 2D datasets, stack them along the x-axis. Requires y axis has same dimension for all datasets
                 if all([item.dim == 3 for item in data_list]):
                     if not all(item.all_parameter_names == data_list[0].all_parameter_names for item in data_list):
+                        self.ew=ErrorWindow(f'Cannot combine 2D datasets with different parameters.')
                         raise ValueError('Cannot combine 2D datasets with different parameters.')
                     elif not all(item.get_columns()[1] == data_list[0].get_columns()[1] for item in data_list):
+                        self.ew=ErrorWindow(f'Cannot combine 2D datasets with different y axes.')
                         raise ValueError('Cannot combine 2D datasets with different y axes.')
                     combined_data=[]
                     combined_parameter_names=[]
@@ -2006,7 +2005,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                     combined_data.append(np.hstack([data_list[j].data_dict[parameter_name] for j in range(len(data_list))]))
                                     combined_parameter_names.append(parameter_name)
                                 except ValueError:
-                                    print(f'Error combining data for {parameter_name}: Check data dimensions.')
+                                    self.ew=ErrorWindow(f'Error combining data for {parameter_name}: Check data dimensions.')
                     if len(combined_data[0].shape) == 1: # Try to catch BaseClassData that also has a first independent param that is 1D, but this should never happen.
                         combined_data[0]=np.tile(combined_data[0],(combined_data[1].shape[1],1)).T
                     combined_item=DataItem(InternalData(self.canvas,combined_data,label_name,combined_parameter_names,dimension=3))
@@ -2031,7 +2030,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                           '2. Any number of 2D datasets with same sets of parameters and y-axis length. The datasets are stacked along the x-axis. \n'
                           '3. A single 2D dataset and a single 1D dataset. Pre-combine 1D and 2D datasets separately if necessary.')
                     if len(data_list) > 2:
-                        raise ValueError('Could not combine data. When combining 2D and 1D data, use only one dataset of each type.\n{finalerrormes}')
+                        self.ew=ErrorWindow(f'Could not combine data. When combining 2D and 1D data, '
+                                         f'use only one dataset of each type.\n{finalerrormessage}')
+                        raise ValueError('Could not combine data. When combining 2D and 1D data, '
+                                         f'use only one dataset of each type.\n{finalerrormessage}')
                     try:
                         if data_list[0].dim == 3:
                             dataset2d=data_list[0]
@@ -2062,10 +2064,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         self.add_internal_data(combined_item)
 
                     except Exception as e:
-                        print(f'Could not combine data: {e}\n{finalerrormessage}')
+                        self.ew=ErrorWindow(f'Could not combine data: {e}\n{finalerrormessage}')
 
             except Exception as e:
-                print('Cannot combine data:', e)
+                self.ew=ErrorWindow('Could not combine data:', e)
 
     def open_plot_settings_menu(self):
         row = self.settings_table.currentRow()
@@ -2159,7 +2161,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             try:
                 self.which_filters(current_item,filt=filt)
             except Exception as e:
-                print('Error adding filter:', e)
+                self.ew=ErrorWindow('Error adding filter:', e)
             if current_item.checkState() and filt.checkstate:
                 self.update_plots(update_color_limits=True)
             else:
@@ -2293,7 +2295,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         item.data.raw_data = None
                         item.data.processed_data = None
                     except Exception as e:
-                        print(f'Could not plot {item.data.filepath}:', e)
+                        self.ew=ErrorWindow(f'Could not plot {item.data.filepath}:', e)
             if DARK_THEME and qdarkstyle_imported:
                 rcParams_to_dark_theme()
                 self.update_plots(update_data=False)
@@ -2732,7 +2734,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                                                     str(data.plotted_lines[current_line]['processed_data'][0][x_max])], checkstate=2)
                     self.which_filters(current_item,filt=filt)
                 except Exception as e:
-                    print('Error cropping X:', e)
+                    self.ew=ErrorWindow('Error cropping X:', e)
             if current_item.checkState() and filt.checkstate:
                 self.update_plots(update_color_limits=True)
                 self.reset_axlim_settings()

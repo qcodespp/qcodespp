@@ -79,6 +79,16 @@ class LineCutWindow(QtWidgets.QWidget):
         self.colormap_box.addItems(list(cmaps.values())[0])
         self.colormap_box.setCurrentText(self.init_cmap)
 
+        self.linestyle_label = QtWidgets.QLabel('Style:')
+        self.linestyle_box = QtWidgets.QComboBox()
+        self.linestyle_box.addItems(['-', '--', '-.', ':','.','o','v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd', 'P', 'X'])
+        self.linestyle_box.setCurrentText('-')
+        self.linesize_label = QtWidgets.QLabel('Size:')
+        self.linesize_box = QtWidgets.QDoubleSpinBox()
+        self.linesize_box.setRange(0.25, 50)
+        self.linesize_box.setSingleStep(0.25)
+        self.linesize_box.setValue(1.5)
+
         # Plotting widgets
         self.reset_plot_limits_button = QtWidgets.QPushButton('Autoscale axes')
         self.plot_against_label = QtWidgets.QLabel('Plot against:')
@@ -153,6 +163,9 @@ class LineCutWindow(QtWidgets.QWidget):
         self.reorder_by_index_button.clicked.connect(self.reorder_cuts)
         self.apply_button.clicked.connect(self.apply_colormap)
 
+        self.linesize_box.valueChanged.connect(self.update)
+        self.linestyle_box.currentIndexChanged.connect(self.update)
+
         self.cuts_table.itemClicked.connect(self.item_clicked)
 
         self.reset_plot_limits_button.clicked.connect(self.autoscale_axes)
@@ -206,6 +219,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.generate_layout = QtWidgets.QHBoxLayout()
         self.move_buttons_layout = QtWidgets.QHBoxLayout()
         self.colormap_layout = QtWidgets.QHBoxLayout()
+        self.style_layout = QtWidgets.QHBoxLayout()
 
         # Populating
         self.table_buttons_layout.addWidget(self.add_cut_button)
@@ -225,6 +239,11 @@ class LineCutWindow(QtWidgets.QWidget):
         self.colormap_layout.addWidget(self.colormap_box)
         self.colormap_layout.addWidget(self.apply_colormap_to_box)
         self.colormap_layout.addWidget(self.apply_button)
+
+        self.style_layout.addWidget(self.linestyle_label)
+        self.style_layout.addWidget(self.linestyle_box)
+        self.style_layout.addWidget(self.linesize_label)
+        self.style_layout.addWidget(self.linesize_box)
 
         # Sublayout(s) in plotting box:
         self.top_buttons_layout = QtWidgets.QHBoxLayout()
@@ -312,6 +331,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.table_layout.addWidget(self.cuts_table)
         self.table_layout.addLayout(self.move_buttons_layout)
         self.table_layout.addLayout(self.colormap_layout)
+        self.table_layout.addLayout(self.style_layout)
         self.tablebox.setLayout(self.table_layout)
         self.tablebox.setMaximumWidth(450)
         
@@ -1160,6 +1180,14 @@ class LineCutWindow(QtWidgets.QWidget):
             z=0
         return (x,y,z)
 
+    def draw_lines(self,x,y,line):
+        offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
+        size=self.linesize_box.value()
+        self.axes.plot(x, y+offset, self.linestyle_box.currentText(),
+                    linewidth=size,
+                    markersize=size,
+                    color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
+    
     def draw_plot(self,parent_marker=True):
         self.running = True
         self.figure.clear()
@@ -1179,15 +1207,13 @@ class LineCutWindow(QtWidgets.QWidget):
             for line in lines:
                 x,y,z= self.get_line_data(line)
                 self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value'] = z
+                self.draw_lines(x, y, line)
                 if parent_marker:
                     self.parent.horimarkers.append(self.parent.axes.axhline(y=z, linestyle='dashed', linewidth=1.5, xmax=0.1,
                                                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
                     self.parent.horimarkers.append(self.parent.axes.axhline(y=z, linestyle='dashed', linewidth=1.5, xmin=0.9,
                                                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
-                #self.ylabel = self.parent.settings['clabel']
-                offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
-                self.axes.plot(x, y+offset, linewidth=1.5,
-                                color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
+
 
         elif self.orientation == 'vertical':
             if hasattr(self.parent,'vertmarkers') and len(self.parent.vertmarkers)>0:
@@ -1199,20 +1225,18 @@ class LineCutWindow(QtWidgets.QWidget):
             for line in lines:
                 x,y,z= self.get_line_data(line)
                 self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value'] = z
+                self.draw_lines(x, y, line)
                 if parent_marker:
                     self.parent.vertmarkers.append(self.parent.axes.axvline(x=z, linestyle='dashed', linewidth=1.5, ymax=0.1,
                                                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
                     self.parent.vertmarkers.append(self.parent.axes.axvline(x=z, linestyle='dashed', linewidth=1.5, ymin=0.9,
                                                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
-                #self.ylabel = self.parent.settings['clabel']
-                offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
-                self.axes.plot(x, y+offset, linewidth=1.5,
-                                color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
 
         elif self.orientation == 'diagonal' or self.orientation == 'circular':
             for line in lines:
+                x,y,z= self.get_line_data(line)
+                self.draw_lines(x, y, line)
                 try:
-                    x,y,z = self.get_line_data(line)
                     if self.orientation == 'diagonal':
                         if self.plot_against_box.currentText().split(':')[0] == 'X':
                             self.xlabel = self.parent.settings['xlabel']
@@ -1223,10 +1247,6 @@ class LineCutWindow(QtWidgets.QWidget):
                         #self.title = f'({x0:5g},{y0:5g}) : ({x1:5g},{y1:5g})'
                     elif self.orientation == 'circular':
                         self.xlabel = 'Angle (rad)'
-
-                    offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
-                    self.axes.plot(x, y+offset, linewidth=1.5,
-                                    color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
                 except Exception as e:
                     print(e)
 
@@ -1846,3 +1866,34 @@ class MetadataWindow(QtWidgets.QDialog):
                 #     self.tree_widget.setItemWidget(item, 1, label)
                 # except Exception as e:
                 #     print(e)
+
+class ErrorWindow(QtWidgets.QDialog):
+    def __init__(self, text):
+        super().__init__()
+        self.setWindowTitle("Offline Plotting Error")
+        self.resize(500, 250)
+        self.layout = QtWidgets.QVBoxLayout()
+
+        self.text_edit = QtWidgets.QTextEdit()
+        self.text_edit.setReadOnly(True)
+        self.text_edit.setText(text)
+        self.layout.addWidget(self.text_edit)
+
+        self.button_layout = QtWidgets.QHBoxLayout()
+        self.copy_button = QtWidgets.QPushButton("Copy")
+        self.close_button = QtWidgets.QPushButton("Close")
+        self.button_layout.addStretch()
+        self.button_layout.addWidget(self.close_button)
+        self.button_layout.addWidget(self.copy_button)
+        self.layout.addLayout(self.button_layout)
+
+        self.setLayout(self.layout)
+
+        self.copy_button.clicked.connect(self.copy_text)
+        self.close_button.clicked.connect(self.close)
+
+        self.show()
+
+    def copy_text(self):
+        clipboard = QtWidgets.QApplication.clipboard()
+        clipboard.setText(self.text_edit.toPlainText())
