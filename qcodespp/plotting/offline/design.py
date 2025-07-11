@@ -622,7 +622,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addLayout(self.vertical_layout)
         MainWindow.setCentralWidget(self.central_widget)
         self.menu_bar = QtWidgets.QMenuBar(MainWindow)
-        self.menu_bar.setGeometry(QtCore.QRect(0, 0, 1418, 22))
+        self.menu_bar.setGeometry(QtCore.QRect(0, 0, 1418, 18))
         self.menu_bar.setObjectName("menu_bar")
         self.menu_save_session = QtWidgets.QMenu(self.menu_bar)
         self.menu_save_session.setObjectName("menu_save_session")
@@ -739,6 +739,8 @@ class Ui_MainWindow(object):
         self.action_export_data_Z.setObjectName("action_export_data_Z")
         self.actionOnline_help = QtWidgets.QAction(MainWindow)
         self.actionOnline_help.setObjectName("actionOnline_help")
+        self.actionError_log = QtWidgets.QAction(MainWindow)
+        self.actionError_log.setObjectName("actionError_log")
         self.menu_save_session.addAction(self.action_export_data_columns)
         self.menu_save_session.addAction(self.action_export_data_Z)
         self.menu_save_session.addSeparator()
@@ -763,6 +765,7 @@ class Ui_MainWindow(object):
         self.menuFile.addAction(self.action_save_session)
         self.menuFile.addAction(self.action_restore_session)
         self.menuHelp.addAction(self.actionOnline_help)
+        self.menuHelp.addAction(self.actionError_log)
         self.menu_bar.addAction(self.menuFile.menuAction())
         self.menu_bar.addAction(self.menuCombine_Plots.menuAction())
         self.menu_bar.addAction(self.menu_save_session.menuAction())
@@ -894,6 +897,7 @@ class Ui_MainWindow(object):
         self.actionsave_data_all_files.setText(_translate("MainWindow", "All files"))
         self.action_export_data_Z.setText(_translate("MainWindow", "Z data as (NxM) array"))
         self.actionOnline_help.setText(_translate("MainWindow", "Online help"))
+        self.actionError_log.setText(_translate("MainWindow", "Error log"))
 
 
 if __name__ == "__main__":

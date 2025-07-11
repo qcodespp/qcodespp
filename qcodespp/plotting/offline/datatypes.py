@@ -76,7 +76,6 @@ class BaseClassData:
         self.settings['title'] = self.label
         self.view_settings = self.DEFAULT_VIEW_SETTINGS.copy()
         self.axlim_settings = self.DEFAULT_AXLIM_SETTINGS.copy()
-        #print(self.view_settings['CBarHist'])
         self.filters = []
         self.labels_changed = False
 
@@ -113,8 +112,6 @@ class BaseClassData:
                 for i,name in enumerate(self.all_parameter_names):
                     self.data_dict[name]=self.loaded_data[i]
         except Exception as e:
-            print(f'Could not read column names: {e}\n'
-                'Using integers instead')
             pass
 
         if len(self.data_dict.keys()) == 0:
@@ -818,8 +815,6 @@ class MixedInternalData(BaseClassData):
             self.dataset2d = BaseClassData(dataset2d_filepath,canvas)
         elif dataset2d_type == InternalData:
             self.dataset2d = InternalData(canvas,dataset2d_loaded_data,dataset2d_label,dataset2d_all_parameter_names,dataset2d_dim)
-        else:
-            print('could not find the correct type for dataset2d')
         
         if dataset1d_type == qcodesppData:
             self.dataset1d = qcodesppData(dataset1d_filepath,canvas,os.path.dirname(dataset1d_filepath)+'/snapshot.json',load_the_data=True)
@@ -827,8 +822,6 @@ class MixedInternalData(BaseClassData):
             self.dataset1d = BaseClassData(dataset1d_filepath,canvas)
         elif dataset1d_type == InternalData:
             self.dataset1d = InternalData(canvas,dataset1d_loaded_data,dataset1d_label,dataset1d_all_parameter_names,dataset1d_dim)
-        else:
-            print('could not find the correct type for dataset1d')
 
         self.plot_type=None
         

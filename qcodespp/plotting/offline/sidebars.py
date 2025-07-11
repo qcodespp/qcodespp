@@ -297,7 +297,7 @@ class Sidebar1D(QtWidgets.QWidget):
             self.editor_window.show_current_plot_settings()
             self.editor_window.update_plots(update_data=False)
         except Exception as e:
-            print('Cannot duplicate data: '+e)
+            self.editor_window.log_error(f'Cannot duplicate data: {e}', show_popup=True)
 
     def add_trace_manually(self): # When 'add' button pressed
         try:
@@ -322,7 +322,7 @@ class Sidebar1D(QtWidgets.QWidget):
             self.append_trace_to_table(int(max_index+1))
             self.editor_window.show_current_plot_settings()
         except Exception as e:
-            print('Cannot add data: '+e)
+            self.editor_window.log_error(f'Cannot add data: {e}', show_popup=True)
         self.editor_window.update_plots(update_data=False)
 
     def append_trace_to_table(self,index):
@@ -435,7 +435,7 @@ class Sidebar1D(QtWidgets.QWidget):
                 self.editor_window.show_current_plot_settings()
 
             except Exception as e:
-                print('Error changing plotted data: '+str(e))
+                self.editor_window.log_error(f'Error changing plotted data: {e}', show_popup=True)
         self.editor_window.update_plots(update_data=False)
 
     def remove_trace(self,which='selected'):
@@ -447,7 +447,7 @@ class Sidebar1D(QtWidgets.QWidget):
                 self.parent.plotted_lines.pop(linetrace)
                 self.trace_table.removeRow(row)
             except Exception as e:
-                print(e)
+                self.editor_window.log_error(f'Cannot remove selected trace: {e}', show_popup=True)
         elif which=='all':
             self.parent.plotted_lines = {}
             self.trace_table.setRowCount(0)
@@ -983,7 +983,7 @@ class Sidebar1D(QtWidgets.QWidget):
                 with open(filename, 'w', encoding='utf-8') as f:
                     jsondump(export_dict, f, ensure_ascii=False,indent=4)
             except Exception as e:
-                print('Could not save statistics:', e)
+                self.editor_window.log_error(f'Could not save statistics: {e}', show_popup=True)
 
     def save_all_fits(self):
         current_row = self.trace_table.currentRow()
@@ -1022,10 +1022,10 @@ class Sidebar1D(QtWidgets.QWidget):
                 with open(filename, 'w', encoding='utf-8') as f:
                     jsondump(export_dict, f, ensure_ascii=False,indent=4)
             except Exception as e:
-                print('Could not save statistics:', e)
+                self.editor_window.log_error(f'Could not save statistics: {e}', show_popup=True)
         else:
-            print('First select a linecut with either a fit or statistics. '
-                  'Either the fits or stats for all lines will be saved, based on that.')
+            self.editor_window.log_error('First select a trace with either a fit or statistics. Either the fits or stats for all traces will be saved, based on that.',
+                                        show_popup=True)
 
     def clear_fit(self,line='manual'):
         self.trace_table.itemChanged.disconnect(self.trace_table_edited)
@@ -1063,7 +1063,7 @@ class Sidebar1D(QtWidgets.QWidget):
             for line in self.parent.plotted_lines.keys():
                 self.clear_fit(line)
         except Exception as e:
-            print('Could not clear all fits:', e)
+            self.editor_window.log_error(f'Could not clear all fits: {e}', show_popup=True)
 
         fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
         self.output_window.setText('Information about selected fit type:\n'+fit_function['description'])

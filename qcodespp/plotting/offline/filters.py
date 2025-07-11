@@ -11,7 +11,6 @@ from scipy.interpolate import LinearNDInterpolator, CloughTocher2DInterpolator, 
 
 from qcodespp.plotting.analysis_tools import sort_lists
 
-
 # Filter definitions
 
 def derivative(data, method, times_x, times_y):

@@ -38,9 +38,9 @@ class LineCutWindow(QtWidgets.QWidget):
         self.orientation = orientation
         self.init_cmap = init_cmap
         try:
-            self.setWindowTitle(f'Inspectra Gadget - {orientation} linecuts for {self.parent.label}')
+            self.setWindowTitle(f'InSpectra Gadget - {orientation} linecuts for {self.parent.label}')
         except:
-            self.setWindowTitle('Inspectra Gadget - Linecut and Fitting Window')
+            self.setWindowTitle('InSpectra Gadget - Linecut and Fitting Window')
         self.resize(1200, 900)
         self.init_widgets()
         if init_canvas:
@@ -623,7 +623,7 @@ class LineCutWindow(QtWidgets.QWidget):
             self.update()
 
         except Exception as e:
-            print(e)
+            self.editor_window.log_error(f'Error changing linecut position: {e}', show_popup=True)
 
     def index_changed(self,row):
         index_box = self.cuts_table.cellWidget(row,1)
@@ -639,7 +639,7 @@ class LineCutWindow(QtWidgets.QWidget):
             self.parent.linecuts[self.orientation]['lines'][linecut]['data_index'] = data_index
             self.canvas.draw()
         except Exception as e:
-            print(e)
+            self.editor_window.log_error(f'Error changing linecut index: {e}', show_popup=True)
         self.cuts_table.setCurrentItem(self.cuts_table.item(row,0)) # Hopefully fixes a bug that if the index is changed, the focus goes weird.
 
     def add_cut_manually(self,data_index=0,offset=0,linecolor=None,update=True):
@@ -682,8 +682,8 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.parent.linecuts[self.orientation]['lines'][int(max_index+1)]['draggable_points']=[DraggablePoint(self.parent,x_0,y_0,int(max_index+1),self.orientation),
                                                 DraggablePoint(self.parent,x_1,y_1,int(max_index+1),self.orientation,draw_line=True)]
             self.append_cut_to_table(int(max_index+1))
-        except IndexError:
-            print('Index out of range.')
+        except IndexError as e:
+            self.editor_window.log_error(f'Tried to add linecut with index out of range: {e}')
         if update: # Don't update every time a cut is added when 'generate' is used
             self.update()
 
@@ -698,7 +698,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.parent.linecuts[self.orientation]['lines'].pop(linecut)
                 self.cuts_table.removeRow(row)
             except Exception as e:
-                print(e)
+                self.editor_window.log_error(f'Could not remove linecut: {e}', show_popup=True)
         elif which=='all':
             for linecut in self.parent.linecuts[self.orientation]['lines'].keys():
                 if 'draggable_points' in self.parent.linecuts[self.orientation]['lines'][linecut].keys():
@@ -893,7 +893,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 elif action == uncheck_all_action:
                     self.change_all_checkstate(column,QtCore.Qt.Unchecked)
             except Exception as e:
-                print(e)
+                self.editor_window.log_error(f'Could not change checkstate in linecut window: {e}')
             self.cuts_table.itemChanged.connect(self.cuts_table_edited)
 
     def limits_edited(self):
@@ -1248,7 +1248,7 @@ class LineCutWindow(QtWidgets.QWidget):
                     elif self.orientation == 'circular':
                         self.xlabel = 'Angle (rad)'
                 except Exception as e:
-                    print(e)
+                    self.editor_window.log_error(f'Could not plot diagonal linecut: {e}', show_popup=True)
 
         self.ylabel = self.parent.settings['clabel']
         self.cursor = Cursor(self.axes, useblit=True, color='grey', linewidth=0.5)
@@ -1345,7 +1345,7 @@ class LineCutWindow(QtWidgets.QWidget):
                                     row.append('')
                             writer.writerow(row)
             except Exception as e:
-                print(e)
+                self.editor_window.log_error(f'Could not save data: {e}', show_popup=True)
     
     def save_fit_result(self):
         current_row = self.cuts_table.currentRow()
@@ -1378,7 +1378,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 with open(filename, 'w', encoding='utf-8') as f:
                     jsondump(export_dict, f, ensure_ascii=False,indent=4)
             except Exception as e:
-                print('Could not save statistics:', e)
+                self.editor_window.log_error(f'Could not save statistics: {e}', show_popup=True)
 
     def save_all_fits(self):
         # Can save _either_ fits or stats, and decide which to do based on whether the current line has a fit or stats.
@@ -1420,11 +1420,11 @@ class LineCutWindow(QtWidgets.QWidget):
                 with open(filename, 'w', encoding='utf-8') as f:
                     jsondump(export_dict, f, ensure_ascii=False,indent=4)
             except Exception as e:
-                print('Could not save statistics:', e)
-        
+                self.editor_window.log_error(f'Could not save statistics: {e}', show_popup=True)
         else:
-            print('First select a linecut with either a fit or statistics. '
-                  'Either the fits or stats for all lines will be saved, based on that.')
+            self.editor_window.log_error('First select a linecut with either a fit or statistics. Either the fits or stats for all linecuts will be saved, based on that.',
+                                        show_popup=True)
+
 
     def clear_fit(self,line='manual'):
         self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
@@ -1462,7 +1462,7 @@ class LineCutWindow(QtWidgets.QWidget):
             for line in self.parent.linecuts[self.orientation]['lines'].keys():
                 self.clear_fit(line)
         except Exception as e:
-            print('Could not clear all fits:', e)
+            self.editor_window.log_error(f'Could not clear all fits: {e}', show_popup=True)
             
         fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
         self.output_window.setText('Information about selected fit type:\n'+fit_function['description'])
@@ -1506,7 +1506,7 @@ class LineCutWindow(QtWidgets.QWidget):
                         header += '\t'+param+'_error'
                 success=True
             except Exception as e:
-                print(f'Could not compile parameter dependency array: {e}')
+                self.editor_window.log_error(f'Could not compile parameter dependency array: {e}', show_popup=True)
                 success=False
 
         elif 'stats' in self.parent.linecuts[self.orientation]['lines'][current_line].keys():
@@ -1560,7 +1560,6 @@ class LineCutWindow(QtWidgets.QWidget):
                     elif self.orientation in ['horizontal', 'vertical']:
                         name=params[0]
                         autocorrelation_array=np.zeros((len(stat_lines),len(first_result[name])))
-                        print(np.shape(autocorrelation_array))
                         cut_axis_array=np.zeros_like(autocorrelation_array)
                         sweep_axis_array=np.zeros_like(autocorrelation_array)
 
@@ -1602,7 +1601,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 success=True
 
             except Exception as e:
-                print('Could not compile statistics array:', e)
+                self.editor_window.log_error(f'Could not compile statistics array: {e}', show_popup=True)
                 success=False
 
         if success:
@@ -1610,18 +1609,17 @@ class LineCutWindow(QtWidgets.QWidget):
                 self, 'Save dependency of fitted parameters/stats','', 'numpy dat file (*.dat)')
             if filename:
                 np.savetxt(filename, data, delimiter='\t', header=header, fmt='%s')
-                print(f'Saved to {filename}')
                 try:
                     self.editor_window.open_files([filename],overrideautocheck=True)
                 except Exception as e:
-                    print('Could not open dependency in editor:', e)
+                    self.editor_window.log_error(f'Fit dependency was saved at {filename}, but could not be opened in the main window: {e}',
+                                                 show_popup=True)
 
     def save_image(self):
         formats = 'Portable Network Graphic (*.png);;Adobe Acrobat (*.pdf)'
         filename, extension = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Figure As', '', formats)
         if filename:
-            print('Save Figure as '+filename+' ...')
             if DARK_THEME and qdarkstyle_imported:
                 rcParams_to_light_theme()
                 self.update()
@@ -1629,7 +1627,6 @@ class LineCutWindow(QtWidgets.QWidget):
             if DARK_THEME and qdarkstyle_imported:
                 rcParams_to_dark_theme()
                 self.update()
-            print('Saved!')
     
     def copy_image(self):
         self.cursor.horizOn = False
@@ -1870,7 +1867,7 @@ class MetadataWindow(QtWidgets.QDialog):
 class ErrorWindow(QtWidgets.QDialog):
     def __init__(self, text):
         super().__init__()
-        self.setWindowTitle("Offline Plotting Error")
+        self.setWindowTitle("InSpectra Gadget Error")
         self.resize(500, 250)
         self.layout = QtWidgets.QVBoxLayout()
 
@@ -1897,3 +1894,30 @@ class ErrorWindow(QtWidgets.QDialog):
     def copy_text(self):
         clipboard = QtWidgets.QApplication.clipboard()
         clipboard.setText(self.text_edit.toPlainText())
+
+class ErrorLogWindow(QtWidgets.QDialog):
+    def __init__(self, error_log):
+        super().__init__()
+        self.setWindowTitle("InSpectra Gadget Error and Event Log")
+        self.resize(600, 400)
+        self.layout = QtWidgets.QVBoxLayout()
+
+        self.tree_widget = QtWidgets.QTreeWidget()
+        self.tree_widget.setColumnCount(2)
+        self.tree_widget.setHeaderLabels(["Timestamp", "Error Message"])
+        self.populate_tree(error_log)
+        self.layout.addWidget(self.tree_widget)
+
+        self.close_button = QtWidgets.QPushButton("Close")
+        self.close_button.clicked.connect(self.close)
+        self.layout.addWidget(self.close_button)
+
+        self.setLayout(self.layout)
+        self.show()
+
+    def populate_tree(self, error_log):
+        for key in sorted(error_log.keys()):
+            entry = error_log[key]
+            timestamp = str(entry.get('timestamp', ''))
+            message = str(entry.get('message', ''))
+            QtWidgets.QTreeWidgetItem(self.tree_widget, [timestamp, message])

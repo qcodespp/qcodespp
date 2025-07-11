@@ -1254,7 +1254,7 @@
      <x>0</x>
      <y>0</y>
      <width>1418</width>
-     <height>22</height>
+     <height>18</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_save_session">
@@ -1305,6 +1305,7 @@
      <string>Help</string>
     </property>
     <addaction name="actionOnline_help"/>
+    <addaction name="actionError_log"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuCombine_Plots"/>
@@ -1570,6 +1571,11 @@
   <action name="actionOnline_help">
    <property name="text">
     <string>Online help</string>
+   </property>
+  </action>
+  <action name="actionError_log">
+   <property name="text">
+    <string>Error log</string>
    </property>
   </action>
  </widget>
