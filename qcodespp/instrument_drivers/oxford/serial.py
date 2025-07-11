@@ -174,9 +174,18 @@ class SerialInstrument(Instrument):
         rep = self.serial_handle.read_all()
         return rep.decode('ascii').strip()
 
-    def read_until(self):
-        rep = self.serial_handle.read_until(self._terminator.encode('ascii'))
-        return rep.decode('ascii').strip()
+    def read_until(self,retry=True):
+        try:
+            rep = self.serial_handle.read_until(self._terminator.encode('ascii'))
+            return rep.decode('ascii').strip()
+        except UnicodeDecodeError:
+            if retry:
+                try:
+                    self.read_until(retry=False)
+                except Exception as e:
+                    print(e)
+        except Exception as e:
+            raise RuntimeError(f'read_until failed:{e}')
 
     def ask(self, cmd):
         self.write(cmd)

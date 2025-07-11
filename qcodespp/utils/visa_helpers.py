@@ -40,10 +40,12 @@ def listVISAinstruments(baudrates='qdac'):
 
     resman=pyvisa.ResourceManager()
     for resource in resman.list_resources():
+        res=False
         try:
             res=resman.open_resource(resource)
-            print(f'Instrument IDN: {res.query('*IDN?')} VISA Address: {resource}\n')
-        except:
+            idn=res.query('*IDN?')
+            print(f'Instrument IDN: {idn} VISA Address: {resource}\n')
+        except Exception as e1:
             for baudrate in baudrates:
                 connected=False
                 try:
@@ -52,10 +54,14 @@ def listVISAinstruments(baudrates='qdac'):
                     print(f'Instrument IDN: {res.query('*IDN?')} VISA Address: {resource}\n')
                     connected=True
                     break
-                except Exception as e:
+                except Exception as e2:
                     pass
                 finally:
                     res.baud_rate=9600
             if connected==False:
-                print(f'Cannot access instrument with address {resource}. Likely the instrument '
+                print(f'Instrument with address {resource} raised exceptions:\n {e1}\n{e2}\n'
+                    'Either the instrument does not accept the ''IDN?'' command (e.g. it does not use SCPI, '
+                    'it is a composite instrument, etc), or it'
                     'is already connected, possibly in another program or ipython kernel.\n')
+        if res:
+            res.close()
