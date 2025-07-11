@@ -400,9 +400,9 @@ def logarithm(data, method, setting1=10, setting2=None):
     elif setting1 == '2':
         function = np.ma.log2
     else:
-        print('Setting 1 is not a valid base. Use e, 10 or 2')
+        raise ValueError(f'{setting1} is not a valid base. Use e, 10 or 2')
     if method == 'Mask':
-        data[-1] = function(data[-1])        
+        data[-1] = function(data[-1])
     elif method == 'Shift':
         min_value = np.amin(data[-1])
         if min_value <= 0.0:

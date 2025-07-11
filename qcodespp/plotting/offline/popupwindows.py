@@ -1868,7 +1868,7 @@ class ErrorWindow(QtWidgets.QDialog):
     def __init__(self, text):
         super().__init__()
         self.setWindowTitle("InSpectra Gadget Error")
-        self.resize(500, 250)
+        self.resize(600, 300)
         self.layout = QtWidgets.QVBoxLayout()
 
         self.text_edit = QtWidgets.QTextEdit()
@@ -1899,7 +1899,7 @@ class ErrorLogWindow(QtWidgets.QDialog):
     def __init__(self, error_log):
         super().__init__()
         self.setWindowTitle("InSpectra Gadget Error and Event Log")
-        self.resize(600, 400)
+        self.resize(900, 500)
         self.layout = QtWidgets.QVBoxLayout()
 
         self.tree_widget = QtWidgets.QTreeWidget()

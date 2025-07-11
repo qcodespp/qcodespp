@@ -809,43 +809,44 @@ def RCSJfit(xdata,ydata,p0=None,inputinfo=None):
     '''
     try:
         from mpmath import besseli
+    
+        T=inputinfo[0] if inputinfo else 0.02  # Temperature in Kelvin
+        def besselfuncdiff(x, jc, Rj, Rc, x_0):
+            hbar=1.0545718e-34
+            electron=1.60217662e-19
+            boltzmann=1.38064852e-23
+            bess=np.zeros(np.size(x))
+            
+            for i in range(np.size(x)):
+                eta=hbar*(x[i]-x_0)/(2*electron*Rc*boltzmann*T)
+                beta=jc*hbar/(2*electron*boltzmann*T)
+                bess1 = besseli(1-eta*1j,beta)
+                bess2 = besseli(-eta*1j,beta)
+                imagine = (bess1/bess2).imag
+                bess[i]=(Rj/(Rj+Rc))*(jc*imagine+((x[i]-x_0)/Rj))
+            return np.gradient(bess,x)
+
+        if p0:
+            jc_init= float(p0[0])
+            Rj_init= float(p0[1])
+            Rc_init= float(p0[2])
+            x_0_init= float(p0[3])
+            c_init=float(p0[4])
+        else:
+            x_0_init=np.mean(xdata)
+            jc_init=1e-9 #honestly have no idea how to provide good initial guesses for this model based only on the data. I think the model is too complex to ever do so.
+            Rj_init=1e10
+            Rc_init=3600
+            c_init=np.min(ydata)
+
+        model = Model(besselfuncdiff)+lmm.ConstantModel()
+        params = model.make_params(jc=jc_init,Rj=Rj_init, Rc=Rc_init, x_0=x_0_init,c=c_init)#, bkg_c=conductance[-1])
+
+        result = model.fit(ydata, params, x=xdata)
+        return result
+    
     except ImportError:
         print("The mpmath library is required for RCSJ fitting. Please install it using 'pip install mpmath'.")
-    
-    T=inputinfo[0] if inputinfo else 0.02  # Temperature in Kelvin
-    def besselfuncdiff(x, jc, Rj, Rc, x_0):
-        hbar=1.0545718e-34
-        electron=1.60217662e-19
-        boltzmann=1.38064852e-23
-        bess=np.zeros(np.size(x))
-        
-        for i in range(np.size(x)):
-            eta=hbar*(x[i]-x_0)/(2*electron*Rc*boltzmann*T)
-            beta=jc*hbar/(2*electron*boltzmann*T)
-            bess1 = besseli(1-eta*1j,beta)
-            bess2 = besseli(-eta*1j,beta)
-            imagine = (bess1/bess2).imag
-            bess[i]=(Rj/(Rj+Rc))*(jc*imagine+((x[i]-x_0)/Rj))
-        return np.gradient(bess,x)
-
-    if p0:
-        jc_init= float(p0[0])
-        Rj_init= float(p0[1])
-        Rc_init= float(p0[2])
-        x_0_init= float(p0[3])
-        c_init=float(p0[4])
-    else:
-        x_0_init=np.mean(xdata)
-        jc_init=1e-9 #honestly have no idea how to provide good initial guesses for this model based only on the data. I think the model is too complex to ever do so.
-        Rj_init=1e10
-        Rc_init=3600
-        c_init=np.min(ydata)
-
-    model = Model(besselfuncdiff)+lmm.ConstantModel()
-    params = model.make_params(jc=jc_init,Rj=Rj_init, Rc=Rc_init, x_0=x_0_init,c=c_init)#, bkg_c=conductance[-1])
-
-    result = model.fit(ydata, params, x=xdata)
-    return result
 
 def statistics(xdata,ydata,p0,inputinfo):
     '''Return various statists from the data
