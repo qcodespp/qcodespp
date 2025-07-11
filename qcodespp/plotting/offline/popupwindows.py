@@ -1897,6 +1897,7 @@ class ErrorWindow(QtWidgets.QDialog):
 
 class ErrorLogWindow(QtWidgets.QDialog):
     def __init__(self, error_log):
+        self.error_log = error_log
         super().__init__()
         self.setWindowTitle("InSpectra Gadget Error and Event Log")
         self.resize(900, 500)
@@ -1912,6 +1913,10 @@ class ErrorLogWindow(QtWidgets.QDialog):
         self.close_button.clicked.connect(self.close)
         self.layout.addWidget(self.close_button)
 
+        self.save_button = QtWidgets.QPushButton("Save Log")
+        self.save_button.clicked.connect(self.save_log)
+        self.layout.addWidget(self.save_button)
+
         self.setLayout(self.layout)
         self.show()
 
@@ -1921,3 +1926,13 @@ class ErrorLogWindow(QtWidgets.QDialog):
             timestamp = str(entry.get('timestamp', ''))
             message = str(entry.get('message', ''))
             QtWidgets.QTreeWidgetItem(self.tree_widget, [timestamp, message])
+
+    def save_log(self):
+        filename, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self, 'Save Error Log', '', 'JSON Files (*.json)')
+        if filename:
+            try:
+                with open(filename, 'w', encoding='utf-8') as f:
+                    jsondump(self.error_log, f, ensure_ascii=False, indent=4)
+            except Exception as e:
+                self.ew=ErrorWindow(f"Error saving log: {e}")
