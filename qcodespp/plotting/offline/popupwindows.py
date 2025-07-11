@@ -512,6 +512,7 @@ class LineCutWindow(QtWidgets.QWidget):
         if item=='index':
             current_row = self.cuts_table.currentRow()
             self.index_changed(current_row)
+            self.update()
 
         else:
             current_item = item
@@ -626,6 +627,7 @@ class LineCutWindow(QtWidgets.QWidget):
             self.editor_window.log_error(f'Error changing linecut position: {e}', show_popup=True)
 
     def index_changed(self,row):
+        self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
         index_box = self.cuts_table.cellWidget(row,1)
         data_index=index_box.value()
         linecut = int(self.cuts_table.item(row,0).text())
@@ -637,10 +639,10 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.parent.linecuts[self.orientation]['lines'][linecut]['cut_axis_value']=self.parent.processed_data[0][data_index,0]
                 self.cuts_table.item(row,2).setText(f'{self.parent.processed_data[0][data_index,0]:6g}')
             self.parent.linecuts[self.orientation]['lines'][linecut]['data_index'] = data_index
-            self.canvas.draw()
         except Exception as e:
             self.editor_window.log_error(f'Error changing linecut index: {e}', show_popup=True)
         self.cuts_table.setCurrentItem(self.cuts_table.item(row,0)) # Hopefully fixes a bug that if the index is changed, the focus goes weird.
+        self.cuts_table.itemChanged.connect(self.cuts_table_edited)
 
     def add_cut_manually(self,data_index=0,offset=0,linecolor=None,update=True):
         # Add a linecut when the button is pushed or from the generator. Default to zero-th index if it's the push button.
@@ -1188,7 +1190,12 @@ class LineCutWindow(QtWidgets.QWidget):
                     markersize=size,
                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
     
-    def draw_plot(self,parent_marker=True):
+    def draw_plot(self):
+        checked_editor_items = self.editor_window.get_checked_items()
+        if any(item.data == self.parent for item in checked_editor_items):
+            parent_marker = True
+        else:
+            parent_marker = False
         self.running = True
         self.figure.clear()
 
@@ -1198,7 +1205,7 @@ class LineCutWindow(QtWidgets.QWidget):
         lines = self.get_checked_items()
 
         if self.orientation == 'horizontal':
-            if hasattr(self.parent,'horimarkers') and len(self.parent.horimarkers)>0:
+            if parent_marker and hasattr(self.parent,'horimarkers') and len(self.parent.horimarkers)>0:
                 for marker in self.parent.horimarkers:
                     marker.remove()
             self.parent.horimarkers = []
@@ -1216,7 +1223,7 @@ class LineCutWindow(QtWidgets.QWidget):
 
 
         elif self.orientation == 'vertical':
-            if hasattr(self.parent,'vertmarkers') and len(self.parent.vertmarkers)>0:
+            if parent_marker and hasattr(self.parent,'vertmarkers') and len(self.parent.vertmarkers)>0:
                 for marker in self.parent.vertmarkers:
                     marker.remove()
             self.parent.vertmarkers = []
