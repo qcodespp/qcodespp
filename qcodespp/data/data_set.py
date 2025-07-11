@@ -19,6 +19,7 @@ from qcodespp.station import Station
 from qcodespp.parameters import Parameter
 from qcodes import config
 import os
+import platform
 
 from uuid import uuid4
 log = logging.getLogger(__name__)
@@ -299,7 +300,10 @@ class DataSetPP(DelegateAttributes):
                 log.warning('Backup location specified in qcodespp.config["core"]["backup_location"] is not writable. '
                     'Try another location')
         elif backup_location is None:
-            self.backup_location='~/.qcodespp/data_backup'
+            if platform.system()=='Windows':
+                self.backup_location='C:/Users/'+os.getlogin()+'/AppData/Local/qcodespp/data_backup'
+            else:
+                self.backup_location='~/.qcodespp/data_backup'
             if os.access(self.backup_location, os.W_OK) is False and os.path.exists(self.backup_location) is False:
                 try:
                     os.makedirs(self.backup_location)

@@ -15,6 +15,7 @@ from typing import NewType, Tuple, Sequence, List, Dict, Optional
 from packaging.version import Version, parse
 import abc
 import os
+import platform
 import tkinter as tk
 import threading
 from tqdm import tqdm
@@ -2641,7 +2642,10 @@ class QDac2(VisaInstrument):
 
         loc_folder=os.path.dirname(__file__)
         if datafolder==0:
-            datafolder='~/.qcodespp/qdac_calibrations'
+            if platform.system()=='Windows':
+                datafolder='C:/Users/'+os.getlogin()+'/AppData/Local/qcodespp/qdac_calibrations'
+            else:
+                datafolder='~/.qcodespp/qdac_calibrations'
         if os.path.exists(datafolder)==False:
             os.makedirs(datafolder,exist_ok=True)
 
