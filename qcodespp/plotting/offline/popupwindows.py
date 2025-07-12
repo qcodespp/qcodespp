@@ -82,12 +82,12 @@ class LineCutWindow(QtWidgets.QWidget):
         self.linestyle_label = QtWidgets.QLabel('Style:')
         self.linestyle_box = QtWidgets.QComboBox()
         self.linestyle_box.addItems(['-', '--', '-.', ':','.','o','v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd', 'P', 'X'])
-        self.linestyle_box.setCurrentText('-')
+        self.linestyle_box.setCurrentText(self.parent.linecuts[self.orientation]['linestyle'])
         self.linesize_label = QtWidgets.QLabel('Size:')
         self.linesize_box = QtWidgets.QDoubleSpinBox()
         self.linesize_box.setRange(0.25, 50)
         self.linesize_box.setSingleStep(0.25)
-        self.linesize_box.setValue(1.5)
+        self.linesize_box.setValue(self.parent.linecuts[self.orientation]['linesize'])
 
         # Plotting widgets
         self.reset_plot_limits_button = QtWidgets.QPushButton('Autoscale axes')
@@ -163,8 +163,8 @@ class LineCutWindow(QtWidgets.QWidget):
         self.reorder_by_index_button.clicked.connect(self.reorder_cuts)
         self.apply_button.clicked.connect(self.apply_colormap)
 
-        self.linesize_box.valueChanged.connect(self.update)
-        self.linestyle_box.currentIndexChanged.connect(self.update)
+        self.linesize_box.valueChanged.connect(lambda: self.style_changed('linesize', self.linesize_box.value()))
+        self.linestyle_box.currentIndexChanged.connect(lambda: self.style_changed('linestyle', self.linestyle_box.currentText()))
 
         self.cuts_table.itemClicked.connect(self.item_clicked)
 
@@ -408,7 +408,7 @@ class LineCutWindow(QtWidgets.QWidget):
             return checked_items, indices
         else:
             return checked_items
-
+        
     def append_cut_to_table(self,linecut_name):
         row = self.cuts_table.rowCount()
         linecut=self.parent.linecuts[self.orientation]['lines'][linecut_name]
@@ -571,6 +571,10 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_uncertainty_checkstate'] = current_item.checkState()
         
             self.update()
+
+    def style_changed(self, option, value):
+        self.parent.linecuts[self.orientation][option] = value
+        self.update()
 
     def update_draggable_points(self,linecut,replot=True):
         try:
@@ -1184,8 +1188,8 @@ class LineCutWindow(QtWidgets.QWidget):
 
     def draw_lines(self,x,y,line):
         offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
-        size=self.linesize_box.value()
-        self.axes.plot(x, y+offset, self.linestyle_box.currentText(),
+        size=self.parent.linecuts[self.orientation]['linesize']
+        self.axes.plot(x, y+offset, self.parent.linecuts[self.orientation]['linestyle'],
                     linewidth=size,
                     markersize=size,
                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])

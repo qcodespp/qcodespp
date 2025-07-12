@@ -2416,10 +2416,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 selected_colormap = cm.get_cmap('viridis')
                             #Make entry to store linecuts in
                             if not hasattr(data,'linecuts'):
-                                data.linecuts={'horizontal':{'linecut_window':None,'lines':{}},
-                                            'vertical':{'linecut_window':None,'lines':{}},
-                                            'diagonal':{'linecut_window':None,'lines':{}},
-                                            'circular':{'linecut_window':None,'lines':{}}
+                                data.linecuts={'horizontal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
+                                            'vertical':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
+                                            'diagonal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
+                                            'circular':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5}
                                                 }
                             if event.button == 1:
                                 line_colors = selected_colormap(np.linspace(0.1,0.9,len(data.processed_data[1][0,:])))
@@ -2663,10 +2663,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 data = data.dataset2d
             # Make dictionary if it doesn't exist
             if not hasattr(data,'linecuts'):
-                data.linecuts={'horizontal':{'linecut_window':None,'lines':{}},
-                               'vertical':{'linecut_window':None,'lines':{}},
-                               'diagonal':{'linecut_window':None,'lines':{}},
-                               'circular':{'linecut_window':None,'lines':{}}
+                data.linecuts={'horizontal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
+                               'vertical':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
+                               'diagonal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
+                               'circular':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5}
                                 }
             orientation=signal.text().split()[1]
 
