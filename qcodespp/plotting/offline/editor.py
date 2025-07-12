@@ -2211,7 +2211,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             kwargs['dataset2d_label'] = dataset2d.label
                             kwargs['dataset2d_all_parameter_names'] = dataset2d.all_parameter_names
                             kwargs['dataset2d_dim']= dataset2d.dim
-
                         combined_item=DataItem(MixedInternalData(self.canvas,label_name,dataset2d_type,dataset1d_type,**kwargs))
                         combined_item.filepath = 'mixed_internal_data'
                         self.add_internal_data(combined_item)

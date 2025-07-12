@@ -830,6 +830,13 @@ class MixedInternalData(BaseClassData):
         self.dataset2d.axlim_settings=self.axlim_settings
         self.dataset2d.view_settings=self.view_settings
 
+        self.settings['X data'] = self.all_parameter_names[0]
+        self.settings['Y data'] = self.all_parameter_names[1]
+        self.settings['xlabel'] = self.all_parameter_names[0]
+        self.settings['ylabel'] = self.all_parameter_names[1]
+        self.settings['Z data'] = self.all_parameter_names[2]
+        self.settings['clabel'] = self.all_parameter_names[2]
+
         self.settings_menu_options = {'X data': self.all_parameter_names,
                                 'Y data': self.all_parameter_names,
                                 'Z data': self.all_parameter_names}
