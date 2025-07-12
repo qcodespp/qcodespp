@@ -759,7 +759,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     np.save(dirpath+'/igtemp/numpyfile.npy', dictionary_list)
                     with tarfile.open(filepath, 'w:gz') as tar:
                         for filename in os.listdir(dirpath+'/igtemp'):
-                            tar.add(dirpath+'/igtemp/'+filename, recursive=False)
+                            tar.add(dirpath+'/igtemp/'+filename, arcname='igtemp/'+filename, recursive=False)
 
                     self.log_error(f'Session saved as {filepath}')
 
@@ -900,10 +900,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 continue
 
             if replacement:
+                print(replacement)
                 # Try to apply previous replacement pattern
                 try:
                     # Replace the differing part
                     candidate = fname.replace(*replacement)
+                    print(candidate)
                     if os.path.exists(candidate):
                         resolved_files.append(candidate)
                         continue
