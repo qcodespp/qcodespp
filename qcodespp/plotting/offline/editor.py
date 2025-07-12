@@ -759,7 +759,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     np.save(dirpath+'/igtemp/numpyfile.npy', dictionary_list)
                     with tarfile.open(filepath, 'w:gz') as tar:
                         for filename in os.listdir(dirpath+'/igtemp'):
-                            tar.add('./igtemp/'+filename, recursive=False)
+                            tar.add(dirpath+'/igtemp/'+filename, recursive=False)
 
                     self.log_error(f'Session saved as {filepath}')
 
