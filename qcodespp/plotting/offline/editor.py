@@ -699,74 +699,85 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current_item = self.file_list.currentItem()
         if current_item:
 
-            filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
-                self, 'Save Session As...', '', '*.igs')
-            items = [self.file_list.item(n) for n in range(self.file_list.count())]
-     
-            if filepath:
-                dirpath = os.path.dirname(filepath)
-                dictionary_list = []
-                os.makedirs(dirpath+'/igtemp', exist_ok=True)
-                self.i=0 # Used to iterate over total number of lmfit results across all datafiles.
-                for item in items:
-                    item_dictionary = {}
-                    if hasattr(item,'filepath'):
-                        item_dictionary['filepath']=item.filepath
-                    if hasattr(item,'checkState'):
-                        item_dictionary['checkState']=item.checkState()
-                    attributes=['label','settings','filters','view_settings','axlim_settings','plot_type','dim','labels_changed'
-                                'raw_data','processed_data'] # These two are potentially not necessary.
-                    if isinstance(item.data, InternalData):
-                        attributes.append('loaded_data')
-                        attributes.append('label')
-                        attributes.append('all_parameter_names')
-                        attributes.append('dim')
-                    elif isinstance(item.data, MixedInternalData):
-                        item_dictionary['dataset2d_type'] = str(item.data.dataset2d_type)
-                        item_dictionary['dataset1d_type'] = str(item.data.dataset2d_type)
-                        attributes.append('label')
-                        attributes.append('dataset1d_filepath')
-                        attributes.append('dataset2d_filepath')
-                        attributes.append('dataset1d_loaded_data')
-                        attributes.append('dataset2d_loaded_data')
-                        attributes.append('dataset1d_label')
-                        attributes.append('dataset2d_label')
-                        attributes.append('dataset1d_all_parameter_names')
-                        attributes.append('dataset2d_all_parameter_names')
-                        attributes.append('dataset1d_dim')
-                        attributes.append('dataset2d_dim')
-                        attributes.append('show_2d_data')
-                        if hasattr(item.data.dataset2d,'linecuts'):
-                            item_dictionary['dataset2d_linecuts'] = self.remove_linecutwindows_and_fits(item.data.dataset2d.linecuts,dirpath)
-                        if hasattr(item.data.dataset1d,'plotted_lines'):
-                            item_dictionary['dataset1d_plotted_lines'] = self.remove_linecutwindows_and_fits(item.data.dataset1d.plotted_lines,dirpath)
+            try:
+                filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
+                    self, 'Save Session As...', '', '*.igs')
+                items = [self.file_list.item(n) for n in range(self.file_list.count())]
+        
+                if filepath:
+                    self.save_error_log=[]
+                    dirpath = os.path.dirname(filepath)
 
-                    for attribute in attributes:
-                        if hasattr(item.data,attribute):
-                            item_dictionary[attribute]=getattr(item.data,attribute)
+                    # Try to remove any temporary files from any failed loads or saves
+                    if os.path.exists(dirpath+'/igtemp'):
+                        error = self.remove_temp_files(dirpath)
+                        if error:
+                            self.log_error(f'Error removing temporary files before loading session: {error}')
 
-                    if hasattr(item.data,'linecuts'):
-                        item_dictionary['linecuts'] = self.remove_linecutwindows_and_fits(item.data.linecuts,dirpath)
+                    dictionary_list = []
+                    os.makedirs(dirpath+'/igtemp', exist_ok=True)
+                    self.i=0 # Used to iterate over total number of lmfit results across all datafiles.
+                    for item in items:
+                        item_dictionary = {}
+                        if hasattr(item,'filepath'):
+                            item_dictionary['filepath']=item.filepath
+                        if hasattr(item,'checkState'):
+                            item_dictionary['checkState']=item.checkState()
+                        attributes=['label','settings','filters','view_settings','axlim_settings','plot_type','dim','labels_changed'
+                                    'raw_data','processed_data'] # These two are potentially not necessary.
+                        if isinstance(item.data, InternalData):
+                            attributes.extend(['loaded_data','label','all_parameter_names','dim'])
+                        elif isinstance(item.data, MixedInternalData):
+                            item_dictionary['dataset2d_type'] = str(item.data.dataset2d_type)
+                            item_dictionary['dataset1d_type'] = str(item.data.dataset2d_type)
+                            attributes.extend(['label','dataset1d_filepath','dataset2d_filepath',
+                                       'dataset1d_loaded_data','dataset2d_loaded_data',
+                                       'dataset1d_label','dataset2d_label',
+                                       'dataset1d_all_parameter_names','dataset2d_all_parameter_names',
+                                       'dataset1d_dim','dataset2d_dim','show_2d_data'])
+                            if hasattr(item.data.dataset2d,'linecuts'):
+                                item_dictionary['dataset2d_linecuts'] = self.remove_linecutwindows_and_fits(item.data.dataset2d.linecuts,
+                                                                                                            dirpath)
+                            if hasattr(item.data.dataset1d,'plotted_lines'):
+                                item_dictionary['dataset1d_plotted_lines'] = self.remove_linecutwindows_and_fits(item.data.dataset1d.plotted_lines,
+                                                                                                                dirpath)
 
-                    if hasattr(item.data,'plotted_lines'):
-                        item_dictionary['plotted_lines'] = self.remove_linecutwindows_and_fits(item.data.plotted_lines,dirpath)
+                        for attribute in attributes:
+                            if hasattr(item.data,attribute):
+                                item_dictionary[attribute]=getattr(item.data,attribute)
+
+                        if hasattr(item.data,'linecuts'):
+                            item_dictionary['linecuts'] = self.remove_linecutwindows_and_fits(item.data.linecuts,dirpath)
+
+                        if hasattr(item.data,'plotted_lines'):
+                            item_dictionary['plotted_lines'] = self.remove_linecutwindows_and_fits(item.data.plotted_lines,
+                                                                                                   dirpath)
+                        
+                        dictionary_list.append(item_dictionary)
+
+                    # Save all needed files to a temperorary directory and add them to the tarball
+                    np.save(dirpath+'/igtemp/numpyfile.npy', dictionary_list)
+                    with tarfile.open(filepath, 'w:gz') as tar:
+                        for filename in os.listdir(dirpath+'/igtemp'):
+                            tar.add('./igtemp/'+filename, recursive=False)
+
+                    self.log_error(f'Session saved as {filepath}')
+
+                    if len(self.save_error_log)>0:
+                        self.log_error('The session was only partially saved; the following errors occurred:\n' + '\n'.join(self.save_error_log), 
+                                       show_popup=True)
+                        
+                    error = self.remove_temp_files(dirpath)
+                    if error:
+                        message=(f'Error cleaning up temporary files after saving session: {e}\n'
+                                'However, the session should have been saved successfully (unless you were warned of any '
+                                'other errors) and you can safely delete the igtemp folder in the session directory.')
+                        self.log_error(message, show_popup=True)
                     
-                    dictionary_list.append(item_dictionary)
+                    del dictionary_list
 
-                # Save all needed files to a temperorary directory and add them to the tarball
-                np.save(dirpath+'/igtemp/numpyfile.npy', dictionary_list)
-                with tarfile.open(filepath, 'w:gz') as tar:
-                    for filename in os.listdir(dirpath+'/igtemp'):
-                        tar.add('./igtemp/'+filename, recursive=False)
-
-                self.log_error(f'Session saved as {filepath}')
-
-                # Delete unnecessary information
-                for filename in os.listdir(dirpath+'/igtemp'):
-                    file_path = os.path.join(dirpath+'/igtemp', filename)
-                    os.remove(file_path)
-                os.rmdir(dirpath+'/igtemp')
-                del dictionary_list
+            except Exception as e:
+                self.log_error(f'Error saving session: {e}', show_popup=True)
 
     def remove_linecutwindows_and_fits(self,d,dirpath,exclude_key='linecut_window',exclude_key2='fit_result',exclude_key3='draggable_points'):
     # Remove linecut window object and lmfit object from the dictionary. Neither can be pickled. lmfit fit results are saved to
@@ -791,33 +802,139 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 new_dict[exclude_key2]='lmfit_result'+str(self.i).zfill(4) # Replace the lmfit model with the name.
                 self.i+=1
             except Exception as e:
-                self.log_error(f'Error saving lmfit object during session save: {e}')
+                self.save_error_log.append(f'Error saving lmfit object during session save: {e}')
         return new_dict
 
+    def remove_temp_files(self,dirpath):
+        # Remove the temporary files created during session save/load. Returns an error message, or False (i.e. no error) if successful.
+        try:
+            for filename in os.listdir(dirpath+'/igtemp'):
+                file_path = os.path.join(dirpath+'/igtemp', filename)
+                os.remove(file_path)
+            os.rmdir(dirpath+'/igtemp')
+            return False
+        except Exception as e:
+            return e
+
     def load_session(self):
+        # First warn the user they will lose any unsaved work.
+        msg_box = QtWidgets.QMessageBox(self)
+        msg_box.setIcon(QtWidgets.QMessageBox.Warning)
+        msg_box.setWindowTitle("Warning")
+        msg_box.setText("Restoring a saved session will cause any unsaved work in the current session to be lost.")
+        msg_box.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+        ret = msg_box.exec_()
+        if ret != QtWidgets.QMessageBox.Ok:
+            return
+
+        # Then prompt to load the session
         filepath, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open Session', '', 'Inspectra Gadget session (*.igs)')
         if filepath:
             dirpath = os.path.dirname(filepath)
+
+            # Try to remove any temporary files from any failed loads or saves
+            if os.path.exists(dirpath+'/igtemp'):
+                error = self.remove_temp_files(dirpath)
+                if error:
+                    self.log_error(f'Error removing temporary files before loading session: {error}')
+
             if self.file_list.count() > 0:
                 self.remove_files('all')
+
+            # Extract the tarball to a temporary directory
             with tarfile.open(filepath, 'r') as tar:
                 tar.extractall(dirpath)
+            # Load the numpy file containing the session data
             try:
                 data=np.load(dirpath+'/igtemp/numpyfile.npy', allow_pickle=True)
                 file_list=[]
                 for attr_dict in data:
                     file_list.append(attr_dict['filepath'])
-                self.open_files(file_list,load_the_data=False,attr_dicts=data,dirpath=dirpath)
+
+                # Use the resolve_missing_files function to check for missing files. Ask the user if they want to quit loading the session
+                ret_mes = self.resolve_missing_files(file_list)
+                if ret_mes == 'cancel':
+                    self.log_error('Session loading cancelled.', show_popup=True)
+
+                else:
+                    file_list, unresolved_files = ret_mes
+                    if len(unresolved_files) > 0:
+                        msg_box = QtWidgets.QMessageBox(self)
+                        msg_box.setIcon(QtWidgets.QMessageBox.Warning)
+                        msg_box.setWindowTitle("Warning")
+                        msg_box.setText(f"{len(unresolved_files)} files could not be found. Click OK to continue "
+                                        "loading the session without them, or cancel to stop loading the session.")
+                        msg_box.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+                        ret = msg_box.exec_()
+                        if ret == QtWidgets.QMessageBox.OK:
+                            try:
+                                self.open_files(file_list,load_the_data=False,attr_dicts=data,dirpath=dirpath)
+                            except:
+                                pass
+                    else:
+                        # most of the loading actually happens in the open_files function.
+                        try:
+                            self.open_files(file_list,load_the_data=False,attr_dicts=data,dirpath=dirpath)
+                        except: # If it fails, the messages should occur during open_files. And we need to keep going, to ensure temporary files are deleted
+                            pass
+                del data
             except Exception as e:
                 self.log_error(f'Error loading session: {e}',show_popup=True)
 
-            for filename in os.listdir(dirpath+'/igtemp'):
-                file_path = os.path.join(dirpath+'/igtemp', filename)
-                os.remove(file_path)
-            os.rmdir(dirpath+'/igtemp')
+            error = self.remove_temp_files(dirpath)
+            if error:
+                message=(f'Error cleaning up temporary files after loading session: {e}\n'
+                         'However, the session should have been loaded successfully (unless you were warned of any '
+                         'other errors) and you can safely delete the igtemp folder in the session directory.')
+                self.log_error(message, show_popup=True)
 
             self.update_plots() # Necessary to ensure some settings are applied to the final plot.
-   
+
+    def resolve_missing_files(self, filenames):
+        resolved_files = []
+        unresolved_files = []
+        replacement = None
+        for fname in filenames:
+            if os.path.exists(fname):
+                resolved_files.append(fname)
+                continue
+
+            if replacement:
+                # Try to apply previous replacement pattern
+                try:
+                    # Replace the differing part
+                    candidate = fname.replace(*replacement)
+                    if os.path.exists(candidate):
+                        resolved_files.append(candidate)
+                        continue
+                except Exception:
+                    pass
+            
+            msg_box = QtWidgets.QMessageBox(self)
+            msg_box.setIcon(QtWidgets.QMessageBox.Warning)
+            msg_box.setWindowTitle("Warning")
+            msg_box.setText(f"File not found: {fname}\nClick OK to locate the file, Ignore to skip the file or Cancel to cancel loading the session.")
+            msg_box.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Ignore | QtWidgets.QMessageBox.Cancel)
+            ret = msg_box.exec_()
+            if ret == QtWidgets.QMessageBox.Ignore:
+                unresolved_files.append(fname)
+                continue
+            elif ret == QtWidgets.QMessageBox.Cancel:
+                return 'cancel'
+
+            new_fname, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Locate File", "", "All Files (*)")
+            if new_fname and os.path.exists(new_fname):
+                resolved_files.append(new_fname)
+                # Find replacement pattern for subsequent files
+                for i,(char1,char2) in enumerate(zip(fname[::-1], new_fname[::-1])):
+                    if char1 != char2:
+                        replacement = (fname[:-i], new_fname[:-i])
+                        break
+            else:
+                unresolved_files.append(fname)
+ 
+        return resolved_files, unresolved_files
+
     def export_processed_data(self, which='current'):
         current_item = self.file_list.currentItem()
         if current_item:
