@@ -720,7 +720,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     for item in items:
                         item_dictionary = {}
                         if hasattr(item,'filepath'):
-                            item_dictionary['filepath']=item.filepath
+                            item_dictionary['filepath']=item.filepath.replace('\\','/') # Replace backslashes with forward slashes for compatibility
                         if hasattr(item,'checkState'):
                             item_dictionary['checkState']=item.checkState()
                         attributes=['label','settings','filters','view_settings','axlim_settings','plot_type','dim','labels_changed'
@@ -866,14 +866,20 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                         "loading the session without them, or cancel to stop loading the session.")
                         msg_box.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
                         ret = msg_box.exec_()
-                        if ret == QtWidgets.QMessageBox.OK:
+                        if ret == QtWidgets.QMessageBox.Ok:
                             try:
+                                data = [data[i] for i in range(len(data)) if data[i]['filepath'].replace('\\','/') not in unresolved_files]
+                                for i, filepath in enumerate(file_list):
+                                    data[i]['filepath'] = filepath
+                                print(len(data), len(file_list))
                                 self.open_files(file_list,load_the_data=False,attr_dicts=data,dirpath=dirpath)
                             except:
                                 pass
                     else:
                         # most of the loading actually happens in the open_files function.
                         try:
+                            for i, filepath in enumerate(file_list):
+                                data[i]['filepath'] = filepath
                             self.open_files(file_list,load_the_data=False,attr_dicts=data,dirpath=dirpath)
                         except: # If it fails, the messages should occur during open_files. And we need to keep going, to ensure temporary files are deleted
                             pass
@@ -895,17 +901,16 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         unresolved_files = []
         replacement = None
         for fname in filenames:
+            fname = fname.replace('\\', '/')  # Ensure forward slashes for compatibility
             if os.path.exists(fname):
                 resolved_files.append(fname)
                 continue
 
             if replacement:
-                print(replacement)
                 # Try to apply previous replacement pattern
                 try:
                     # Replace the differing part
                     candidate = fname.replace(*replacement)
-                    print(candidate)
                     if os.path.exists(candidate):
                         resolved_files.append(candidate)
                         continue
