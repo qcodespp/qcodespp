@@ -871,7 +871,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 data = [data[i] for i in range(len(data)) if data[i]['filepath'].replace('\\','/') not in unresolved_files]
                                 for i, filepath in enumerate(file_list):
                                     data[i]['filepath'] = filepath
-                                print(len(data), len(file_list))
                                 self.open_files(file_list,load_the_data=False,attr_dicts=data,dirpath=dirpath)
                             except:
                                 pass
@@ -899,28 +898,36 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def resolve_missing_files(self, filenames):
         resolved_files = []
         unresolved_files = []
-        replacement = None
+        replacements = []
         for fname in filenames:
-            fname = fname.replace('\\', '/')  # Ensure forward slashes for compatibility
-            if os.path.exists(fname):
+            fname = fname.replace('\\', '/')  # Ensure forward slashes
+            if fname in ['internal_data', 'mixed_internal_data'] or os.path.exists(fname):
                 resolved_files.append(fname)
                 continue
 
-            if replacement:
-                # Try to apply previous replacement pattern
-                try:
-                    # Replace the differing part
-                    candidate = fname.replace(*replacement)
-                    if os.path.exists(candidate):
-                        resolved_files.append(candidate)
-                        continue
-                except Exception:
-                    pass
+            if len(replacements)>0:
+                # Try to apply previous replacement patterns
+                found=False
+                for replacement in replacements:
+                    try:
+                        # Replace the differing part
+                        candidate = fname.replace(*replacement)
+                        if os.path.exists(candidate):
+                            resolved_files.append(candidate)
+                            found=True
+                            break
+                    except Exception:
+                        pass
+                if found:
+                    continue
             
             msg_box = QtWidgets.QMessageBox(self)
             msg_box.setIcon(QtWidgets.QMessageBox.Warning)
             msg_box.setWindowTitle("Warning")
-            msg_box.setText(f"File not found: {fname}\nClick OK to locate the file, Ignore to skip the file or Cancel to cancel loading the session.")
+            message = (f'File not found: {fname}\nClick OK to locate the file, '
+                       'Ignore to skip this file or Cancel to abort session load.\n'
+                       'If you locate the file, its location will be used to try to find other missing files.')
+            msg_box.setText(message)
             msg_box.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Ignore | QtWidgets.QMessageBox.Cancel)
             ret = msg_box.exec_()
             if ret == QtWidgets.QMessageBox.Ignore:
@@ -935,7 +942,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 # Find replacement pattern for subsequent files
                 for i,(char1,char2) in enumerate(zip(fname[::-1], new_fname[::-1])):
                     if char1 != char2:
-                        replacement = (fname[:-i], new_fname[:-i])
+                        replacements.append((fname[:-i], new_fname[:-i]))
                         break
             else:
                 unresolved_files.append(fname)
