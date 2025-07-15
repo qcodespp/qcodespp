@@ -481,7 +481,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.file_list.addItem(item)
                     if attr_dicts is not None: #then a previous session is being loaded
                         for attr in attr_dicts[i]:
-                            print(attr)
                             if attr not in ['filename','checkState','extra_cols',
                                             'dataset1d_type','dataset2d_type',
                                             'dataset1d_plotted_lines','dataset2d_linecuts']:
@@ -496,7 +495,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                     item.data.channels = {}
 
                                 for colname in attr_dicts[i][attr]:
-                                    print(colname)
                                     item.data.extra_cols.append(colname)
                                     item.data.data_dict[colname] = attr_dicts[i][attr][colname]['data']
                                     if isinstance(item.data, qcodesppData):

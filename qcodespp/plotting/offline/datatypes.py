@@ -123,6 +123,7 @@ class BaseClassData:
             for col in self.extra_cols:
                 if col in old_dict.keys():
                     self.data_dict[col] = old_dict[col]
+                    self.all_parameter_names.append(col)
             del old_dict
 
         if len(self.data_dict.keys()) == 0:
