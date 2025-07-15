@@ -499,6 +499,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                     item.data.data_dict[colname] = attr_dicts[i][attr][colname]['data']
                                     if isinstance(item.data, qcodesppData):
                                         item.data.channels[colname] = attr_dicts[i][attr][colname]['channel']
+                                    elif isinstance(item.data,InternalData):
+                                        item.data.all_parameter_names.append(colname)
                                 if isinstance(item.data, qcodesppData):
                                     item.data.identify_independent_vars()
                                 else:
