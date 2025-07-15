@@ -48,3 +48,6 @@ content-type = "text/x-rst"
 
 [project.urls]
 Homepage = "https://github.com/qcodespp/qcodespp"
+
+[project.scripts]
+qcodespp = "qcodespp.cli:main"
