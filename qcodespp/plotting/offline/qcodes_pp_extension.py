@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import json
+import copy
 from qcodespp.data.data_set import load_data
 from qcodespp.plotting.offline.datatypes import BaseClassData
 
@@ -25,8 +26,17 @@ class qcodesppData(BaseClassData):
         self.dependent_parameter_names = []
         self.all_parameters = []
         self.all_parameter_names = []
+
+        if hasattr(self, 'extra_cols'):
+            old_chans = copy.deepcopy(self.channels)
         
         self.channels = self.meta['arrays']
+
+        if hasattr(self, 'extra_cols'):
+            for col in self.extra_cols:
+                if col in old_chans.keys():
+                    self.channels[col] = old_chans[col]
+            del old_chans
 
         self.plot_type=None
 
@@ -35,7 +45,18 @@ class qcodesppData(BaseClassData):
                 self.dataset=load_data(os.path.dirname(filepath))
             else:
                 self.dataset=load_data(filepath)
+
+            if hasattr(self, 'extra_cols'):
+                old_dict = copy.deepcopy(self.data_dict)
+
             self.data_dict = self.dataset.arrays.copy()
+    
+            if hasattr(self, 'extra_cols'):
+                # Add the extra columns to the data_dict
+                for col in self.extra_cols:
+                    if col in old_dict.keys():
+                        self.data_dict[col] = old_dict[col]
+                del old_dict
 
             self.identify_independent_vars()
 
@@ -158,7 +179,19 @@ class qcodesppData(BaseClassData):
                 self.dataset=load_data(os.path.dirname(self.filepath))
             else:
                 self.dataset=load_data(self.filepath)
+
+            if hasattr(self, 'extra_cols'):
+            # Processed data that has been added to the data_dict. Need to preserve it!
+                old_dict = copy.deepcopy(self.data_dict)
+
             self.data_dict = self.dataset.arrays.copy()
+    
+            if hasattr(self, 'extra_cols'):
+                # Add the extra columns to the data_dict
+                for col in self.extra_cols:
+                    if col in old_dict.keys():
+                        self.data_dict[col] = old_dict[col]
+                del old_dict
 
             self.identify_independent_vars()
 
@@ -205,10 +238,10 @@ class qcodesppData(BaseClassData):
     def identify_independent_vars(self):        
         for chan in self.channels.keys():
             if self.channels[chan]["array_id"] not in self.all_parameter_names:
-                if self.channels[chan]["is_setpoint"] and self.channels[chan]["array_id"] in list(self.dataset.arrays.keys()):
+                if self.channels[chan]["is_setpoint"] and self.channels[chan]["array_id"] in list(self.data_dict.keys()):
                     self.independent_parameters.append(self.channels[chan])
                     self.independent_parameter_names.append(self.channels[chan]["array_id"])
-                elif self.channels[chan]["array_id"] in list(self.dataset.arrays.keys()):
+                elif self.channels[chan]["array_id"] in list(self.data_dict.keys()):
                     self.dependent_parameters.append(self.channels[chan])
                     self.dependent_parameter_names.append(self.channels[chan]["array_id"])
         self.all_parameters = self.independent_parameters + self.dependent_parameters
@@ -304,21 +337,29 @@ class qcodesppData(BaseClassData):
             current_line = int(self.sidebar1D.trace_table.item(current_1D_row,0).text())
             processed_data = self.plotted_lines[current_line]['processed_data'][axes[axis]]
             paramname = self.plotted_lines[current_line][f'{axis} data']
-            self.all_parameter_names.append(f'Filtered: {paramname}')
-            self.data_dict[f'Filtered: {paramname}'] = processed_data
-            self.channels[f'Filtered: {paramname}'] = {'label': f'Filtered: {paramname}',
-                                                                'unit': self.channels[paramname]['unit'],
-                                                                'array_id': f'Filtered: {paramname}',
-                                                                'is_setpoint': False}
+            colname= f'Filtered: {paramname}'
+            self.dependent_parameter_names.append(colname)
+            self.all_parameter_names.append(colname)
+            self.data_dict[colname] = processed_data
+            self.channels[colname] = {'label': colname,
+                                        'unit': self.channels[paramname]['unit'],
+                                        'array_id': colname,
+                                        'is_setpoint': False}
         else:
             processed_data = self.processed_data[axes[axis]]
             paramname = self.settings[f'{axis} data']
-            self.all_parameter_names.append(f'Filtered: {paramname}')
-            self.data_dict[f'Filtered: {paramname}'] = processed_data
-            self.channels[f'Filtered: {paramname}'] = {'label': f'Filtered: {paramname}',
-                                                                'unit': self.channels[paramname]['unit'],
-                                                                'array_id': f'Filtered: {paramname}',
-                                                                'is_setpoint': False}
+            colname= f'Filtered: {paramname}'
+            self.dependent_parameter_names.append(colname)
+            self.all_parameter_names.append(colname)
+            self.data_dict[colname] = processed_data
+            self.channels[colname] = {'label': colname,
+                                        'unit': self.channels[paramname]['unit'],
+                                        'array_id': colname,
+                                        'is_setpoint': False}
+            
+        if not hasattr(self, 'extra_cols'):
+            self.extra_cols = []
+        self.extra_cols.append(colname)
 
         for label in ['X data', 'Y data', 'Z data']:
             self.settings_menu_options[label]= self.all_parameter_names

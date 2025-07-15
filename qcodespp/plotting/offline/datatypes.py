@@ -98,6 +98,10 @@ class BaseClassData:
         
         if self.settings['transpose'] == 'False':
             self.loaded_data = np.transpose(self.loaded_data)
+
+        if hasattr(self, 'extra_cols'):
+            # Processed data that has been added to the data_dict. Need to preserve it!
+            old_dict = copy.deepcopy(self.data_dict)
         
         self.data_dict={}
         try: # to get column names if there is a header. Avoid using genfromtxt as it doesn't have enough options to work all the time.
@@ -113,6 +117,13 @@ class BaseClassData:
                     self.data_dict[name]=self.loaded_data[i]
         except Exception as e:
             pass
+
+        if hasattr(self, 'extra_cols'):
+            # Add the extra columns to the data_dict
+            for col in self.extra_cols:
+                if col in old_dict.keys():
+                    self.data_dict[col] = old_dict[col]
+            del old_dict
 
         if len(self.data_dict.keys()) == 0:
             self.all_parameter_names=[f"column_{i}" for i in range(self.loaded_data.shape[0])]
@@ -266,13 +277,18 @@ class BaseClassData:
             current_1D_row = self.sidebar1D.trace_table.currentRow()
             current_line = int(self.sidebar1D.trace_table.item(current_1D_row,0).text())
             processed_data = self.plotted_lines[current_line]['processed_data'][axes[axis]]
-            self.all_parameter_names.append(f'Filtered: {self.plotted_lines[current_line][f'{axis} data']}')
-            self.data_dict[f'Filtered: {self.plotted_lines[current_line][f'{axis} data']}'] = processed_data
+            colname=f'Filtered: {self.plotted_lines[current_line][f'{axis} data']}'
+            self.all_parameter_names.append(colname)
+            self.data_dict[colname] = processed_data
         else:
             processed_data = self.processed_data[axes[axis]]
-            self.all_parameter_names.append(f'Filtered: {self.settings[f'{axis} data']}')
-            self.data_dict[f'Filtered: {self.settings[f'{axis} data']}'] = processed_data.flatten()
+            colname= f'Filtered: {self.settings[f'{axis} data']}'
+            self.all_parameter_names.append(colname)
+            self.data_dict[colname] = processed_data.flatten()
 
+        if not hasattr(self, 'extra_cols'):
+            self.extra_cols = []
+        self.extra_cols.append(colname)
 
         for label in ['X data', 'Y data', 'Z data']:
             self.settings_menu_options[label]= self.all_parameter_names

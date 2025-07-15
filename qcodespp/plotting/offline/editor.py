@@ -481,10 +481,30 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.file_list.addItem(item)
                     if attr_dicts is not None: #then a previous session is being loaded
                         for attr in attr_dicts[i]:
-                            if attr not in ['filename','checkState',
+                            print(attr)
+                            if attr not in ['filename','checkState','extra_cols',
                                             'dataset1d_type','dataset2d_type',
                                             'dataset1d_plotted_lines','dataset2d_linecuts']:
                                 setattr(item.data,attr,attr_dicts[i][attr])
+
+                            elif attr=='extra_cols':
+                                if not hasattr(item.data,'data_dict'):
+                                    item.data.data_dict = {}
+                                if not hasattr(item.data,'extra_cols'):
+                                    item.data.extra_cols = []
+                                if isinstance(item.data, qcodesppData) and not hasattr(item.data,'channels'):
+                                    item.data.channels = {}
+
+                                for colname in attr_dicts[i][attr]:
+                                    print(colname)
+                                    item.data.extra_cols.append(colname)
+                                    item.data.data_dict[colname] = attr_dicts[i][attr][colname]['data']
+                                    if isinstance(item.data, qcodesppData):
+                                        item.data.channels[colname] = attr_dicts[i][attr][colname]['channel']
+                                if isinstance(item.data, qcodesppData):
+                                    item.data.identify_independent_vars()
+                                else:
+                                    item.data.prepare_dataset()
                             
                             elif attr=='checkState':
                                 item.setCheckState(attr_dicts[i][attr])
@@ -610,25 +630,26 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def open_files_from_folder(self): 			
         rootdir = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory to Open")
-        filepaths = []
-        for subdir, dirs, files in os.walk(rootdir):
-            for file in files:
-                filename, file_extension = os.path.splitext(file)
-                if file_extension == '.dat':
-                    already_loaded=self.check_already_loaded(subdir,[file[1] for file in filepaths])
-                    if not already_loaded:
-                        filepath = os.path.join(subdir, file)
-                        try: # on Windows
-                            st_ctime = os.path.getctime(filepath)
-                        except Exception:
-                            try: # on Mac
-                                st_ctime = os.stat(filepath).st_birthtime
-                            except Exception as e:
-                                self.log_error(f'Failed to get creation time for {filepath}: {e}')
-                        filepaths.append((st_ctime,filepath,subdir))
-        if not os.path.split(filepaths[0][2])[1].startswith('#'): #If it's qcodespp data, it's already sorted. If not, sort by time
-            filepaths.sort(key=lambda tup: tup[0])
-        self.open_files([file[1] for file in filepaths],load_the_data=False)
+        if rootdir:
+            filepaths = []
+            for subdir, dirs, files in os.walk(rootdir):
+                for file in files:
+                    filename, file_extension = os.path.splitext(file)
+                    if file_extension == '.dat':
+                        already_loaded=self.check_already_loaded(subdir,[file[1] for file in filepaths])
+                        if not already_loaded:
+                            filepath = os.path.join(subdir, file)
+                            try: # on Windows
+                                st_ctime = os.path.getctime(filepath)
+                            except Exception:
+                                try: # on Mac
+                                    st_ctime = os.stat(filepath).st_birthtime
+                                except Exception as e:
+                                    self.log_error(f'Failed to get creation time for {filepath}: {e}')
+                            filepaths.append((st_ctime,filepath,subdir))
+            if not os.path.split(filepaths[0][2])[1].startswith('#'): #If it's qcodespp data, it's already sorted. If not, sort by time
+                filepaths.sort(key=lambda tup: tup[0])
+            self.open_files([file[1] for file in filepaths],load_the_data=False)
     
     def check_already_loaded(self, subdir, filepaths):
         loaded=False
@@ -745,6 +766,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         for attribute in attributes:
                             if hasattr(item.data,attribute):
                                 item_dictionary[attribute]=getattr(item.data,attribute)
+
+                        if hasattr(item.data,'extra_cols'):
+                            item_dictionary['extra_cols'] = {}
+                            for colname in item.data.extra_cols:
+                                item_dictionary['extra_cols'][colname] = {'data': item.data.data_dict[colname]}
+                                if isinstance(item.data, qcodesppData):
+                                    item_dictionary['extra_cols'][colname]['channel'] = item.data.channels[colname]
 
                         if hasattr(item.data,'linecuts'):
                             item_dictionary['linecuts'] = self.remove_linecutwindows_and_fits(item.data.linecuts,dirpath)
