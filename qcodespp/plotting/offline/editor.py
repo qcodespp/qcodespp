@@ -2379,6 +2379,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                  QtCore.Qt.ItemIsUserCheckable)
             filter_item.setText(filt.name)
             filter_item.setCheckState(filt.checkstate)
+            filter_item.setToolTip(filt.description)
             method_box = NoScrollQComboBox()
             method_box.addItems(filt.method_list)
             method_box.setCurrentIndex(filt.method_list.index(filt.method))
