@@ -1304,6 +1304,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for item in checked_items:
                 item.data.prepare_data_for_plot(reload_data=True, reload_from_file=True)
             self.update_plots()
+            for item in checked_items:
+                item.data.reset_axlim_settings()
+                self.show_current_axlim_settings()
+                self.canvas.draw()
         if self.linked_folder:
             old_number_of_items = self.file_list.count()
             self.update_link_to_folder(new_folder=False)
