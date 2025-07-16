@@ -552,7 +552,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.file_list.itemChanged.connect(self.file_checked)
         self.file_list.itemClicked.connect(self.file_clicked)
         if len(minilog) > 0:
-            error_message = 'The following errors occurred while opening files:\n' + '\n'.join(minilog)
+            error_message = 'The following errors occurred while opening files:\n\n' + '\n\n'.join(minilog)
             self.ew = ErrorWindow(error_message)
 
     def reload_plotted_lines(self,data,dirpath,item):
@@ -792,7 +792,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.log_error(f'Session saved as {filepath}')
 
                     if len(self.save_error_log)>0:
-                        self.log_error('The session was only partially saved; the following errors occurred:\n' + '\n'.join(self.save_error_log), 
+                        self.log_error('The session was only partially saved; the following errors occurred:\n\n' + '\n\n'.join(self.save_error_log), 
                                        show_popup=True)
                         
                     error = self.remove_temp_files(dirpath)

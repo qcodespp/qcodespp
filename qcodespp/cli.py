@@ -50,7 +50,7 @@ def main():
         offline_plotting(
             folder=args.folder,
             link_to_default=not args.no_link_default,
-            use_thread=not args.no_thread
+            use_thread=True
         )
     else:
         parser.print_help()
