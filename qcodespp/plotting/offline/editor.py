@@ -2401,10 +2401,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.filters_table.setCurrentCell(row, 0)
             self.filters_table.itemChanged.connect(self.filters_table_edited)
     
-    def remove_single_filter(self,filter_row,filters):
-        self.filters_table.removeRow(filter_row)
-        del filters[filter_row]
-
     def remove_filters(self, which='current'):
         current_item = self.file_list.currentItem()
         if current_item:
@@ -2412,16 +2408,22 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if which == 'current':
                 filter_row = self.filters_table.currentRow()
                 if filter_row != -1:
-                    self.remove_single_filter(filter_row,filters)
+                    #self.filters_table.removeRow(filter_row)
+                    del filters[filter_row]
             elif which == 'all':
-                for filter_row in range(self.filters_table.rowCount()):
-                    self.remove_single_filter(filter_row,filters)
+                filters.clear()
+                self.filters_table.setRowCount(0)
+            self.show_current_filters()
             current_item.data.apply_all_filters()
+            self.update_plots(update_color_limits=True)
             current_item.data.reset_view_settings()
+            current_item.data.reset_axlim_settings()
             if current_item.checkState():
                 current_item.data.apply_view_settings()
+                current_item.data.apply_axlim_settings()
                 self.show_current_view_settings()
-            self.update_plots(update_color_limits=True)
+                self.show_current_axlim_settings()
+            self.canvas.draw()
      
     def move_filter(self, to):
         current_item = self.file_list.currentItem()
