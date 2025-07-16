@@ -14,10 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1418, 700)
-        icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("iconGadget.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        MainWindow.setWindowIcon(icon)
+        MainWindow.resize(1659, 700)
         self.central_widget = QtWidgets.QWidget(MainWindow)
         self.central_widget.setObjectName("central_widget")
         self.horizontalLayout = QtWidgets.QHBoxLayout(self.central_widget)
@@ -622,7 +619,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addLayout(self.vertical_layout)
         MainWindow.setCentralWidget(self.central_widget)
         self.menu_bar = QtWidgets.QMenuBar(MainWindow)
-        self.menu_bar.setGeometry(QtCore.QRect(0, 0, 1418, 18))
+        self.menu_bar.setGeometry(QtCore.QRect(0, 0, 1659, 22))
         self.menu_bar.setObjectName("menu_bar")
         self.menu_save_session = QtWidgets.QMenu(self.menu_bar)
         self.menu_save_session.setObjectName("menu_save_session")

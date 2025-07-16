@@ -6,16 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1418</width>
+    <width>1659</width>
     <height>700</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>InSpectra Gadget</string>
-  </property>
-  <property name="windowIcon">
-   <iconset>
-    <normaloff>iconGadget.png</normaloff>iconGadget.png</iconset>
   </property>
   <widget class="QWidget" name="central_widget">
    <layout class="QHBoxLayout" name="horizontalLayout">
@@ -1253,8 +1249,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1418</width>
-     <height>18</height>
+     <width>1659</width>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_save_session">

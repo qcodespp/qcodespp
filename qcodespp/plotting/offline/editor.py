@@ -50,6 +50,7 @@ from qcodespp.plotting.offline.datatypes import DataItem, BaseClassData, NumpyDa
 from qcodespp.plotting.offline.qcodes_pp_extension import qcodesppData
 
 from qcodespp.data.data_set import DataSetPP
+import sys
 
 # UI settings
 DARK_THEME = True
@@ -179,6 +180,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         super().__init__()
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.window_title = 'Inspectra Gadget'
+        try:
+            if sys.platform.startswith('win'):
+                icon_file = 'iconGadget.ico'
+            else:
+                icon_file = 'iconGadget.png'
+            self.setWindowIcon(QtGui.QIcon(os.path.join(os.path.dirname(__file__), icon_file)))
+        except Exception as e:
+            pass
         self.window_title_auto_refresh = ''
         self.setupUi(self)
         self.init_plot_settings()
