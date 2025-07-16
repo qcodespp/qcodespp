@@ -2408,11 +2408,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if which == 'current':
                 filter_row = self.filters_table.currentRow()
                 if filter_row != -1:
-                    #self.filters_table.removeRow(filter_row)
                     del filters[filter_row]
             elif which == 'all':
                 filters.clear()
-                self.filters_table.setRowCount(0)
             self.show_current_filters()
             current_item.data.apply_all_filters()
             self.update_plots(update_color_limits=True)
