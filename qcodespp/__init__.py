@@ -65,7 +65,7 @@ from qcodespp.actions import Task, Wait, BreakIf
 
 from qcodespp.plotting.RemotePlot import Plot, live_plot
 from qcodespp.plotting.offline.main import offline_plotting
-from qcodespp.plotting.analysis_tools import colorplot, colored_traces
+from qcodespp.plotting.analysis_tools import colorplot, colored_traces, load_2d_json
 
 from qcodespp.data.data_set import new_data, load_data, load_data_num, load_data_nums, set_data_format, set_data_folder
 

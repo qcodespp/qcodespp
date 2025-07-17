@@ -8,7 +8,7 @@ import numpy as np
 
 
 def colorplot(x,y,z,figsize=0,cmap=0,labels=0,xlim=0,ylim=0,zlim=0,xmajor=0,
-              xminor=0,ymajor=0,yminor=0,font_size=0,label_size=0,check_shapes=True):
+              xminor=0,ymajor=0,yminor=0,font_size=0,label_size=0,check_shapes=False):
     """
     Make a nice colourplot from a three-dimensional data array using matplotlib. 
     
@@ -44,7 +44,7 @@ def colorplot(x,y,z,figsize=0,cmap=0,labels=0,xlim=0,ylim=0,zlim=0,xmajor=0,
         
         label_size (int, optional): Font size for the tick labels. Default is 12.
 
-        check_shapes (bool, optional): If True, checks the shapes of x, y, and z arrays and transposes if necessary. Default is True.
+        check_shapes (bool, optional): If True, checks the shapes of x, y, and z arrays and transposes if necessary. Default is False.
 
     Returns:
         tuple: A tuple containing the figure, axis, and colorbar axis objects.
@@ -196,3 +196,27 @@ def sort_lists(X,Y):
     X=[newlist[i][0] for i,val in enumerate(newlist)]
     Y=[newlist[i][1] for i,val in enumerate(newlist)]
     return X,Y
+
+def load_2d_json(filename):
+    """
+    Load reshaped 2D data exported from offline_plotting as a JSON file.
+
+    Args:
+        filename (str): Path to the JSON file.
+
+    Returns:
+        dict: A dictionary containing the reshaped data.
+    """
+    import json
+    with open(filename, 'r') as f:
+        data = json.load(f)
+
+    shape= data.get('shape', None)
+    data.pop('shape', None)  # Remove 'shape' from the data dictionary if it exists
+    if shape:
+        for key in data.keys():
+            data[key]=np.array(data[key]).reshape(shape)
+        return data
+    
+    else:
+        raise ValueError("Cannot reshape data: The JSON file does not contain a shape entry.")

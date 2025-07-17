@@ -989,7 +989,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def export_processed_data(self, which='current'):
         current_item = self.file_list.currentItem()
         if current_item:
-            formats='Numpy text (*.dat);;CSV (*.csv);;JSON (*.json)'
+            if which == 'current':
+                formats='JSON (*.json);;CSV (*.csv);;Numpy text (*.dat)'
+            elif which == 'Z':
+                formats='Numpy text (*.dat)'
             suggested_filename = current_item.data.label
             filepath, ext = QtWidgets.QFileDialog.getSaveFileName(
             self, 'Export Data As', suggested_filename, formats)
@@ -1026,76 +1029,89 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                     else:
                         data={}
-                        if current_item.data.dim==3:
-                            if current_item.data.settings['xlabel'] != '':
-                                data[current_item.data.settings['xlabel']]=current_item.data.processed_data[0].flatten().tolist()
-                            else:
-                                data['X']=current_item.data.processed_data[0].flatten().tolist()
-                            if current_item.data.settings['ylabel'] != '':
-                                data[current_item.data.settings['ylabel']]=current_item.data.processed_data[1].flatten().tolist()
-                            else:
-                                data['Y']=current_item.data.processed_data[1].flatten().tolist()
-                            if current_item.data.settings['clabel'] != '':
-                                data[current_item.data.settings['clabel']]=current_item.data.processed_data[2].flatten().tolist()
-                            else:
-                                data['Z']=current_item.data.processed_data[2].flatten().tolist()
-
-                        elif current_item.data.dim == 2:
-                            for line in current_item.data.plotted_lines.keys():
-                                if current_item.data.plotted_lines[line]['checkstate']:
-                                    if current_item.data.plot_type == 'Histogram':
-                                        headers=[f'{line}_{current_item.data.plotted_lines[line]['Y data']}_bins',
-                                                 f'{line}_{current_item.data.plotted_lines[line]['Y data']}_counts',
-                                                 f'{line}_{current_item.data.plotted_lines[line]['Y data']}_bins_fit']
+                        try:
+                            if current_item.data.dim==3:
+                                labels={'xlabel':'X',
+                                        'ylabel':'Y',
+                                        'clabel':'Z'}
+                                for i,label in enumerate(labels.keys()):
+                                    if current_item.data.settings[label] != '' and current_item.data.settings[label] not in data.keys():
+                                        data[current_item.data.settings[label]]=current_item.data.processed_data[i].flatten().tolist()
+                                    elif current_item.data.settings[label] == '':
+                                        data[labels[label]]=current_item.data.processed_data[i].flatten().tolist()
                                     else:
-                                        headers=[f'{line}_{current_item.data.plotted_lines[line]['X data']}',
-                                                 f'{line}_{current_item.data.plotted_lines[line]['Y data']}',
-                                                 f'{line}_{current_item.data.plotted_lines[line]['X data']}_fit']
-                                    data[headers[0]]=current_item.data.plotted_lines[line]['processed_data'][0].tolist()
-                                    data[headers[1]]=current_item.data.plotted_lines[line]['processed_data'][1].tolist()
-                                    if 'fit' in current_item.data.plotted_lines[line].keys() and current_item.data.plotted_lines[line]['fit']['fit_checkstate']:
-                                        data[headers[2]]=current_item.data.plotted_lines[line]['fit']['xdata'].tolist()
-                                        fit_result=current_item.data.plotted_lines[line]['fit']['fit_result']
-                                        data[f'{line}_{current_item.data.plotted_lines[line]['Y data']}'+'_fit']=fit_result.best_fit.tolist()
-                                        data[f'{line}_{current_item.data.plotted_lines[line]['Y data']}'+'_fit_error']=fit_result.eval_uncertainty().tolist()
-                                        fit_components=fit_result.eval_components()
-                                        for component in fit_components:
-                                            data[f'{line}_{current_item.data.plotted_lines[line]['Y data']}'+'_'+component]=fit_components[component].tolist()
+                                        data[f'{current_item.data.settings[label]}_1']=current_item.data.processed_data[i].flatten().tolist()
+
+                            elif current_item.data.dim == 2:
+                                for line in current_item.data.plotted_lines.keys():
+                                    if current_item.data.plotted_lines[line]['checkstate']:
+                                        if current_item.data.plot_type == 'Histogram':
+                                            headers=[f'{line}_{current_item.data.plotted_lines[line]['Y data']}_bins',
+                                                    f'{line}_{current_item.data.plotted_lines[line]['Y data']}_counts',
+                                                    f'{line}_{current_item.data.plotted_lines[line]['Y data']}_bins_fit']
+                                        else:
+                                            headers=[f'{line}_{current_item.data.plotted_lines[line]['X data']}',
+                                                    f'{line}_{current_item.data.plotted_lines[line]['Y data']}',
+                                                    f'{line}_{current_item.data.plotted_lines[line]['X data']}_fit']
+                                        data[headers[0]]=current_item.data.plotted_lines[line]['processed_data'][0].tolist()
+                                        data[headers[1]]=current_item.data.plotted_lines[line]['processed_data'][1].tolist()
+                                        if 'fit' in current_item.data.plotted_lines[line].keys() and current_item.data.plotted_lines[line]['fit']['fit_checkstate']:
+                                            data[headers[2]]=current_item.data.plotted_lines[line]['fit']['xdata'].tolist()
+                                            fit_result=current_item.data.plotted_lines[line]['fit']['fit_result']
+                                            data[f'{line}_{current_item.data.plotted_lines[line]['Y data']}'+'_fit']=fit_result.best_fit.tolist()
+                                            data[f'{line}_{current_item.data.plotted_lines[line]['Y data']}'+'_fit_error']=fit_result.eval_uncertainty().tolist()
+                                            fit_components=fit_result.eval_components()
+                                            for component in fit_components:
+                                                data[f'{line}_{current_item.data.plotted_lines[line]['Y data']}'+'_'+component]=fit_components[component].tolist()
+                        except Exception as e:
+                            self.log_error(f'Error processing data for export: {e}', show_popup=True)
+
                         if '.json' in ext:
-                            with open(filepath, 'w') as json_file:
-                                jsondump(data, json_file,ensure_ascii=False, indent=4)
+                            try:
+                                data['shape']=list(np.shape(current_item.data.processed_data[2]))
+                                with open(filepath, 'w') as json_file:
+                                    jsondump(data, json_file,ensure_ascii=False, indent=4)
+                            except Exception as e:
+                                self.log_error(f'Error exporting processed data as .json: {e}', show_popup=True)
 
                         elif '.csv' in ext:
-                            with open(filepath, 'w', newline='') as f:
-                                writer = csvwriter(f)
-                                if current_item.data.dim==3:
-                                    header=[]
-                                    for label in ['xlabel','ylabel','clabel']:
-                                        if current_item.data.settings[label] != '':
-                                            header.append(f'#{current_item.data.settings[label]}')
-                                    writer.writerow(header)
-                                    for j in range(np.shape(current_item.data.processed_data[2])[0]):
-                                        for k in range(np.shape(current_item.data.processed_data[2])[1]):
-                                            writer.writerow([current_item.data.processed_data[0][j,k],current_item.data.processed_data[1][j,k],current_item.data.processed_data[2][j,k]])
-                                elif current_item.data.dim == 2:
-                                    writer.writerow([key for key in data.keys()])
-                                    lengths = [len(data[key]) for key in data.keys()]
-                                    for i in range(np.max(lengths)):
-                                        row = []
-                                        for key in data.keys():
-                                            try:
-                                                row.append(data[key][i])
-                                            except IndexError:
-                                                row.append('')
-                                        writer.writerow(row)
+                            try:
+                                with open(filepath, 'w', newline='') as f:
+                                    writer = csvwriter(f)
+                                    if current_item.data.dim==3:
+                                        header=[]
+                                        for label in data.keys():
+                                            header.append(f'#{label}')
+                                        writer.writerow(header)
+                                        for j in range(np.shape(current_item.data.processed_data[2])[0]):
+                                            for k in range(np.shape(current_item.data.processed_data[2])[1]):
+                                                writer.writerow([current_item.data.processed_data[0][j,k],current_item.data.processed_data[1][j,k],current_item.data.processed_data[2][j,k]])
+                                    elif current_item.data.dim == 2:
+                                        writer.writerow([key for key in data.keys()])
+                                        lengths = [len(data[key]) for key in data.keys()]
+                                        for i in range(np.max(lengths)):
+                                            row = []
+                                            for key in data.keys():
+                                                try:
+                                                    row.append(data[key][i])
+                                                except IndexError:
+                                                    row.append('')
+                                            writer.writerow(row)
+                            except Exception as e:
+                                self.log_error(f'Error exporting processed data as .csv: {e}', show_popup=True)
                 else:
                     self.log_error('No processed data to export', show_popup=True)
 
             elif which=='Z':
                 if hasattr(current_item.data,'processed_data'):
                     if '.dat' in ext:
-                        with open(filepath,'w') as dat_file:
-                            np.savetxt(filepath, current_item.data.processed_data[-1])
+                        try:
+                            with open(filepath,'w') as dat_file:
+                                np.savetxt(filepath, current_item.data.processed_data[-1])
+                        except Exception as e:
+                            self.log_error(f'Error exporting processed Z data as .dat: {e}', show_popup=True)
+                    else:
+                        self.log_error('Exporting processed Z data as MxN array only possible to .dat files.')
                 else:
                     self.log_error('No processed data to export', show_popup=True)
                
