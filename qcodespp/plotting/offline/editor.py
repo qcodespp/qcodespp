@@ -1225,7 +1225,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def file_clicked(self):
         current_item = self.file_list.currentItem()
-        self.init_filters(current_item)
+        #self.init_filters(current_item)
         self.show_current_all()
         self.clear_sidebar1D()
         if hasattr(current_item.data,'sidebar1D'):
