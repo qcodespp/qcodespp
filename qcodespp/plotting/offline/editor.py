@@ -14,7 +14,6 @@ import copy
 import io
 import tarfile
 import time
-import warnings
 from webbrowser import open as href_open
 from csv import writer as csvwriter
 from json import load as jsonload
