@@ -14,6 +14,7 @@ import copy
 import io
 import tarfile
 import time
+import warnings
 from webbrowser import open as href_open
 from csv import writer as csvwriter
 from json import load as jsonload
@@ -264,10 +265,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def init_filters(self, item=None):
         self.filters_combobox.clear()
         self.filters_combobox.addItem('<Add Filter>')
-        if item and hasattr(item.data,'dim') and item.data.dim == 2:
-            exclude=['Offset line by line', 'Subtract average line by line','Cut X','Cut Y','Roll X','Roll Y','Crop Y','Subtract trace']
-            filterlist=[key for key in Filter.DEFAULT_SETTINGS.keys() if key not in exclude]
-        else:
+        try:
+            if item and hasattr(item,'data') and hasattr(item.data,'dim') and item.data.dim == 2:
+                exclude=['Offset line by line', 'Subtract average line by line','Cut X','Cut Y','Roll X','Roll Y','Crop Y','Subtract trace']
+                filterlist=[key for key in Filter.DEFAULT_SETTINGS.keys() if key not in exclude]
+            else:
+                filterlist = list(Filter.DEFAULT_SETTINGS.keys())
+        except Exception as e:
+            self.log_error(f'Error initializing filters: {e}')
             filterlist = list(Filter.DEFAULT_SETTINGS.keys())
         self.filters_combobox.addItems(filterlist)
         self.filters_table.setColumnCount(4)
@@ -400,6 +405,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.save_session_shortcut.activated.connect(lambda: self.save_session('all'))
         self.load_session_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+R"),self)
         self.load_session_shortcut.activated.connect(self.load_session)
+        self.horizontal_linecut_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+H"), self)
+        self.horizontal_linecut_shortcut.activated.connect(lambda: self.make_linecut_window('horizontal'))
+        self.vertical_linecut_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+G"), self)
+        self.vertical_linecut_shortcut.activated.connect(lambda: self.make_linecut_window('vertical'))
+        self.diagonal_linecut_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+D"), self)
+        self.diagonal_linecut_shortcut.activated.connect(lambda: self.make_linecut_window('diagonal'))
     
     def init_canvas(self):
         self.figure = Figure()
@@ -1214,7 +1225,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def file_clicked(self):
         current_item = self.file_list.currentItem()
-        #self.init_filters(current_item)
+        self.init_filters(current_item)
         self.show_current_all()
         self.clear_sidebar1D()
         if hasattr(current_item.data,'sidebar1D'):
@@ -1681,58 +1692,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.yaxis_combobox.setCurrentText(axlim_settings['Yscale'])
             self.yaxis_combobox.currentIndexChanged.connect(self.axis_scaling_changed)
             
-    def which_filters(self,item,filters=None,filt=None):
-        # This function works out which filters should be addressed based on the datatype (e.g. belonging to 1D line or 2D dataset)
-        # and either returns them, sets them, or appends to them.
-        if filters is None and filt is None:
-            # Return the filters to operate on
-            if isinstance(item.data,MixedInternalData) and self.mixeddata_filter_box.currentIndex() == 0:
-                filters = item.data.dataset2d.filters
-            elif hasattr(item.data, 'sidebar1D'):
-                current_1D_row = item.data.sidebar1D.trace_table.currentRow()
-                current_line = int(item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
-                if isinstance(item.data,MixedInternalData):
-                    filters= item.data.dataset1d.plotted_lines[current_line]['filters']
-                else:
-                    filters= item.data.plotted_lines[current_line]['filters']
-            else:
-                filters = item.data.filters
-            return filters
-        
-        elif filt is None: # The filters are being set.
-            if isinstance(item.data,MixedInternalData) and self.mixeddata_filter_box.currentIndex() == 0:
-                item.data.dataset2d.filters=filters
-            elif hasattr(item.data, 'sidebar1D'):
-                current_1D_row = item.data.sidebar1D.trace_table.currentRow()
-                current_line = int(item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
-                if isinstance(item.data,MixedInternalData):
-                    item.data.dataset1d.plotted_lines[current_line]['filters']=filters
-                else:
-                    item.data.plotted_lines[current_line]['filters']=filters
-            else:
-                item.data.filters = filters
-
-        else: # A filter is being appended to the table
-            if isinstance(item.data,MixedInternalData) and self.mixeddata_filter_box.currentIndex() == 0:
-                item.data.dataset2d.filters.append(filt)
-            elif hasattr(item.data, 'sidebar1D'):
-                current_1D_row = item.data.sidebar1D.trace_table.currentRow()
-                current_line = int(item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
-                if hasattr(filt, 'method_list') and 'Z' in filt.method_list:
-                    filt.method_list=copy.copy(filt.method_list)
-                    filt.method_list.remove('Z')
-                    if hasattr(filt, 'method') and filt.method == 'Z':
-                        filt.method=filt.method_list[0]
-                elif filt.name == 'Sort':
-                    filt.method_list = ['']
-                    filt.method= ''
-                if isinstance(item.data,MixedInternalData):
-                    item.data.dataset1d.plotted_lines[current_line]['filters'].append(filt)
-                else:
-                    item.data.plotted_lines[current_line]['filters'].append(filt)
-            else:
-                item.data.filters.append(filt)
-
     def show_current_filters(self):
         self.filters_table.setRowCount(0)
         current_item = self.file_list.currentItem()
@@ -1931,30 +1890,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if current_item.checkState():
                 current_item.data.apply_colormap()
                 self.canvas.draw()
-    
-    def filters_table_edited(self, item):
+
+    def reset_color_limits(self):
         current_item = self.file_list.currentItem()
-        self.old_filters=copy.deepcopy(self.which_filters(current_item))
         if current_item:
-            filters=self.which_filters(current_item)
-            try:
-                row = item.row()
-                filt = filters[row]
-                filter_item = self.filters_table.item(row, 0)
-                filt.method = self.filters_table.cellWidget(row, 1).currentText()
-                filt.settings = [self.filters_table.item(row, 2).text(), 
-                                 self.filters_table.item(row, 3).text()]
-                filt.checkstate = filter_item.checkState()
-                self.filters_table.clearFocus()
-                current_item.data.apply_all_filters(filter_box_index=self.mixeddata_filter_box.currentIndex())
-                if current_item.checkState():
-                    self.update_plots(update_color_limits=True)
-                    self.show_current_filters()
-                    self.show_current_view_settings()
-                    self.reset_axlim_settings()
-            except Exception as e:
-                self.log_error(f'Invalid value of filter: {e}', show_popup=True)
-                self.paste_filters(which='old')
+            current_item.data.reset_view_settings(overrule=True)
+            self.show_current_view_settings()
+            if current_item.checkState():
+                current_item.data.apply_view_settings()
+                self.canvas.draw()
     
     def copy_plot_settings(self):
         current_item = self.file_list.currentItem()
@@ -2319,6 +2263,82 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         item = self.settings_table.currentItem()
         item.setText(signal.text())
 
+    def which_filters(self,item,filters=None,filt=None):
+        # This function works out which filters should be addressed based on the datatype (e.g. belonging to 1D line or 2D dataset)
+        # and either returns them, sets them, or appends to them.
+        if filters is None and filt is None:
+            # Return the filters to operate on
+            if isinstance(item.data,MixedInternalData) and self.mixeddata_filter_box.currentIndex() == 0:
+                filters = item.data.dataset2d.filters
+            elif hasattr(item.data, 'sidebar1D'):
+                current_1D_row = item.data.sidebar1D.trace_table.currentRow()
+                current_line = int(item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
+                if isinstance(item.data,MixedInternalData):
+                    filters= item.data.dataset1d.plotted_lines[current_line]['filters']
+                else:
+                    filters= item.data.plotted_lines[current_line]['filters']
+            else:
+                filters = item.data.filters
+            return filters
+        
+        elif filt is None: # The filters are being set.
+            if isinstance(item.data,MixedInternalData) and self.mixeddata_filter_box.currentIndex() == 0:
+                item.data.dataset2d.filters=filters
+            elif hasattr(item.data, 'sidebar1D'):
+                current_1D_row = item.data.sidebar1D.trace_table.currentRow()
+                current_line = int(item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
+                if isinstance(item.data,MixedInternalData):
+                    item.data.dataset1d.plotted_lines[current_line]['filters']=filters
+                else:
+                    item.data.plotted_lines[current_line]['filters']=filters
+            else:
+                item.data.filters = filters
+
+        else: # A filter is being appended to the table
+            if isinstance(item.data,MixedInternalData) and self.mixeddata_filter_box.currentIndex() == 0:
+                item.data.dataset2d.filters.append(filt)
+            elif hasattr(item.data, 'sidebar1D'):
+                current_1D_row = item.data.sidebar1D.trace_table.currentRow()
+                current_line = int(item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
+                if hasattr(filt, 'method_list') and 'Z' in filt.method_list:
+                    filt.method_list=copy.copy(filt.method_list)
+                    filt.method_list.remove('Z')
+                    if hasattr(filt, 'method') and filt.method == 'Z':
+                        filt.method=filt.method_list[0]
+                elif filt.name == 'Sort':
+                    filt.method_list = ['']
+                    filt.method= ''
+                if isinstance(item.data,MixedInternalData):
+                    item.data.dataset1d.plotted_lines[current_line]['filters'].append(filt)
+                else:
+                    item.data.plotted_lines[current_line]['filters'].append(filt)
+            else:
+                item.data.filters.append(filt)
+
+    def filters_table_edited(self, item):
+        current_item = self.file_list.currentItem()
+        self.old_filters=copy.deepcopy(self.which_filters(current_item))
+        if current_item:
+            filters=self.which_filters(current_item)
+            try:
+                row = item.row()
+                filt = filters[row]
+                filter_item = self.filters_table.item(row, 0)
+                filt.method = self.filters_table.cellWidget(row, 1).currentText()
+                filt.settings = [self.filters_table.item(row, 2).text(),
+                                 self.filters_table.item(row, 3).text()]
+                filt.checkstate = filter_item.checkState()
+                self.filters_table.clearFocus()
+                current_item.data.apply_all_filters(filter_box_index=self.mixeddata_filter_box.currentIndex())
+                if current_item.checkState():
+                    self.update_plots(update_color_limits=True)
+                    self.show_current_filters()
+                    self.show_current_view_settings()
+                    self.reset_axlim_settings()
+            except Exception as e:
+                self.log_error(f'Invalid value of filter: {e}', show_popup=True)
+                self.paste_filters(which='old')
+
     def open_filter_settings_menu(self):
         row = self.filters_table.currentRow()
         column = self.filters_table.currentColumn()
@@ -2374,15 +2394,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.show_current_view_settings()
             self.reset_axlim_settings()
 
-    def reset_color_limits(self):
-        current_item = self.file_list.currentItem()
-        if current_item:
-            current_item.data.reset_view_settings(overrule=True)
-            self.show_current_view_settings()
-            if current_item.checkState():
-                current_item.data.apply_view_settings()
-                self.canvas.draw()
-   
     def filters_box_changed(self):
         current_item = self.file_list.currentItem()
         if current_item:
@@ -2473,61 +2484,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 else:
                     self.show_current_filters()
                 self.filters_table.setCurrentCell(row+to, 0)
-
-    def save_image(self):
-        current_item = self.file_list.currentItem()
-        if current_item:
-            data_name, _ = os.path.splitext(current_item.data.label)
-            formats = 'Adobe Acrobat (*.pdf);;Portable Network Graphic (*.png)'
-            filename, extension = QtWidgets.QFileDialog.getSaveFileName(
-                    self, 'Save Figure As...', data_name.replace(':',''), formats)
-            if filename:                
-                if current_item.data.settings['dpi'] == 'figure':
-                    dpi = 'figure'
-                else:
-                    dpi = int(current_item.data.settings['dpi']) 
-                if DARK_THEME and qdarkstyle_imported:             
-                    rcParams_to_light_theme()
-                    self.update_plots(update_data=False)
-                transparent = current_item.data.settings['transparent']=='True'
-                self.figure.savefig(filename, dpi=dpi, transparent=transparent,
-                                    bbox_inches='tight')
-                if DARK_THEME and qdarkstyle_imported:
-                    rcParams_to_dark_theme()
-                    self.update_plots(update_data=False)
-                self.log_error(f'Saved figure as {filename}')
-        
-    def save_images_as(self, extension='.png'):
-        save_folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory")
-        if save_folder: 
-            if DARK_THEME and qdarkstyle_imported:
-                rcParams_to_light_theme()
-                self.update_plots(update_data=False)
-            for index in range(self.file_list.count()):
-                self.figure.clear()
-                item = self.file_list.item(index)
-                filename = os.path.join(save_folder, item.data.label.replace(':','')+extension)
-                if not os.path.isfile(filename):
-                    try:
-                        item.data.prepare_data_for_plot()
-                        item.data.figure = self.figure
-                        item.data.axes = self.figure.add_subplot(1, 1, 1)
-                        item.data.add_plot(editor_window=self)
-                        if item.data.settings['dpi'] == 'figure':
-                            dpi = 'figure'
-                        else:
-                            dpi = int(item.data.settings['dpi']) 
-                        transparent = item.data.settings['transparent']=='True'
-                        self.figure.savefig(filename, dpi=dpi, 
-                                            transparent=transparent,
-                                            bbox_inches='tight')
-                        item.data.raw_data = None
-                        item.data.processed_data = None
-                    except Exception as e:
-                        self.log_error(f'Could not plot {item.data.filepath} for saving: {e}', show_popup=True)
-            if DARK_THEME and qdarkstyle_imported:
-                rcParams_to_dark_theme()
-                self.update_plots(update_data=False)
            
     def save_filters(self):
         current_item = self.file_list.currentItem()
@@ -2553,6 +2509,137 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current_item = self.file_list.currentItem()
         if current_item:
             current_item.data.filttocol(axis=axis)
+
+    def init_linecuts(self,data):
+        data.linecuts={'horizontal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
+                        'vertical':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
+                        'diagonal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
+                        'circular':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5}
+                        }
+
+    def make_linecut_window(self,orientation, data=None, show=True):
+        if not data:
+            item=self.file_list.currentItem()
+            if item:
+                data = item.data
+        if data:
+            if isinstance(data, MixedInternalData):
+                data = data.dataset2d
+            # Make dictionary if it doesn't exist
+            if not hasattr(data,'linecuts'):
+                self.init_linecuts(data)
+
+            if data.linecuts[orientation]['linecut_window']==None:
+                if self.colormap_box.currentText() == 'viridis':
+                    selected_colormap = cm.get_cmap('plasma')
+                else:
+                    selected_colormap = cm.get_cmap('viridis')
+                data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,
+                                                                                init_cmap=selected_colormap.name,
+                                                                                editor_window=self)
+
+        if show:
+            self.show_linecut_window(orientation,data)
+
+    def show_linecut_window(self, orientation,data):
+        data.linecuts[orientation]['linecut_window'].running = True
+        data.linecuts[orientation]['linecut_window'].activateWindow()
+        if len(data.linecuts[orientation]['lines']) > 0:
+            data.linecuts[orientation]['linecut_window'].update()
+        data.linecuts[orientation]['linecut_window'].show()
+
+    def copy_linecuts(self, orientation, item=None):
+        if not item:
+            item = self.file_list.currentItem()
+        if item:
+            data = item.data
+            if isinstance(data, MixedInternalData):
+                data = data.dataset2d
+            if hasattr(data,'linecuts'):
+                try:
+                    if orientation == 'all':
+                        self.copied_linecuts = [orientation,self.remove_linecutwindows_and_fits(item.data.linecuts,dirpath=None)]
+                    else:
+                        self.copied_linecuts = [orientation,self.remove_linecutwindows_and_fits(item.data.linecuts[orientation],dirpath=None)]
+                except Exception as e:
+                    self.log_error(f'Error copying linecuts: {e}', show_popup=True)
+            else:
+                self.log_error('No linecuts to copy in currently selected file', show_popup=True)
+
+    def paste_single_linecut_orientation(self,orientation,data, lines):
+        if data.linecuts[orientation]['linecut_window'] is None:
+            self.make_linecut_window(orientation, data, show=False)
+        if len(data.linecuts[orientation]['lines']) > 0:
+            startindex=np.max(list(data.linecuts[orientation]['lines'].keys()))+1
+        else:
+            startindex=0
+
+        out_of_range=[]
+
+        for key,value in lines.items():
+            line = int(key+startindex)
+            shape=data.processed_data[-1].shape
+            if orientation == 'horizontal' and value['data_index'] >= shape[1]:
+                out_of_range.append(int(value['data_index']))
+            elif orientation == 'vertical' and value['data_index'] >= shape[0]:
+                out_of_range.append(int(value['data_index']))
+            else:
+                data.linecuts[orientation]['lines'][line] = copy.deepcopy(value)
+                if 'draggable_points' in data.linecuts[orientation]['lines'][line].keys():
+                    points=data.linecuts[orientation]['lines'][line]['points']
+                    data.linecuts[orientation]['lines'][line]['draggable_points'] = [DraggablePoint(data,points[0][0],points[0][1],line,orientation),
+                    DraggablePoint(data,points[1][0],points[1][1],line,orientation,draw_line=True)]
+                data.linecuts[orientation]['linecut_window'].append_cut_to_table(line)
+        return out_of_range
+    
+    def paste_linecuts(self,item=None):
+        if not item:
+            item = self.file_list.currentItem()
+        if item:
+            if hasattr(item,'data') and (item.data.dim == 3 or isinstance(item.data, MixedInternalData)):
+                data = item.data
+                minilog=[]
+                try:
+                    if isinstance(data, MixedInternalData):
+                        data = data.dataset2d
+                    if not hasattr(data,'linecuts'):
+                        self.init_linecuts(data)
+                    if hasattr(self,'copied_linecuts') and self.copied_linecuts[0]=='all':
+                        linecuts = copy.copy(self.copied_linecuts[1])
+                        for orientation in linecuts.keys():
+                            if len(list(linecuts[orientation]['lines'])) > 0:
+                                out_of_range=self.paste_single_linecut_orientation(orientation,data, linecuts[orientation]['lines'])
+                                self.show_linecut_window(orientation,data)
+                                if len(out_of_range) > 0:
+                                    for index in out_of_range:
+                                        text=(f'Index {index} is out of range in the {orientation} direction for data '
+                                         f'with shape {data.processed_data[-1].shape}.')
+                                        minilog.append(text)
+                                        self.log_error(text)
+                    elif hasattr(self,'copied_linecuts'):
+                        orientation= self.copied_linecuts[0]
+                        lines= copy.copy(self.copied_linecuts[1]['lines'])
+                        out_of_range=self.paste_single_linecut_orientation(orientation,data, lines)
+                        self.show_linecut_window(orientation,data)
+                        if len(out_of_range) > 0:
+                            for index in out_of_range:
+                                text=(f'Index {index} is out of range in the {orientation} direction for data '
+                                    f'with shape {data.processed_data[-1].shape}.')
+                                minilog.append(text)
+                                self.log_error(text)
+                    else:
+                        self.log_error('No linecuts to paste', show_popup=True)
+                except Exception as e:
+                    minilog.append(str(e))
+                    self.log_error(f'Error pasting linecuts: {e}')
+
+                self.update_plots()
+
+                if len(minilog)>0:
+                    error_message = 'The following errors occurred while pasting linecuts:\n\n' + '\n\n'.join(minilog)
+                    self.ew = ErrorWindow(error_message)
+            else:
+                self.log_error('Cannot paste linecuts to this data type', show_popup=True)
 
     def draggable_point_selected(self, x,y,data):
         selected=False
@@ -2624,11 +2711,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 selected_colormap = cm.get_cmap('viridis')
                             #Make entry to store linecuts in
                             if not hasattr(data,'linecuts'):
-                                data.linecuts={'horizontal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
-                                            'vertical':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
-                                            'diagonal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
-                                            'circular':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5}
-                                                }
+                                self.init_linecuts(data)
                             if event.button == 1:
                                 line_colors = selected_colormap(np.linspace(0.1,0.9,len(data.processed_data[1][0,:])))
                                 orientation='horizontal'
@@ -2949,137 +3032,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.reset_axlim_settings()
                 self.show_current_all()
 
-    def copy_linecuts(self, orientation):
-        item = self.file_list.currentItem()
-        if item:
-            data = item.data
-            if isinstance(data, MixedInternalData):
-                data = data.dataset2d
-            if hasattr(data,'linecuts'):
-                try:
-                    if orientation == 'all':
-                        self.copied_linecuts = [orientation,self.remove_linecutwindows_and_fits(item.data.linecuts,dirpath=None)]
-                    else:
-                        self.copied_linecuts = [orientation,self.remove_linecutwindows_and_fits(item.data.linecuts[orientation],dirpath=None)]
-                except Exception as e:
-                    self.log_error(f'Error copying linecuts: {e}', show_popup=True)
-            else:
-                self.log_error('No linecuts to copy in currently selected file', show_popup=True)
-    
-    def paste_linecuts(self):
-        item = self.file_list.currentItem()
-        if item:
-            if hasattr(item,'data'):
-                data = item.data
-                minilog=[]
-                if isinstance(data, MixedInternalData):
-                    data = data.dataset2d
-                if hasattr(self,'copied_linecuts') and self.copied_linecuts[0]=='all':
-                    data.linecuts = copy.copy(self.copied_linecuts[1])
-                    for orientation in data.linecuts.keys():
-                        if len(list(data.linecuts[orientation]['lines'])) > 0:
-                            self.make_linecut_window(orientation,data,show=False)
-                            for line in data.linecuts[orientation]['lines'].keys():
-                                try:
-                                    if 'draggable_points' in data.linecuts[orientation]['lines'][line].keys():
-                                        points=data.linecuts[orientation]['lines'][line]['points']
-                                        data.linecuts[orientation]['lines'][line]['draggable_points'] = [DraggablePoint(data,points[0][0],points[0][1],line,orientation),
-                                        DraggablePoint(data,points[1][0],points[1][1],line,orientation,draw_line=True)]
-                                    data.linecuts[orientation]['linecut_window'].append_cut_to_table(line)
-                                except Exception as e:
-                                    self.log_error(f'Error pasting linecut {line}: {e}')
-                                    minilog.append(e)
-                            self.show_linecut_window(orientation,data)
-                elif hasattr(self,'copied_linecuts'):
-                    if not hasattr(data,'linecuts'):
-                        data.linecuts={'horizontal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
-                                        'vertical':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
-                                        'diagonal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
-                                        'circular':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5}
-                        }
-                    orientation= self.copied_linecuts[0]
-                    data.linecuts[orientation]= copy.copy(self.copied_linecuts[1])
-                    self.make_linecut_window(orientation,data,show=False)
-                    for line in data.linecuts[orientation]['lines'].keys():
-                        try:
-                            if 'draggable_points' in data.linecuts[orientation]['lines'][line].keys():
-                                points=data.linecuts[orientation]['lines'][line]['points']
-                                data.linecuts[orientation]['lines'][line]['draggable_points'] = [DraggablePoint(data,points[0][0],points[0][1],line,orientation),
-                                DraggablePoint(data,points[1][0],points[1][1],line,orientation,draw_line=True)]
-                            data.linecuts[orientation]['linecut_window'].append_cut_to_table(line)
-                        except Exception as e:
-                            self.log_error(f'Error pasting linecut {line}: {e}')
-                            minilog.append(e)
-                    self.show_linecut_window(orientation,data)
-                else:
-                    self.log_error('No linecuts to paste', show_popup=True)
-
-                self.update_plots()
-
-                if len(minilog)>0:
-                    error_message = 'The following errors occurred while pasting linecuts:\n\n' + '\n\n'.join(minilog)
-                    self.ew = ErrorWindow(error_message)
-
-    def make_linecut_window(self,orientation, data=None, show=True):
-        if not data:
-            item=self.file_list.currentItem()
-            if item:
-                data = item.data
-        if data:
-            if isinstance(data, MixedInternalData):
-                data = data.dataset2d
-            # Make dictionary if it doesn't exist
-            if not hasattr(data,'linecuts'):
-                data.linecuts={'horizontal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
-                                'vertical':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
-                                'diagonal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
-                                'circular':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5}
-                                }
-
-            if data.linecuts[orientation]['linecut_window']==None:
-                if self.colormap_box.currentText() == 'viridis':
-                    selected_colormap = cm.get_cmap('plasma')
-                else:
-                    selected_colormap = cm.get_cmap('viridis')
-                data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,
-                                                                                init_cmap=selected_colormap.name,
-                                                                                editor_window=self)
-
-        if show:
-            self.show_linecut_window(orientation,data)
-
-    def show_linecut_window(self, orientation,data):
-        data.linecuts[orientation]['linecut_window'].running = True
-        data.linecuts[orientation]['linecut_window'].activateWindow()
-        if len(data.linecuts[orientation]['lines']) > 0:
-            data.linecuts[orientation]['linecut_window'].update()
-        data.linecuts[orientation]['linecut_window'].show()
-
-    def copy_canvas_to_clipboard(self):
-        checked_items = self.get_checked_items()
-        for item in checked_items:
-            item.data.cursor.horizOn = False
-            item.data.cursor.vertOn = False            
-        self.canvas.draw()
-        if DARK_THEME and qdarkstyle_imported:
-            rcParams_to_light_theme()
-            self.update_plots(update_data=False)
-        buf = io.BytesIO()
-        if item.data.settings['dpi'] == 'figure':
-            dpi = 'figure'
-        else:
-            dpi = int(item.data.settings['dpi'])
-        self.figure.savefig(buf, dpi=dpi, bbox_inches='tight')
-        QtWidgets.QApplication.clipboard().setImage(QtGui.QImage.fromData(buf.getvalue()))
-        buf.close()
-        for item in checked_items:
-            item.data.cursor.horizOn = True
-            item.data.cursor.vertOn = True
-        self.canvas.draw()
-        if DARK_THEME and qdarkstyle_imported:
-            rcParams_to_dark_theme()
-            self.update_plots(update_data=False)
-
     def show_metadata(self):
         item = self.file_list.currentItem()
         if item:
@@ -3290,6 +3242,86 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             self.update_plots()
                 except Exception as e:
                     self.log_error(f'Could not load preset: {e}', show_popup=True)
+
+    def copy_canvas_to_clipboard(self):
+        checked_items = self.get_checked_items()
+        for item in checked_items:
+            item.data.cursor.horizOn = False
+            item.data.cursor.vertOn = False            
+        self.canvas.draw()
+        if DARK_THEME and qdarkstyle_imported:
+            rcParams_to_light_theme()
+            self.update_plots(update_data=False)
+        buf = io.BytesIO()
+        if item.data.settings['dpi'] == 'figure':
+            dpi = 'figure'
+        else:
+            dpi = int(item.data.settings['dpi'])
+        self.figure.savefig(buf, dpi=dpi, bbox_inches='tight')
+        QtWidgets.QApplication.clipboard().setImage(QtGui.QImage.fromData(buf.getvalue()))
+        buf.close()
+        for item in checked_items:
+            item.data.cursor.horizOn = True
+            item.data.cursor.vertOn = True
+        self.canvas.draw()
+        if DARK_THEME and qdarkstyle_imported:
+            rcParams_to_dark_theme()
+            self.update_plots(update_data=False)
+
+    def save_image(self):
+        current_item = self.file_list.currentItem()
+        if current_item:
+            data_name, _ = os.path.splitext(current_item.data.label)
+            formats = 'Adobe Acrobat (*.pdf);;Portable Network Graphic (*.png)'
+            filename, extension = QtWidgets.QFileDialog.getSaveFileName(
+                    self, 'Save Figure As...', data_name.replace(':',''), formats)
+            if filename:                
+                if current_item.data.settings['dpi'] == 'figure':
+                    dpi = 'figure'
+                else:
+                    dpi = int(current_item.data.settings['dpi']) 
+                if DARK_THEME and qdarkstyle_imported:             
+                    rcParams_to_light_theme()
+                    self.update_plots(update_data=False)
+                transparent = current_item.data.settings['transparent']=='True'
+                self.figure.savefig(filename, dpi=dpi, transparent=transparent,
+                                    bbox_inches='tight')
+                if DARK_THEME and qdarkstyle_imported:
+                    rcParams_to_dark_theme()
+                    self.update_plots(update_data=False)
+                self.log_error(f'Saved figure as {filename}')
+        
+    def save_images_as(self, extension='.png'):
+        save_folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory")
+        if save_folder: 
+            if DARK_THEME and qdarkstyle_imported:
+                rcParams_to_light_theme()
+                self.update_plots(update_data=False)
+            for index in range(self.file_list.count()):
+                self.figure.clear()
+                item = self.file_list.item(index)
+                filename = os.path.join(save_folder, item.data.label.replace(':','')+extension)
+                if not os.path.isfile(filename):
+                    try:
+                        item.data.prepare_data_for_plot()
+                        item.data.figure = self.figure
+                        item.data.axes = self.figure.add_subplot(1, 1, 1)
+                        item.data.add_plot(editor_window=self)
+                        if item.data.settings['dpi'] == 'figure':
+                            dpi = 'figure'
+                        else:
+                            dpi = int(item.data.settings['dpi']) 
+                        transparent = item.data.settings['transparent']=='True'
+                        self.figure.savefig(filename, dpi=dpi, 
+                                            transparent=transparent,
+                                            bbox_inches='tight')
+                        item.data.raw_data = None
+                        item.data.processed_data = None
+                    except Exception as e:
+                        self.log_error(f'Could not plot {item.data.filepath} for saving: {e}', show_popup=True)
+            if DARK_THEME and qdarkstyle_imported:
+                rcParams_to_dark_theme()
+                self.update_plots(update_data=False)
 
     def tight_layout(self):
         self.figure.tight_layout()

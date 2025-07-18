@@ -1250,7 +1250,7 @@
      <x>0</x>
      <y>0</y>
      <width>1667</width>
-     <height>22</height>
+     <height>18</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_save_session">
@@ -1622,17 +1622,17 @@
   </action>
   <action name="actionOpenLinecutsHorizontal">
    <property name="text">
-    <string>Horizontal</string>
+    <string>Horizontal (Ctrl+H)</string>
    </property>
   </action>
   <action name="actionOpenLinecutsVertical">
    <property name="text">
-    <string>Vertical</string>
+    <string>Vertical (Ctrl+G)</string>
    </property>
   </action>
   <action name="actionOpenLinecutsDiagonal">
    <property name="text">
-    <string>Diagonal</string>
+    <string>Diagonal  (Ctrl+D)</string>
    </property>
   </action>
  </widget>

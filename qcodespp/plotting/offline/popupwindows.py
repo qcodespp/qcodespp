@@ -70,6 +70,9 @@ class LineCutWindow(QtWidgets.QWidget):
         self.remove_cut_button = QtWidgets.QPushButton('Remove')
         self.clear_cuts_button = QtWidgets.QPushButton('Clear list')
 
+        self.copy_button = QtWidgets.QPushButton('Copy')
+        self.paste_button = QtWidgets.QPushButton('Paste')
+
         self.generate_label = QtWidgets.QLabel('start,end,step,offset')
         self.generate_line_edit=QtWidgets.QLineEdit('0,-1,1,0')
         self.generate_button=QtWidgets.QPushButton('Generate')
@@ -170,6 +173,8 @@ class LineCutWindow(QtWidgets.QWidget):
         self.add_cut_button.clicked.connect(self.add_cut_manually)
         self.remove_cut_button.clicked.connect(lambda: self.remove_cut('selected'))
         self.clear_cuts_button.clicked.connect(lambda: self.remove_cut('all'))
+        self.copy_button.clicked.connect(self.copy_cuts)
+        self.paste_button.clicked.connect(self.paste_cuts)
         self.generate_button.clicked.connect(self.generate_cuts)
         self.move_up_button.clicked.connect(lambda: self.move_cut('up'))
         self.move_down_button.clicked.connect(lambda: self.move_cut('down'))
@@ -229,6 +234,7 @@ class LineCutWindow(QtWidgets.QWidget):
     def init_layouts(self):
         # Sub-layouts in Linecut list box:
         self.table_buttons_layout = QtWidgets.QHBoxLayout()
+        self.copy_paste_layout = QtWidgets.QHBoxLayout()
         self.generate_layout = QtWidgets.QHBoxLayout()
         self.move_buttons_layout = QtWidgets.QHBoxLayout()
         self.colormap_layout = QtWidgets.QHBoxLayout()
@@ -238,6 +244,9 @@ class LineCutWindow(QtWidgets.QWidget):
         self.table_buttons_layout.addWidget(self.add_cut_button)
         self.table_buttons_layout.addWidget(self.remove_cut_button)
         self.table_buttons_layout.addWidget(self.clear_cuts_button)
+
+        self.copy_paste_layout.addWidget(self.copy_button)
+        self.copy_paste_layout.addWidget(self.paste_button)
 
         self.move_buttons_layout.addWidget(self.move_up_button)
         self.move_buttons_layout.addWidget(self.move_down_button)
@@ -343,6 +352,7 @@ class LineCutWindow(QtWidgets.QWidget):
             self.table_layout.addLayout(self.generate_layout)
         self.table_layout.addWidget(self.cuts_table)
         self.table_layout.addLayout(self.move_buttons_layout)
+        self.table_layout.addLayout(self.copy_paste_layout)
         self.table_layout.addLayout(self.colormap_layout)
         self.table_layout.addLayout(self.style_layout)
         self.tablebox.setLayout(self.table_layout)
@@ -389,6 +399,22 @@ class LineCutWindow(QtWidgets.QWidget):
 
         self.cuts_table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.cuts_table.customContextMenuRequested.connect(self.open_cuts_table_menu)
+
+    def copy_cuts(self):
+        # Call on editor_window's method, but need to know which item this is; it's not necessarily the current item in the file list.
+        items = self.editor_window.get_all_items()
+        for item in items:
+            if item.data == self.parent:
+                self.editor_window.copy_linecuts(self.orientation, item)
+                break
+    
+    def paste_cuts(self):
+        # Does the same as above but pastes
+        items = self.editor_window.get_all_items()
+        for item in items:
+            if item.data == self.parent:
+                self.editor_window.paste_linecuts(item)
+                break
 
     def item_clicked(self, item):
         # displays the fit result and/or information.
