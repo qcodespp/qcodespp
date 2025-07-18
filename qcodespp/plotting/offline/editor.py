@@ -354,7 +354,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.actionCopyLinecutsDiagonal.triggered.connect(lambda: self.copy_linecuts('diagonal'))
         self.actionPasteLinecuts.triggered.connect(self.paste_linecuts)
         self.action_filters.triggered.connect(self.save_filters)
-        self.action_save_session.triggered.connect(lambda: self.save_session('all'))
+        self.action_save_session.triggered.connect(self.save_session)
         self.action_restore_session.triggered.connect(self.load_session)
         self.action_combine_files.triggered.connect(self.combine_plots)
         self.action_duplicate_file.triggered.connect(self.duplicate_item)
@@ -401,7 +401,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.duplicate_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+D"), self)
         self.duplicate_shortcut.activated.connect(self.duplicate_item)
         self.save_session_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+S"),self)
-        self.save_session_shortcut.activated.connect(lambda: self.save_session('all'))
+        self.save_session_shortcut.activated.connect(self.save_session)
         self.load_session_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+R"),self)
         self.load_session_shortcut.activated.connect(self.load_session)
         self.horizontal_linecut_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+H"), self)
@@ -428,16 +428,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                              (5,5)]
         self.figure.subplots_adjust(top=0.893, bottom=0.137, 
                                     left=0.121, right=0.86)
-        
-    def log_error(self, error_message, show_popup=False):
-        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-        self.error_log[len(self.error_log)] = {'timestamp': timestamp,
-                                               'message': error_message}
-        if show_popup:
-            self.ew = ErrorWindow(error_message)
-    
-    def open_error_log(self):
-        self.elw = ErrorLogWindow(self.error_log)
         
     def load_data_item(self,filepath,load_the_data=True):
         filename, extension = os.path.splitext(filepath)
@@ -543,10 +533,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 item.setCheckState(attr_dicts[i][attr])
                                 if attr_dicts[i][attr]==2:
                                     self.file_checked(item)
-                                    overrideautocheck=True #If any item is checked, override autochecking. But if NONE of them are checked, let autocheck do its thing.
+                                    overrideautocheck=True #If any item is checked, override autochecking. 
+                                    # But if NONE of them are checked, let autocheck do its thing.
+                                    
                                     # The below is kind of dumb... but for anything at all to work, 1D data has to be inited by
-                                    # actually plotting _something_, which makes a sidebar1D with the default params plotted.
-                                    # So we need to check if the sidebar1D exists, and if it does, delete it.
+                                    # actually plotting _something_ when file_checked is called, which makes a sidebar1D with the default params plotted.
+                                    # If this sidebar1D exists, we need to delete it and make the proper one at reload_plotted_lines.
                                     if hasattr(item.data,'sidebar1D'):
                                         item.data.sidebar1D.hide()
                                         del item.data.sidebar1D
@@ -661,6 +653,28 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if update_plots:
             self.update_plots()
 
+    def move_file(self, direction):
+        current_item = self.file_list.currentItem()
+        if current_item:
+            current_row = self.file_list.currentRow()
+            if direction == 'up' and current_row > 0:
+                new_row = current_row-1
+            elif direction == 'down' and current_row < self.file_list.count()-1:
+                new_row = current_row+1
+            else:
+                new_row = current_row
+            if new_row != current_row:
+                if (current_item.checkState() == 2 and 
+                    self.file_list.item(new_row).checkState() == 2):
+                    update_canvas = True
+                else:
+                    update_canvas = False
+                self.file_list.takeItem(current_row)
+                self.file_list.insertItem(new_row, current_item)
+                self.file_list.setCurrentRow(new_row)
+                if update_canvas:
+                    self.update_plots()
+
     def open_files_from_folder(self): 			
         rootdir = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory to Open")
         if rootdir:
@@ -749,7 +763,26 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.setWindowTitle(self.window_title+
                                 self.window_title_auto_refresh)
             
-    def save_session(self, which='current'):
+    def refresh_files(self):
+        checked_items = self.get_checked_items()
+        if checked_items:
+            for item in checked_items:
+                item.data.prepare_data_for_plot(reload_data=True, reload_from_file=True)
+            self.update_plots()
+            for item in checked_items:
+                item.data.reset_axlim_settings()
+                self.show_current_axlim_settings()
+                self.canvas.draw()
+        if self.linked_folder:
+            old_number_of_items = self.file_list.count()
+            self.update_link_to_folder(new_folder=False)
+            if self.file_list.count() > old_number_of_items:
+                last_item = self.file_list.item(self.file_list.count()-1)
+                self.file_double_clicked(last_item)
+                self.file_list.setCurrentItem(last_item)
+                #self.track_button_clicked()
+            
+    def save_session(self):
         current_item = self.file_list.currentItem()
         if current_item:
 
@@ -1151,6 +1184,23 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.show_or_hide_mixeddata_widgets()
         self.update_plots()
 
+    def file_double_clicked(self, item):
+        self.file_list.itemChanged.disconnect(self.file_checked)
+        for item_index in range(self.file_list.count()):
+            self.file_list.item(item_index).setCheckState(QtCore.Qt.Unchecked)
+        item.setCheckState(QtCore.Qt.Checked)
+        self.file_list.itemChanged.connect(self.file_checked)
+        self.update_plots()
+
+    def file_clicked(self):
+        current_item = self.file_list.currentItem()
+        #self.init_filters(current_item)
+        self.show_current_all()
+        self.clear_sidebar1D()
+        if hasattr(current_item.data,'sidebar1D'):
+            self.oneD_layout.addWidget(current_item.data.sidebar1D)
+        self.show_or_hide_mixeddata_widgets()
+
     def plot_type_changed(self):
         current_item = self.file_list.currentItem()
         plot_type = self.plot_type_box.currentText()
@@ -1222,15 +1272,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         except:
                             pass
 
-    def file_clicked(self):
-        current_item = self.file_list.currentItem()
-        #self.init_filters(current_item)
-        self.show_current_all()
-        self.clear_sidebar1D()
-        if hasattr(current_item.data,'sidebar1D'):
-            self.oneD_layout.addWidget(current_item.data.sidebar1D)
-        self.show_or_hide_mixeddata_widgets()
-
     def show_or_hide_mixeddata_widgets(self):
         current_item = self.file_list.currentItem()
         if isinstance(current_item.data,MixedInternalData):
@@ -1248,43 +1289,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.show_2d_data_checkbox.hide()
             self.mixeddata_filter_box.clear()
             self.mixeddata_filter_box.hide()
-
-    def file_double_clicked(self, item):
-        self.file_list.itemChanged.disconnect(self.file_checked)
-        for item_index in range(self.file_list.count()):
-            self.file_list.item(item_index).setCheckState(QtCore.Qt.Unchecked)
-        item.setCheckState(QtCore.Qt.Checked)
-        self.file_list.itemChanged.connect(self.file_checked)
-        self.update_plots()
-    
-    def reinstate_markers(self, item, orientation):
-        orientations={'horizontal':'horimarkers','vertical':'vertmarkers'}
-        if orientation != 'diagonal':
-            arrayname=orientations[orientation]
-            setattr(item.data,arrayname,[])
-        if orientation == 'horizontal':
-            for line in item.data.linecuts['horizontal']['lines']:
-                z=item.data.linecuts[orientation]['lines'][line]['cut_axis_value']
-                item.data.horimarkers.append(item.data.axes.axhline(y=z, linestyle='dashed', linewidth=1, xmax=0.1,
-                    color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
-                item.data.horimarkers.append(item.data.axes.axhline(y=z, linestyle='dashed', linewidth=1, xmin=0.9,
-                    color=item.data.linecuts[orientation]['lines'][line]['linecolor']))  
-
-        elif orientation == 'vertical':
-            for line in item.data.linecuts['vertical']['lines']:
-                z=item.data.linecuts[orientation]['lines'][line]['cut_axis_value']
-                item.data.vertmarkers.append(item.data.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymax=0.1,
-                    color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
-                item.data.vertmarkers.append(item.data.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymin=0.9,
-                    color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
-                
-        elif orientation == 'diagonal':
-            for line in item.data.linecuts[orientation]['lines']:
-                points0= item.data.linecuts[orientation]['lines'][line]['points'][0]
-                points1= item.data.linecuts[orientation]['lines'][line]['points'][1]
-                item.data.linecuts[orientation]['lines'][line]['draggable_points']=[DraggablePoint(item.data, points0[0], points0[1],
-                                                                                            line,orientation),
-                                            DraggablePoint(item.data, points1[0], points1[1],line,orientation,draw_line=True)]
     
     def clear_sidebar1D(self):
         # clear the sidebar1D
@@ -1343,25 +1347,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.remaining_time_label.setText(self.live_track_item.data.remaining_time_string)
             else:
                 self.remaining_time_label.setText('')
-                
-    def refresh_files(self):
-        checked_items = self.get_checked_items()
-        if checked_items:
-            for item in checked_items:
-                item.data.prepare_data_for_plot(reload_data=True, reload_from_file=True)
-            self.update_plots()
-            for item in checked_items:
-                item.data.reset_axlim_settings()
-                self.show_current_axlim_settings()
-                self.canvas.draw()
-        if self.linked_folder:
-            old_number_of_items = self.file_list.count()
-            self.update_link_to_folder(new_folder=False)
-            if self.file_list.count() > old_number_of_items:
-                last_item = self.file_list.item(self.file_list.count()-1)
-                self.file_double_clicked(last_item)
-                self.file_list.setCurrentItem(last_item)
-                #self.track_button_clicked()
     
     # The below is not working and not implemented, but could be useful to fix and include.
     # def to_next_file(self):
@@ -1488,28 +1473,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.remaining_time_label.setText('')
         self.live_track_item.setText(self.live_track_item.data.label)
         
-    def move_file(self, direction):
-        current_item = self.file_list.currentItem()
-        if current_item:
-            current_row = self.file_list.currentRow()
-            if direction == 'up' and current_row > 0:
-                new_row = current_row-1
-            elif direction == 'down' and current_row < self.file_list.count()-1:
-                new_row = current_row+1
-            else:
-                new_row = current_row
-            if new_row != current_row:
-                if (current_item.checkState() == 2 and 
-                    self.file_list.item(new_row).checkState() == 2):
-                    update_canvas = True
-                else:
-                    update_canvas = False
-                self.file_list.takeItem(current_row)
-                self.file_list.insertItem(new_row, current_item)
-                self.file_list.setCurrentRow(new_row)
-                if update_canvas:
-                    self.update_plots()
-        
     def show_current_all(self):
         self.populate_new_plot_settings()
         self.show_current_plot_settings()
@@ -1590,8 +1553,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 else:
                     self.metadata_button.hide()
                  
-        except:
-            pass
+        except Exception as e:
+            self.log_error(f'Error populating new plot settings. {e}', show_popup=True)
         self.plot_type_box.currentIndexChanged.connect(self.plot_type_changed)
 
     def show_current_plot_settings(self):
@@ -1806,7 +1769,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             settings = current_item.data.axlim_settings
             settings['Xscale'] = self.xaxis_combobox.currentText()
             settings['Yscale'] = self.yaxis_combobox.currentText()
-            #if current_item.checkState():
             current_item.data.apply_axscale_settings()
             self.canvas.draw()
     
@@ -2640,6 +2602,35 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             else:
                 self.log_error('Cannot paste linecuts to this data type', show_popup=True)
 
+    def reinstate_markers(self, item, orientation):
+        orientations={'horizontal':'horimarkers','vertical':'vertmarkers'}
+        if orientation != 'diagonal':
+            arrayname=orientations[orientation]
+            setattr(item.data,arrayname,[])
+        if orientation == 'horizontal':
+            for line in item.data.linecuts['horizontal']['lines']:
+                z=item.data.linecuts[orientation]['lines'][line]['cut_axis_value']
+                item.data.horimarkers.append(item.data.axes.axhline(y=z, linestyle='dashed', linewidth=1, xmax=0.1,
+                    color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
+                item.data.horimarkers.append(item.data.axes.axhline(y=z, linestyle='dashed', linewidth=1, xmin=0.9,
+                    color=item.data.linecuts[orientation]['lines'][line]['linecolor']))  
+
+        elif orientation == 'vertical':
+            for line in item.data.linecuts['vertical']['lines']:
+                z=item.data.linecuts[orientation]['lines'][line]['cut_axis_value']
+                item.data.vertmarkers.append(item.data.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymax=0.1,
+                    color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
+                item.data.vertmarkers.append(item.data.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymin=0.9,
+                    color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
+                
+        elif orientation == 'diagonal':
+            for line in item.data.linecuts[orientation]['lines']:
+                points0= item.data.linecuts[orientation]['lines'][line]['points'][0]
+                points1= item.data.linecuts[orientation]['lines'][line]['points'][1]
+                item.data.linecuts[orientation]['lines'][line]['draggable_points']=[DraggablePoint(item.data, points0[0], points0[1],
+                                                                                            line,orientation),
+                                            DraggablePoint(item.data, points1[0], points1[1],line,orientation,draw_line=True)]
+
     def draggable_point_selected(self, x,y,data):
         selected=False
         if isinstance(data, MixedInternalData):
@@ -3325,3 +3316,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def tight_layout(self):
         self.figure.tight_layout()
         self.canvas.draw()
+
+    def log_error(self, error_message, show_popup=False):
+        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+        self.error_log[len(self.error_log)] = {'timestamp': timestamp,
+                                               'message': error_message}
+        if show_popup:
+            self.ew = ErrorWindow(error_message)
+    
+    def open_error_log(self):
+        self.elw = ErrorLogWindow(self.error_log)
