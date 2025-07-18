@@ -261,9 +261,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.xaxis_combobox.addItems(AXIS_SCALING_OPTIONS)
         self.yaxis_combobox.addItems(AXIS_SCALING_OPTIONS)
     
-    def init_filters(self):                
+    def init_filters(self, item=None):
+        self.filters_combobox.clear()
         self.filters_combobox.addItem('<Add Filter>')
-        self.filters_combobox.addItems(Filter.DEFAULT_SETTINGS.keys())
+        if item and hasattr(item.data,'dim') and item.data.dim == 2:
+            exclude=['Offset line by line', 'Subtract average line by line','Cut X','Cut Y','Roll X','Roll Y','Crop Y','Subtract trace']
+            filterlist=[key for key in Filter.DEFAULT_SETTINGS.keys() if key not in exclude]
+        else:
+            filterlist = list(Filter.DEFAULT_SETTINGS.keys())
+        self.filters_combobox.addItems(filterlist)
         self.filters_table.setColumnCount(4)
         self.filters_table.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked)
         h = self.filters_table.horizontalHeader()
@@ -1195,6 +1201,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def file_clicked(self):
         current_item = self.file_list.currentItem()
+        self.init_filters(current_item)
         self.show_current_all()
         self.clear_sidebar1D()
         if hasattr(current_item.data,'sidebar1D'):
