@@ -404,11 +404,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.save_session_shortcut.activated.connect(self.save_session)
         self.load_session_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+R"),self)
         self.load_session_shortcut.activated.connect(self.load_session)
-        self.horizontal_linecut_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+H"), self)
+        self.horizontal_linecut_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+H"), self)
         self.horizontal_linecut_shortcut.activated.connect(lambda: self.make_linecut_window('horizontal'))
-        self.vertical_linecut_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+G"), self)
+        self.vertical_linecut_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+V"), self)
         self.vertical_linecut_shortcut.activated.connect(lambda: self.make_linecut_window('vertical'))
-        self.diagonal_linecut_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+D"), self)
+        self.diagonal_linecut_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+D"), self)
         self.diagonal_linecut_shortcut.activated.connect(lambda: self.make_linecut_window('diagonal'))
     
     def init_canvas(self):
@@ -3326,3 +3326,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     
     def open_error_log(self):
         self.elw = ErrorLogWindow(self.error_log)
+
+    def closeEvent(self, event):
+        for window in QtWidgets.QApplication.topLevelWidgets():
+            window.close()

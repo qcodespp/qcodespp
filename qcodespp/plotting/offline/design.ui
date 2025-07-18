@@ -1622,17 +1622,17 @@
   </action>
   <action name="actionOpenLinecutsHorizontal">
    <property name="text">
-    <string>Horizontal (Ctrl+H)</string>
+    <string>Horizontal (Ctrl+Shift+H)</string>
    </property>
   </action>
   <action name="actionOpenLinecutsVertical">
    <property name="text">
-    <string>Vertical (Ctrl+G)</string>
+    <string>Vertical (Ctrl+Shift+V)</string>
    </property>
   </action>
   <action name="actionOpenLinecutsDiagonal">
    <property name="text">
-    <string>Diagonal  (Ctrl+D)</string>
+    <string>Diagonal (Ctrl+Shift+D)</string>
    </property>
   </action>
  </widget>

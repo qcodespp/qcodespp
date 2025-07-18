@@ -32,7 +32,7 @@ from .helpers import rcParams_to_dark_theme, rcParams_to_light_theme, cmaps,Drag
 class LineCutWindow(QtWidgets.QWidget):
     def __init__(self, parent, orientation, init_cmap='viridis',init_canvas=True,editor_window=None):
         super().__init__()
-        # The parent is the DATA object. This might not be good, I think it prevents all windows closing. Will look into it.
+        # The parent is the DATA object.
         self.parent = parent
         # self.editor_window is the main window.
         self.editor_window = editor_window

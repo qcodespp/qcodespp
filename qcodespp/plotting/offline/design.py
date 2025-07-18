@@ -619,7 +619,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addLayout(self.vertical_layout)
         MainWindow.setCentralWidget(self.central_widget)
         self.menu_bar = QtWidgets.QMenuBar(MainWindow)
-        self.menu_bar.setGeometry(QtCore.QRect(0, 0, 1667, 22))
+        self.menu_bar.setGeometry(QtCore.QRect(0, 0, 1667, 18))
         self.menu_bar.setObjectName("menu_bar")
         self.menu_save_session = QtWidgets.QMenu(self.menu_bar)
         self.menu_save_session.setObjectName("menu_save_session")
@@ -933,9 +933,9 @@ class Ui_MainWindow(object):
         self.actionCopyLinecutsHorizontal.setText(_translate("MainWindow", "Horizontal"))
         self.actionCopyLinecutsVertical.setText(_translate("MainWindow", "Vertical"))
         self.actionCopyLinecutsDiagonal.setText(_translate("MainWindow", "Diagonal"))
-        self.actionOpenLinecutsHorizontal.setText(_translate("MainWindow", "Horizontal"))
-        self.actionOpenLinecutsVertical.setText(_translate("MainWindow", "Vertical"))
-        self.actionOpenLinecutsDiagonal.setText(_translate("MainWindow", "Diagonal"))
+        self.actionOpenLinecutsHorizontal.setText(_translate("MainWindow", "Horizontal (Ctrl+Shift+H)"))
+        self.actionOpenLinecutsVertical.setText(_translate("MainWindow", "Vertical (Ctrl+Shift+V)"))
+        self.actionOpenLinecutsDiagonal.setText(_translate("MainWindow", "Diagonal (Ctrl+Shift+D)"))
 
 
 if __name__ == "__main__":
