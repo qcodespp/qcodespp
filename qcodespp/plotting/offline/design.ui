@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1659</width>
-    <height>700</height>
+    <width>1667</width>
+    <height>717</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -1249,8 +1249,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1659</width>
-     <height>18</height>
+     <width>1667</width>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_save_session">
@@ -1273,8 +1273,29 @@
     <property name="title">
      <string>Plot Actions</string>
     </property>
+    <widget class="QMenu" name="menuCopy_linecuts">
+     <property name="title">
+      <string>Copy linecuts</string>
+     </property>
+     <addaction name="actionCopyLinecutsAll"/>
+     <addaction name="actionCopyLinecutsHorizontal"/>
+     <addaction name="actionCopyLinecutsVertical"/>
+     <addaction name="actionCopyLinecutsDiagonal"/>
+    </widget>
+    <widget class="QMenu" name="menuOpen_linecut_window">
+     <property name="title">
+      <string>Open linecut window</string>
+     </property>
+     <addaction name="actionOpenLinecutsHorizontal"/>
+     <addaction name="actionOpenLinecutsVertical"/>
+     <addaction name="actionOpenLinecutsDiagonal"/>
+    </widget>
     <addaction name="action_combine_files"/>
     <addaction name="action_duplicate_file"/>
+    <addaction name="separator"/>
+    <addaction name="menuOpen_linecut_window"/>
+    <addaction name="menuCopy_linecuts"/>
+    <addaction name="actionPasteLinecuts"/>
     <addaction name="separator"/>
     <addaction name="actionSave_plot_s_as"/>
     <addaction name="action_copy_plot_as_image"/>
@@ -1572,6 +1593,46 @@
   <action name="actionError_log">
    <property name="text">
     <string>Error log</string>
+   </property>
+  </action>
+  <action name="actionPasteLinecuts">
+   <property name="text">
+    <string>Paste linecuts</string>
+   </property>
+  </action>
+  <action name="actionCopyLinecutsAll">
+   <property name="text">
+    <string>All</string>
+   </property>
+  </action>
+  <action name="actionCopyLinecutsHorizontal">
+   <property name="text">
+    <string>Horizontal</string>
+   </property>
+  </action>
+  <action name="actionCopyLinecutsVertical">
+   <property name="text">
+    <string>Vertical</string>
+   </property>
+  </action>
+  <action name="actionCopyLinecutsDiagonal">
+   <property name="text">
+    <string>Diagonal</string>
+   </property>
+  </action>
+  <action name="actionOpenLinecutsHorizontal">
+   <property name="text">
+    <string>Horizontal</string>
+   </property>
+  </action>
+  <action name="actionOpenLinecutsVertical">
+   <property name="text">
+    <string>Vertical</string>
+   </property>
+  </action>
+  <action name="actionOpenLinecutsDiagonal">
+   <property name="text">
+    <string>Diagonal</string>
    </property>
   </action>
  </widget>

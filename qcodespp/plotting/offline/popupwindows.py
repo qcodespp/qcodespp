@@ -1,5 +1,7 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
 import io
+import os
+import sys
 from json import load as jsonload
 from json import dump as jsondump
 from csv import writer as csvwriter
@@ -30,17 +32,28 @@ from .helpers import rcParams_to_dark_theme, rcParams_to_light_theme, cmaps,Drag
 class LineCutWindow(QtWidgets.QWidget):
     def __init__(self, parent, orientation, init_cmap='viridis',init_canvas=True,editor_window=None):
         super().__init__()
-        # The parent is the DATA object.
+        # The parent is the DATA object. This might not be good, I think it prevents all windows closing. Will look into it.
         self.parent = parent
         # self.editor_window is the main window.
         self.editor_window = editor_window
         self.running = True
         self.orientation = orientation
         self.init_cmap = init_cmap
+
         try:
             self.setWindowTitle(f'InSpectra Gadget - {orientation} linecuts for {self.parent.label}')
         except:
             self.setWindowTitle('InSpectra Gadget - Linecut and Fitting Window')
+        
+        try:
+            if sys.platform.startswith('win'):
+                icon_file = 'iconGadget.ico'
+            else:
+                icon_file = 'iconGadget.png'
+            self.setWindowIcon(QtGui.QIcon(os.path.join(os.path.dirname(__file__), icon_file)))
+        except Exception as e:
+            pass
+        
         self.resize(1200, 900)
         self.init_widgets()
         if init_canvas:

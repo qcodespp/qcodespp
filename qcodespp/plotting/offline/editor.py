@@ -341,6 +341,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.save_image_button.clicked.connect(self.save_image)
         self.copy_image_button.clicked.connect(self.copy_canvas_to_clipboard)
         self.load_filters_button.clicked.connect(self.load_filters)
+        self.actionOpenLinecutsHorizontal.triggered.connect(lambda: self.make_linecut_window('horizontal'))
+        self.actionOpenLinecutsVertical.triggered.connect(lambda: self.make_linecut_window('vertical'))
+        self.actionOpenLinecutsDiagonal.triggered.connect(lambda: self.make_linecut_window('diagonal'))
+        self.actionCopyLinecutsAll.triggered.connect(lambda: self.copy_linecuts('all'))
+        self.actionCopyLinecutsHorizontal.triggered.connect(lambda: self.copy_linecuts('horizontal'))
+        self.actionCopyLinecutsVertical.triggered.connect(lambda: self.copy_linecuts('vertical'))
+        self.actionCopyLinecutsDiagonal.triggered.connect(lambda: self.copy_linecuts('diagonal'))
+        self.actionPasteLinecuts.triggered.connect(self.paste_linecuts)
         self.action_filters.triggered.connect(self.save_filters)
         self.action_save_session.triggered.connect(lambda: self.save_session('all'))
         self.action_restore_session.triggered.connect(self.load_session)
@@ -822,9 +830,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             except Exception as e:
                 self.log_error(f'Error saving session: {e}', show_popup=True)
 
-    def remove_linecutwindows_and_fits(self,d,dirpath,exclude_key='linecut_window',exclude_key2='fit_result',exclude_key3='draggable_points'):
+    def remove_linecutwindows_and_fits(self,d,dirpath,exclude_key='linecut_window',exclude_key2='fit_result',
+                                       exclude_key3='draggable_points'):
     # Remove linecut window object and lmfit object from the dictionary. Neither can be pickled. lmfit fit results are saved to
     # file, added to the tarball, and loaded again when the session is loaded.
+    # If the fits shouldn't be saved and simply discarded, pass dirpath=None
         new_dict = {}
         for key, value in d.items():
             if isinstance(value, dict):
@@ -839,13 +849,16 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if exclude_key3 in new_dict:
             new_dict[exclude_key3] = None # Remove the draggable points object
 
-        if exclude_key2 in new_dict:
+        if exclude_key2 in new_dict and dirpath is not None:
             try:
                 save_modelresult(new_dict[exclude_key2], dirpath+'/igtemp/lmfit_result'+str(self.i).zfill(4)+'.sav') # Save the lmfit object to a file
                 new_dict[exclude_key2]='lmfit_result'+str(self.i).zfill(4) # Replace the lmfit model with the name.
                 self.i+=1
             except Exception as e:
                 self.save_error_log.append(f'Error saving lmfit object during session save: {e}')
+        elif exclude_key2 in new_dict:
+            new_dict[exclude_key2] = None
+
         return new_dict
 
     def remove_temp_files(self,dirpath):
@@ -2854,25 +2867,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         
         # Making linecuts
         elif 'linecut' in signal.text():
-            if isinstance(data, MixedInternalData):
-                data = data.dataset2d
-            # Make dictionary if it doesn't exist
-            if not hasattr(data,'linecuts'):
-                data.linecuts={'horizontal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
-                               'vertical':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
-                               'diagonal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
-                               'circular':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5}
-                                }
             orientation=signal.text().split()[1]
-
-            if data.linecuts[orientation]['linecut_window']==None:
-                if self.colormap_box.currentText() == 'viridis':
-                    selected_colormap = cm.get_cmap('plasma')
-                else:
-                    selected_colormap = cm.get_cmap('viridis')
-                data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,
-                                                                             init_cmap=selected_colormap.name,
-                                                                             editor_window=self)
+            
+            self.make_linecut_window(orientation,data, show=False)
 
             # For diagonal/circular linecuts, need to make a new line each time. For hori/vert just open the window.
             if orientation == 'diagonal':
@@ -2902,11 +2899,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                             DraggablePoint(data, x_mid, y_mid,int(max_index+1),orientation,draw_line=True)]
                 data.linecuts[orientation]['linecut_window'].append_cut_to_table(int(max_index+1))
 
-            data.linecuts[orientation]['linecut_window'].running = True
-            data.linecuts[orientation]['linecut_window'].activateWindow()
-            if len(data.linecuts[orientation]['lines']) > 0:
-                data.linecuts[orientation]['linecut_window'].update()
-            data.linecuts[orientation]['linecut_window'].show()
+            self.show_linecut_window(orientation,data)
 
         elif signal.text() == 'Draw circular linecut':
             if hasattr(data, 'linecut_points'):
@@ -2955,7 +2948,114 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.update_plots(update_color_limits=True)
                 self.reset_axlim_settings()
                 self.show_current_all()
-            
+
+    def copy_linecuts(self, orientation):
+        item = self.file_list.currentItem()
+        if item:
+            data = item.data
+            if isinstance(data, MixedInternalData):
+                data = data.dataset2d
+            if hasattr(data,'linecuts'):
+                try:
+                    if orientation == 'all':
+                        self.copied_linecuts = [orientation,self.remove_linecutwindows_and_fits(item.data.linecuts,dirpath=None)]
+                    else:
+                        self.copied_linecuts = [orientation,self.remove_linecutwindows_and_fits(item.data.linecuts[orientation],dirpath=None)]
+                except Exception as e:
+                    self.log_error(f'Error copying linecuts: {e}', show_popup=True)
+            else:
+                self.log_error('No linecuts to copy in currently selected file', show_popup=True)
+    
+    def paste_linecuts(self):
+        item = self.file_list.currentItem()
+        if item:
+            if hasattr(item,'data'):
+                data = item.data
+                minilog=[]
+                if isinstance(data, MixedInternalData):
+                    data = data.dataset2d
+                if hasattr(self,'copied_linecuts') and self.copied_linecuts[0]=='all':
+                    data.linecuts = copy.copy(self.copied_linecuts[1])
+                    for orientation in data.linecuts.keys():
+                        if len(list(data.linecuts[orientation]['lines'])) > 0:
+                            self.make_linecut_window(orientation,data,show=False)
+                            for line in data.linecuts[orientation]['lines'].keys():
+                                try:
+                                    if 'draggable_points' in data.linecuts[orientation]['lines'][line].keys():
+                                        points=data.linecuts[orientation]['lines'][line]['points']
+                                        data.linecuts[orientation]['lines'][line]['draggable_points'] = [DraggablePoint(data,points[0][0],points[0][1],line,orientation),
+                                        DraggablePoint(data,points[1][0],points[1][1],line,orientation,draw_line=True)]
+                                    data.linecuts[orientation]['linecut_window'].append_cut_to_table(line)
+                                except Exception as e:
+                                    self.log_error(f'Error pasting linecut {line}: {e}')
+                                    minilog.append(e)
+                            self.show_linecut_window(orientation,data)
+                elif hasattr(self,'copied_linecuts'):
+                    if not hasattr(data,'linecuts'):
+                        data.linecuts={'horizontal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
+                                        'vertical':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
+                                        'diagonal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
+                                        'circular':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5}
+                        }
+                    orientation= self.copied_linecuts[0]
+                    data.linecuts[orientation]= copy.copy(self.copied_linecuts[1])
+                    self.make_linecut_window(orientation,data,show=False)
+                    for line in data.linecuts[orientation]['lines'].keys():
+                        try:
+                            if 'draggable_points' in data.linecuts[orientation]['lines'][line].keys():
+                                points=data.linecuts[orientation]['lines'][line]['points']
+                                data.linecuts[orientation]['lines'][line]['draggable_points'] = [DraggablePoint(data,points[0][0],points[0][1],line,orientation),
+                                DraggablePoint(data,points[1][0],points[1][1],line,orientation,draw_line=True)]
+                            data.linecuts[orientation]['linecut_window'].append_cut_to_table(line)
+                        except Exception as e:
+                            self.log_error(f'Error pasting linecut {line}: {e}')
+                            minilog.append(e)
+                    self.show_linecut_window(orientation,data)
+                else:
+                    self.log_error('No linecuts to paste', show_popup=True)
+
+                self.update_plots()
+
+                if len(minilog)>0:
+                    error_message = 'The following errors occurred while pasting linecuts:\n\n' + '\n\n'.join(minilog)
+                    self.ew = ErrorWindow(error_message)
+                self.show_linecut_window(orientation,data)
+
+    def make_linecut_window(self,orientation, data=None, show=True):
+        if not data:
+            item=self.file_list.currentItem()
+            if item:
+                data = item.data
+        if data:
+            if isinstance(data, MixedInternalData):
+                data = data.dataset2d
+            # Make dictionary if it doesn't exist
+            if not hasattr(data,'linecuts'):
+                data.linecuts={'horizontal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
+                                'vertical':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
+                                'diagonal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
+                                'circular':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5}
+                                }
+
+            if data.linecuts[orientation]['linecut_window']==None:
+                if self.colormap_box.currentText() == 'viridis':
+                    selected_colormap = cm.get_cmap('plasma')
+                else:
+                    selected_colormap = cm.get_cmap('viridis')
+                data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,
+                                                                                init_cmap=selected_colormap.name,
+                                                                                editor_window=self)
+
+        if show:
+            self.show_linecut_window(orientation,data)
+
+    def show_linecut_window(self, orientation,data):
+        data.linecuts[orientation]['linecut_window'].running = True
+        data.linecuts[orientation]['linecut_window'].activateWindow()
+        if len(data.linecuts[orientation]['lines']) > 0:
+            data.linecuts[orientation]['linecut_window'].update()
+        data.linecuts[orientation]['linecut_window'].show()
+
     def copy_canvas_to_clipboard(self):
         checked_items = self.get_checked_items()
         for item in checked_items:
