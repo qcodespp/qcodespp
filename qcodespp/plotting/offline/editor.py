@@ -3352,5 +3352,5 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.elw = ErrorLogWindow(self.error_log)
 
     def closeEvent(self, event):
-        for window in QtWidgets.QApplication.topLevelWidgets():
+        for window in QtWidgets.QApplication.instance().topLevelWidgets():
             window.close()
