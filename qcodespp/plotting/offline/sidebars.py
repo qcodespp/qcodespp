@@ -11,6 +11,8 @@ import numpy as np
 from lmfit.model import save_modelresult
 
 import matplotlib.style as mplstyle
+
+from qcodespp.plotting.offline.popupwindows import ErrorWindow
 mplstyle.use('fast')
 
 from qcodespp.plotting.offline.helpers import cmaps
@@ -729,6 +731,7 @@ class Sidebar1D(QtWidgets.QWidget):
         return p0
 
     def start_fitting(self,line='manual',multilinefit=False):
+        success=False
         if line=='manual':
             current_row = self.trace_table.currentRow()
             line = int(self.trace_table.item(current_row,0).text())
@@ -750,42 +753,53 @@ class Sidebar1D(QtWidgets.QWidget):
             try:
                 fit_result = fits.fit_data(function_class=function_class, function_name=function_name,
                                                     xdata=x_forfit,ydata=y_forfit, p0=p0, inputinfo=inputinfo)
-                y_fit = fit_result.best_fit
 
-                self.parent.plotted_lines[line]['fit'] = {'fit_result': fit_result,
-                                                        'xdata': x_forfit,
-                                                        'ydata': y_forfit,
-                                                        'fitted_y': y_fit,
-                                                        'fit_checkstate': QtCore.Qt.Checked,
-                                                        'fit_components_checkstate': QtCore.Qt.Unchecked,
-                                                        'fit_uncertainty_checkstate': QtCore.Qt.Checked}
+                if isinstance(fit_result, Exception):
+                    self.output_window.setText(f'Curve could not be fitted: {fit_result}')
+                    self.editor_window.log_error(f'Curve could not be fitted: {fit_result}')
+                    if multilinefit:
+                        return fit_result
+                else:
+                    y_fit = fit_result.best_fit
 
-                # Add a checkbox to the table now a fit exists.
-                self.trace_table.itemChanged.disconnect(self.trace_table_edited)
-                plot_fit_item = QtWidgets.QTableWidgetItem('')
-                plot_fit_item.setFlags(QtCore.Qt.ItemIsSelectable | 
-                                    QtCore.Qt.ItemIsEnabled | 
-                                    QtCore.Qt.ItemIsUserCheckable)
-                plot_fit_item.setCheckState(QtCore.Qt.Checked)
-                self.trace_table.setItem(current_row,8,plot_fit_item)
+                    self.parent.plotted_lines[line]['fit'] = {'fit_result': fit_result,
+                                                            'xdata': x_forfit,
+                                                            'ydata': y_forfit,
+                                                            'fitted_y': y_fit,
+                                                            'fit_checkstate': QtCore.Qt.Checked,
+                                                            'fit_components_checkstate': QtCore.Qt.Unchecked,
+                                                            'fit_uncertainty_checkstate': QtCore.Qt.Checked}
 
-                plot_components_item = QtWidgets.QTableWidgetItem('')
-                plot_components_item.setFlags(QtCore.Qt.ItemIsSelectable |
-                                    QtCore.Qt.ItemIsEnabled | 
-                                    QtCore.Qt.ItemIsUserCheckable)
-                plot_components_item.setCheckState(QtCore.Qt.Unchecked)
-                self.trace_table.setItem(current_row,9,plot_components_item)
+                    # Add a checkbox to the table now a fit exists.
+                    self.trace_table.itemChanged.disconnect(self.trace_table_edited)
+                    plot_fit_item = QtWidgets.QTableWidgetItem('')
+                    plot_fit_item.setFlags(QtCore.Qt.ItemIsSelectable | 
+                                        QtCore.Qt.ItemIsEnabled | 
+                                        QtCore.Qt.ItemIsUserCheckable)
+                    plot_fit_item.setCheckState(QtCore.Qt.Checked)
+                    self.trace_table.setItem(current_row,8,plot_fit_item)
 
-                plot_uncertainty_item = QtWidgets.QTableWidgetItem('')
-                plot_uncertainty_item.setFlags(QtCore.Qt.ItemIsSelectable |
-                                    QtCore.Qt.ItemIsEnabled | 
-                                    QtCore.Qt.ItemIsUserCheckable)
-                plot_uncertainty_item.setCheckState(QtCore.Qt.Checked)
-                self.trace_table.setItem(current_row,10,plot_uncertainty_item)
-                self.trace_table.itemChanged.connect(self.trace_table_edited)
+                    plot_components_item = QtWidgets.QTableWidgetItem('')
+                    plot_components_item.setFlags(QtCore.Qt.ItemIsSelectable |
+                                        QtCore.Qt.ItemIsEnabled | 
+                                        QtCore.Qt.ItemIsUserCheckable)
+                    plot_components_item.setCheckState(QtCore.Qt.Unchecked)
+                    self.trace_table.setItem(current_row,9,plot_components_item)
+
+                    plot_uncertainty_item = QtWidgets.QTableWidgetItem('')
+                    plot_uncertainty_item.setFlags(QtCore.Qt.ItemIsSelectable |
+                                        QtCore.Qt.ItemIsEnabled | 
+                                        QtCore.Qt.ItemIsUserCheckable)
+                    plot_uncertainty_item.setCheckState(QtCore.Qt.Checked)
+                    self.trace_table.setItem(current_row,10,plot_uncertainty_item)
+                    self.trace_table.itemChanged.connect(self.trace_table_edited)
+                    success=True
 
             except Exception as e:
                 self.output_window.setText(f'Curve could not be fitted: {e}')
+                self.editor_window.log_error(f'Curve could not be fitted: {e}')
+                if multilinefit:
+                    return e
         
         else:
             if 'fit' in self.parent.plotted_lines[line].keys():
@@ -802,19 +816,27 @@ class Sidebar1D(QtWidgets.QWidget):
             if 'percentile' in self.parent.plotted_lines[line]['stats'].keys():
                 self.parent.add_array_to_data_dict(self.parent.plotted_lines[line]['stats']['percentile'],'percentile')
                 self.parent.add_array_to_data_dict(self.parent.plotted_lines[line]['stats']['percentiles'],'percentiles')
+            success=True
 
             #self.parent.prepare_data_for_plot(reload_data=True,reload_from_file=False,linefrompopup=line)
         
-        if not multilinefit:
+        if success and not multilinefit:
             self.print_parameters(line)
             self.editor_window.update_plots(update_data=False)
 
     def fit_checked(self):
         # Fit all checked items in the table.
         fit_lines = self.get_checked_items(traces_or_fits='traces')
+        minilog=[]
         for line in fit_lines:
-            self.start_fitting(line,multilinefit=True)
-        self.print_parameters(line)
+            error=self.start_fitting(line,multilinefit=True)
+            if error:
+                minilog.append(f'Linecut {line} could not be fitted: {error}')
+        if len(minilog)>0:
+            error_message = 'The following errors occurred while fitting:\n\n' + '\n\n'.join(minilog)
+            self.ew = ErrorWindow(error_message)
+        if not error:
+            self.print_parameters(line)
         self.editor_window.update_plots(update_data=False)
     
     def print_parameters(self,line):

@@ -18,11 +18,13 @@ def linear(xdata,ydata,p0=None,inputinfo=None):
     Returns:
         * result: lmfit result object.
     """
-    
-    model=lmm.LinearModel()
-    params=model.guess(ydata, x=xdata)
-    result = model.fit(ydata, params, x=xdata)
-    return result
+    try:
+        model=lmm.LinearModel()
+        params=model.guess(ydata, x=xdata)
+        result = model.fit(ydata, params, x=xdata)
+        return result
+    except Exception as e:
+        return e
 
 def polynomial(xdata,ydata,p0=None,inputinfo=2):
     """Fit a polynomial model to the data.
@@ -36,12 +38,14 @@ def polynomial(xdata,ydata,p0=None,inputinfo=2):
     Returns:
         * result: lmfit result object.
     """
-
-    degree = int(inputinfo[0]) or int(inputinfo)
-    model=lmm.PolynomialModel(degree=degree)
-    params=model.guess(ydata, x=xdata)
-    result = model.fit(ydata, params, x=xdata)
-    return result
+    try:
+        degree = int(inputinfo[0]) or int(inputinfo)
+        model=lmm.PolynomialModel(degree=degree)
+        params=model.guess(ydata, x=xdata)
+        result = model.fit(ydata, params, x=xdata)
+        return result
+    except Exception as e:
+        return e
 
 def fit_powerlaw(xdata,ydata, p0=None,inputinfo=[1,0]):
     """
@@ -56,36 +60,38 @@ def fit_powerlaw(xdata,ydata, p0=None,inputinfo=[1,0]):
     Returns:
         - result: lmfit result object.
     """
+    try:
+        order=inputinfo[0]
+        constant=inputinfo[1]
 
-    order=inputinfo[0]
-    constant=inputinfo[1]
+        model= lmm.PowerLawModel(prefix='power0_')
+        params = model.make_params()
+        for i in range(int(order-1)):
+            newmodel = lmm.PowerLawModel(prefix=f'power{i+1}_')
+            pars = newmodel.make_params()
+            model = model + newmodel
+            params.update(pars)
+        if constant !=0:
+            bg = lmm.ConstantModel(prefix='bg_')
+            pars = bg.make_params()
+            pars['bg_c'].set(constant)
+            model = model + bg
+            params.update(pars)
 
-    model= lmm.PowerLawModel(prefix='power0_')
-    params = model.make_params()
-    for i in range(int(order-1)):
-        newmodel = lmm.PowerLawModel(prefix=f'power{i+1}_')
-        pars = newmodel.make_params()
-        model = model + newmodel
-        params.update(pars)
-    if constant !=0:
-        bg = lmm.ConstantModel(prefix='bg_')
-        pars = bg.make_params()
-        pars['bg_c'].set(constant)
-        model = model + bg
-        params.update(pars)
+        if p0:
+            for i,key in enumerate(params.keys()):
+                params[key].set(float(p0[i]))
+        else:
+            for key in params.keys():
+                if 'amplitude' in key:
+                    params[key].set(ydata.max()-ydata.min())
+                elif 'expo' in key:
+                    params[key].set(1)
 
-    if p0:
-        for i,key in enumerate(params.keys()):
-            params[key].set(float(p0[i]))
-    else:
-        for key in params.keys():
-            if 'amplitude' in key:
-                params[key].set(ydata.max()-ydata.min())
-            elif 'expo' in key:
-                params[key].set(1)
-
-    result = model.fit(ydata, params, x=xdata)
-    return result
+        result = model.fit(ydata, params, x=xdata)
+        return result
+    except Exception as e:
+        return e
 
 def fit_exponentials(xdata,ydata, p0=None,inputinfo=[1,0]):
     """
@@ -100,41 +106,42 @@ def fit_exponentials(xdata,ydata, p0=None,inputinfo=[1,0]):
     Returns:
         * result: lmfit result object.
     """
+    try:
+        order=inputinfo[0]
+        constant=inputinfo[1]
 
-    order=inputinfo[0]
-    constant=inputinfo[1]
+        model= lmm.ExponentialModel(prefix='term0_')
+        params = model.make_params()
+        for i in range(int(order-1)):
+            newmodel = lmm.ExponentialModel(prefix=f'term{i+1}_')
+            pars = newmodel.make_params()
+            model = model + newmodel
+            params.update(pars)
+        if constant !=0:
+            bg = lmm.ConstantModel(prefix='bg_')
+            pars = bg.make_params()
+            pars['bg_c'].set(constant)
+            model = model + bg
+            params.update(pars)
 
-    model= lmm.ExponentialModel(prefix='term0_')
-    params = model.make_params()
-    for i in range(int(order-1)):
-        newmodel = lmm.ExponentialModel(prefix=f'term{i+1}_')
-        pars = newmodel.make_params()
-        model = model + newmodel
-        params.update(pars)
-    if constant !=0:
-        bg = lmm.ConstantModel(prefix='bg_')
-        pars = bg.make_params()
-        pars['bg_c'].set(constant)
-        model = model + bg
-        params.update(pars)
+        if p0:
+            for i,key in enumerate(params.keys()):
+                params[key].set(float(p0[i]))
 
-    if p0:
-        for i,key in enumerate(params.keys()):
-            params[key].set(float(p0[i]))
+        else:
+            amplitudes=ydata.max()-ydata.min()
+            decays=xdata.max()-xdata.min()
+            #more or less. Beats negative infinity.
+            for key in params.keys():
+                if 'amplitude' in key:
+                    params[key].set(amplitudes)
+                elif 'decay' in key:
+                    params[key].set(decays)
 
-    else:
-        amplitudes=ydata.max()-ydata.min()
-        decays=xdata.max()-xdata.min()
-        #more or less. Beats negative infinity.
-        for key in params.keys():
-            if 'amplitude' in key:
-                params[key].set(amplitudes)
-            elif 'decay' in key:
-                params[key].set(decays)
-
-    result = model.fit(ydata, params, x=xdata)
-    return result
-
+        result = model.fit(ydata, params, x=xdata)
+        return result
+    except Exception as e:
+        return e
 
 #Peak fitting
 def fit_lorgausstype(modeltype,xdata,ydata,p0=None,inputinfo=[1,0]):
@@ -152,70 +159,72 @@ def fit_lorgausstype(modeltype,xdata,ydata,p0=None,inputinfo=[1,0]):
     Returns:
         * result: lmfit result object.
     '''
+    try:
+        numofpeaks=inputinfo[0]
+        usebackground=inputinfo[1]
+        sigmas=None
+        amplitudes=None
 
-    numofpeaks=inputinfo[0]
-    usebackground=inputinfo[1]
-    sigmas=None
-    amplitudes=None
+        # if xdata[0]>xdata[-1]:
+        #     xdata=xdata[::-1]
+        #     ydata=ydata[::-1]
+        
+        peakspacing=(xdata.max()-xdata.min())/numofpeaks
+        rough_peak_positions=[i*peakspacing+peakspacing/2+xdata.min() for i in range(int(numofpeaks))]
 
-    # if xdata[0]>xdata[-1]:
-    #     xdata=xdata[::-1]
-    #     ydata=ydata[::-1]
-    
-    peakspacing=(xdata.max()-xdata.min())/numofpeaks
-    rough_peak_positions=[i*peakspacing+peakspacing/2+xdata.min() for i in range(int(numofpeaks))]
+        if p0: #Format should be list of strings: ['w w ... w','a a ... a','x x ... x','c']
+            sigmas=[float(par) for par in p0[0].split()]
+            amplitudes=[float(par) for par in p0[1].split()]
+            rough_peak_positions=[float(par) for par in p0[2].split()]
+        if usebackground==1:
+            try:
+                background=p0[3]
+            except:
+                background=0
+        else:
+            background=None
 
-    if p0: #Format should be list of strings: ['w w ... w','a a ... a','x x ... x','c']
-        sigmas=[float(par) for par in p0[0].split()]
-        amplitudes=[float(par) for par in p0[1].split()]
-        rough_peak_positions=[float(par) for par in p0[2].split()]
-    if usebackground==1:
-        try:
-            background=p0[3]
-        except:
-            background=0
-    else:
-        background=None
+        if sigmas==None: #Sigma will be much smaller than the peak spacing unless peaks are overlapping. However, starting with a low value seems to work even if overlapping, but not the other way around.
+            sigmas=[np.abs(xdata[-1]-xdata[0])/(12*numofpeaks) for i in range(int(numofpeaks))]
+        if amplitudes ==None: #Guess that the height will be close to the maximum value of the data: calculate amplitude based on gaussian.
+            height=ydata.max()-ydata.min()
+            amp=height*sigmas[0]*np.sqrt(2*np.pi)
+            # but to be honest i get better results just using the height...doesn't make sense but whatever
+            amplitudes=[height for i in range(int(numofpeaks))]
 
-    if sigmas==None: #Sigma will be much smaller than the peak spacing unless peaks are overlapping. However, starting with a low value seems to work even if overlapping, but not the other way around.
-        sigmas=[np.abs(xdata[-1]-xdata[0])/(12*numofpeaks) for i in range(int(numofpeaks))]
-    if amplitudes ==None: #Guess that the height will be close to the maximum value of the data: calculate amplitude based on gaussian.
-        height=ydata.max()-ydata.min()
-        amp=height*sigmas[0]*np.sqrt(2*np.pi)
-        # but to be honest i get better results just using the height...doesn't make sense but whatever
-        amplitudes=[height for i in range(int(numofpeaks))]
+        peakpos0=rough_peak_positions[0]
+        peakpositions=rough_peak_positions[1:]
+        
+        def add_peak(prefix, center, amplitude, sigma):
+            peak = modeltype(prefix=prefix)
+            pars = peak.make_params()
+            pars[prefix + 'center'].set(center)
+            pars[prefix + 'amplitude'].set(amplitude)
+            pars[prefix + 'sigma'].set(sigma, min=0)
+            return peak, pars
 
-    peakpos0=rough_peak_positions[0]
-    peakpositions=rough_peak_positions[1:]
-    
-    def add_peak(prefix, center, amplitude, sigma):
-        peak = modeltype(prefix=prefix)
-        pars = peak.make_params()
-        pars[prefix + 'center'].set(center)
-        pars[prefix + 'amplitude'].set(amplitude)
-        pars[prefix + 'sigma'].set(sigma, min=0)
-        return peak, pars
+        model = modeltype(prefix='peak0_')
+        params = model.make_params()
+        params['peak0_center'].set(peakpos0)
+        params['peak0_amplitude'].set(amplitudes[0])
+        params['peak0_sigma'].set(sigmas[0], min=0)
 
-    model = modeltype(prefix='peak0_')
-    params = model.make_params()
-    params['peak0_center'].set(peakpos0)
-    params['peak0_amplitude'].set(amplitudes[0])
-    params['peak0_sigma'].set(sigmas[0], min=0)
+        for i, cen in enumerate(peakpositions):
+            peak, pars = add_peak('peak%d_' % (i+1), cen, amplitudes[i+1], sigmas[i+1])
+            model = model + peak
+            params.update(pars)
 
-    for i, cen in enumerate(peakpositions):
-        peak, pars = add_peak('peak%d_' % (i+1), cen, amplitudes[i+1], sigmas[i+1])
-        model = model + peak
-        params.update(pars)
+        if background is not None:
+            bg = lmm.ConstantModel(prefix='bg_')
+            pars = bg.make_params()
+            pars['bg_c'].set(background)
+            model = model + bg
+            params.update(pars)
 
-    if background is not None:
-        bg = lmm.ConstantModel(prefix='bg_')
-        pars = bg.make_params()
-        pars['bg_c'].set(background)
-        model = model + bg
-        params.update(pars)
-
-    result = model.fit(ydata, params, x=xdata)
-    return result
+        result = model.fit(ydata, params, x=xdata)
+        return result
+    except Exception as e:
+        return e
 
 
 # Function for lmfit peaks with four parameters.
@@ -235,85 +244,88 @@ def fit_voigttype(modeltype,xdata,ydata,p0=None,inputinfo=[1,0]):
     Returns:
         * result: lmfit result object.
     """
-    fourthparamdict={'SplitLorentzianModel':'sigma_r',
-                'PseudoVoigtModel':'fraction',
-                'MoffatModel':'beta',
-                'Pearson7Model':'expon',
-                'BreitWignerModel':'q'}
-    if modeltype.__name__ in fourthparamdict.keys():
-        fourthparam=fourthparamdict[modeltype.__name__]
-    else:
-        fourthparam='gamma'
+    try:
+        fourthparamdict={'SplitLorentzianModel':'sigma_r',
+                    'PseudoVoigtModel':'fraction',
+                    'MoffatModel':'beta',
+                    'Pearson7Model':'expon',
+                    'BreitWignerModel':'q'}
+        if modeltype.__name__ in fourthparamdict.keys():
+            fourthparam=fourthparamdict[modeltype.__name__]
+        else:
+            fourthparam='gamma'
 
-    numofpeaks=inputinfo[0]
-    usebackground=inputinfo[1]
-    sigmas=None
-    amplitudes=None
-    gammas=None
+        numofpeaks=inputinfo[0]
+        usebackground=inputinfo[1]
+        sigmas=None
+        amplitudes=None
+        gammas=None
 
-    # if xdata[0]>xdata[-1]:
-    #     xdata=xdata[::-1]
-    #     ydata=ydata[::-1]
-    #     flipped=True
-    # else:
-    #     flipped=False
-    
-    peakspacing=(xdata.max()-xdata.min())/numofpeaks
-    rough_peak_positions=[i*peakspacing+peakspacing/2+xdata.min() for i in range(int(numofpeaks))]
+        # if xdata[0]>xdata[-1]:
+        #     xdata=xdata[::-1]
+        #     ydata=ydata[::-1]
+        #     flipped=True
+        # else:
+        #     flipped=False
+        
+        peakspacing=(xdata.max()-xdata.min())/numofpeaks
+        rough_peak_positions=[i*peakspacing+peakspacing/2+xdata.min() for i in range(int(numofpeaks))]
 
-    if p0: #Format should be list of strings: ['w w ... w','a a ... a','x x ... x','c']
-        sigmas=[float(par) for par in p0[0].split()]
-        amplitudes=[float(par) for par in p0[1].split()]
-        rough_peak_positions=[float(par) for par in p0[2].split()]
-        gammas=[float(par) for par in p0[3].split()]
-    if usebackground==1:
-        try:
-            background=p0[4]
-        except:
-            background=0
-    else:
-        background=None
+        if p0: #Format should be list of strings: ['w w ... w','a a ... a','x x ... x','c']
+            sigmas=[float(par) for par in p0[0].split()]
+            amplitudes=[float(par) for par in p0[1].split()]
+            rough_peak_positions=[float(par) for par in p0[2].split()]
+            gammas=[float(par) for par in p0[3].split()]
+        if usebackground==1:
+            try:
+                background=p0[4]
+            except:
+                background=0
+        else:
+            background=None
 
-    if amplitudes ==None: #Guess that the amplitudes will be close to the maximum value of the data
-        amplitudes=[ydata.max()-ydata.min() for i in range(int(numofpeaks))]
-    if sigmas==None: #Sigma will be much smaller than the peak spacing unless peaks are overlapping. However, starting with a low value seems to work even if overlapping, but not the other way around.
-        sigmas=[np.abs(xdata[-1]-xdata[0])/(12*numofpeaks) for i in range(int(numofpeaks))]
-    if gammas==None: #God I have no idea
-        gammas=[0 for i in range(int(numofpeaks))]
+        if amplitudes ==None: #Guess that the amplitudes will be close to the maximum value of the data
+            amplitudes=[ydata.max()-ydata.min() for i in range(int(numofpeaks))]
+        if sigmas==None: #Sigma will be much smaller than the peak spacing unless peaks are overlapping. However, starting with a low value seems to work even if overlapping, but not the other way around.
+            sigmas=[np.abs(xdata[-1]-xdata[0])/(12*numofpeaks) for i in range(int(numofpeaks))]
+        if gammas==None: #God I have no idea
+            gammas=[0 for i in range(int(numofpeaks))]
 
-    peakpos0=rough_peak_positions[0]
-    peakpositions=rough_peak_positions[1:]
-    
-    def add_peak(prefix, center, amplitude, sigma,gamma):
-        peak = modeltype(prefix=prefix)
-        pars = peak.make_params()
-        pars[prefix + 'center'].set(center)
-        pars[prefix + 'amplitude'].set(amplitude)
-        pars[prefix + 'sigma'].set(sigma, min=0)
-        pars[prefix + fourthparam].set(gamma)
-        return peak, pars
+        peakpos0=rough_peak_positions[0]
+        peakpositions=rough_peak_positions[1:]
+        
+        def add_peak(prefix, center, amplitude, sigma,gamma):
+            peak = modeltype(prefix=prefix)
+            pars = peak.make_params()
+            pars[prefix + 'center'].set(center)
+            pars[prefix + 'amplitude'].set(amplitude)
+            pars[prefix + 'sigma'].set(sigma, min=0)
+            pars[prefix + fourthparam].set(gamma)
+            return peak, pars
 
-    model = modeltype(prefix='peak0_')
-    params = model.make_params()
-    params['peak0_center'].set(peakpos0)
-    params['peak0_amplitude'].set(amplitudes[0])
-    params['peak0_sigma'].set(sigmas[0], min=0)
-    params['peak0_'+fourthparam].set(gammas[0])
+        model = modeltype(prefix='peak0_')
+        params = model.make_params()
+        params['peak0_center'].set(peakpos0)
+        params['peak0_amplitude'].set(amplitudes[0])
+        params['peak0_sigma'].set(sigmas[0], min=0)
+        params['peak0_'+fourthparam].set(gammas[0])
 
-    for i, cen in enumerate(peakpositions):
-        peak, pars = add_peak('peak%d_' % (i+1), cen, amplitudes[i+1], sigmas[i+1], gammas[i+1])
-        model = model + peak
-        params.update(pars)
+        for i, cen in enumerate(peakpositions):
+            peak, pars = add_peak('peak%d_' % (i+1), cen, amplitudes[i+1], sigmas[i+1], gammas[i+1])
+            model = model + peak
+            params.update(pars)
 
-    if background is not None:
-        bg = lmm.ConstantModel(prefix='bg_')
-        pars = bg.make_params()
-        pars['bg_c'].set(background)
-        model = model + bg
-        params.update(pars)
+        if background is not None:
+            bg = lmm.ConstantModel(prefix='bg_')
+            pars = bg.make_params()
+            pars['bg_c'].set(background)
+            model = model + bg
+            params.update(pars)
 
-    result = model.fit(ydata, params, x=xdata)
-    return result
+        result = model.fit(ydata, params, x=xdata)
+        return result
+    except Exception as e:
+        return e
 
 # Function for lmfit peaks with five parameters.
 def fit_skewedpeaks(modeltype,xdata,ydata,p0=None,inputinfo=[1,0]):
@@ -331,85 +343,88 @@ def fit_skewedpeaks(modeltype,xdata,ydata,p0=None,inputinfo=[1,0]):
     Returns:
         * result: lmfit result object.
     """
-    fourthparamdict={'Pearson4Model':'expon'}
-    if modeltype.__name__ in fourthparamdict.keys():
-        fourthparam=fourthparamdict[modeltype.__name__]
-    else:
-        fourthparam='gamma'
-    #Fifth parameter is always 'skew'
+    try:
+        fourthparamdict={'Pearson4Model':'expon'}
+        if modeltype.__name__ in fourthparamdict.keys():
+            fourthparam=fourthparamdict[modeltype.__name__]
+        else:
+            fourthparam='gamma'
+        #Fifth parameter is always 'skew'
 
-    numofpeaks=inputinfo[0]
-    usebackground=inputinfo[1]
-    sigmas=None
-    amplitudes=None
-    gammas=None
-    skews=None
+        numofpeaks=inputinfo[0]
+        usebackground=inputinfo[1]
+        sigmas=None
+        amplitudes=None
+        gammas=None
+        skews=None
 
-    # if xdata[0]>xdata[-1]:
-    #     xdata=xdata[::-1]
-    #     ydata=ydata[::-1]
-    
-    peakspacing=(xdata.max()-xdata.min())/numofpeaks
-    rough_peak_positions=[i*peakspacing+peakspacing/2+xdata.min() for i in range(int(numofpeaks))]
+        # if xdata[0]>xdata[-1]:
+        #     xdata=xdata[::-1]
+        #     ydata=ydata[::-1]
+        
+        peakspacing=(xdata.max()-xdata.min())/numofpeaks
+        rough_peak_positions=[i*peakspacing+peakspacing/2+xdata.min() for i in range(int(numofpeaks))]
 
-    if p0: #Format should be list of strings: ['w w ... w','a a ... a','x x ... x','c']
-        sigmas=[float(par) for par in p0[0].split()]
-        amplitudes=[float(par) for par in p0[1].split()]
-        rough_peak_positions=[float(par) for par in p0[2].split()]
-        gammas=[float(par) for par in p0[3].split()]
-        skews=[float(par) for par in p0[4].split()]
-    if usebackground==1:
-        try:
-            background=p0[5]
-        except:
-            background=0
-    else:
-        background=None
+        if p0: #Format should be list of strings: ['w w ... w','a a ... a','x x ... x','c']
+            sigmas=[float(par) for par in p0[0].split()]
+            amplitudes=[float(par) for par in p0[1].split()]
+            rough_peak_positions=[float(par) for par in p0[2].split()]
+            gammas=[float(par) for par in p0[3].split()]
+            skews=[float(par) for par in p0[4].split()]
+        if usebackground==1:
+            try:
+                background=p0[5]
+            except:
+                background=0
+        else:
+            background=None
 
-    if amplitudes ==None: #Guess that the amplitudes will be close to the maximum value of the data
-        amplitudes=[ydata.max()-ydata.min() for i in range(int(numofpeaks))]
-    if sigmas==None: #Sigma will be much smaller than the peak spacing unless peaks are overlapping. However, starting with a low value seems to work even if overlapping, but not the other way around.
-        sigmas=[np.abs(xdata[-1]-xdata[0])/(12*numofpeaks) for i in range(int(numofpeaks))]
-    if gammas==None:
-        gammas=[0 for i in range(int(numofpeaks))]
-    if skews==None:
-        skews=[1 for i in range(int(numofpeaks))]
+        if amplitudes ==None: #Guess that the amplitudes will be close to the maximum value of the data
+            amplitudes=[ydata.max()-ydata.min() for i in range(int(numofpeaks))]
+        if sigmas==None: #Sigma will be much smaller than the peak spacing unless peaks are overlapping. However, starting with a low value seems to work even if overlapping, but not the other way around.
+            sigmas=[np.abs(xdata[-1]-xdata[0])/(12*numofpeaks) for i in range(int(numofpeaks))]
+        if gammas==None:
+            gammas=[0 for i in range(int(numofpeaks))]
+        if skews==None:
+            skews=[1 for i in range(int(numofpeaks))]
 
-    peakpos0=rough_peak_positions[0]
-    peakpositions=rough_peak_positions[1:]
-    
-    def add_peak(prefix, center, amplitude, sigma,gamma,skew):
-        peak = modeltype(prefix=prefix)
-        pars = peak.make_params()
-        pars[prefix + 'center'].set(center)
-        pars[prefix + 'amplitude'].set(amplitude)
-        pars[prefix + 'sigma'].set(sigma, min=0)
-        pars[prefix + fourthparam].set(gamma)
-        pars[prefix + 'skew'].set(skew)
-        return peak, pars
+        peakpos0=rough_peak_positions[0]
+        peakpositions=rough_peak_positions[1:]
+        
+        def add_peak(prefix, center, amplitude, sigma,gamma,skew):
+            peak = modeltype(prefix=prefix)
+            pars = peak.make_params()
+            pars[prefix + 'center'].set(center)
+            pars[prefix + 'amplitude'].set(amplitude)
+            pars[prefix + 'sigma'].set(sigma, min=0)
+            pars[prefix + fourthparam].set(gamma)
+            pars[prefix + 'skew'].set(skew)
+            return peak, pars
 
-    model = modeltype(prefix='peak0_')
-    params = model.make_params()
-    params['peak0_center'].set(peakpos0)
-    params['peak0_amplitude'].set(amplitudes[0])
-    params['peak0_sigma'].set(sigmas[0], min=0)
-    params['peak0_'+fourthparam].set(gammas[0])
-    params['peak0_skew'].set(skews[0])
+        model = modeltype(prefix='peak0_')
+        params = model.make_params()
+        params['peak0_center'].set(peakpos0)
+        params['peak0_amplitude'].set(amplitudes[0])
+        params['peak0_sigma'].set(sigmas[0], min=0)
+        params['peak0_'+fourthparam].set(gammas[0])
+        params['peak0_skew'].set(skews[0])
 
-    for i, cen in enumerate(peakpositions):
-        peak, pars = add_peak('peak%d_' % (i+1), cen, amplitudes[i+1], sigmas[i+1], gammas[i+1],skews[i+1])
-        model = model + peak
-        params.update(pars)
+        for i, cen in enumerate(peakpositions):
+            peak, pars = add_peak('peak%d_' % (i+1), cen, amplitudes[i+1], sigmas[i+1], gammas[i+1],skews[i+1])
+            model = model + peak
+            params.update(pars)
 
-    if background is not None:
-        bg = lmm.ConstantModel(prefix='bg_')
-        pars = bg.make_params()
-        pars['bg_c'].set(background)
-        model = model + bg
-        params.update(pars)
+        if background is not None:
+            bg = lmm.ConstantModel(prefix='bg_')
+            pars = bg.make_params()
+            pars['bg_c'].set(background)
+            model = model + bg
+            params.update(pars)
 
-    result = model.fit(ydata, params, x=xdata)
-    return result
+        result = model.fit(ydata, params, x=xdata)
+        return result
+    except Exception as e:
+        return e
 
 #Multiple sine wave fitting
 def fit_sines(xdata,ydata,p0=None,inputinfo=[1,0]):
@@ -425,70 +440,72 @@ def fit_sines(xdata,ydata,p0=None,inputinfo=[1,0]):
     Returns:
         * result: lmfit result object.
     """
+    try:
+        modeltype=lmm.SineModel
+        #Fits x,y data with peaks characterised by amplitude, fwhm and position.
+        #Custom starting amplitudes (proportional to height) and sigmas (proportional to width) may also be given
+        #Returns the entire lmfit result.
+        numofwaves=inputinfo[0]
+        usebackground=inputinfo[1]
+        amps=None
+        freqs=None
+        phases=None
 
-    modeltype=lmm.SineModel
-    #Fits x,y data with peaks characterised by amplitude, fwhm and position.
-    #Custom starting amplitudes (proportional to height) and sigmas (proportional to width) may also be given
-    #Returns the entire lmfit result.
-    numofwaves=inputinfo[0]
-    usebackground=inputinfo[1]
-    amps=None
-    freqs=None
-    phases=None
+        # if xdata[0]>xdata[-1]:
+        #     xdata=xdata[::-1]
+        #     ydata=ydata[::-1]
 
-    # if xdata[0]>xdata[-1]:
-    #     xdata=xdata[::-1]
-    #     ydata=ydata[::-1]
+        if p0: #Format should be list of strings: ['A A ... A','f f ... f','ph ph ... ph','c']
+            amps=[float(par) for par in p0[0].split()]
+            freqs=[float(par) for par in p0[1].split()]
+            phases=[float(par) for par in p0[2].split()]
+        if usebackground==1:
+            try:
+                background=p0[3]
+            except:
+                background=0
+        else:
+            background=None
 
-    if p0: #Format should be list of strings: ['A A ... A','f f ... f','ph ph ... ph','c']
-        amps=[float(par) for par in p0[0].split()]
-        freqs=[float(par) for par in p0[1].split()]
-        phases=[float(par) for par in p0[2].split()]
-    if usebackground==1:
-        try:
-            background=p0[3]
-        except:
-            background=0
-    else:
-        background=None
+        if amps ==None: #Guess that the amplitudes will be close to the maximum minus minimum
+            amps=[ydata.max()-ydata.min() for i in range(int(numofwaves))]
+        if freqs==None: #Guess that the user probably provides somewhere between 1 and 20 periods for fitting.
+            freqs=[10/np.abs(xdata[-1]-xdata[0]) for i in range(int(numofwaves))]
+        if phases==None: # The phases (surely?!) just have to be something sensible in units of radians
+            phases=[0.1 for i in range(int(numofwaves))]
+        
+        def add_wave(prefix, amplitude, frequency, phase):
+            wave = modeltype(prefix=prefix)
+            pars = wave.make_params()
+            pars[prefix + 'amplitude'].set(amplitude)
+            pars[prefix + 'frequency'].set(frequency)
+            pars[prefix + 'shift'].set(phase)
+            return wave, pars
 
-    if amps ==None: #Guess that the amplitudes will be close to the maximum minus minimum
-        amps=[ydata.max()-ydata.min() for i in range(int(numofwaves))]
-    if freqs==None: #Guess that the user probably provides somewhere between 1 and 20 periods for fitting.
-        freqs=[10/np.abs(xdata[-1]-xdata[0]) for i in range(int(numofwaves))]
-    if phases==None: # The phases (surely?!) just have to be something sensible in units of radians
-        phases=[0.1 for i in range(int(numofwaves))]
-    
-    def add_wave(prefix, amplitude, frequency, phase):
-        wave = modeltype(prefix=prefix)
-        pars = wave.make_params()
-        pars[prefix + 'amplitude'].set(amplitude)
-        pars[prefix + 'frequency'].set(frequency)
-        pars[prefix + 'shift'].set(phase)
-        return wave, pars
+        model = modeltype(prefix='wave0_')
+        params = model.make_params()
+        params['wave0_amplitude'].set(amps[0])
+        params['wave0_frequency'].set(freqs[0])
+        params['wave0_shift'].set(phases[0])
 
-    model = modeltype(prefix='wave0_')
-    params = model.make_params()
-    params['wave0_amplitude'].set(amps[0])
-    params['wave0_frequency'].set(freqs[0])
-    params['wave0_shift'].set(phases[0])
+        new_amps=amps[1:]
 
-    new_amps=amps[1:]
+        for i, amp in enumerate(new_amps):
+            wave, pars = add_wave('wave%d_' % (i+1), amp, freqs[i+1], phases[i+1])
+            model = model + wave
+            params.update(pars)
 
-    for i, amp in enumerate(new_amps):
-        wave, pars = add_wave('wave%d_' % (i+1), amp, freqs[i+1], phases[i+1])
-        model = model + wave
-        params.update(pars)
+        if background is not None:
+            bg = lmm.ConstantModel(prefix='bg_')
+            pars = bg.make_params()
+            pars['bg_c'].set(background)
+            model = model + bg
+            params.update(pars)
 
-    if background is not None:
-        bg = lmm.ConstantModel(prefix='bg_')
-        pars = bg.make_params()
-        pars['bg_c'].set(background)
-        model = model + bg
-        params.update(pars)
-
-    result = model.fit(ydata, params, x=xdata)
-    return result
+        result = model.fit(ydata, params, x=xdata)
+        return result
+    except Exception as e:
+        return e
 
 
 #Fit a thermal distribution of MB, FD or BE type.
@@ -508,17 +525,19 @@ def thermal_fit(modeltype,xdata,ydata,p0=None,inputinfo=None):
         * result: lmfit result object.
     """
 
-
-    model=lmm.ThermalDistributionModel(form=modeltype)
-    
-    if p0:
-        params=model.make_params()
-        for i,key in enumerate(params.keys()):
-            params[key]=float(p0[i])
-    else:
-        params=model.guess(ydata,x=xdata)
-    result=model.fit(ydata,params,x=xdata)
-    return result
+    try:
+        model=lmm.ThermalDistributionModel(form=modeltype)
+        
+        if p0:
+            params=model.make_params()
+            for i,key in enumerate(params.keys()):
+                params[key]=float(p0[i])
+        else:
+            params=model.guess(ydata,x=xdata)
+        result=model.fit(ydata,params,x=xdata)
+        return result
+    except Exception as e:
+        return e
 
 
 #Fit a step function.
@@ -541,21 +560,24 @@ def step_fit(modeltype,xdata,ydata,p0=None,inputinfo=None):
     # if xdata[0]>xdata[-1]:
     #     xdata=xdata[::-1]
     #     ydata=ydata[::-1]
-    model=lmm.StepModel(form=modeltype)
-    params=model.make_params()
-    if p0:
-        for i,key in enumerate(params.keys()):
-            params[key]=float(p0[i])
-    else:
-        if ydata[-1]>ydata[0]:
-            params['amplitude'].set(ydata.max())
+    try:
+        model=lmm.StepModel(form=modeltype)
+        params=model.make_params()
+        if p0:
+            for i,key in enumerate(params.keys()):
+                params[key]=float(p0[i])
         else:
-            params['amplitude'].set(ydata.min())
-        params['center'].set((xdata[0]+xdata[-1])/2)
-        params['sigma'].set((xdata[-1]-xdata[0])/10)
+            if ydata[-1]>ydata[0]:
+                params['amplitude'].set(ydata.max())
+            else:
+                params['amplitude'].set(ydata.min())
+            params['center'].set((xdata[0]+xdata[-1])/2)
+            params['sigma'].set((xdata[-1]-xdata[0])/10)
 
-    result=model.fit(ydata,params,x=xdata)
-    return result
+        result=model.fit(ydata,params,x=xdata)
+        return result
+    except Exception as e:
+        return e
 
 #Fit a rectangle function.
 def rectangle_fit(modeltype,xdata,ydata,p0=None,inputinfo=None):
@@ -577,23 +599,26 @@ def rectangle_fit(modeltype,xdata,ydata,p0=None,inputinfo=None):
     # if xdata[0]>xdata[-1]:
     #     xdata=xdata[::-1]
     #     ydata=ydata[::-1]
-    model=lmm.RectangleModel(form=modeltype)
-    params=model.make_params()
-    if p0:
-        for i,key in enumerate(params.keys()):
-            params[key]=float(p0[i])
-    else:
-        if ydata[-1]>ydata[0]:
-            params['amplitude'].set(ydata.max())
+    try:
+        model=lmm.RectangleModel(form=modeltype)
+        params=model.make_params()
+        if p0:
+            for i,key in enumerate(params.keys()):
+                params[key]=float(p0[i])
         else:
-            params['amplitude'].set(ydata.min())
-        params['center1'].set((3*xdata[0]+xdata[-1])/4)
-        params['center2'].set((xdata[0]+3*xdata[-1])/4)
-        params['sigma1'].set((xdata[-1]-xdata[0])/20)
-        params['sigma2'].set((xdata[-1]-xdata[0])/20)
+            if ydata[-1]>ydata[0]:
+                params['amplitude'].set(ydata.max())
+            else:
+                params['amplitude'].set(ydata.min())
+            params['center1'].set((3*xdata[0]+xdata[-1])/4)
+            params['center2'].set((xdata[0]+3*xdata[-1])/4)
+            params['sigma1'].set((xdata[-1]-xdata[0])/20)
+            params['sigma2'].set((xdata[-1]-xdata[0])/20)
 
-    result=model.fit(ydata,params,x=xdata)
-    return result
+        result=model.fit(ydata,params,x=xdata)
+        return result
+    except Exception as e:
+        return e
 
 
 # Arbitrary expressions get fitted using the below:
@@ -610,14 +635,16 @@ def expression_fit(xdata,ydata,p0,inputinfo):
     Returns:
         * result: lmfit result object.
     """
+    try:
+        model=lmm.ExpressionModel(inputinfo)
+        params=model.make_params()
+        for i,whatever in enumerate(p0):
+            params[whatever.split('=')[0].strip()].set(value=float(whatever.split('=')[1]))
 
-    model=lmm.ExpressionModel(inputinfo)
-    params=model.make_params()
-    for i,whatever in enumerate(p0):
-        params[whatever.split('=')[0].strip()].set(value=float(whatever.split('=')[1]))
-
-    result=model.fit(ydata,params,x=xdata)
-    return result
+        result=model.fit(ydata,params,x=xdata)
+        return result
+    except Exception as e:
+        return e
 
 #Custom fits
 def QD_fit(xdata,ydata,p0=None,inputinfo=[1,0.01]):
@@ -635,45 +662,48 @@ def QD_fit(xdata,ydata,p0=None,inputinfo=[1,0.01]):
     Returns:
         * result: lmfit result object.
     """
-    numofpeaks=inputinfo[0]
-    alpha=inputinfo[1]
-    G0s=None
-    
-    if p0: #Format should be list of strings: ['x0 x0 ... x0','G0 G0 ... G0','T']
-        rough_peak_positions=[float(par) for par in p0[0].split()]
-        G0s=[float(par) for par in p0[1].split()]
-        T=[float(p0[2])]
-    else:
-        peakspacing=(xdata.max()-xdata.min())/numofpeaks
-        rough_peak_positions=[i*peakspacing+peakspacing/2+xdata.min() for i in range(int(numofpeaks))]
-        G0s=[ydata.max()-ydata.min() for i in range(int(numofpeaks))]
-        T=0.01
-    
-    boltzmann = 1.38064852e-23  # J/K
-    def QD_model(x, x0, G0, T):
-        return G0 * np.cosh(1.60217663e-19*alpha * (x - x0) / (2 * boltzmann * T))**(-2)
-    model=Model(QD_model,prefix='peak0_')
-    params=model.make_params()
+    try:
+        numofpeaks=inputinfo[0]
+        alpha=inputinfo[1]
+        G0s=None
+        
+        if p0: #Format should be list of strings: ['x0 x0 ... x0','G0 G0 ... G0','T']
+            rough_peak_positions=[float(par) for par in p0[0].split()]
+            G0s=[float(par) for par in p0[1].split()]
+            T=[float(p0[2])]
+        else:
+            peakspacing=(xdata.max()-xdata.min())/numofpeaks
+            rough_peak_positions=[i*peakspacing+peakspacing/2+xdata.min() for i in range(int(numofpeaks))]
+            G0s=[ydata.max()-ydata.min() for i in range(int(numofpeaks))]
+            T=0.01
+        
+        boltzmann = 1.38064852e-23  # J/K
+        def QD_model(x, x0, G0, T):
+            return G0 * np.cosh(1.60217663e-19*alpha * (x - x0) / (2 * boltzmann * T))**(-2)
+        model=Model(QD_model,prefix='peak0_')
+        params=model.make_params()
 
-    params['peak0_G0'].set(value=G0s[0])
-    params['peak0_T'].set(value=T)
-    params['peak0_x0'].set(value=rough_peak_positions[0])
+        params['peak0_G0'].set(value=G0s[0])
+        params['peak0_T'].set(value=T)
+        params['peak0_x0'].set(value=rough_peak_positions[0])
 
-    def add_peak(prefix, x0, G0, T):
-        peak = Model(QD_model,prefix=prefix)
-        pars = peak.make_params()
-        pars[prefix + 'x0'].set(x0)
-        pars[prefix + 'G0'].set(G0)
-        pars[prefix + 'T'].set(T)
-        return peak, pars
-    
-    for i, cen in enumerate(rough_peak_positions[1:]):
-        peak, pars = add_peak('peak%d_' % (i+1), cen, G0s[i+1], T)
-        model = model + peak
-        params.update(pars)
+        def add_peak(prefix, x0, G0, T):
+            peak = Model(QD_model,prefix=prefix)
+            pars = peak.make_params()
+            pars[prefix + 'x0'].set(x0)
+            pars[prefix + 'G0'].set(G0)
+            pars[prefix + 'T'].set(T)
+            return peak, pars
+        
+        for i, cen in enumerate(rough_peak_positions[1:]):
+            peak, pars = add_peak('peak%d_' % (i+1), cen, G0s[i+1], T)
+            model = model + peak
+            params.update(pars)
 
-    result=model.fit(ydata,params,x=xdata)
-    return result
+        result=model.fit(ydata,params,x=xdata)
+        return result
+    except Exception as e:
+        return e
 
 def FET_mobility(xdata,ydata,p0=None,inputinfo=None):
     """
@@ -690,27 +720,29 @@ def FET_mobility(xdata,ydata,p0=None,inputinfo=None):
     Returns:
         * result: lmfit result object.
     """
+    try:
+        if inputinfo is None or len(inputinfo) < 2:
+            raise ValueError("inputinfo must contain values for capacitance and device Length: [C, L]")
+        C=float(inputinfo[0])
+        L=float(inputinfo[1])
+        def FET_model(x, mu, V_th, R_s):
+            return 1/(R_s + L**2/(C*mu*(x-V_th)))
+        model=Model(FET_model)
+        params=model.make_params()
+        if p0:
+            params['mu'].set(value=float(p0[0]))
+            params['V_th'].set(value=float(p0[1]))
+            params['R_s'].set(value=float(p0[2]))
+        else:
+            params['mu'].set(L**2*(ydata.max()-ydata.min())/(C*(xdata.max()-xdata.min())))
+            params['V_th'].set(xdata.min())
+            params['R_s'].set(1/ydata.max())
 
-    if inputinfo is None or len(inputinfo) < 2:
-        raise ValueError("inputinfo must contain values for capacitance and device Length: [C, L]")
-    C=float(inputinfo[0])
-    L=float(inputinfo[1])
-    def FET_model(x, mu, V_th, R_s):
-        return 1/(R_s + L**2/(C*mu*(x-V_th)))
-    model=Model(FET_model)
-    params=model.make_params()
-    if p0:
-        params['mu'].set(value=float(p0[0]))
-        params['V_th'].set(value=float(p0[1]))
-        params['R_s'].set(value=float(p0[2]))
-    else:
-        params['mu'].set(L**2*(ydata.max()-ydata.min())/(C*(xdata.max()-xdata.min())))
-        params['V_th'].set(xdata.min())
-        params['R_s'].set(1/ydata.max())
-
-    result=model.fit(ydata,params,x=xdata)
-    return result
-
+        result=model.fit(ydata,params,x=xdata)
+        return result
+    except Exception as e:
+        return e
+    
 def dynes_fit(xdata,ydata,p0=None,inputinfo=None):
     """
     Fits x,y data with a Dynes model for a superconducting gap: 'G_N * abs((e*x - i*gamma*e)/(sqrt((e*x - i*gamma*e)**2 - (delta*e)**2)))'
@@ -725,23 +757,26 @@ def dynes_fit(xdata,ydata,p0=None,inputinfo=None):
     Returns:
         * result: lmfit result object.
     """
-    electron=1.60217663e-19
-    def dynes_model(x,x0, G_N, gamma, delta):
-        return np.abs(G_N*((electron*(x-x0)-1j*gamma*electron)/np.sqrt((electron*(x-x0)-1j*gamma*electron)**2-(delta*electron)**2)).real)
-    model=Model(dynes_model)
-    params=model.make_params()
-    if p0:
-        params['x0'].set(value=float(p0[0]))
-        params['G_N'].set(value=float(p0[1]))
-        params['gamma'].set(value=float(p0[2]))
-        params['delta'].set(value=float(p0[3]))
-    else:
-        params['x0'].set(value=(np.max(xdata)+np.min(xdata))/2)
-        params['G_N'].set(value=(np.max(ydata)-np.min(ydata))/2)
-        params['gamma'].set(value=(np.max(xdata)-np.min(xdata))/200)
-        params['delta'].set(value=(np.max(xdata)-np.min(xdata))/2)
-    result=model.fit(ydata,params,x=xdata)
-    return result
+    try:
+        electron=1.60217663e-19
+        def dynes_model(x,x0, G_N, gamma, delta):
+            return np.abs(G_N*((electron*(x-x0)-1j*gamma*electron)/np.sqrt((electron*(x-x0)-1j*gamma*electron)**2-(delta*electron)**2)).real)
+        model=Model(dynes_model)
+        params=model.make_params()
+        if p0:
+            params['x0'].set(value=float(p0[0]))
+            params['G_N'].set(value=float(p0[1]))
+            params['gamma'].set(value=float(p0[2]))
+            params['delta'].set(value=float(p0[3]))
+        else:
+            params['x0'].set(value=(np.max(xdata)+np.min(xdata))/2)
+            params['G_N'].set(value=(np.max(ydata)-np.min(ydata))/2)
+            params['gamma'].set(value=(np.max(xdata)-np.min(xdata))/200)
+            params['delta'].set(value=(np.max(xdata)-np.min(xdata))/2)
+        result=model.fit(ydata,params,x=xdata)
+        return result
+    except Exception as e:
+        return e
 
 def ramsey_fit(xdata,ydata,p0,inputinfo):
     '''
@@ -757,28 +792,31 @@ def ramsey_fit(xdata,ydata,p0,inputinfo):
     Returns:
         * result: lmfit result object.
     '''
-    def ramsey_model(x, A, B, C, f, phi, T2):
-        return A*np.cos(2*np.pi*f*x + phi)*np.exp(-x/T2)+B+C*x
-    
-    model=Model(ramsey_model)
-    params=model.make_params()
-    if p0:
-        params['A'].set(value=float(p0[0]))
-        params['B'].set(value=float(p0[1]))
-        params['C'].set(value=float(p0[2]))
-        params['f'].set(value=float(p0[3]))
-        params['phi'].set(value=float(p0[4]))
-        params['T2'].set(value=float(p0[5]))
-    else:
-        params['A'].set(value=(ydata.max()-ydata.min())/2)
-        params['B'].set(value=ydata.min())
-        params['C'].set(value=(ydata.max()-ydata.min())/100)
-        params['f'].set(value=1/(xdata.max()-xdata.min()))
-        params['phi'].set(value=0)
-        params['T2'].set(value=(xdata.max()-xdata.min())/10)
+    try:
+        def ramsey_model(x, A, B, C, f, phi, T2):
+            return A*np.cos(2*np.pi*f*x + phi)*np.exp(-x/T2)+B+C*x
+        
+        model=Model(ramsey_model)
+        params=model.make_params()
+        if p0:
+            params['A'].set(value=float(p0[0]))
+            params['B'].set(value=float(p0[1]))
+            params['C'].set(value=float(p0[2]))
+            params['f'].set(value=float(p0[3]))
+            params['phi'].set(value=float(p0[4]))
+            params['T2'].set(value=float(p0[5]))
+        else:
+            params['A'].set(value=(ydata.max()-ydata.min())/2)
+            params['B'].set(value=ydata.min())
+            params['C'].set(value=(ydata.max()-ydata.min())/100)
+            params['f'].set(value=1/(xdata.max()-xdata.min()))
+            params['phi'].set(value=0)
+            params['T2'].set(value=(xdata.max()-xdata.min())/10)
 
-    result=model.fit(ydata,params,x=xdata)
-    return result
+        result=model.fit(ydata,params,x=xdata)
+        return result
+    except Exception as e:
+        return e
 
 def RCSJfit(xdata,ydata,p0=None,inputinfo=None):
     '''
@@ -847,6 +885,8 @@ def RCSJfit(xdata,ydata,p0=None,inputinfo=None):
     
     except ImportError:
         print("The mpmath library is required for RCSJ fitting. Please install it using 'pip install mpmath'.")
+    except Exception as e:
+        return e
 
 def statistics(xdata,ydata,p0,inputinfo):
     '''Return various statists from the data
@@ -863,49 +903,52 @@ def statistics(xdata,ydata,p0,inputinfo):
         * result: A dictionary containing the requested statistics. If percentiles are requested,
         they are also included in the dictionary under the key 'percentiles'.
     '''
-    if 'percentile' in inputinfo:
-        percentiles=[float(p0[i]) for i in range(len(p0))] if p0 else [1,5,10,25,50,75,90,95,99]
-    elif 'average' in inputinfo:
-        weights=[float(p0[i]) for i in range(len(p0))] if p0 else None
-    elif inputinfo == 'all':
-        percentiles=[1,5,10,25,50,75,90,95,99]
-        weights=None
-    
-    function_dict={
-        'mean':np.mean,
-        'average':lambda x: np.average(x,weights=weights),
-        'std':np.std,
-        'var':np.var,
-        'median':np.median,
-        'min':np.min,
-        'max':np.max,
-        'range':lambda x: np.max(x)-np.min(x),
-        'sum':np.sum,
-        'skew':lambda x: np.mean((x-np.mean(x))**3)/np.std(x)**3,
-        'percentile':lambda x: np.percentile(x,percentiles),
-        'autocorrelation': lambda x: np.correlate(x,x,mode='full')[len(x)-1:],
-        'autocorrelation_norm': lambda x: np.correlate(x,x,mode='full')[len(x)-1:]/np.max(np.correlate(x,x,mode='full'))
-    }
+    try:
+        if 'percentile' in inputinfo:
+            percentiles=[float(p0[i]) for i in range(len(p0))] if p0 else [1,5,10,25,50,75,90,95,99]
+        elif 'average' in inputinfo:
+            weights=[float(p0[i]) for i in range(len(p0))] if p0 else None
+        elif inputinfo == 'all':
+            percentiles=[1,5,10,25,50,75,90,95,99]
+            weights=None
+        
+        function_dict={
+            'mean':np.mean,
+            'average':lambda x: np.average(x,weights=weights),
+            'std':np.std,
+            'var':np.var,
+            'median':np.median,
+            'min':np.min,
+            'max':np.max,
+            'range':lambda x: np.max(x)-np.min(x),
+            'sum':np.sum,
+            'skew':lambda x: np.mean((x-np.mean(x))**3)/np.std(x)**3,
+            'percentile':lambda x: np.percentile(x,percentiles),
+            'autocorrelation': lambda x: np.correlate(x,x,mode='full')[len(x)-1:],
+            'autocorrelation_norm': lambda x: np.correlate(x,x,mode='full')[len(x)-1:]/np.max(np.correlate(x,x,mode='full'))
+        }
 
-    result={}
-    if inputinfo == 'all':
-        functions=function_dict.keys()
-    elif inputinfo == 'all1d':
-        functions=['mean','std','var','median','min','max','range','sum','skew']
-    else:
-        functions=inputinfo.split(',')
-    for function in functions:
-        if function not in ['percentile','autocorrelation','autocorrelation_norm']:
-            result[function]=float(function_dict[function](ydata))
+        result={}
+        if inputinfo == 'all':
+            functions=function_dict.keys()
+        elif inputinfo == 'all1d':
+            functions=['mean','std','var','median','min','max','range','sum','skew']
         else:
-            if function == 'percentile':
-                result[function]=function_dict[function](ydata)
-                result['percentiles']=percentiles
+            functions=inputinfo.split(',')
+        for function in functions:
+            if function not in ['percentile','autocorrelation','autocorrelation_norm']:
+                result[function]=float(function_dict[function](ydata))
             else:
-                result[function]=function_dict[function](ydata)
-    result['xdata']=xdata
-    result['ydata']=ydata
-    return result
+                if function == 'percentile':
+                    result[function]=function_dict[function](ydata)
+                    result['percentiles']=percentiles
+                else:
+                    result[function]=function_dict[function](ydata)
+        result['xdata']=xdata
+        result['ydata']=ydata
+        return result
+    except Exception as e:
+        return e
 
 
 # Dictionary for storing info about the fit functions used in this module.
