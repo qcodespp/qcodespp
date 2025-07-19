@@ -193,8 +193,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.init_plot_settings()
         self.init_view_settings()
         self.init_axis_scaling()
-        self.init_filters()
         self.init_connections()
+        self.init_filters()
         self.init_canvas()
         self.linked_folder = None
         self.linked_files = []
@@ -261,19 +261,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.xaxis_combobox.addItems(AXIS_SCALING_OPTIONS)
         self.yaxis_combobox.addItems(AXIS_SCALING_OPTIONS)
     
-    def init_filters(self, item=None):
-        self.filters_combobox.clear()
+    def init_filters(self):
         self.filters_combobox.addItem('<Add Filter>')
-        try:
-            if item and hasattr(item,'data') and hasattr(item.data,'dim') and item.data.dim == 2:
-                exclude=['Offset line by line', 'Subtract average line by line','Cut X','Cut Y','Roll X','Roll Y','Crop Y','Subtract trace']
-                filterlist=[key for key in Filter.DEFAULT_SETTINGS.keys() if key not in exclude]
-            else:
-                filterlist = list(Filter.DEFAULT_SETTINGS.keys())
-        except Exception as e:
-            self.log_error(f'Error initializing filters: {e}')
-            filterlist = list(Filter.DEFAULT_SETTINGS.keys())
-        self.filters_combobox.addItems(filterlist)
+        self.filters_combobox.addItems(Filter.DEFAULT_SETTINGS.keys())
         self.filters_table.setColumnCount(4)
         self.filters_table.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked)
         h = self.filters_table.horizontalHeader()
@@ -283,7 +273,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.filters_table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         # Opens options menu with right-click
         self.filters_table.customContextMenuRequested.connect(self.open_filter_settings_menu)
-        
+
     def init_connections(self):
         self.open_files_button.clicked.connect(self.open_files)
         self.open_folder_button.clicked.connect(self.open_files_from_folder)
@@ -307,7 +297,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.paste_settings_button.clicked.connect(lambda: self.paste_plot_settings('copied'))
         self.reset_settings_button.clicked.connect(lambda: self.paste_plot_settings('default'))
         self.filters_combobox.currentIndexChanged.connect(self.filters_box_changed)
-        self.mixeddata_filter_box.currentIndexChanged.connect(self.show_current_filters)
+        self.mixeddata_filter_box.currentIndexChanged.connect(self.mixeddata_filterbox_changed)
         self.xaxis_combobox.currentIndexChanged.connect(self.axis_scaling_changed)
         self.yaxis_combobox.currentIndexChanged.connect(self.axis_scaling_changed)
         self.delete_filters_button.clicked.connect(lambda: self.remove_filters('current'))
@@ -1194,7 +1184,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def file_clicked(self):
         current_item = self.file_list.currentItem()
-        #self.init_filters(current_item)
+        if hasattr(current_item,'data') and hasattr(current_item.data,'dim'):
+            dim=current_item.data.dim
+        else:
+            dim=None
+        self.reset_filters_combobox(dim)
         self.show_current_all()
         self.clear_sidebar1D()
         if hasattr(current_item.data,'sidebar1D'):
@@ -1519,9 +1513,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     if dim == 3:
                         self.new_plot_Z_box.setCurrentIndex(2)
                 
-                if current_item.data.dim == 2:
+                if hasattr(current_item.data,'dim') and current_item.data.dim == 2:
                     plot_types=['X,Y','Histogram','FFT']
-                elif current_item.data.dim == 3:
+                else:
                     plot_types=['X,Y,Z', 'Histogram Y', 'Histogram X', 'FFT Y', 'FFT X', 'FFT X/Y']
                 self.plot_type_box.addItems(plot_types)
                 if hasattr(current_item.data, 'plot_type'):
@@ -2369,6 +2363,28 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.append_filter_to_table()
         self.filters_combobox.currentIndexChanged.disconnect(self.filters_box_changed)
         self.filters_combobox.setCurrentIndex(0)
+        self.filters_combobox.clearFocus()
+        self.filters_combobox.currentIndexChanged.connect(self.filters_box_changed)
+
+    def mixeddata_filterbox_changed(self):
+        dim=3 if self.mixeddata_filter_box.currentIndex() == 0 else 2
+        self.reset_filters_combobox(dim=dim)
+        self.show_current_filters()
+
+    def reset_filters_combobox(self, dim=None):
+        self.filters_combobox.currentIndexChanged.disconnect(self.filters_box_changed)
+        self.filters_combobox.clear()
+        self.filters_combobox.addItem('<Add Filter>')
+        try:
+            if dim == 2:
+                exclude=['Offset line by line', 'Subtract average line by line','Cut X','Cut Y','Roll X','Roll Y','Crop Y','Subtract trace']
+                filterlist=[key for key in Filter.DEFAULT_SETTINGS.keys() if key not in exclude]
+            else:
+                filterlist = list(Filter.DEFAULT_SETTINGS.keys())
+        except Exception as e:
+            self.log_error(f'Error initializing filters: {e}')
+            filterlist = list(Filter.DEFAULT_SETTINGS.keys())
+        self.filters_combobox.addItems(filterlist)
         self.filters_combobox.clearFocus()
         self.filters_combobox.currentIndexChanged.connect(self.filters_box_changed)
     
