@@ -868,6 +868,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         
                         dictionary_list.append(item_dictionary)
 
+                    from qcodespp import __version__
+                    dictionary_list.append({
+                        'qcodespp_version': __version__
+                    })
+
                     # Save all needed files to a temperorary directory and add them to the tarball
                     np.save(dirpath+'/igtemp/numpyfile.npy', dictionary_list)
                     with tarfile.open(filepath, 'w:gz') as tar:
@@ -991,10 +996,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     tar.extractall(dirpath)
                 # Load the numpy file containing the session data
 
-                data=np.load(dirpath+'/igtemp/numpyfile.npy', allow_pickle=True)
-                file_list=[]
-                for attr_dict in data:
-                    file_list.append(attr_dict['filepath'])
+                numpy_file=np.load(dirpath+'/igtemp/numpyfile.npy', allow_pickle=True)
+
+                # Extract only the elements of the numpy array that are dictionaries representing data items
+                data=[item for item in numpy_file if isinstance(item, dict) and 'filepath' in item.keys()]
+                file_list=[attr_dict['filepath'] for attr_dict in data]
 
                 # Use the resolve_missing_files function to check for missing files. Ask the user if they want to quit loading the session
                 ret_mes = self.resolve_missing_files(file_list)
