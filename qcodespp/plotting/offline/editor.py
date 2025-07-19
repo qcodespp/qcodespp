@@ -235,6 +235,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             except:
                 pass
 
+        self.setAcceptDrops(True)
+
     def init_plot_settings(self):
         self.settings_table.setColumnCount(2)
         self.settings_table.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked)
@@ -685,8 +687,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if update_canvas:
                     self.update_plots()
 
-    def open_files_from_folder(self): 			
-        rootdir = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory to Open")
+    def open_files_from_folder(self, rootdir=None):
+        if rootdir is None:
+            rootdir = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory to Open")
         if rootdir:
             filepaths = []
             for subdir, dirs, files in os.walk(rootdir):
@@ -952,7 +955,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         except Exception as e:
             return e
 
-    def load_session(self):
+    def load_session(self,filepath=None):
         old_title = self.windowTitle()
         # First warn the user they will lose any unsaved work.
         msg_box = QtWidgets.QMessageBox(self)
@@ -965,7 +968,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             return
 
         # Then prompt to load the session
-        session_filepath, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open Session', '', 'Inspectra Gadget session (*.igs)')
+        if filepath is None:
+            session_filepath, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open Session', '', 'Inspectra Gadget session (*.igs)')
+        else:
+            session_filepath = filepath
+
         if session_filepath:
             dirpath = os.path.dirname(session_filepath)
             self.setWindowTitle(old_title + " - Loading session...")
@@ -3094,6 +3101,77 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.update_plots(update_color_limits=True)
                 self.reset_axlim_settings()
                 self.show_current_all()
+    
+    def enter_move_tester(self,urls):
+        for url in urls:
+            if not (url.toLocalFile().endswith('.dat') or url.toLocalFile().endswith('.npy')
+                    or url.toLocalFile().endswith('.txt') or url.toLocalFile().endswith('.igs')
+                    or os.path.isdir(url.toLocalFile())):
+                return False
+            else:
+                continue
+        return True
+
+    def drop_files_tester(self, urls):
+        for url in urls:
+            if not (url.toLocalFile().endswith('.dat') or url.toLocalFile().endswith('.npy') \
+                    or url.toLocalFile().endswith('.txt')):
+                return False
+            else:
+                continue
+        return True
+    
+    def drop_folders_tester(self, urls):
+        for url in urls:
+            if not os.path.isdir(url.toLocalFile()):
+                return False
+            else:
+                continue
+        return True
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            urls = event.mimeData().urls()
+            if urls and self.enter_move_tester(urls):
+                event.accept()
+            else:
+                event.ignore()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasUrls():
+            urls = event.mimeData().urls()
+            if urls and self.enter_move_tester(urls):
+                event.accept()
+            else:
+                event.ignore()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        if event.mimeData().hasUrls():
+            urls = event.mimeData().urls()
+            # Accept single data files
+            if urls and self.drop_files_tester(urls):
+                file_paths = [url.toLocalFile() for url in urls]
+                self.open_files(filepaths=file_paths)
+                event.accept()
+            # Accept session files
+            elif urls and urls[0].toLocalFile().endswith('.igs'):
+                file_path = urls[0].toLocalFile()
+                self.load_session(filepath=file_path)
+                event.accept()
+            # Accept dropped folders
+            elif urls and self.drop_folders_tester(urls):
+                folder_paths = [url.toLocalFile() for url in urls]
+                for path in folder_paths:
+                    self.open_files_from_folder(rootdir=path)
+                event.accept()
+            else:
+                event.ignore()
+        else:
+            event.ignore()
 
     def show_metadata(self):
         item = self.file_list.currentItem()
