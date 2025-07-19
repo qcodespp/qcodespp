@@ -734,9 +734,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             # .dat files may belong to the same dataset
                             if os.path.isfile(subdir+'/snapshot.json'):
                                 already_linked=False
-                                for file in self.linked_files:
-                                    if subdir in file:
+                                paths=[item.filepath for item in self.get_all_items() if 
+                                       item.filepath not in ['internal_data','mixed_internal_data']]
+                                for file in paths:
+                                    if os.path.basename(subdir) in file:
                                         already_linked=True
+                                        break
                                 if not already_linked:
                                     try: # on Windows
                                         st_ctime = os.path.getctime(filepath)
@@ -763,7 +766,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 new_filepaths = [new_file[1] for new_file in new_files]
                 self.open_files(new_filepaths,load_the_data=False)
                 for new_filepath in new_filepaths:
-                    self.linked_files.append(new_filepath)              
+                    self.linked_files.append(new_filepath) 
                     
     def unlink_folder(self):
         if self.linked_folder:
