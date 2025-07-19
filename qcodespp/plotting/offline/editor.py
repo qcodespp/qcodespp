@@ -2453,8 +2453,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             row = self.filters_table.rowCount()
 
             filt = self.which_filters(current_item)[row]
-
-            self.filters_table.itemChanged.disconnect(self.filters_table_edited)
+            try:
+                self.filters_table.itemChanged.disconnect(self.filters_table_edited)
+            except Exception as e:
+                self.log_error(f'Error disconnecting itemChanged signal: {e}')
             self.filters_table.insertRow(row) 
             filter_item = QtWidgets.QTableWidgetItem(filt.name)
             filter_item.setFlags(QtCore.Qt.ItemIsSelectable | 
