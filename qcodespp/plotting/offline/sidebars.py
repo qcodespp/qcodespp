@@ -831,7 +831,7 @@ class Sidebar1D(QtWidgets.QWidget):
         for line in fit_lines:
             error=self.start_fitting(line,multilinefit=True)
             if error:
-                minilog.append(f'Linecut {line} could not be fitted: {error}')
+                minilog.append(f'Trace {line} could not be fitted: {error}')
         if len(minilog)>0:
             error_message = 'The following errors occurred while fitting:\n\n' + '\n\n'.join(minilog)
             self.ew = ErrorWindow(error_message)
