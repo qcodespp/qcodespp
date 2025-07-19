@@ -2528,7 +2528,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             data.linecuts[orientation]['linecut_window'].update()
         data.linecuts[orientation]['linecut_window'].show()
 
-    def copy_linecuts(self, orientation, item=None):
+    def copy_linecuts(self, orientation, item=None, lines=None):
         if not item:
             item = self.file_list.currentItem()
         if item:
@@ -2538,9 +2538,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if hasattr(data,'linecuts'):
                 try:
                     if orientation == 'all':
-                        self.copied_linecuts = [orientation,self.remove_linecutwindows_and_fits(item.data.linecuts,dirpath=None)]
+                        self.copied_linecuts = [orientation,self.remove_linecutwindows_and_fits(data.linecuts,dirpath=None)]
+                    elif lines is None:
+                        self.copied_linecuts = [orientation,self.remove_linecutwindows_and_fits(data.linecuts[orientation],dirpath=None)]
                     else:
-                        self.copied_linecuts = [orientation,self.remove_linecutwindows_and_fits(item.data.linecuts[orientation],dirpath=None)]
+                        linecut_dict={'lines':{}}
+                        for line in lines:
+                            linecut_dict['lines'][line] = self.remove_linecutwindows_and_fits(data.linecuts[orientation]['lines'][line],dirpath=None)
+                        self.copied_linecuts = [orientation,linecut_dict]
                 except Exception as e:
                     self.log_error(f'Error copying linecuts: {e}', show_popup=True)
             else:
@@ -2556,8 +2561,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         out_of_range=[]
 
-        for key,value in lines.items():
-            line = int(key+startindex)
+        for i,value in enumerate(lines.values()):
+            line = int(i+startindex)
             shape=data.processed_data[-1].shape
             if orientation == 'horizontal' and value['data_index'] >= shape[1]:
                 out_of_range.append(int(value['data_index']))

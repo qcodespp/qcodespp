@@ -70,7 +70,8 @@ class LineCutWindow(QtWidgets.QWidget):
         self.remove_cut_button = QtWidgets.QPushButton('Remove')
         self.clear_cuts_button = QtWidgets.QPushButton('Clear list')
 
-        self.copy_button = QtWidgets.QPushButton('Copy')
+        self.copy_button = QtWidgets.QPushButton('Copy all')
+        self.copy_checked_button = QtWidgets.QPushButton('Copy checked')
         self.paste_button = QtWidgets.QPushButton('Paste')
 
         self.generate_label = QtWidgets.QLabel('start,end,step,offset')
@@ -174,6 +175,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.remove_cut_button.clicked.connect(lambda: self.remove_cut('selected'))
         self.clear_cuts_button.clicked.connect(lambda: self.remove_cut('all'))
         self.copy_button.clicked.connect(self.copy_cuts)
+        self.copy_checked_button.clicked.connect(lambda: self.copy_cuts('checked'))
         self.paste_button.clicked.connect(self.paste_cuts)
         self.generate_button.clicked.connect(self.generate_cuts)
         self.move_up_button.clicked.connect(lambda: self.move_cut('up'))
@@ -246,6 +248,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.table_buttons_layout.addWidget(self.clear_cuts_button)
 
         self.copy_paste_layout.addWidget(self.copy_button)
+        self.copy_paste_layout.addWidget(self.copy_checked_button)
         self.copy_paste_layout.addWidget(self.paste_button)
 
         self.move_buttons_layout.addWidget(self.move_up_button)
@@ -400,12 +403,17 @@ class LineCutWindow(QtWidgets.QWidget):
         self.cuts_table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.cuts_table.customContextMenuRequested.connect(self.open_cuts_table_menu)
 
-    def copy_cuts(self):
+    def copy_cuts(self,which='all'):
         # Call on editor_window's method, but need to know which item this is; it's not necessarily the current item in the file list.
+        if which=='checked':
+            lines = self.get_checked_items(return_indices=False, cuts_or_fits='cuts')
+        else:
+            lines = None
+
         items = self.editor_window.get_all_items()
         for item in items:
             if item.data == self.parent:
-                self.editor_window.copy_linecuts(self.orientation, item)
+                self.editor_window.copy_linecuts(self.orientation, item,lines)
                 break
     
     def paste_cuts(self):
