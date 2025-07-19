@@ -385,9 +385,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.track_shortcut.activated.connect(self.track_button_clicked)
         self.save_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+S"), self)
         self.save_shortcut.activated.connect(self.save_image)
-        # self.copy_image_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+C"), self)
-        # self.copy_image_shortcut.activated.connect(self.copy_canvas_to_clipboard)
-        # Problem with the above is that you then can't copy text! or anything else.
+        self.copy_image_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+C"), self)
+        self.copy_image_shortcut.activated.connect(self.copy_canvas_to_clipboard)
         self.duplicate_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+D"), self)
         self.duplicate_shortcut.activated.connect(self.duplicate_item)
         self.save_session_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+S"),self)
@@ -400,7 +399,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.vertical_linecut_shortcut.activated.connect(lambda: self.make_linecut_window('vertical'))
         self.diagonal_linecut_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+D"), self)
         self.diagonal_linecut_shortcut.activated.connect(lambda: self.make_linecut_window('diagonal'))
-    
+        self.copy_linecuts_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Alt+C"), self)
+        self.copy_linecuts_shortcut.activated.connect(lambda: self.copy_linecuts('all'))
+        self.paste_linecuts_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Alt+V"), self)
+        self.paste_linecuts_shortcut.activated.connect(self.paste_linecuts)
+            
     def init_canvas(self):
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)

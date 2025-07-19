@@ -1557,7 +1557,7 @@
   </action>
   <action name="action_copy_plot_as_image">
    <property name="text">
-    <string>Copy plot as image</string>
+    <string>Copy plot as image (Ctrl+Shift+C)</string>
    </property>
   </action>
   <action name="action_track_data">
@@ -1597,12 +1597,12 @@
   </action>
   <action name="actionPasteLinecuts">
    <property name="text">
-    <string>Paste linecuts</string>
+    <string>Paste linecuts (Alt+V)</string>
    </property>
   </action>
   <action name="actionCopyLinecutsAll">
    <property name="text">
-    <string>All</string>
+    <string>All (Alt+C)</string>
    </property>
   </action>
   <action name="actionCopyLinecutsHorizontal">
