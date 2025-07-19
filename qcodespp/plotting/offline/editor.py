@@ -179,7 +179,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def __init__(self,folder=None,link_to_default=True):
         super().__init__()
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.window_title = 'Inspectra Gadget'
+        self.setWindowTitle('InSpectra Gadget')
         try:
             if sys.platform.startswith('win'):
                 icon_file = 'iconGadget.ico'
@@ -345,6 +345,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.actionPasteLinecuts.triggered.connect(self.paste_linecuts)
         self.action_filters.triggered.connect(self.save_filters)
         self.action_save_session.triggered.connect(self.save_session)
+        self.action_save_session_as.triggered.connect(lambda: self.save_session(save_as=True))
         self.action_restore_session.triggered.connect(self.load_session)
         self.action_combine_files.triggered.connect(self.combine_plots)
         self.action_duplicate_file.triggered.connect(self.duplicate_item)
@@ -364,7 +365,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.action_link_to_folder.triggered.connect(lambda: self.update_link_to_folder(new_folder=True))
         self.action_unlink_folder.triggered.connect(self.unlink_folder)
         self.action_track_data.triggered.connect(self.track_button_clicked)
+        self.action_refresh.triggered.connect(self.refresh_files)
         self.refresh_file_button.clicked.connect(self.refresh_files)
+        self.action_exit.triggered.connect(self.close)
         self.up_file_button.clicked.connect(lambda: self.move_file('up'))
         self.down_file_button.clicked.connect(lambda: self.move_file('down'))
         self.file_list.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
@@ -381,6 +384,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.link_shortcut.activated.connect(lambda: self.update_link_to_folder(new_folder=True))
         self.unlink_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+L"), self)
         self.unlink_shortcut.activated.connect(self.unlink_folder)
+        self.refresh_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+R"), self)
+        self.refresh_shortcut.activated.connect(self.refresh_files)
         self.track_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+T"), self)
         self.track_shortcut.activated.connect(self.track_button_clicked)
         self.save_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+S"), self)
@@ -422,6 +427,18 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.figure.subplots_adjust(top=0.893, bottom=0.137, 
                                     left=0.121, right=0.86)
         
+    def set_window_title(self):
+        if hasattr(self, 'linked_folder') and self.linked_folder:
+            linked_info = f' - Linked to {self.linked_folder}'
+        else:
+            linked_info = ''
+        if hasattr(self, 'session_filepath') and self.session_filepath:
+            session_name = f' - Session: {os.path.basename(self.session_filepath)}'
+        else:
+            session_name = ''
+        
+        self.setWindowTitle(f'InSpectra Gadget{linked_info}{self.window_title_auto_refresh}{session_name}')
+
     def load_data_item(self,filepath,load_the_data=True):
         filename, extension = os.path.splitext(filepath)
         if extension == '.npy': # Numpy files (old saved sessions)
@@ -704,8 +721,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         elif new_folder:
             self.linked_folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory to Link")
         if self.linked_folder:
-            self.window_title = f'InSpectra Gadget - Linked to folder {self.linked_folder}'
-            self.setWindowTitle(self.window_title+self.window_title_auto_refresh)
+            self.set_window_title()
             new_files = []
             for subdir, dirs, files in os.walk(self.linked_folder):
                 for file in files:
@@ -752,9 +768,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def unlink_folder(self):
         if self.linked_folder:
             self.linked_folder = None
-            self.window_title = 'InSpectra Gadget'
-            self.setWindowTitle(self.window_title+
-                                self.window_title_auto_refresh)
+            self.set_window_title()
             
     def refresh_files(self):
         checked_items = self.get_checked_items()
@@ -775,16 +789,22 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.file_list.setCurrentItem(last_item)
                 #self.track_button_clicked()
             
-    def save_session(self):
+    def save_session(self, save_as=False):
+        old_title = self.windowTitle()
+        saved=False
         current_item = self.file_list.currentItem()
         if current_item:
 
             try:
-                filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
-                    self, 'Save Session As...', '', '*.igs')
-                items = [self.file_list.item(n) for n in range(self.file_list.count())]
+                if save_as or not hasattr(self,'session_filepath'):
+                    filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
+                        self, 'Save Session As...', '', '*.igs')
+                else:
+                    filepath = self.session_filepath
         
                 if filepath:
+                    self.setWindowTitle(old_title + " - Saving session...")
+                    items = [self.file_list.item(n) for n in range(self.file_list.count())]
                     self.save_error_log=[]
                     dirpath = os.path.dirname(filepath)
 
@@ -848,6 +868,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         for filename in os.listdir(dirpath+'/igtemp'):
                             tar.add(dirpath+'/igtemp/'+filename, arcname='igtemp/'+filename, recursive=False)
 
+                    saved=True
+                    self.session_filepath = filepath
+
                     self.log_error(f'Session saved as {filepath}')
 
                     if len(self.save_error_log)>0:
@@ -855,16 +878,22 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                        show_popup=True)
                         
                     error = self.remove_temp_files(dirpath)
+
                     if error:
-                        message=(f'Error cleaning up temporary files after saving session: {e}\n'
-                                'However, the session should have been saved successfully (unless you were warned of any '
-                                'other errors) and you can safely delete the igtemp folder in the session directory.')
+                        message=(f'Error cleaning up temporary files after saving session: {error}\n'
+                                'This usually happens when a cloud service (e.g. OneDrive, Dropbox) tries to sync the temporary files '
+                                'exactly when InSpectra Gadget tries to delete them. '
+                                'Do not panic! The session should have been saved successfully (unless you were warned of any '
+                                'other errors) and you can safely delete the igtemp folder in the session directory, or let '
+                                'InSpectra Gadget do it next time you load or save a session.')
                         self.log_error(message, show_popup=True)
                     
                     del dictionary_list
 
             except Exception as e:
                 self.log_error(f'Error saving session: {e}', show_popup=True)
+        self.set_window_title()
+        return saved
 
     def remove_linecutwindows_and_fits(self,d,dirpath,exclude_key='linecut_window',exclude_key2='fit_result',
                                        exclude_key3='draggable_points'):
@@ -897,8 +926,20 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         return new_dict
 
-    def remove_temp_files(self,dirpath):
+    def remove_temp_files(self,dirpath,attempts=5):
         # Remove the temporary files created during session save/load. Returns an error message, or False (i.e. no error) if successful.
+        for attempt in range(attempts):
+            error = self.single_remove_attempt(dirpath)
+            if not error:
+                break
+            time.sleep(1)
+        if error:
+            return error
+        else:
+            return False
+
+    def single_remove_attempt(self,dirpath):
+        # Helper function to remove temporary files. Returns an error message, or False (i.e
         try:
             for filename in os.listdir(dirpath+'/igtemp'):
                 file_path = os.path.join(dirpath+'/igtemp', filename)
@@ -909,6 +950,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             return e
 
     def load_session(self):
+        old_title = self.windowTitle()
         # First warn the user they will lose any unsaved work.
         msg_box = QtWidgets.QMessageBox(self)
         msg_box.setIcon(QtWidgets.QMessageBox.Warning)
@@ -920,10 +962,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             return
 
         # Then prompt to load the session
-        filepath, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open Session', '', 'Inspectra Gadget session (*.igs)')
-        if filepath:
-            dirpath = os.path.dirname(filepath)
-
+        session_filepath, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open Session', '', 'Inspectra Gadget session (*.igs)')
+        if session_filepath:
+            dirpath = os.path.dirname(session_filepath)
+            self.setWindowTitle(old_title + " - Loading session...")
             # Try to remove any temporary files from any failed loads or saves
             if os.path.exists(dirpath+'/igtemp'):
                 error = self.remove_temp_files(dirpath)
@@ -932,12 +974,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
             if self.file_list.count() > 0:
                 self.remove_files('all')
-
-            # Extract the tarball to a temporary directory
-            with tarfile.open(filepath, 'r') as tar:
-                tar.extractall(dirpath)
-            # Load the numpy file containing the session data
+            
             try:
+                # Extract the tarball to a temporary directory
+                with tarfile.open(session_filepath, 'r') as tar:
+                    tar.extractall(dirpath)
+                # Load the numpy file containing the session data
+
                 data=np.load(dirpath+'/igtemp/numpyfile.npy', allow_pickle=True)
                 file_list=[]
                 for attr_dict in data:
@@ -974,6 +1017,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             self.open_files(file_list,load_the_data=False,attr_dicts=data,dirpath=dirpath)
                         except: # If it fails, the messages should occur during open_files. And we need to keep going, to ensure temporary files are deleted
                             pass
+                self.session_filepath = session_filepath
+                self.log_error(f'Session loaded from {session_filepath}')
                 del data
             except Exception as e:
                 self.log_error(f'Error loading session: {e}',show_popup=True)
@@ -986,6 +1031,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.log_error(message, show_popup=True)
 
             self.update_plots() # Necessary to ensure some settings are applied to the final plot.
+        self.set_window_title()
 
     def resolve_missing_files(self, filenames):
         resolved_files = []
@@ -1433,7 +1479,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.action_refresh_stop.setEnabled(True)
         self.auto_refresh_timer.start()
         self.window_title_auto_refresh = ' - Auto-Refreshing Enabled'
-        self.setWindowTitle(self.window_title+self.window_title_auto_refresh)
+        self.set_window_title()
         self.auto_refresh_call()
         
     def wait_for_file_call(self):
@@ -1456,17 +1502,17 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 else:
                     self.remaining_time_label.setText('')
             self.window_title_auto_refresh = ' - Auto-Refreshing Enabled (Refreshing...)'
-            self.setWindowTitle(self.window_title+self.window_title_auto_refresh)
+            self.set_window_title()
             self.refresh_files()
             self.window_title_auto_refresh = ' - Auto-Refreshing Enabled'
-            self.setWindowTitle(self.window_title+self.window_title_auto_refresh)
+            self.set_window_title()
         
     def stop_auto_refresh(self):
         self.track_button.setText('Track data')
         self.auto_refresh_timer.stop()
         self.action_refresh_stop.setEnabled(False)
         self.window_title_auto_refresh = ''
-        self.setWindowTitle(self.window_title+self.window_title_auto_refresh)
+        self.set_window_title()
         self.remaining_time_label.setText('')
         self.live_track_item.setText(self.live_track_item.data.label)
         
@@ -3352,5 +3398,21 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.elw = ErrorLogWindow(self.error_log)
 
     def closeEvent(self, event):
+        reply = QtWidgets.QMessageBox.question(
+            self,
+            "Save Session?",
+            "Do you want to save your session before closing?",
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No | QtWidgets.QMessageBox.Cancel
+        )
+        if reply == QtWidgets.QMessageBox.Yes:
+            saved=self.save_session()
+            if saved:
+                event.accept()
+            else:
+                event.ignore()
+        elif reply == QtWidgets.QMessageBox.No:
+            event.accept()
+        else:
+            event.ignore()
         for window in QtWidgets.QApplication.instance().topLevelWidgets():
             window.close()

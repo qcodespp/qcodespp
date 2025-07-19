@@ -1312,10 +1312,14 @@
     <addaction name="separator"/>
     <addaction name="action_link_to_folder"/>
     <addaction name="action_unlink_folder"/>
+    <addaction name="action_refresh"/>
     <addaction name="action_track_data"/>
     <addaction name="separator"/>
     <addaction name="action_save_session"/>
+    <addaction name="action_save_session_as"/>
     <addaction name="action_restore_session"/>
+    <addaction name="separator"/>
+    <addaction name="action_exit"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -1358,11 +1362,6 @@
   <action name="action_pdf">
    <property name="text">
     <string>PDF</string>
-   </property>
-  </action>
-  <action name="actionExit">
-   <property name="text">
-    <string>Quit...</string>
    </property>
   </action>
   <action name="actionQuit">
@@ -1633,6 +1632,21 @@
   <action name="actionOpenLinecutsDiagonal">
    <property name="text">
     <string>Diagonal (Ctrl+Shift+D)</string>
+   </property>
+  </action>
+  <action name="action_refresh">
+   <property name="text">
+    <string>Refresh (Ctrl+Shift+R)</string>
+   </property>
+  </action>
+  <action name="action_exit">
+   <property name="text">
+    <string>Exit</string>
+   </property>
+  </action>
+  <action name="action_save_session_as">
+   <property name="text">
+    <string>Save session as</string>
    </property>
   </action>
  </widget>
