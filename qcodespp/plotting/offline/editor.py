@@ -598,7 +598,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             item.data.sidebar1D = Sidebar1D(data,self)
             for line in data.plotted_lines.keys():
                 if 'fit' in data.plotted_lines[line].keys():
-                    data.plotted_lines[line]['fit']['fit_result'] = load_modelresult(dirpath+'/igtemp/'+data.plotted_lines[line]['fit']['fit_result']+'.sav')
+                    data.plotted_lines[line]['fit']['fit_result'] = load_lmfit_modelresult_s(data.plotted_lines[line]['fit']['fit_result'])
                 item.data.sidebar1D.append_trace_to_table(line)
             if item.checkState():
                 item.data.sidebar1D.update()
@@ -608,7 +608,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if len(data.linecuts[orientation]['lines']) > 0:
                 for line in data.linecuts[orientation]['lines'].keys():
                     if 'fit' in data.linecuts[orientation]['lines'][line].keys():
-                        data.linecuts[orientation]['lines'][line]['fit']['fit_result'] = load_modelresult(dirpath+'/igtemp/'+data.linecuts[orientation]['lines'][line]['fit']['fit_result']+'.sav')
+                        data.linecuts[orientation]['lines'][line]['fit']['fit_result'] = load_lmfit_modelresult_s(data.linecuts[orientation]['lines'][line]['fit']['fit_result'])
                     if 'draggable_points' in data.linecuts[orientation]['lines'][line].keys():
                         points=data.linecuts[orientation]['lines'][line]['points']
                         data.linecuts[orientation]['lines'][line]['draggable_points'] = [DraggablePoint(data,points[0][0],points[0][1],line,orientation),
@@ -909,9 +909,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def remove_linecutwindows_and_fits(self,d,dirpath,exclude_key='linecut_window',exclude_key2='fit_result',
                                        exclude_key3='draggable_points'):
-    # Remove linecut window object and lmfit object from the dictionary. Neither can be pickled. lmfit fit results are saved to
-    # file, added to the tarball, and loaded again when the session is loaded.
-    # If the fits should be saved to memory as a json string (using dumps instead of dump), pass dirpath=None
+    # Remove linecut window object, lmfit results, and draggable points from the dictionary. Neither can be pickled. 
+    # lmfit fit results are serialized as json strings, linecut windows are not special so are just removed, and 
+    # draggable points are also simply reinstated by knowing their co-ordinates, which are saved in the dictionary anyway.
+
         new_dict = {}
         for key, value in d.items():
             if isinstance(value, dict):
@@ -926,18 +927,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if exclude_key3 in new_dict:
             new_dict[exclude_key3] = None # Remove the draggable points object
 
-        if exclude_key2 in new_dict and dirpath is not None:
-            try:
-                save_modelresult(new_dict[exclude_key2], dirpath+'/igtemp/lmfit_result'+str(self.i).zfill(4)+'.sav') # Save the lmfit object to a file
-                new_dict[exclude_key2]='lmfit_result'+str(self.i).zfill(4) # Replace the lmfit model with the name.
-                self.i+=1
-            except Exception as e:
-                self.save_error_log.append(f'Error saving lmfit object during session save: {e}')
-        elif exclude_key2 in new_dict:
+        if exclude_key2 in new_dict:
             try:
                 new_dict[exclude_key2] = new_dict[exclude_key2].dumps() # Save the lmfit object as a json string
             except Exception as e:
-                self.save_error_log.append(f'Error saving lmfit object as json during session save: {e}')
+                self.save_error_log.append(f'Error saving fit result during session save: {e}')
                 new_dict[exclude_key2] = None
 
         return new_dict
