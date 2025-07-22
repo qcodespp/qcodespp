@@ -48,6 +48,7 @@ from qcodespp.plotting.offline.helpers import (cmaps, NavigationToolbarMod,
 from qcodespp.plotting.offline.filters import Filter
 from qcodespp.plotting.offline.datatypes import DataItem, BaseClassData, NumpyData, InternalData, MixedInternalData
 from qcodespp.plotting.offline.qcodes_pp_extension import qcodesppData
+from qcodespp.plotting.offline.fits import load_lmfit_modelresult_s
 
 from qcodespp.data.data_set import DataSetPP
 import sys
@@ -910,7 +911,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                        exclude_key3='draggable_points'):
     # Remove linecut window object and lmfit object from the dictionary. Neither can be pickled. lmfit fit results are saved to
     # file, added to the tarball, and loaded again when the session is loaded.
-    # If the fits shouldn't be saved and simply discarded, pass dirpath=None
+    # If the fits should be saved to memory as a json string (using dumps instead of dump), pass dirpath=None
         new_dict = {}
         for key, value in d.items():
             if isinstance(value, dict):
@@ -933,10 +934,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             except Exception as e:
                 self.save_error_log.append(f'Error saving lmfit object during session save: {e}')
         elif exclude_key2 in new_dict:
-            new_dict[exclude_key2] = None
+            try:
+                new_dict[exclude_key2] = new_dict[exclude_key2].dumps() # Save the lmfit object as a json string
+            except Exception as e:
+                self.save_error_log.append(f'Error saving lmfit object as json during session save: {e}')
+                new_dict[exclude_key2] = None
 
         return new_dict
-
+    
     def remove_temp_files(self,dirpath,attempts=5):
         # Remove the temporary files created during session save/load. Returns an error message, or False (i.e. no error) if successful.
         for attempt in range(attempts):
@@ -2644,6 +2649,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     points=data.linecuts[orientation]['lines'][line]['points']
                     data.linecuts[orientation]['lines'][line]['draggable_points'] = [DraggablePoint(data,points[0][0],points[0][1],line,orientation),
                     DraggablePoint(data,points[1][0],points[1][1],line,orientation,draw_line=True)]
+                elif 'fit' in data.linecuts[orientation]['lines'][line].keys():
+                    data.linecuts[orientation]['lines'][line]['fit']['fit_result'] = load_lmfit_modelresult_s(data.linecuts[orientation]['lines'][line]['fit']['fit_result'])
                 data.linecuts[orientation]['linecut_window'].append_cut_to_table(line)
         return out_of_range
     

@@ -1,6 +1,7 @@
 import numpy as np
 from lmfit import models as lmm
-from lmfit import Model
+from lmfit import Model, Parameters
+from lmfit.model import ModelResult
 from functools import partial
 
 # Fit functions
@@ -1244,3 +1245,24 @@ def fit_data(function_class,function_name, xdata, ydata, p0=None, inputinfo=None
     f = functions[function_class][function_name]['function']
     result = f(xdata,ydata,p0,inputinfo)
     return result
+
+def load_lmfit_modelresult_s(string, funcdefs=None):
+    """Load a saved ModelResult from a from a string
+
+    Parameters
+    ----------
+    string : str
+        JSON string containing saved ModelResult.
+    funcdefs : dict, optional
+        Dictionary of custom function names and definitions.
+
+    Returns
+    -------
+    ModelResult
+        ModelResult object loaded from string.
+
+    """
+    params = Parameters()
+    modres = ModelResult(Model(lambda x: x, None), params)
+    mresult = modres.loads(string, funcdefs=funcdefs)
+    return mresult
