@@ -558,17 +558,17 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                             elif attr=='dataset1d_plotted_lines':
                                 item.data.dataset1d.plotted_lines= attr_dicts[i][attr]
-                                self.reload_plotted_lines(item.data.dataset1d,dirpath,item)
+                                self.reload_plotted_lines(item.data.dataset1d,item)
 
                             elif attr=='dataset2d_linecuts':
                                 item.data.dataset2d.linecuts = attr_dicts[i][attr]
-                                self.reload_linecuts(item.data.dataset2d,dirpath,item.checkState())
+                                self.reload_linecuts(item.data.dataset2d,item.checkState())
 
                             if attr=='linecuts':
-                                self.reload_linecuts(item.data,dirpath,item.checkState())
+                                self.reload_linecuts(item.data,item.checkState())
 
                             if attr=='plotted_lines':
-                                self.reload_plotted_lines(item.data,dirpath,item)
+                                self.reload_plotted_lines(item.data,item)
 
                     else:
                         for setting in ['titlesize','labelsize','ticksize']:
@@ -593,7 +593,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             error_message = 'The following errors occurred while opening files:\n\n' + '\n\n'.join(minilog)
             self.ew = ErrorWindow(error_message)
 
-    def reload_plotted_lines(self,data,dirpath,item):
+    def reload_plotted_lines(self,data,item):
         if len(data.plotted_lines) > 0:
             item.data.sidebar1D = Sidebar1D(data,self)
             for line in data.plotted_lines.keys():
@@ -603,7 +603,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if item.checkState():
                 item.data.sidebar1D.update()
 
-    def reload_linecuts(self,data,dirpath,item_checkState):
+    def reload_linecuts(self,data,item_checkState):
         for orientation in data.linecuts.keys():
             if len(data.linecuts[orientation]['lines']) > 0:
                 for line in data.linecuts[orientation]['lines'].keys():
@@ -823,7 +823,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                     dictionary_list = []
                     os.makedirs(dirpath+'/igtemp', exist_ok=True)
-                    self.i=0 # Used to iterate over total number of lmfit results across all datafiles.
                     for item in items:
                         item_dictionary = {}
                         if hasattr(item,'filepath'):
@@ -843,11 +842,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                        'dataset1d_all_parameter_names','dataset2d_all_parameter_names',
                                        'dataset1d_dim','dataset2d_dim','show_2d_data'])
                             if hasattr(item.data.dataset2d,'linecuts'):
-                                item_dictionary['dataset2d_linecuts'] = self.remove_linecutwindows_and_fits(item.data.dataset2d.linecuts,
-                                                                                                            dirpath)
+                                item_dictionary['dataset2d_linecuts'] = self.remove_linecutwindows_and_fits(item.data.dataset2d.linecuts)
                             if hasattr(item.data.dataset1d,'plotted_lines'):
-                                item_dictionary['dataset1d_plotted_lines'] = self.remove_linecutwindows_and_fits(item.data.dataset1d.plotted_lines,
-                                                                                                                dirpath)
+                                item_dictionary['dataset1d_plotted_lines'] = self.remove_linecutwindows_and_fits(item.data.dataset1d.plotted_lines)
 
                         for attribute in attributes:
                             if hasattr(item.data,attribute):
@@ -861,18 +858,18 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                     item_dictionary['extra_cols'][colname]['channel'] = item.data.channels[colname]
 
                         if hasattr(item.data,'linecuts'):
-                            item_dictionary['linecuts'] = self.remove_linecutwindows_and_fits(item.data.linecuts,dirpath)
+                            item_dictionary['linecuts'] = self.remove_linecutwindows_and_fits(item.data.linecuts)
 
                         if hasattr(item.data,'plotted_lines'):
-                            item_dictionary['plotted_lines'] = self.remove_linecutwindows_and_fits(item.data.plotted_lines,
-                                                                                                   dirpath)
-                        
+                            item_dictionary['plotted_lines'] = self.remove_linecutwindows_and_fits(item.data.plotted_lines)
+
                         dictionary_list.append(item_dictionary)
 
                     from qcodespp import __version__
                     dictionary_list.append({
                         'qcodespp_version': __version__
                     })
+                    dictionary_list.append({'current_item': current_item.filepath})
 
                     # Save all needed files to a temperorary directory and add them to the tarball
                     np.save(dirpath+'/igtemp/numpyfile.npy', dictionary_list)
@@ -907,17 +904,17 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.set_window_title()
         return saved
 
-    def remove_linecutwindows_and_fits(self,d,dirpath,exclude_key='linecut_window',exclude_key2='fit_result',
+    def remove_linecutwindows_and_fits(self,d,exclude_key='linecut_window',exclude_key2='fit_result',
                                        exclude_key3='draggable_points'):
-    # Remove linecut window object, lmfit results, and draggable points from the dictionary. Neither can be pickled. 
-    # lmfit fit results are serialized as json strings, linecut windows are not special so are just removed, and 
-    # draggable points are also simply reinstated by knowing their co-ordinates, which are saved in the dictionary anyway.
+    # Remove linecut window object, lmfit results, and draggable points from the dictionary. None can be pickled. 
+    # lmfit fit results are serialized as json strings and saved in place. Linecut windows are not special so are just removed, and 
+    # draggable points are also removed and simply reinstated by knowing their co-ordinates, which are saved in the dictionary anyway.
 
         new_dict = {}
         for key, value in d.items():
             if isinstance(value, dict):
                 # Recurse into nested dictionaries
-                new_dict[key] = self.remove_linecutwindows_and_fits(value, dirpath,exclude_key,exclude_key2,exclude_key3)
+                new_dict[key] = self.remove_linecutwindows_and_fits(value,exclude_key,exclude_key2,exclude_key3)
             else:
                 # For non-dictionary values, just copy them
                 new_dict[key] = value
@@ -999,6 +996,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                 # Extract only the elements of the numpy array that are dictionaries representing data items
                 data=[item for item in numpy_file if isinstance(item, dict) and 'filepath' in item.keys()]
+                current_item_filepath = [item for item in numpy_file if isinstance(item, dict) and 'current_item' in item.keys()]
+                if len(current_item_filepath) > 0:
+                    current_item_filepath = current_item_filepath[0]['current_item']
                 file_list=[attr_dict['filepath'] for attr_dict in data]
 
                 # Use the resolve_missing_files function to check for missing files. Ask the user if they want to quit loading the session
@@ -1047,6 +1047,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
             self.update_plots() # Necessary to ensure some settings are applied to the final plot.
         self.set_window_title()
+        for item in self.get_all_items():
+            if item.filepath == current_item_filepath:
+                self.file_list.setCurrentItem(item)
+                self.file_clicked(item)
+                break
 
     def resolve_missing_files(self, filenames):
         resolved_files = []
@@ -1313,7 +1318,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def show_or_hide_view_settings(self):
         current_item = self.file_list.currentItem()
         if current_item:
-            if any([current_item.data.dim==3,isinstance(current_item.data, MixedInternalData)]):
+            if (hasattr(current_item, 'data') and (hasattr(current_item.data, 'dim') and current_item.data.dim == 3 
+                                                   or isinstance(current_item.data, MixedInternalData))):
                 self.stats_button.show()
                 for i in range(self.view_layout.rowCount()):
                     for j in range(self.view_layout.columnCount()):
@@ -2607,13 +2613,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if hasattr(data,'linecuts'):
                 try:
                     if orientation == 'all':
-                        self.copied_linecuts = [orientation,self.remove_linecutwindows_and_fits(data.linecuts,dirpath=None)]
+                        self.copied_linecuts = [orientation,self.remove_linecutwindows_and_fits(data.linecuts)]
                     elif lines is None:
-                        self.copied_linecuts = [orientation,self.remove_linecutwindows_and_fits(data.linecuts[orientation],dirpath=None)]
+                        self.copied_linecuts = [orientation,self.remove_linecutwindows_and_fits(data.linecuts[orientation])]
                     else:
                         linecut_dict={'lines':{}}
                         for line in lines:
-                            linecut_dict['lines'][line] = self.remove_linecutwindows_and_fits(data.linecuts[orientation]['lines'][line],dirpath=None)
+                            linecut_dict['lines'][line] = self.remove_linecutwindows_and_fits(data.linecuts[orientation]['lines'][line])
                         self.copied_linecuts = [orientation,linecut_dict]
                 except Exception as e:
                     self.log_error(f'Error copying linecuts: {e}', show_popup=True)
