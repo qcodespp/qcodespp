@@ -2088,6 +2088,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             # Copy filters to the correct location.
             self.which_filters(new_item,filters=copy.deepcopy(original_item.data.filters))
             #new_item.data.filters = copy.deepcopy(original_item.data.filters)
+            if (hasattr(original_item.data, 'linecuts') and
+                any([len(original_item.data.linecuts[orientation]['lines'])>0 for orientation in ['horizontal','vertical','diagonal']])):
+                self.copy_linecuts(orientation='all',item=original_item)
 
             # Naming the new item in the file-list. qcpp gets special treatment, assuming the counter always comes first in the filename.
             if isinstance(original_item.data, qcodesppData):
@@ -2159,6 +2162,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if new_plot_button and new_item.data.dim == 3:
                 self.plot_setting_edited(setting_name='X data')
             self.update_plots()
+            if (hasattr(original_item.data, 'linecuts') and
+                any([len(original_item.data.linecuts[orientation]['lines'])>0 for orientation in ['horizontal','vertical','diagonal']])):
+                self.paste_linecuts(new_item)
 
     def combine_plots(self):
         checked_items = self.get_checked_items()
