@@ -4,11 +4,8 @@ import os
 import copy
 from matplotlib.widgets import Cursor
 from matplotlib import cm, rcParams
-from qcodespp.plotting.offline.helpers import MidpointNormalize,DraggablePoint
+from qcodespp.plotting.offline.helpers import MidpointNormalize
 from qcodespp.plotting.offline.sidebars import Sidebar1D
-from qcodespp.plotting.offline.popupwindows import LineCutWindow
-
-from lmfit.model import save_modelresult, load_modelresult
 
 class DataItem(QtWidgets.QListWidgetItem):
     def __init__(self, data):
@@ -428,64 +425,67 @@ class BaseClassData:
         self.hax.get_xaxis().set_visible(False)
         self.hax.get_yaxis().set_visible(False)
 
-    def add_plot(self, editor_window=None):
+    def add_plot(self, editor_window):
         if self.processed_data:
-            cmap_str = self.view_settings['Colormap']
-            if self.view_settings['Reverse']:
-                cmap_str += '_r'
-            cmap = cm.get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
-            cmap.set_bad(self.settings['maskcolor'])
+            try:
+                cmap_str = self.view_settings['Colormap']
+                if self.view_settings['Reverse']:
+                    cmap_str += '_r'
+                cmap = cm.get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
+                cmap.set_bad(self.settings['maskcolor'])
 
-            if self.dim == 2:
-                if not hasattr(self, 'plotted_lines'):
-                    self.init_plotted_lines()
-                if not hasattr(self, 'sidebar1D'):
-                    self.sidebar1D = Sidebar1D(self,editor_window=editor_window)
-                    self.sidebar1D.running = True
-                    self.sidebar1D.append_trace_to_table(0)
-                self.sidebar1D.update()
+                if self.dim == 2:
+                    if not hasattr(self, 'plotted_lines'):
+                        self.init_plotted_lines()
+                    if not hasattr(self, 'sidebar1D'):
+                        self.sidebar1D = Sidebar1D(self,editor_window=editor_window)
+                        self.sidebar1D.running = True
+                        self.sidebar1D.append_trace_to_table(0)
+                    self.sidebar1D.update()
 
-                # This is horrible, but I need to get rid of these. Ideally I would re-write the extension so they're
-                # not used at all in the 1D case. Will try later.
-                if 'X data' in self.settings.keys():
+                    # This is horrible, but I need to get rid of these. Ideally I would re-write the extension so they're
+                    # not used at all in the 1D case. Will try later.
+                    if 'X data' in self.settings.keys():
+                        self.settings.pop('X data')
+                    if 'Y data' in self.settings.keys():
+                        self.settings.pop('Y data')
+
+                elif self.dim == 3:
+                    norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
+                                            vmax=self.view_settings['Maximum'], 
+                                            midpoint=self.view_settings['Midpoint'])
+                    self.image = self.axes.pcolormesh(self.processed_data[0], 
+                                                    self.processed_data[1], 
+                                                    self.processed_data[2], 
+                                                    shading=self.settings['shading'], 
+                                                    norm=norm, cmap=cmap,
+                                                    rasterized=self.settings['rasterized'])
+                    if self.settings['colorbar'] == 'True':
+                        self.cbar = self.figure.colorbar(self.image)
+                        if self.view_settings['CBarHist'] == True:
+                            self.add_cbar_hist()
+
+                if not self.labels_changed:
+                    self.apply_default_lables()
+
+                self.cursor = Cursor(self.axes, useblit=True, 
+                                    color='black', linewidth=0.5)
+
+                # Below removes data options for data types where selecting
+                # axes data from the settings menu isn't implemented.
+                # Remove if implemented for all data types one day.
+                if 'X data' in self.settings.keys() and self.settings['X data'] == '':
                     self.settings.pop('X data')
-                if 'Y data' in self.settings.keys():
+                if 'Y data' in self.settings.keys() and self.settings['Y data'] == '':
                     self.settings.pop('Y data')
+                if 'Z data' in self.settings.keys() and self.settings['Z data'] == '':
+                    self.settings.pop('Z data')
 
-            elif self.dim == 3:
-                norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
-                                         vmax=self.view_settings['Maximum'], 
-                                         midpoint=self.view_settings['Midpoint'])
-                self.image = self.axes.pcolormesh(self.processed_data[0], 
-                                                  self.processed_data[1], 
-                                                  self.processed_data[2], 
-                                                  shading=self.settings['shading'], 
-                                                  norm=norm, cmap=cmap,
-                                                  rasterized=self.settings['rasterized'])
-                if self.settings['colorbar'] == 'True':
-                    self.cbar = self.figure.colorbar(self.image)
-                    if self.view_settings['CBarHist'] == True:
-                        self.add_cbar_hist()
-
-            if not self.labels_changed:
-                self.apply_default_lables()
-
-            self.cursor = Cursor(self.axes, useblit=True, 
-                                 color='black', linewidth=0.5)
-
-            # Below removes data options for data types where selecting
-            # axes data from the settings menu isn't implemented.
-            # Remove if implemented for all data types one day.
-            if 'X data' in self.settings.keys() and self.settings['X data'] == '':
-                self.settings.pop('X data')
-            if 'Y data' in self.settings.keys() and self.settings['Y data'] == '':
-                self.settings.pop('Y data')
-            if 'Z data' in self.settings.keys() and self.settings['Z data'] == '':
-                self.settings.pop('Z data')
-
-            self.apply_plot_settings()
-            self.apply_axlim_settings()
-            self.apply_axscale_settings()
+                self.apply_plot_settings()
+                self.apply_axlim_settings()
+                self.apply_axscale_settings()
+            except Exception as e:
+                editor_window.log_error(f"Error while plotting {self.label}: {e}")
 
     def apply_default_lables(self):
         if 'default_xlabel' in self.settings.keys():
@@ -824,7 +824,7 @@ class MixedInternalData(BaseClassData):
         self.show_2d_data = True
 
         # Reload both datasets to ensure completely distinct objects.
-        from qcodespp.plotting.offline.qcodes_pp_extension import qcodesppData
+        from qcodespp.plotting.offline.qcodespp_extension import qcodesppData
 
         if dataset2d_type == qcodesppData:
             self.dataset2d = qcodesppData(dataset2d_filepath,canvas,os.path.dirname(dataset2d_filepath)+'/snapshot.json',load_the_data=True)
@@ -879,7 +879,7 @@ class MixedInternalData(BaseClassData):
     def reset_view_settings(self):
         self.dataset2d.reset_view_settings()
 
-    def add_plot(self, editor_window=None):
+    def add_plot(self, editor_window):
         self.dataset2d.axes=self.axes
         self.dataset2d.figure=self.figure
         self.dataset1d.axes=self.axes

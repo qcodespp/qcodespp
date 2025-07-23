@@ -47,7 +47,7 @@ from qcodespp.plotting.offline.helpers import (cmaps, NavigationToolbarMod,
                       NoScrollQComboBox,DraggablePoint)
 from qcodespp.plotting.offline.filters import Filter
 from qcodespp.plotting.offline.datatypes import DataItem, BaseClassData, NumpyData, InternalData, MixedInternalData
-from qcodespp.plotting.offline.qcodes_pp_extension import qcodesppData
+from qcodespp.plotting.offline.qcodespp_extension import qcodesppData
 from qcodespp.plotting.offline.fits import load_lmfit_modelresult_s
 
 from qcodespp.data.data_set import DataSetPP
@@ -1237,7 +1237,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.log_error('No processed data to export', show_popup=True)
                
     def file_checked(self, item):
-
         if item.checkState() == 2:
             self.file_list.setCurrentItem(item)
             self.show_or_hide_mixeddata_widgets()

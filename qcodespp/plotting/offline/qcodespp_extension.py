@@ -35,7 +35,7 @@ class qcodesppData(BaseClassData):
                     self.channels[col] = old_chans[col]
             del old_chans
 
-        # Load the data itself
+        # Load the data itself. Will not be loaded if loading/linking from a folder.
         if load_the_data:
             self.load_data_from_file()
         else:
