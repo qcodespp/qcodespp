@@ -1223,24 +1223,82 @@ functions['Statistics']['Statistics']['function']=statistics
 functions['Statistics']['Statistics']['default_inputs'] = 'all'
 
 
-# functions to return different parts of the functions dictionary. Makes it easier to call in main
+# functions to return different parts of the functions dictionary. Makes it easier to call in InSpectra Gadget
 def get_class_names():
+    """Get the names of the function classes available for fitting.
+    
+    Returns:
+        list: A list of function class names."""
     return functions.keys()
 
 def get_function(function_class,function_name):
+    """Get the function object for a given function class and name.
+
+    Args:
+        function_class (str): The class of the function, e.g. 'Polynomials and powers'.
+        function_name (str): The name of the function, e.g. 'Linear'.
+    Returns:
+        function: The function object corresponding to the class and name.
+    """
     return functions[function_class][function_name]['function']
 
 def get_names(fitclass='Polynomials and powers'):
+    """Get the names of the functions available in a given class.
+
+    Args:
+        fitclass (str): The class of the function, e.g. 'Polynomials and powers'.
+    Returns:
+        list: A list of function names available in the specified class.
+    """
     return functions[fitclass].keys()
     
 def get_parameters(function_class,function_name):
+    """Get the parameters required for a given function class and name.
+
+    Args:
+        function_class (str): The class of the function, e.g. 'Polynomials and powers'.
+        function_name (str): The name of the function, e.g. 'Linear'.
+    Returns:
+        list: A list of parameter names required for the specified function.
+    """
     return functions[function_class][function_name]['parameters']
 
 def get_description(function_class,function_name):
+    """Get the description of a given function class and name.
+
+    Args:
+        function_class (str): The class of the function, e.g. 'Polynomials and powers'.
+        function_name (str): The name of the function, e.g. 'Linear'.
+    Returns:
+        str: A description of the specified function, including how to format initial guesses and input information.
+    """
     return functions[function_class][function_name]['description']
 
 # Entry point for fitting the data. Passes info along to relevant functions and returns the fit result
 def fit_data(function_class,function_name, xdata, ydata, p0=None, inputinfo=None):
+    """Entry point for fitting data.
+
+    Pass the function class and name, along with the x and y data, initial guesses, and any additional input information.
+    Available classes, names and descriptions can be found either in the ``functions`` dictionary or by using 
+    ``get_class_names()``, ``get_names(function_class)`` and ``get_description(function_class, function_name)``.
+    The description contains how to format initial guesses and input information.
+
+    Args:
+        function_class : str
+            The class of the function to fit, e.g. 'Polynomials and powers'.
+        function_name : str
+            The name of the function to fit, e.g. 'Linear'.
+        xdata : 1D array-like
+            The x data to fit.
+        ydata : 1D array-like
+            The y data to fit.
+        p0 : list, optional
+            Initial guesses for the parameters of the fit function.
+        inputinfo : str, optional
+            Additional input information required by the fit function.
+            
+    Returns:
+        result : lmfit ModelResult or Exception"""
     # all fit functions get called through the dictionary
     f = functions[function_class][function_name]['function']
     result = f(xdata,ydata,p0,inputinfo)
@@ -1249,7 +1307,7 @@ def fit_data(function_class,function_name, xdata, ydata, p0=None, inputinfo=None
 def load_lmfit_modelresult_s(string, funcdefs=None):
     """Load a saved ModelResult from a from a string
 
-    Parameters
+    Arguments
     ----------
     string : str
         JSON string containing saved ModelResult.
