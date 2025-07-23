@@ -2182,9 +2182,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     label_name+=item.data.label[:15]+'..., '
 
                 if any([isinstance(item,MixedInternalData) for item in data_list]):
-                    raise ValueError('Cannot combine mixed 1D and 2D datasets with other datasets.')
-                # If sets of 2D datasets, stack them along the x-axis. Requires y axis has same dimension for all datasets
-                if all([item.dim == 3 for item in data_list]):
+                    # MixedInternalData cannot be combined any further.
+                    self.log_error('Cannot combine mixed 1D and 2D datasets with other datasets.', show_popup=True)
+
+                elif not all(hasattr(item, 'dim') for item in data_list):
+                    # If any item doesn't have a dim, it's because the data is not loaded yet. 
+                    self.log_error(f'Cannot combine items: data from one or more items not yet loaded.', show_popup=True)
+
+                elif all([item.dim == 3 for item in data_list]):
+                    # If sets of 2D datasets, stack them along the x-axis. Requires y axis has same dimension for all datasets
                     if not all(item.all_parameter_names == data_list[0].all_parameter_names for item in data_list):
                         self.log_error(f'Cannot combine 2D datasets with different parameters.', show_popup=True)
                         raise ValueError('Cannot combine 2D datasets with different parameters.')
