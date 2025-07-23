@@ -158,20 +158,6 @@ class BaseClassData:
                                     'Divide': allnames,
                                     'Add/Subtract': allnames}
         
-
-    def add_array_to_data_dict(self, array, name):
-        self.data_dict[name] = array
-        self.all_parameter_names=list(self.data_dict.keys())
-        self.settings_menu_options['X data']=self.all_parameter_names
-        self.settings_menu_options['Y data']=self.all_parameter_names
-        self.settings_menu_options['Z data']=self.all_parameter_names
-        negparamnames=[f'-{name}' for name in self.all_parameter_names]
-        allnames=np.hstack((self.all_parameter_names,negparamnames))
-        self.filter_menu_options['Multiply']=allnames
-        self.filter_menu_options['Divide']=allnames
-        self.filter_menu_options['Add/Subtract']=allnames
-        #self.prepare_data_for_plot(reload_from_file=False)
-
     def get_column_data(self,line=None):
         if line is not None:
             names = [self.plotted_lines[line]['X data'],
@@ -269,24 +255,9 @@ class BaseClassData:
                 array = np.fliplr(array)
             return array
         
-    def filttocol(self, axis):
-        axes={'X': 0, 'Y': 1, 'Z': 2}
-        if hasattr(self, 'sidebar1D'):
-            current_1D_row = self.sidebar1D.trace_table.currentRow()
-            current_line = int(self.sidebar1D.trace_table.item(current_1D_row,0).text())
-            processed_data = self.plotted_lines[current_line]['processed_data'][axes[axis]]
-            colname=f'Filtered: {self.plotted_lines[current_line][f'{axis} data']}'
-            self.all_parameter_names.append(colname)
-            self.data_dict[colname] = processed_data
-        else:
-            processed_data = self.processed_data[axes[axis]]
-            colname= f'Filtered: {self.settings[f'{axis} data']}'
-            self.all_parameter_names.append(colname)
-            self.data_dict[colname] = processed_data.flatten()
-
-        if not hasattr(self, 'extra_cols'):
-            self.extra_cols = []
-        self.extra_cols.append(colname)
+    def add_array_to_data_dict(self, array, name):
+        self.data_dict[name] = array
+        self.all_parameter_names=list(self.data_dict.keys())
 
         for label in ['X data', 'Y data', 'Z data']:
             self.settings_menu_options[label]= self.all_parameter_names
@@ -294,6 +265,23 @@ class BaseClassData:
         allnames=np.hstack((self.all_parameter_names,negparamnames))
         for filtname in ['Multiply', 'Divide', 'Add/Subtract']:
             self.filter_menu_options[filtname]=allnames
+
+        if not hasattr(self, 'extra_cols'):
+            self.extra_cols = []
+        self.extra_cols.append(name)
+
+    def filttocol(self, axis):
+        axes={'X': 0, 'Y': 1, 'Z': 2}
+        if hasattr(self, 'sidebar1D'):
+            current_1D_row = self.sidebar1D.trace_table.currentRow()
+            current_line = int(self.sidebar1D.trace_table.item(current_1D_row,0).text())
+            data_to_send = self.plotted_lines[current_line]['processed_data'][axes[axis]]
+            colname=f'Filtered: {self.plotted_lines[current_line][f'{axis} data']}'
+        else:
+            data_to_send = self.processed_data[axes[axis]]
+            colname= f'Filtered: {self.settings[f'{axis} data']}'
+
+        self.add_array_to_data_dict(data_to_send, colname)
 
     def copy_raw_to_processed_data(self,line=None):
         if line is not None:

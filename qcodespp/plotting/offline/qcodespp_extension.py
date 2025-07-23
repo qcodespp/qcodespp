@@ -28,12 +28,14 @@ class qcodesppData(BaseClassData):
         # "Channels" is the meta info about the data arrays. Contains the label, unit and whether its a setpoint.
         if hasattr(self, 'extra_cols'):
             # Then we are loading from a saved session, and we need to preserve the extra columns that were generated
+            print(self.channels)
             old_chans = copy.deepcopy(self.channels)
         self.channels = self.meta['arrays']
         if hasattr(self, 'extra_cols'):
             for col in self.extra_cols:
                 if col in old_chans.keys():
                     self.channels[col] = old_chans[col]
+            print(self.channels)
             del old_chans
 
         # Load the data itself. Will not be loaded if loading/linking from a folder.
@@ -52,6 +54,7 @@ class qcodesppData(BaseClassData):
         if hasattr(self, 'extra_cols'):
         # Processed data that has been added to the data_dict. Need to preserve it!
             old_dict = copy.deepcopy(self.data_dict)
+            print(self.data_dict)
 
         self.data_dict = self.dataset.arrays.copy()
 
@@ -60,6 +63,7 @@ class qcodesppData(BaseClassData):
             for col in self.extra_cols:
                 if col in old_dict.keys():
                     self.data_dict[col] = old_dict[col]
+            print(self.data_dict)
             del old_dict
 
         self.prepare_dataset()
@@ -122,13 +126,13 @@ class qcodesppData(BaseClassData):
                                     'Divide': allnames,
                                     'Add/Subtract': allnames}
         
-        self.dims = self.data_dict[self.dependent_parameter_names[0]].shape # The dimension of each array.
+        self.dims = np.shape(self.data_dict[self.dependent_parameter_names[0]]) # The dimension of each array.
         # Remove NaNs from the data_dict if they are present from a prematurely stopped Loop
         if not self.nans_removed and not self.isFinished():
             for key in self.data_dict.keys():
                 self.data_dict[key]= self.data_dict[key][:len(self.set_x)-1]
             self.nans_removed = True
-            self.dims = self.data_dict[self.dependent_parameter_names[0]].shape
+            self.dims = np.shape(self.data_dict[self.dependent_parameter_names[0]])
 
     def isFinished(self):
         self.set_x = self.data_dict[self.all_parameter_names[0]]
@@ -217,8 +221,8 @@ class qcodesppData(BaseClassData):
             column_data = None
         
         if column_data is not None:
-            self.dims=column_data[0].shape # Update the dims to match the data shape
-        
+            self.dims=np.shape(column_data[0]) # Update the dims to match the data shape
+
         return column_data
 
     def load_and_reshape_data(self, reload_data=False,reload_from_file=True,linefrompopup=None):
@@ -301,36 +305,14 @@ class qcodesppData(BaseClassData):
             
         return processed_data
     
-    def filttocol(self, axis):
-        axes={'X': 0, 'Y': 1, 'Z': 2}
-        if hasattr(self, 'sidebar1D'):
-            current_1D_row = self.sidebar1D.trace_table.currentRow()
-            current_line = int(self.sidebar1D.trace_table.item(current_1D_row,0).text())
-            processed_data = self.plotted_lines[current_line]['processed_data'][axes[axis]]
-            paramname = self.plotted_lines[current_line][f'{axis} data']
-            colname= f'Filtered: {paramname}'
-            self.dependent_parameter_names.append(colname)
-            self.all_parameter_names.append(colname)
-            self.data_dict[colname] = processed_data
-            self.channels[colname] = {'label': colname,
-                                        'unit': self.channels[paramname]['unit'],
-                                        'array_id': colname,
+    def add_array_to_data_dict(self, array, name):
+        self.data_dict[name] = array
+        self.all_parameter_names=list(self.data_dict.keys())
+        self.dependent_parameter_names.append(name)
+        self.channels[name] = {'label': name,
+                                        'unit': '',
+                                        'array_id': name,
                                         'is_setpoint': False}
-        else:
-            processed_data = self.processed_data[axes[axis]]
-            paramname = self.settings[f'{axis} data']
-            colname= f'Filtered: {paramname}'
-            self.dependent_parameter_names.append(colname)
-            self.all_parameter_names.append(colname)
-            self.data_dict[colname] = processed_data
-            self.channels[colname] = {'label': colname,
-                                        'unit': self.channels[paramname]['unit'],
-                                        'array_id': colname,
-                                        'is_setpoint': False}
-            
-        if not hasattr(self, 'extra_cols'):
-            self.extra_cols = []
-        self.extra_cols.append(colname)
 
         for label in ['X data', 'Y data', 'Z data']:
             self.settings_menu_options[label]= self.all_parameter_names
@@ -338,3 +320,27 @@ class qcodesppData(BaseClassData):
         allnames=np.hstack((self.all_parameter_names,negparamnames))
         for filtname in ['Multiply', 'Divide', 'Add/Subtract']:
             self.filter_menu_options[filtname]=allnames
+
+        if not hasattr(self, 'extra_cols'):
+            self.extra_cols = []
+        self.extra_cols.append(name)
+    
+    def filttocol(self, axis):
+        axes={'X': 0, 'Y': 1, 'Z': 2}
+        if hasattr(self, 'sidebar1D'):
+            current_1D_row = self.sidebar1D.trace_table.currentRow()
+            current_line = int(self.sidebar1D.trace_table.item(current_1D_row,0).text())
+            data_to_send = self.plotted_lines[current_line]['processed_data'][axes[axis]]
+            paramname = self.plotted_lines[current_line][f'{axis} data']
+
+        else:
+            data_to_send = self.processed_data[axes[axis]]
+            paramname = self.settings[f'{axis} data']
+        
+        colname= f'Filtered: {paramname}'
+        self.add_array_to_data_dict(data_to_send, colname)
+
+        self.channels[colname] = {'label': colname,
+                                        'unit': self.channels[paramname]['unit'],
+                                        'array_id': colname,
+                                        'is_setpoint': False}
