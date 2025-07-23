@@ -466,7 +466,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             item = DataItem(BaseClassData(filepath, self.canvas))
             return item
 
-    def open_files(self, filepaths=None, load_the_data=True, attr_dicts=None, dirpath=None,overrideautocheck=False):
+    def open_files(self, filepaths=None, load_the_data=True, attr_dicts=None, overrideautocheck=False):
         self.file_list.itemClicked.disconnect(self.file_clicked)
         self.file_list.itemChanged.disconnect(self.file_checked)
         minilog=[]
@@ -889,12 +889,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     error = self.remove_temp_files(dirpath)
 
                     if error:
-                        message=(f'Error cleaning up temporary files after saving session: {error}\n'
-                                'This usually happens when a cloud service (e.g. OneDrive, Dropbox) tries to sync the temporary files '
-                                'exactly when InSpectra Gadget tries to delete them. '
+                        message=(f'Error cleaning up temporary files after saving session: {error}\n\n'
                                 'Do not panic! The session should have been saved successfully (unless you were warned of any '
-                                'other errors) and you can safely delete the igtemp folder in the session directory, or let '
-                                'InSpectra Gadget do it next time you load or save a session.')
+                                'other errors). You can safely delete the igtemp folder in the session directory if you like, '
+                                'or simply let InSpectra Gadget delete it next time you load or save a session.'
+                                'This usually happens if a cloud service tries to sync the temporary files '
+                                'exactly when InSpectra Gadget is trying to delete them.')
                         self.log_error(message, show_popup=True)
                     
                     del dictionary_list
@@ -1021,7 +1021,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 data = [data[i] for i in range(len(data)) if data[i]['filepath'].replace('\\','/') not in unresolved_files]
                                 for i, filepath in enumerate(file_list):
                                     data[i]['filepath'] = filepath
-                                self.open_files(file_list,load_the_data=False,attr_dicts=data,dirpath=dirpath)
+                                self.open_files(file_list,load_the_data=False,attr_dicts=data)
                             except:
                                 pass
                     else:
@@ -1029,7 +1029,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         try:
                             for i, filepath in enumerate(file_list):
                                 data[i]['filepath'] = filepath
-                            self.open_files(file_list,load_the_data=False,attr_dicts=data,dirpath=dirpath)
+                            self.open_files(file_list,load_the_data=False,attr_dicts=data)
                         except: # If it fails, the messages should occur during open_files. And we need to keep going, to ensure temporary files are deleted
                             pass
                 self.session_filepath = session_filepath

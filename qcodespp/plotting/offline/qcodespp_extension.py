@@ -21,7 +21,8 @@ class qcodesppData(BaseClassData):
         self.settings["title"] = '#'+self.label#[:120]#self.dataset_id
         self.DEFAULT_PLOT_SETTINGS['title']= '#'+self.label#[:120]#self.dataset_id
 
-        self.plot_type=None
+        self.plot_type = None
+        self.raw_data = None
         self.nans_removed = False
 
         # "Channels" is the meta info about the data arrays. Contains the label, unit and whether its a setpoint.
@@ -122,11 +123,6 @@ class qcodesppData(BaseClassData):
                                     'Add/Subtract': allnames}
         
         self.dims = self.data_dict[self.dependent_parameter_names[0]].shape # The dimension of each array.
-        if self.dim==3:
-            # Massage the X data into the correct shape (in qcodespp it's always 1D)
-            if np.shape(self.data_dict[self.independent_parameter_names[0]].shape) == (1,):
-                self.data_dict[self.independent_parameter_names[0]] = np.repeat(self.data_dict[self.independent_parameter_names[0]], self.dims[1]).reshape(self.dims)
-
         # Remove NaNs from the data_dict if they are present from a prematurely stopped Loop
         if not self.nans_removed and not self.isFinished():
             for key in self.data_dict.keys():
@@ -182,8 +178,29 @@ class qcodesppData(BaseClassData):
             ydata = self.data_dict[self.settings['Y data']]
             zdata = self.data_dict[self.settings['Z data']]
 
-            column_data = [xdata, ydata, zdata]
-
+            # Ensure shapes are correct, and account for situation where qcodespp X data is plotted on either the X or Y axis.
+            # Assume no-one will ever plot it on the Z axis...
+            if ydata.shape == zdata.shape:
+                if xdata.shape == zdata.shape: # Then we are happy
+                    column_data = [xdata, ydata, zdata]
+                elif len(xdata.shape) == 1 and xdata.shape[0] == zdata.shape[0]: # If X data is 1D, we need to repeat it to match the Y and Z data
+                    xdata = np.repeat(xdata, ydata.shape[1]).reshape(zdata.shape)
+                    column_data = [xdata, ydata, zdata]
+                else:
+                    # If X data doesn't match, we can't plot it sensibly
+                    column_data = None
+            elif xdata.shape == zdata.shape:
+                if len(ydata.shape) == 1 and ydata.shape[0] == zdata.shape[0]:
+                    # If Y data is 1D, we need to repeat it to match the X and Z data
+                    ydata = np.repeat(ydata, zdata.shape[1]).reshape(zdata.shape)
+                    column_data = [xdata, ydata, zdata]
+                else:
+                    # If Y data doesn't match, we can't plot it sensibly
+                    column_data = None
+            else: # Neither X nor Y data match Z data, so there is no chance of plotting; can happen when multiple array
+                # dimensions are present in the dataset. Pass until the user selects something sensible.
+                column_data = None
+            
             self.settings['ylabel'] = (f'{self.channels[self.settings['Y data']]['label']} '
                                     f'({self.channels[self.settings['Y data']]['unit']})')
             self.settings['clabel'] = (f'{self.channels[self.settings['Z data']]['label']} '
@@ -198,7 +215,10 @@ class qcodesppData(BaseClassData):
 
         else:
             column_data = None
-
+        
+        if column_data is not None:
+            self.dims=column_data[0].shape # Update the dims to match the data shape
+        
         return column_data
 
     def load_and_reshape_data(self, reload_data=False,reload_from_file=True,linefrompopup=None):
@@ -206,9 +226,17 @@ class qcodesppData(BaseClassData):
         # Just load the data if necessary, and then choose the right columns/parameters to plot.
 
         if not self.data_loaded or (reload_data and reload_from_file):
-            self.load_data_from_file()        
+            self.load_data_from_file()
 
+        # qcodespp datasets can contain arrays of different shapes. If the user is trying to change them, they can't
+        # change all of them at once. Instead of giving an error, just keep the old state.
+        old_raw_data = copy.deepcopy(self.raw_data)
         self.raw_data = self.get_column_data(line=linefrompopup)
+        if self.raw_data is None:
+            self.raw_data = old_raw_data
+            self.dimension_mismatch = True
+        else:
+            self.dimension_mismatch = False
 
         if self.dim == 3: # For 2D data, we do a couple of checks.
             if self.dims[0] > 1: # If two or more sweeps are finished

@@ -464,6 +464,12 @@ class BaseClassData:
                         self.cbar = self.figure.colorbar(self.image)
                         if self.view_settings['CBarHist'] == True:
                             self.add_cbar_hist()
+                    if hasattr(self, 'dimension_mismatch') and self.dimension_mismatch:
+                        self.axes.text(0.5, 0.5, 'Cannot plot arrays of\ndifferent shape,\n plot not updated', 
+                                       horizontalalignment='center', 
+                                       verticalalignment='center', 
+                                       transform=self.axes.transAxes, 
+                                       fontsize=20, color='white')
 
                 if not self.labels_changed:
                     self.apply_default_lables()
