@@ -4,11 +4,8 @@ import os
 import copy
 from matplotlib.widgets import Cursor
 from matplotlib import cm, rcParams
-from qcodespp.plotting.offline.helpers import MidpointNormalize,DraggablePoint
+from qcodespp.plotting.offline.helpers import MidpointNormalize
 from qcodespp.plotting.offline.sidebars import Sidebar1D
-from qcodespp.plotting.offline.popupwindows import LineCutWindow
-
-from lmfit.model import save_modelresult, load_modelresult
 
 class DataItem(QtWidgets.QListWidgetItem):
     def __init__(self, data):
@@ -95,86 +92,77 @@ class BaseClassData:
             self.loaded_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'])
         except ValueError: # Can occur if python doesn't recognise a header
             self.loaded_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'],skip_header=1)
-        
-        if self.settings['transpose'] == 'False':
-            self.loaded_data = np.transpose(self.loaded_data)
 
-        if hasattr(self, 'extra_cols'):
-            # Processed data that has been added to the data_dict. Need to preserve it!
-            old_dict = copy.deepcopy(self.data_dict)
-        
-        self.data_dict={}
-        try: # to get column names if there is a header. Avoid using genfromtxt as it doesn't have enough options to work all the time.
-            with open(self.filepath, 'r') as f:
-                header = f.readline()
-            if header.startswith('#'):
-                header = header[1:]
-                if self.settings['delimiter']:
-                    self.all_parameter_names = header.split(self.settings['delimiter'])
-                else:
-                    self.all_parameter_names = header.split()
+        if self.loaded_data.shape[0] > 0 and self.loaded_data.shape[1] > 0:
+            # Only do stuff if data has actually been loaded.
+            if self.settings['transpose'] == 'False':
+                self.loaded_data = np.transpose(self.loaded_data)
+
+            if hasattr(self, 'extra_cols'):
+                # Processed data that has been added to the data_dict. Need to preserve it!
+                old_dict = copy.deepcopy(self.data_dict)
+            
+            self.data_dict={}
+            try: # to get column names if there is a header. Avoid using genfromtxt as it doesn't have enough options to work all the time.
+                with open(self.filepath, 'r') as f:
+                    header = f.readline()
+                if header.startswith('#'):
+                    header = header[1:]
+                    if self.settings['delimiter']:
+                        self.all_parameter_names = header.split(self.settings['delimiter'])
+                    else:
+                        self.all_parameter_names = header.split()
+                    for i,name in enumerate(self.all_parameter_names):
+                        self.data_dict[name]=self.loaded_data[i]
+            except Exception as e:
+                pass
+
+            if hasattr(self, 'extra_cols'):
+                # Add the extra columns to the data_dict
+                for col in self.extra_cols:
+                    if col in old_dict.keys():
+                        self.data_dict[col] = old_dict[col]
+                        self.all_parameter_names.append(col)
+                del old_dict
+
+            if len(self.data_dict.keys()) == 0:
+                self.all_parameter_names=[f"column_{i}" for i in range(self.loaded_data.shape[0])]
                 for i,name in enumerate(self.all_parameter_names):
                     self.data_dict[name]=self.loaded_data[i]
-        except Exception as e:
-            pass
 
-        if hasattr(self, 'extra_cols'):
-            # Add the extra columns to the data_dict
-            for col in self.extra_cols:
-                if col in old_dict.keys():
-                    self.data_dict[col] = old_dict[col]
-                    self.all_parameter_names.append(col)
-            del old_dict
+            self.measured_data_points = self.loaded_data.shape[0]
 
-        if len(self.data_dict.keys()) == 0:
-            self.all_parameter_names=[f"column_{i}" for i in range(self.loaded_data.shape[0])]
-            for i,name in enumerate(self.all_parameter_names):
-                self.data_dict[name]=self.loaded_data[i]
+            self.settings['X data'] = self.all_parameter_names[0]
+            self.settings['Y data'] = self.all_parameter_names[1]
+            self.settings['xlabel'] = self.all_parameter_names[0]
+            self.settings['ylabel'] = self.all_parameter_names[1]
+            self.settings['default_xlabel'] = self.all_parameter_names[0]
+            self.settings['default_ylabel'] = self.all_parameter_names[1]
+            self.settings['default_fftxlabel'] = f'1/{self.all_parameter_names[0]}'
 
-        self.measured_data_points = self.loaded_data.shape[0]
+            if self.loaded_data[0,1] == self.loaded_data[0,0] and len(self.all_parameter_names) > 2:
+                self.settings['Z data'] = self.all_parameter_names[2]
+                self.settings['clabel'] = self.all_parameter_names[2]
+                self.settings['default_clabel'] = self.all_parameter_names[2]
+                self.settings['default_histlabel'] = self.all_parameter_names[2]
+                self.settings['default_fftylabel'] = f'1/{self.all_parameter_names[1]}'
+                self.dim=3
+            else:
+                self.dim=2
+                self.settings['default_histlabel'] = self.all_parameter_names[1]
 
-        self.settings['X data'] = self.all_parameter_names[0]
-        self.settings['Y data'] = self.all_parameter_names[1]
-        self.settings['xlabel'] = self.all_parameter_names[0]
-        self.settings['ylabel'] = self.all_parameter_names[1]
-        self.settings['default_xlabel'] = self.all_parameter_names[0]
-        self.settings['default_ylabel'] = self.all_parameter_names[1]
-        self.settings['default_fftxlabel'] = f'1/{self.all_parameter_names[0]}'
+            self.settings_menu_options = {'X data': self.all_parameter_names,
+                                    'Y data': self.all_parameter_names,
+                                    'Z data': self.all_parameter_names}
+            negparamnames=[f'-{name}' for name in self.all_parameter_names]
+            allnames=np.hstack((self.all_parameter_names,negparamnames))
+            self.filter_menu_options = {'Multiply': allnames,
+                                        'Divide': allnames,
+                                        'Add/Subtract': allnames}
 
-        if self.loaded_data[0,1] == self.loaded_data[0,0] and len(self.all_parameter_names) > 2:
-            self.settings['Z data'] = self.all_parameter_names[2]
-            self.settings['clabel'] = self.all_parameter_names[2]
-            self.settings['default_clabel'] = self.all_parameter_names[2]
-            self.settings['default_histlabel'] = self.all_parameter_names[2]
-            self.settings['default_fftylabel'] = f'1/{self.all_parameter_names[1]}'
-            self.dim=3
         else:
-            self.dim=2
-            self.settings['default_histlabel'] = self.all_parameter_names[1]
-
-        self.settings_menu_options = {'X data': self.all_parameter_names,
-                                'Y data': self.all_parameter_names,
-                                'Z data': self.all_parameter_names}
-        negparamnames=[f'-{name}' for name in self.all_parameter_names]
-        allnames=np.hstack((self.all_parameter_names,negparamnames))
-        self.filter_menu_options = {'Multiply': allnames,
-                                    'Divide': allnames,
-                                    'Add/Subtract': allnames}
+            return ValueError(f'Could not load data from {self.filepath}. File may be empty or not formatted correctly.')
         
-
-    def add_array_to_data_dict(self, array, name):
-        self.data_dict[name] = array
-        self.all_parameter_names=list(self.data_dict.keys())
-        self.settings_menu_options['X data']=self.all_parameter_names
-        self.settings_menu_options['Y data']=self.all_parameter_names
-        self.settings_menu_options['Z data']=self.all_parameter_names
-        negparamnames=[f'-{name}' for name in self.all_parameter_names]
-        allnames=np.hstack((self.all_parameter_names,negparamnames))
-        self.filter_menu_options['Multiply']=allnames
-        self.filter_menu_options['Divide']=allnames
-        self.filter_menu_options['Add/Subtract']=allnames
-        #self.prepare_data_for_plot(reload_from_file=False)
-
     def get_column_data(self,line=None):
         if line is not None:
             names = [self.plotted_lines[line]['X data'],
@@ -201,7 +189,9 @@ class BaseClassData:
     
     def load_and_reshape_data(self,reload_data=False,reload_from_file=False,linefrompopup=None):
         if reload_from_file or self.loaded_data is None:
-            self.prepare_dataset()
+            error=self.prepare_dataset()
+            if error:
+                return error
         column_data = self.get_column_data(linefrompopup)
         if column_data.ndim == 1: # if empty array or single-row array
             self.raw_data = None
@@ -272,24 +262,9 @@ class BaseClassData:
                 array = np.fliplr(array)
             return array
         
-    def filttocol(self, axis):
-        axes={'X': 0, 'Y': 1, 'Z': 2}
-        if hasattr(self, 'sidebar1D'):
-            current_1D_row = self.sidebar1D.trace_table.currentRow()
-            current_line = int(self.sidebar1D.trace_table.item(current_1D_row,0).text())
-            processed_data = self.plotted_lines[current_line]['processed_data'][axes[axis]]
-            colname=f'Filtered: {self.plotted_lines[current_line][f'{axis} data']}'
-            self.all_parameter_names.append(colname)
-            self.data_dict[colname] = processed_data
-        else:
-            processed_data = self.processed_data[axes[axis]]
-            colname= f'Filtered: {self.settings[f'{axis} data']}'
-            self.all_parameter_names.append(colname)
-            self.data_dict[colname] = processed_data.flatten()
-
-        if not hasattr(self, 'extra_cols'):
-            self.extra_cols = []
-        self.extra_cols.append(colname)
+    def add_array_to_data_dict(self, array, name):
+        self.data_dict[name] = array
+        self.all_parameter_names=list(self.data_dict.keys())
 
         for label in ['X data', 'Y data', 'Z data']:
             self.settings_menu_options[label]= self.all_parameter_names
@@ -297,6 +272,23 @@ class BaseClassData:
         allnames=np.hstack((self.all_parameter_names,negparamnames))
         for filtname in ['Multiply', 'Divide', 'Add/Subtract']:
             self.filter_menu_options[filtname]=allnames
+
+        if not hasattr(self, 'extra_cols'):
+            self.extra_cols = []
+        self.extra_cols.append(name)
+        
+    def filttocol(self, axis):
+        axes={'X': 0, 'Y': 1, 'Z': 2}
+        if hasattr(self, 'sidebar1D'):
+            current_1D_row = self.sidebar1D.trace_table.currentRow()
+            current_line = int(self.sidebar1D.trace_table.item(current_1D_row,0).text())
+            data_to_send = self.plotted_lines[current_line]['processed_data'][axes[axis]]
+            colname=f'Filtered: {self.plotted_lines[current_line][f'{axis} data']}'
+        else:
+            data_to_send = self.processed_data[axes[axis]]
+            colname= f'Filtered: {self.settings[f'{axis} data']}'
+        self.add_array_to_data_dict(data_to_send, colname)
+
 
     def copy_raw_to_processed_data(self,line=None):
         if line is not None:
@@ -389,7 +381,9 @@ class BaseClassData:
     def prepare_data_for_plot(self, reload_data=False, reload_from_file=False,
                               linefrompopup=None,update_color_limits=False,plot_type=None):
         if not hasattr(self, 'raw_data') or reload_data:
-            self.load_and_reshape_data(reload_data, reload_from_file, linefrompopup)
+            error=self.load_and_reshape_data(reload_data, reload_from_file, linefrompopup)
+            if error:
+                return error
             update_color_limits = True
         if self.raw_data:
             self.copy_raw_to_processed_data(linefrompopup)
@@ -428,64 +422,67 @@ class BaseClassData:
         self.hax.get_xaxis().set_visible(False)
         self.hax.get_yaxis().set_visible(False)
 
-    def add_plot(self, editor_window=None):
+    def add_plot(self, editor_window):
         if self.processed_data:
-            cmap_str = self.view_settings['Colormap']
-            if self.view_settings['Reverse']:
-                cmap_str += '_r'
-            cmap = cm.get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
-            cmap.set_bad(self.settings['maskcolor'])
+            try:
+                cmap_str = self.view_settings['Colormap']
+                if self.view_settings['Reverse']:
+                    cmap_str += '_r'
+                cmap = cm.get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
+                cmap.set_bad(self.settings['maskcolor'])
 
-            if self.dim == 2:
-                if not hasattr(self, 'plotted_lines'):
-                    self.init_plotted_lines()
-                if not hasattr(self, 'sidebar1D'):
-                    self.sidebar1D = Sidebar1D(self,editor_window=editor_window)
-                    self.sidebar1D.running = True
-                    self.sidebar1D.append_trace_to_table(0)
-                self.sidebar1D.update()
+                if self.dim == 2:
+                    if not hasattr(self, 'plotted_lines'):
+                        self.init_plotted_lines()
+                    if not hasattr(self, 'sidebar1D'):
+                        self.sidebar1D = Sidebar1D(self,editor_window=editor_window)
+                        self.sidebar1D.running = True
+                        self.sidebar1D.append_trace_to_table(0)
+                    self.sidebar1D.update()
 
-                # This is horrible, but I need to get rid of these. Ideally I would re-write the extension so they're
-                # not used at all in the 1D case. Will try later.
-                if 'X data' in self.settings.keys():
+                    # This is horrible, but I need to get rid of these. Ideally I would re-write the extension so they're
+                    # not used at all in the 1D case. Will try later.
+                    if 'X data' in self.settings.keys():
+                        self.settings.pop('X data')
+                    if 'Y data' in self.settings.keys():
+                        self.settings.pop('Y data')
+
+                elif self.dim == 3:
+                    norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
+                                            vmax=self.view_settings['Maximum'], 
+                                            midpoint=self.view_settings['Midpoint'])
+                    self.image = self.axes.pcolormesh(self.processed_data[0], 
+                                                    self.processed_data[1], 
+                                                    self.processed_data[2], 
+                                                    shading=self.settings['shading'], 
+                                                    norm=norm, cmap=cmap,
+                                                    rasterized=self.settings['rasterized'])
+                    if self.settings['colorbar'] == 'True':
+                        self.cbar = self.figure.colorbar(self.image)
+                        if self.view_settings['CBarHist'] == True:
+                            self.add_cbar_hist()
+
+                if not self.labels_changed:
+                    self.apply_default_lables()
+
+                self.cursor = Cursor(self.axes, useblit=True, 
+                                    color='black', linewidth=0.5)
+
+                # Below removes data options for data types where selecting
+                # axes data from the settings menu isn't implemented.
+                # Remove if implemented for all data types one day.
+                if 'X data' in self.settings.keys() and self.settings['X data'] == '':
                     self.settings.pop('X data')
-                if 'Y data' in self.settings.keys():
+                if 'Y data' in self.settings.keys() and self.settings['Y data'] == '':
                     self.settings.pop('Y data')
+                if 'Z data' in self.settings.keys() and self.settings['Z data'] == '':
+                    self.settings.pop('Z data')
 
-            elif self.dim == 3:
-                norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
-                                         vmax=self.view_settings['Maximum'], 
-                                         midpoint=self.view_settings['Midpoint'])
-                self.image = self.axes.pcolormesh(self.processed_data[0], 
-                                                  self.processed_data[1], 
-                                                  self.processed_data[2], 
-                                                  shading=self.settings['shading'], 
-                                                  norm=norm, cmap=cmap,
-                                                  rasterized=self.settings['rasterized'])
-                if self.settings['colorbar'] == 'True':
-                    self.cbar = self.figure.colorbar(self.image)
-                    if self.view_settings['CBarHist'] == True:
-                        self.add_cbar_hist()
-
-            if not self.labels_changed:
-                self.apply_default_lables()
-
-            self.cursor = Cursor(self.axes, useblit=True, 
-                                 color='black', linewidth=0.5)
-
-            # Below removes data options for data types where selecting
-            # axes data from the settings menu isn't implemented.
-            # Remove if implemented for all data types one day.
-            if 'X data' in self.settings.keys() and self.settings['X data'] == '':
-                self.settings.pop('X data')
-            if 'Y data' in self.settings.keys() and self.settings['Y data'] == '':
-                self.settings.pop('Y data')
-            if 'Z data' in self.settings.keys() and self.settings['Z data'] == '':
-                self.settings.pop('Z data')
-
-            self.apply_plot_settings()
-            self.apply_axlim_settings()
-            self.apply_axscale_settings()
+                self.apply_plot_settings()
+                self.apply_axlim_settings()
+                self.apply_axscale_settings()
+            except Exception as e:
+                editor_window.log_error(f"Error while ploting {self.label}: {e}")
 
     def apply_default_lables(self):
         if 'default_xlabel' in self.settings.keys():
@@ -824,7 +821,7 @@ class MixedInternalData(BaseClassData):
         self.show_2d_data = True
 
         # Reload both datasets to ensure completely distinct objects.
-        from qcodespp.plotting.offline.qcodes_pp_extension import qcodesppData
+        from qcodespp.plotting.offline.qcodespp_extension import qcodesppData
 
         if dataset2d_type == qcodesppData:
             self.dataset2d = qcodesppData(dataset2d_filepath,canvas,os.path.dirname(dataset2d_filepath)+'/snapshot.json',load_the_data=True)
@@ -879,55 +876,58 @@ class MixedInternalData(BaseClassData):
     def reset_view_settings(self):
         self.dataset2d.reset_view_settings()
 
-    def add_plot(self, editor_window=None):
-        self.dataset2d.axes=self.axes
-        self.dataset2d.figure=self.figure
-        self.dataset1d.axes=self.axes
-        self.dataset1d.figure=self.figure
+    def add_plot(self, editor_window):
+        try:
+            self.dataset2d.axes=self.axes
+            self.dataset2d.figure=self.figure
+            self.dataset1d.axes=self.axes
+            self.dataset1d.figure=self.figure
 
-        if self.show_2d_data:
-            cmap_str = self.dataset2d.view_settings['Colormap']
-            if self.dataset2d.view_settings['Reverse']:
-                cmap_str += '_r'
-            cmap = cm.get_cmap(cmap_str, lut=int(self.dataset2d.settings['cmap levels']))
-            cmap.set_bad(self.dataset2d.settings['maskcolor'])
+            if self.show_2d_data:
+                cmap_str = self.dataset2d.view_settings['Colormap']
+                if self.dataset2d.view_settings['Reverse']:
+                    cmap_str += '_r'
+                cmap = cm.get_cmap(cmap_str, lut=int(self.dataset2d.settings['cmap levels']))
+                cmap.set_bad(self.dataset2d.settings['maskcolor'])
 
-            norm = MidpointNormalize(vmin=self.dataset2d.view_settings['Minimum'], 
-                                        vmax=self.dataset2d.view_settings['Maximum'], 
-                                        midpoint=self.dataset2d.view_settings['Midpoint'])
-            self.image = self.axes.pcolormesh(self.dataset2d.processed_data[0], 
-                                                self.dataset2d.processed_data[1], 
-                                                self.dataset2d.processed_data[2], 
-                                                shading=self.dataset2d.settings['shading'], 
-                                                norm=norm, cmap=cmap,
-                                                rasterized=self.dataset2d.settings['rasterized'])
-            if self.dataset2d.settings['colorbar'] == 'True':
-                self.cbar = self.figure.colorbar(self.image)
-                if self.view_settings['CBarHist'] == True:
-                    self.add_cbar_hist()
+                norm = MidpointNormalize(vmin=self.dataset2d.view_settings['Minimum'], 
+                                            vmax=self.dataset2d.view_settings['Maximum'], 
+                                            midpoint=self.dataset2d.view_settings['Midpoint'])
+                self.image = self.axes.pcolormesh(self.dataset2d.processed_data[0], 
+                                                    self.dataset2d.processed_data[1], 
+                                                    self.dataset2d.processed_data[2], 
+                                                    shading=self.dataset2d.settings['shading'], 
+                                                    norm=norm, cmap=cmap,
+                                                    rasterized=self.dataset2d.settings['rasterized'])
+                if self.dataset2d.settings['colorbar'] == 'True':
+                    self.cbar = self.figure.colorbar(self.image)
+                    if self.view_settings['CBarHist'] == True:
+                        self.add_cbar_hist()
 
-        # Now plot 1D data on top
-        if not hasattr(self, 'sidebar1D'):
-            self.sidebar1D = Sidebar1D(self.dataset1d,editor_window=editor_window)
-            self.sidebar1D.running = True
-            if hasattr(self.dataset1d, 'plotted_lines'):
-                for line in self.dataset1d.plotted_lines.keys():
-                    self.sidebar1D.append_trace_to_table(line)
-        
-        if not hasattr(self.dataset1d, 'plotted_lines'):
-            # Should basically never happen; user should always have created a plot before since it's 'combine _checked_ files'
-            self.dataset1d.init_plotted_lines()
-            self.sidebar1D.append_trace_to_table(0)
-
-        self.sidebar1D.lims_label.setText('Fit limits')
+            # Now plot 1D data on top
+            if not hasattr(self, 'sidebar1D'):
+                self.sidebar1D = Sidebar1D(self.dataset1d,editor_window=editor_window)
+                self.sidebar1D.running = True
+                if hasattr(self.dataset1d, 'plotted_lines'):
+                    for line in self.dataset1d.plotted_lines.keys():
+                        self.sidebar1D.append_trace_to_table(line)
             
-        self.sidebar1D.update(clearplot=False)
+            if not hasattr(self.dataset1d, 'plotted_lines'):
+                # Should basically never happen; user should always have created a plot before since it's 'combine _checked_ files'
+                self.dataset1d.init_plotted_lines()
+                self.sidebar1D.append_trace_to_table(0)
 
-        self.cursor = Cursor(self.axes, useblit=True, 
-                                color='black', linewidth=0.5)
-        self.apply_plot_settings()
-        self.apply_axlim_settings()
-        self.apply_axscale_settings()
+            self.sidebar1D.lims_label.setText('Fit limits')
+                
+            self.sidebar1D.update(clearplot=False)
+
+            self.cursor = Cursor(self.axes, useblit=True, 
+                                    color='black', linewidth=0.5)
+            self.apply_plot_settings()
+            self.apply_axlim_settings()
+            self.apply_axscale_settings()
+        except Exception as e:
+            editor_window.log_error(f"Error while plotting {self.label}: {e}")
 
     def apply_all_filters(self, update_color_limits=True,filter_box_index=None):
         if filter_box_index ==1:

@@ -47,7 +47,7 @@ from qcodespp.plotting.offline.helpers import (cmaps, NavigationToolbarMod,
                       NoScrollQComboBox,DraggablePoint)
 from qcodespp.plotting.offline.filters import Filter
 from qcodespp.plotting.offline.datatypes import DataItem, BaseClassData, NumpyData, InternalData, MixedInternalData
-from qcodespp.plotting.offline.qcodes_pp_extension import qcodesppData
+from qcodespp.plotting.offline.qcodespp_extension import qcodesppData
 from qcodespp.plotting.offline.fits import load_lmfit_modelresult_s
 
 from qcodespp.data.data_set import DataSetPP
@@ -466,7 +466,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             item = DataItem(BaseClassData(filepath, self.canvas))
             return item
 
-    def open_files(self, filepaths=None, load_the_data=True, attr_dicts=None, dirpath=None,overrideautocheck=False):
+    def open_files(self, filepaths=None, load_the_data=True, attr_dicts=None, overrideautocheck=False):
         self.file_list.itemClicked.disconnect(self.file_clicked)
         self.file_list.itemChanged.disconnect(self.file_checked)
         minilog=[]
@@ -890,11 +890,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                     if error:
                         message=(f'Error cleaning up temporary files after saving session: {error}\n'
-                                'This usually happens when a cloud service (e.g. OneDrive, Dropbox) tries to sync the temporary files '
-                                'exactly when InSpectra Gadget tries to delete them. '
-                                'Do not panic! The session should have been saved successfully (unless you were warned of any '
+                                'Do not panic! The session should have saved successfully (unless you were warned of any '
                                 'other errors) and you can safely delete the igtemp folder in the session directory, or let '
-                                'InSpectra Gadget do it next time you load or save a session.')
+                                'InSpectra Gadget do it next time you load or save a session.\n'
+                                'This usually happens if a cloud service (e.g. OneDrive, Dropbox) tries to sync the temporary files '
+                                'exactly when InSpectra Gadget tries to delete them. ')
                         self.log_error(message, show_popup=True)
                     
                     del dictionary_list
@@ -1021,7 +1021,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 data = [data[i] for i in range(len(data)) if data[i]['filepath'].replace('\\','/') not in unresolved_files]
                                 for i, filepath in enumerate(file_list):
                                     data[i]['filepath'] = filepath
-                                self.open_files(file_list,load_the_data=False,attr_dicts=data,dirpath=dirpath)
+                                self.open_files(file_list,load_the_data=False,attr_dicts=data)
                             except:
                                 pass
                     else:
@@ -1029,7 +1029,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         try:
                             for i, filepath in enumerate(file_list):
                                 data[i]['filepath'] = filepath
-                            self.open_files(file_list,load_the_data=False,attr_dicts=data,dirpath=dirpath)
+                            self.open_files(file_list,load_the_data=False,attr_dicts=data)
                         except: # If it fails, the messages should occur during open_files. And we need to keep going, to ensure temporary files are deleted
                             pass
                 self.session_filepath = session_filepath
@@ -1041,8 +1041,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             error = self.remove_temp_files(dirpath)
             if error:
                 message=(f'Error cleaning up temporary files after loading session: {e}\n'
-                         'However, the session should have been loaded successfully (unless you were warned of any '
-                         'other errors) and you can safely delete the igtemp folder in the session directory.')
+                        'Do not panic! The session should have saved successfully (unless you were warned of any '
+                        'other errors) and you can safely delete the igtemp folder in the session directory, or let '
+                        'InSpectra Gadget do it next time you load or save a session.\n'
+                        'This usually happens if a cloud service (e.g. OneDrive, Dropbox) tries to sync the temporary files '
+                        'exactly when InSpectra Gadget tries to delete them. ')
                 self.log_error(message, show_popup=True)
 
             self.update_plots() # Necessary to ensure some settings are applied to the final plot.
@@ -1375,7 +1378,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for index, item in enumerate(checked_items):
                 try:
                     if not hasattr(item.data, 'processed_data'):
-                        item.data.prepare_data_for_plot(reload_data=True)
+                        error=item.data.prepare_data_for_plot(reload_data=True)
+                        if error:
+                            self.log_error(f'Error preparing data for plot: {error}', show_popup=True)
+                            item.setCheckState(QtCore.Qt.Unchecked)
+                            continue
                     elif hasattr(item.data, 'dim'):
                         if item.data.dim == 3 and update_data==True: # This should only be called when updating 2D data: updating 1D data is taken care of in the datatype and sidebar
                             item.data.prepare_data_for_plot(update_color_limits=update_color_limits) #reload_data=False by default
@@ -2182,9 +2189,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     label_name+=item.data.label[:15]+'..., '
 
                 if any([isinstance(item,MixedInternalData) for item in data_list]):
-                    raise ValueError('Cannot combine mixed 1D and 2D datasets with other datasets.')
-                # If sets of 2D datasets, stack them along the x-axis. Requires y axis has same dimension for all datasets
-                if all([item.dim == 3 for item in data_list]):
+                    # MixedInternalData cannot be combined any further.
+                    self.log_error('Cannot combine mixed 1D and 2D datasets with other datasets.', show_popup=True)
+
+                elif not all(hasattr(item, 'dim') for item in data_list):
+                    # If any item doesn't have a dim, it's because the data is not loaded yet. 
+                    self.log_error(f'Cannot combine items: data from one or more items not yet loaded.', show_popup=True)
+
+                elif all([item.dim == 3 for item in data_list]):
+                    # If sets of 2D datasets, stack them along the x-axis. Requires y axis has same dimension for all datasets
                     if not all(item.all_parameter_names == data_list[0].all_parameter_names for item in data_list):
                         self.log_error(f'Cannot combine 2D datasets with different parameters.', show_popup=True)
                         raise ValueError('Cannot combine 2D datasets with different parameters.')

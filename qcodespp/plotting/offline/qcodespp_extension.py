@@ -330,36 +330,10 @@ class qcodesppData(BaseClassData):
             
         return processed_data
     
-    def filttocol(self, axis):
-        axes={'X': 0, 'Y': 1, 'Z': 2}
-        if hasattr(self, 'sidebar1D'):
-            current_1D_row = self.sidebar1D.trace_table.currentRow()
-            current_line = int(self.sidebar1D.trace_table.item(current_1D_row,0).text())
-            processed_data = self.plotted_lines[current_line]['processed_data'][axes[axis]]
-            paramname = self.plotted_lines[current_line][f'{axis} data']
-            colname= f'Filtered: {paramname}'
-            self.dependent_parameter_names.append(colname)
-            self.all_parameter_names.append(colname)
-            self.data_dict[colname] = processed_data
-            self.channels[colname] = {'label': colname,
-                                        'unit': self.channels[paramname]['unit'],
-                                        'array_id': colname,
-                                        'is_setpoint': False}
-        else:
-            processed_data = self.processed_data[axes[axis]]
-            paramname = self.settings[f'{axis} data']
-            colname= f'Filtered: {paramname}'
-            self.dependent_parameter_names.append(colname)
-            self.all_parameter_names.append(colname)
-            self.data_dict[colname] = processed_data
-            self.channels[colname] = {'label': colname,
-                                        'unit': self.channels[paramname]['unit'],
-                                        'array_id': colname,
-                                        'is_setpoint': False}
-            
-        if not hasattr(self, 'extra_cols'):
-            self.extra_cols = []
-        self.extra_cols.append(colname)
+    def add_array_to_data_dict(self, array, name):
+        self.data_dict[name] = array
+        self.all_parameter_names=list(self.data_dict.keys())
+        self.dependent_parameter_names.append(name)
 
         for label in ['X data', 'Y data', 'Z data']:
             self.settings_menu_options[label]= self.all_parameter_names
@@ -367,3 +341,33 @@ class qcodesppData(BaseClassData):
         allnames=np.hstack((self.all_parameter_names,negparamnames))
         for filtname in ['Multiply', 'Divide', 'Add/Subtract']:
             self.filter_menu_options[filtname]=allnames
+
+        self.channels[name] = {'label': name,
+                                        'unit': '',
+                                        'array_id': name,
+                                        'is_setpoint': False}
+
+        if not hasattr(self, 'extra_cols'):
+            self.extra_cols = []
+        self.extra_cols.append(name)
+        
+    def filttocol(self, axis):
+        axes={'X': 0, 'Y': 1, 'Z': 2}
+        if hasattr(self, 'sidebar1D'):
+            current_1D_row = self.sidebar1D.trace_table.currentRow()
+            current_line = int(self.sidebar1D.trace_table.item(current_1D_row,0).text())
+            processed_data = self.plotted_lines[current_line]['processed_data'][axes[axis]]
+            paramname = self.plotted_lines[current_line][f'{axis} data']
+
+        else:
+            processed_data = self.processed_data[axes[axis]]
+            paramname = self.settings[f'{axis} data']
+
+        colname= f'Filtered: {paramname}'
+
+        self.add_array_to_data_dict(processed_data, colname)
+        
+        self.channels[colname] = {'label': colname,
+                                        'unit': self.channels[paramname]['unit'],
+                                        'array_id': colname,
+                                        'is_setpoint': False}

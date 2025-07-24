@@ -1298,7 +1298,7 @@ def fit_data(function_class,function_name, xdata, ydata, p0=None, inputinfo=None
             Additional input information required by the fit function.
             
     Returns:
-        result : lmfit ModelResult or Exception"""
+        result : lmfit ModelResult or Exception. Latter is raised if any problems occur during function execution."""
     # all fit functions get called through the dictionary
     f = functions[function_class][function_name]['function']
     result = f(xdata,ydata,p0,inputinfo)
