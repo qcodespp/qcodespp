@@ -519,8 +519,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         for attr in attr_dicts[i]:
                             if attr not in ['filename','checkState','extra_cols',
                                             'dataset1d_type','dataset2d_type',
-                                            'dataset1d_plotted_lines','dataset2d_linecuts',
-                                            'raw_data','processed_data']: # Do not load the raw and processed data. It's nice to be saved on disk, but creates problems when reloading
+                                            'dataset1d_plotted_lines','dataset2d_linecuts']:
                                 setattr(item.data,attr,attr_dicts[i][attr])
 
                             elif attr=='extra_cols':
@@ -567,6 +566,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                             if attr=='plotted_lines':
                                 self.reload_plotted_lines(item.data,item)
+
+                            if 'processed_data' in attr_dicts[i]: # If the data had been plotted we need to force load it here
+                                                                # otherwise the data will be in some weird state.
+                                item.data.prepare_data_for_plot(reload_data=True,reload_from_file=True)
 
                     else:
                         for setting in ['titlesize','labelsize','ticksize']:
