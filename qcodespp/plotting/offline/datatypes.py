@@ -92,71 +92,78 @@ class BaseClassData:
             self.loaded_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'])
         except ValueError: # Can occur if python doesn't recognise a header
             self.loaded_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'],skip_header=1)
-        
-        if self.settings['transpose'] == 'False':
-            self.loaded_data = np.transpose(self.loaded_data)
 
-        if hasattr(self, 'extra_cols'):
-            # Processed data that has been added to the data_dict. Need to preserve it!
-            old_dict = copy.deepcopy(self.data_dict)
-        
-        self.data_dict={}
-        try: # to get column names if there is a header. Avoid using genfromtxt as it doesn't have enough options to work all the time.
-            with open(self.filepath, 'r') as f:
-                header = f.readline()
-            if header.startswith('#'):
-                header = header[1:]
-                if self.settings['delimiter']:
-                    self.all_parameter_names = header.split(self.settings['delimiter'])
-                else:
-                    self.all_parameter_names = header.split()
+        if self.loaded_data.shape[0] > 0 and self.loaded_data.shape[1] > 0:
+            
+            if self.settings['transpose'] == 'False':
+                self.loaded_data = np.transpose(self.loaded_data)
+
+            if hasattr(self, 'extra_cols'):
+                # Processed data that has been added to the data_dict. Need to preserve it!
+                old_dict = copy.deepcopy(self.data_dict)
+            
+            self.data_dict={}
+            try: # to get column names if there is a header. Avoid using genfromtxt as it doesn't have enough options to work all the time.
+                with open(self.filepath, 'r') as f:
+                    header = f.readline()
+                if header.startswith('#'):
+                    header = header[1:]
+                    if self.settings['delimiter']:
+                        self.all_parameter_names = header.split(self.settings['delimiter'])
+                    else:
+                        self.all_parameter_names = header.split()
+                    for i,name in enumerate(self.all_parameter_names):
+                        self.data_dict[name]=self.loaded_data[i]
+            except Exception as e:
+                pass
+
+            if hasattr(self, 'extra_cols'):
+                # Add the extra columns to the data_dict
+                for col in self.extra_cols:
+                    if col in old_dict.keys():
+                        self.data_dict[col] = old_dict[col]
+                        self.all_parameter_names.append(col)
+                del old_dict
+
+            if len(self.data_dict.keys()) == 0:
+                self.all_parameter_names=[f"column_{i}" for i in range(self.loaded_data.shape[0])]
                 for i,name in enumerate(self.all_parameter_names):
                     self.data_dict[name]=self.loaded_data[i]
-        except Exception as e:
-            pass
 
-        if hasattr(self, 'extra_cols'):
-            # Add the extra columns to the data_dict
-            for col in self.extra_cols:
-                if col in old_dict.keys():
-                    self.data_dict[col] = old_dict[col]
-                    self.all_parameter_names.append(col)
-            del old_dict
+            self.measured_data_points = self.loaded_data.shape[0]
 
-        if len(self.data_dict.keys()) == 0:
-            self.all_parameter_names=[f"column_{i}" for i in range(self.loaded_data.shape[0])]
-            for i,name in enumerate(self.all_parameter_names):
-                self.data_dict[name]=self.loaded_data[i]
+            self.settings['X data'] = self.all_parameter_names[0]
+            self.settings['Y data'] = self.all_parameter_names[1]
+            self.settings['xlabel'] = self.all_parameter_names[0]
+            self.settings['ylabel'] = self.all_parameter_names[1]
+            self.settings['default_xlabel'] = self.all_parameter_names[0]
+            self.settings['default_ylabel'] = self.all_parameter_names[1]
+            self.settings['default_fftxlabel'] = f'1/{self.all_parameter_names[0]}'
 
-        self.measured_data_points = self.loaded_data.shape[0]
+            if self.loaded_data[0,1] == self.loaded_data[0,0] and len(self.all_parameter_names) > 2:
+                self.settings['Z data'] = self.all_parameter_names[2]
+                self.settings['clabel'] = self.all_parameter_names[2]
+                self.settings['default_clabel'] = self.all_parameter_names[2]
+                self.settings['default_histlabel'] = self.all_parameter_names[2]
+                self.settings['default_fftylabel'] = f'1/{self.all_parameter_names[1]}'
+                self.dim=3
+            else:
+                self.dim=2
+                self.settings['default_histlabel'] = self.all_parameter_names[1]
 
-        self.settings['X data'] = self.all_parameter_names[0]
-        self.settings['Y data'] = self.all_parameter_names[1]
-        self.settings['xlabel'] = self.all_parameter_names[0]
-        self.settings['ylabel'] = self.all_parameter_names[1]
-        self.settings['default_xlabel'] = self.all_parameter_names[0]
-        self.settings['default_ylabel'] = self.all_parameter_names[1]
-        self.settings['default_fftxlabel'] = f'1/{self.all_parameter_names[0]}'
-
-        if self.loaded_data[0,1] == self.loaded_data[0,0] and len(self.all_parameter_names) > 2:
-            self.settings['Z data'] = self.all_parameter_names[2]
-            self.settings['clabel'] = self.all_parameter_names[2]
-            self.settings['default_clabel'] = self.all_parameter_names[2]
-            self.settings['default_histlabel'] = self.all_parameter_names[2]
-            self.settings['default_fftylabel'] = f'1/{self.all_parameter_names[1]}'
-            self.dim=3
+            self.settings_menu_options = {'X data': self.all_parameter_names,
+                                    'Y data': self.all_parameter_names,
+                                    'Z data': self.all_parameter_names}
+            negparamnames=[f'-{name}' for name in self.all_parameter_names]
+            allnames=np.hstack((self.all_parameter_names,negparamnames))
+            self.filter_menu_options = {'Multiply': allnames,
+                                        'Divide': allnames,
+                                        'Add/Subtract': allnames}
+            
+            return None
         else:
-            self.dim=2
-            self.settings['default_histlabel'] = self.all_parameter_names[1]
-
-        self.settings_menu_options = {'X data': self.all_parameter_names,
-                                'Y data': self.all_parameter_names,
-                                'Z data': self.all_parameter_names}
-        negparamnames=[f'-{name}' for name in self.all_parameter_names]
-        allnames=np.hstack((self.all_parameter_names,negparamnames))
-        self.filter_menu_options = {'Multiply': allnames,
-                                    'Divide': allnames,
-                                    'Add/Subtract': allnames}
+            self.data_dict = None
+            return ValueError(f"Could not load data from {self.filepath}. The file may be empty or not formatted correctly.")
         
     def get_column_data(self,line=None):
         if line is not None:
@@ -184,7 +191,9 @@ class BaseClassData:
     
     def load_and_reshape_data(self,reload_data=False,reload_from_file=False,linefrompopup=None):
         if reload_from_file or self.loaded_data is None:
-            self.prepare_dataset()
+            error=self.prepare_dataset()
+            if error:
+                return error
         column_data = self.get_column_data(linefrompopup)
         if column_data.ndim == 1: # if empty array or single-row array
             self.raw_data = None
@@ -374,7 +383,9 @@ class BaseClassData:
     def prepare_data_for_plot(self, reload_data=False, reload_from_file=False,
                               linefrompopup=None,update_color_limits=False,plot_type=None):
         if not hasattr(self, 'raw_data') or reload_data:
-            self.load_and_reshape_data(reload_data, reload_from_file, linefrompopup)
+            error=self.load_and_reshape_data(reload_data, reload_from_file, linefrompopup)
+            if error:
+                return error
             update_color_limits = True
         if self.raw_data:
             self.copy_raw_to_processed_data(linefrompopup)

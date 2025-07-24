@@ -28,14 +28,12 @@ class qcodesppData(BaseClassData):
         # "Channels" is the meta info about the data arrays. Contains the label, unit and whether its a setpoint.
         if hasattr(self, 'extra_cols'):
             # Then we are loading from a saved session, and we need to preserve the extra columns that were generated
-            print(self.channels)
             old_chans = copy.deepcopy(self.channels)
         self.channels = self.meta['arrays']
         if hasattr(self, 'extra_cols'):
             for col in self.extra_cols:
                 if col in old_chans.keys():
                     self.channels[col] = old_chans[col]
-            print(self.channels)
             del old_chans
 
         # Load the data itself. Will not be loaded if loading/linking from a folder.
@@ -54,7 +52,6 @@ class qcodesppData(BaseClassData):
         if hasattr(self, 'extra_cols'):
         # Processed data that has been added to the data_dict. Need to preserve it!
             old_dict = copy.deepcopy(self.data_dict)
-            print(self.data_dict)
 
         self.data_dict = self.dataset.arrays.copy()
 
@@ -63,7 +60,6 @@ class qcodesppData(BaseClassData):
             for col in self.extra_cols:
                 if col in old_dict.keys():
                     self.data_dict[col] = old_dict[col]
-            print(self.data_dict)
             del old_dict
 
         self.prepare_dataset()

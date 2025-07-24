@@ -515,11 +515,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                     item.filepath=filepath
                     self.file_list.addItem(item)
-                    if attr_dicts is not None: #then a previous session is being loaded
+                    if attr_dicts: #then a previous session is being loaded
                         for attr in attr_dicts[i]:
                             if attr not in ['filename','checkState','extra_cols',
                                             'dataset1d_type','dataset2d_type',
-                                            'dataset1d_plotted_lines','dataset2d_linecuts']:
+                                            'dataset1d_plotted_lines','dataset2d_linecuts',
+                                            'raw_data','processed_data']: # Do not load the raw and processed data. It's nice to be saved on disk, but creates problems when reloading
                                 setattr(item.data,attr,attr_dicts[i][attr])
 
                             elif attr=='extra_cols':
@@ -1371,7 +1372,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for index, item in enumerate(checked_items):
                 try:
                     if not hasattr(item.data, 'processed_data'):
-                        item.data.prepare_data_for_plot(reload_data=True)
+                        error=item.data.prepare_data_for_plot(reload_data=True)
+                        if error:
+                            self.log_error(f'Error preparing data for plot: {error}', show_popup=True)
+                            continue
                     elif hasattr(item.data, 'dim'):
                         if item.data.dim == 3 and update_data==True: # This should only be called when updating 2D data: updating 1D data is taken care of in the datatype and sidebar
                             item.data.prepare_data_for_plot(update_color_limits=update_color_limits) #reload_data=False by default
