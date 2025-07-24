@@ -537,10 +537,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                         item.data.channels[colname] = attr_dicts[i][attr][colname]['channel']
                                     elif isinstance(item.data,InternalData):
                                         item.data.all_parameter_names.append(colname)
-                                if isinstance(item.data, qcodesppData):
-                                    item.data.identify_independent_vars()
-                                else:
-                                    item.data.prepare_dataset()
+                                item.data.prepare_dataset()
                             
                             elif attr=='checkState':
                                 item.setCheckState(attr_dicts[i][attr])

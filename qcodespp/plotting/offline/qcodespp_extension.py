@@ -33,154 +33,37 @@ class qcodesppData(BaseClassData):
                     self.channels[col] = old_chans[col]
             del old_chans
 
-        # if load_the_data:
-        #     if '.dat' in filepath:
-        #         self.dataset=load_data(os.path.dirname(filepath))
-        #     else:
-        #         self.dataset=load_data(filepath)
-
-        #     if hasattr(self, 'extra_cols'):
-        #         old_dict = copy.deepcopy(self.data_dict)
-
-        #     self.data_dict = self.dataset.arrays.copy()
-    
-        #     if hasattr(self, 'extra_cols'):
-        #         # Add the extra columns to the data_dict
-        #         for col in self.extra_cols:
-        #             if col in old_dict.keys():
-        #                 self.data_dict[col] = old_dict[col]
-        #         del old_dict
-
-        #     self.identify_independent_vars()
-
-        #     self.prepare_dataset()
-
-        #     self.data_loaded=True
-        
-        # else:
-
-    def prepare_dataset(self):
-        pars = list(self.data_dict.keys())
-        self.dims = self.data_dict[pars[1]].shape
-
-        if len(self.independent_parameter_names) > 1:
-            pars = list(self.data_dict.keys())
-            self.dims = self.data_dict[pars[1]].shape
-            if len(self.data_dict[self.all_parameter_names[0]]) < self.dims[0]*self.dims[1]:
-                self.data_dict[self.all_parameter_names[0]] = np.repeat(self.data_dict[self.all_parameter_names[0]], self.dims[1])
-            self.dim=3
-        
+    def load_from_file(self):
+        if '.dat' in self.filepath:
+            self.loaded_data=load_data(os.path.dirname(self.filepath))
         else:
-            self.dim=2
+            self.loaded_data=load_data(self.filepath)
 
-    def isFinished(self):
-        self.set_x = self.data_dict[self.all_parameter_names[0]]
-        self.set_x = np.unique(self.set_x[~np.isnan(self.set_x)])
-        return len(self.set_x) == self.dims[0]
-    
-    def finished_dimensions(self):
-        self.dims = [len(self.set_x)-1, self.dims[1]]
-        
-    def get_column_data(self, line=None):
-        if line is not None:
-            Xdataname = self.plotted_lines[line]['X data']
-            Ydataname = self.plotted_lines[line]['Y data']
-        else:
-            Xdataname = self.settings['X data']
-            Ydataname = self.settings['Y data']
-        self.prepare_dataset()
-        # If user has selected X data, use that, otherwise use the first independent parameter
-        # X data is the same no matter the data dimension
+        if hasattr(self, 'extra_cols'):
+        # Processed data that has been added to the data_dict. Need to preserve it!
+            old_dict = copy.deepcopy(self.data_dict)
 
-        xdata = self.data_dict[Xdataname]
-        try:
-            self.settings['xlabel'] = f'{self.channels[Xdataname]['label']} ({self.channels[Xdataname]['unit']})'
-        except KeyError:
-            self.settings['xlabel'] = Xdataname
-        
-        if len(self.independent_parameter_names) == 1: # data is 1D
-            ydata = self.data_dict[Ydataname]
-            try:
-                self.settings['ylabel'] = f'{self.channels[Ydataname]['label']} ({self.channels[Ydataname]['unit']})'
-            except KeyError:
-                self.settings['ylabel'] = Ydataname
-            
-            if not self.isFinished():
-                # Delete unfinished rows to enable plotting
-                xdata = xdata[:len(self.set_x)-1]
-                ydata = ydata[:len(self.set_x)-1]
-            if len(xdata)==len(ydata):
-                column_data = np.column_stack((xdata, ydata))
-            else:
-                column_data = np.zeros((2,2))
-                # This can happen if the user has run statistics, and is trying to plot the result; if they change only
-                # the X data, the length of the data won't match the Y data until they then select the correct thing.
-                # So, just plot nothing until the user selects something sensible.
+        self.data_dict = self.loaded_data.arrays.copy()
 
-            self.settings['default_xlabel'] = self.settings['xlabel']
-            self.settings['default_ylabel'] = self.settings['ylabel']
-            self.settings['default_histlabel'] = self.settings['default_ylabel']
-            self.settings['default_fftxlabel'] = f'1/{self.settings['default_xlabel']}'
-
-        elif len(self.independent_parameter_names) > 1: # data is 2D
-            ydata = self.data_dict[self.settings['Y data']]
-            self.settings['ylabel'] = (f'{self.channels[self.settings['Y data']]['label']} '
-                                        f'({self.channels[self.settings['Y data']]['unit']})')
-            zdata = self.data_dict[self.settings['Z data']]
-            self.settings['clabel'] = (f'{self.channels[self.settings['Z data']]['label']} '
-                                        f'({self.channels[self.settings['Z data']]['unit']})')
-
-            column_data = np.column_stack((xdata.flatten(),
-                                         ydata.flatten(),
-                                        zdata.flatten()
-                                        ))
-            
-            self.settings['default_xlabel'] = self.settings['xlabel']
-            self.settings['default_ylabel'] = self.settings['ylabel']
-            self.settings['default_clabel'] = self.settings['clabel']
-            self.settings['default_histlabel'] = self.settings['default_clabel']
-            self.settings['default_fftxlabel'] = f'1/{self.settings['default_xlabel']}'
-            self.settings['default_fftylabel'] = f'1/{self.settings['default_ylabel']}'
-
-            # # Delete unfinished rows to enable plotting
-            if not self.isFinished():
-                self.finished_dimensions()
-
-                column_data = column_data[~np.isnan(column_data).any(axis=1)]
-                column_data = column_data[~np.isnan(column_data[:,0])]
-                column_data = column_data[:self.dims[0]*self.dims[1]]
-
-        else:
-            return np.empty((1,1))
-          
-        self.measured_data_points = column_data.shape[0]
-
-        return column_data
-    
+        if hasattr(self, 'extra_cols'):
+            # Add the extra columns to the data_dict
+            for col in self.extra_cols:
+                if col in old_dict.keys():
+                    self.data_dict[col] = old_dict[col]
+            del old_dict
 
     def load_and_reshape_data(self, reload_data=False,reload_from_file=True,linefrompopup=None):
         if self.loaded_data is None or reload_data and reload_from_file:
-            if '.dat' in self.filepath:
-                self.loaded_data=load_data(os.path.dirname(self.filepath))
-            else:
-                self.loaded_data=load_data(self.filepath)
-
-            if hasattr(self, 'extra_cols'):
-            # Processed data that has been added to the data_dict. Need to preserve it!
-                old_dict = copy.deepcopy(self.data_dict)
-
-            self.data_dict = self.loaded_data.arrays.copy()
-    
-            if hasattr(self, 'extra_cols'):
-                # Add the extra columns to the data_dict
-                for col in self.extra_cols:
-                    if col in old_dict.keys():
-                        self.data_dict[col] = old_dict[col]
-                del old_dict
-
-            self.identify_independent_vars()
+            self.load_from_file()
 
             self.prepare_dataset()
+
+            if len(self.independent_parameter_names) > 1:
+                self.dim = 3
+            else:
+                self.dim = 2
+
+            self.fix_x_dimension()
 
         column_data = self.get_column_data(line=linefrompopup)
         if column_data.ndim == 1: # if empty array or single-row array
@@ -217,8 +100,108 @@ class qcodesppData(BaseClassData):
                 self.raw_data = None
                 
             self.settings['columns'] = ','.join([str(i) for i in columns])
+
+    def fix_x_dimension(self):
+        self.dims = np.shape(self.data_dict[self.independent_parameter_names[self.dim-2]])
+
+        if self.dim==3 and len(self.data_dict[self.all_parameter_names[0]]) < self.dims[0]*self.dims[1]:
+            self.data_dict[self.all_parameter_names[0]] = np.repeat(self.data_dict[self.all_parameter_names[0]], self.dims[1])
+
+    def isFinished(self):
+        self.set_x = self.data_dict[self.all_parameter_names[0]]
+        self.set_x = np.unique(self.set_x[~np.isnan(self.set_x)])
+        return len(self.set_x) == self.dims[0]
     
-    def identify_independent_vars(self):        
+    def finished_dimensions(self):
+        self.dims = [len(self.set_x)-1, self.dims[1]]
+        
+    def get_column_data(self, line=None):
+        if line is not None:
+            Xdataname = self.plotted_lines[line]['X data']
+            Ydataname = self.plotted_lines[line]['Y data']
+        else:
+            Xdataname = self.settings['X data']
+            Ydataname = self.settings['Y data']
+        self.fix_x_dimension()
+        # If user has selected X data, use that, otherwise use the first independent parameter
+        # X data is the same no matter the data dimension
+
+        xdata = self.data_dict[Xdataname]
+        try:
+            self.settings['xlabel'] = f'{self.channels[Xdataname]['label']} ({self.channels[Xdataname]['unit']})'
+        except KeyError:
+            self.settings['xlabel'] = Xdataname
+        
+        if len(self.independent_parameter_names) == 1: # data is 1D
+            ydata = self.data_dict[Ydataname]
+            try:
+                self.settings['ylabel'] = f'{self.channels[Ydataname]['label']} ({self.channels[Ydataname]['unit']})'
+            except KeyError:
+                self.settings['ylabel'] = Ydataname
+            
+            if not self.isFinished():
+                # Delete unfinished rows to enable plotting
+                xdata = xdata[:len(self.set_x)-1]
+                ydata = ydata[:len(self.set_x)-1]
+            if len(xdata)==len(ydata):
+                column_data = np.column_stack((xdata, ydata))
+            else:
+                column_data = np.zeros((2,2))
+                # This can happen if the user has run statistics, and is trying to plot the result; if they change only
+                # the X data, the length of the data won't match the Y data until they then select the correct thing.
+                # So, just plot nothing until the user selects something sensible.
+
+            self.settings['default_xlabel'] = self.settings['xlabel']
+            self.settings['default_ylabel'] = self.settings['ylabel']
+            self.settings['default_histlabel'] = self.settings['default_ylabel']
+            self.settings['default_fftxlabel'] = f'1/{self.settings['default_xlabel']}'
+
+        elif len(self.independent_parameter_names) > 1: # data is 2D
+            xdata = self.data_dict[Xdataname].flatten()
+            ydata = self.data_dict[self.settings['Y data']].flatten()
+            self.settings['ylabel'] = (f'{self.channels[self.settings['Y data']]['label']} '
+                                        f'({self.channels[self.settings['Y data']]['unit']})')
+            zdata = self.data_dict[self.settings['Z data']].flatten()
+            self.settings['clabel'] = (f'{self.channels[self.settings['Z data']]['label']} '
+                                        f'({self.channels[self.settings['Z data']]['unit']})')
+
+            lengths = [len(xdata), len(ydata), len(zdata)]
+            maxlen = max(lengths)
+            if len(xdata) < maxlen:
+                xdata = np.pad(xdata, (0, maxlen - len(xdata)), 'constant', constant_values=np.nan)
+            if len(ydata) < maxlen:
+                ydata = np.pad(ydata, (0, maxlen - len(ydata)), 'constant', constant_values=np.nan)
+            if len(zdata) < maxlen:
+                zdata = np.pad(zdata, (0, maxlen - len(zdata)), 'constant', constant_values=np.nan)
+
+            column_data = np.column_stack((xdata,
+                                         ydata,
+                                        zdata
+                                        ))
+            
+            self.settings['default_xlabel'] = self.settings['xlabel']
+            self.settings['default_ylabel'] = self.settings['ylabel']
+            self.settings['default_clabel'] = self.settings['clabel']
+            self.settings['default_histlabel'] = self.settings['default_clabel']
+            self.settings['default_fftxlabel'] = f'1/{self.settings['default_xlabel']}'
+            self.settings['default_fftylabel'] = f'1/{self.settings['default_ylabel']}'
+
+            # # Delete unfinished rows to enable plotting
+            if not self.isFinished():
+                self.finished_dimensions()
+
+                column_data = column_data[~np.isnan(column_data).any(axis=1)]
+                column_data = column_data[~np.isnan(column_data[:,0])]
+                column_data = column_data[:self.dims[0]*self.dims[1]]
+
+        else:
+            return np.empty((1,1))
+          
+        self.measured_data_points = column_data.shape[0]
+
+        return column_data
+    
+    def prepare_dataset(self):
         for chan in self.channels.keys():
             if self.channels[chan]["array_id"] not in self.all_parameter_names:
                 if self.channels[chan]["is_setpoint"] and self.channels[chan]["array_id"] in list(self.data_dict.keys()):
@@ -231,10 +214,9 @@ class qcodesppData(BaseClassData):
         defnamefound=False
         for paramname in ['onductance','esistance', 'urr', 'olt']:
             for name in self.dependent_parameter_names:
-                if not defnamefound:
-                    if paramname in name:
-                        self.index_dependent_parameter = self.dependent_parameter_names.index(name)
-                        defnamefound=True
+                if not defnamefound and paramname in name:
+                    self.index_dependent_parameter = self.dependent_parameter_names.index(name)
+                    defnamefound=True
         if not defnamefound: 
             self.index_dependent_parameter = 0
 
@@ -336,16 +318,16 @@ class qcodesppData(BaseClassData):
         if hasattr(self, 'sidebar1D'):
             current_1D_row = self.sidebar1D.trace_table.currentRow()
             current_line = int(self.sidebar1D.trace_table.item(current_1D_row,0).text())
-            processed_data = self.plotted_lines[current_line]['processed_data'][axes[axis]]
+            data_to_send = self.plotted_lines[current_line]['processed_data'][axes[axis]]
             paramname = self.plotted_lines[current_line][f'{axis} data']
 
         else:
-            processed_data = self.processed_data[axes[axis]]
+            data_to_send = self.processed_data[axes[axis]]
             paramname = self.settings[f'{axis} data']
 
         colname= f'Filtered: {paramname}'
 
-        self.add_array_to_data_dict(processed_data, colname)
+        self.add_array_to_data_dict(data_to_send, colname)
 
         self.channels[colname] = {'label': colname,
                                         'unit': self.channels[paramname]['unit'],
