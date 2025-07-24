@@ -10,21 +10,16 @@ class qcodesppData(BaseClassData):
     def __init__(self, filepath, canvas, metapath, load_the_data=True):
         super().__init__(filepath, canvas)
         # Open meta file and set label
-        self.filepath = filepath
         with open(metapath) as f:
             self.meta = json.load(f)
         dirname = os.path.basename(os.path.dirname(metapath))
-        # timestamp = self.meta['timestamp'].split(' ')[1]
 
         self.label = f'{dirname.split('#')[1]}'
-        # self.raw_data = None
-        
+        self.settings["title"] = '#'+self.label
+        self.DEFAULT_PLOT_SETTINGS['title']= '#'+self.label
 
-        self.independent_parameters = []
         self.independent_parameter_names = []
-        self.dependent_parameters = []
         self.dependent_parameter_names = []
-        self.all_parameters = []
         self.all_parameter_names = []
 
         if hasattr(self, 'extra_cols'):
@@ -38,60 +33,48 @@ class qcodesppData(BaseClassData):
                     self.channels[col] = old_chans[col]
             del old_chans
 
-        self.plot_type=None
+        # if load_the_data:
+        #     if '.dat' in filepath:
+        #         self.dataset=load_data(os.path.dirname(filepath))
+        #     else:
+        #         self.dataset=load_data(filepath)
 
-        if load_the_data:
-            if '.dat' in filepath:
-                self.dataset=load_data(os.path.dirname(filepath))
-            else:
-                self.dataset=load_data(filepath)
+        #     if hasattr(self, 'extra_cols'):
+        #         old_dict = copy.deepcopy(self.data_dict)
 
-            if hasattr(self, 'extra_cols'):
-                old_dict = copy.deepcopy(self.data_dict)
-
-            self.data_dict = self.dataset.arrays.copy()
+        #     self.data_dict = self.dataset.arrays.copy()
     
-            if hasattr(self, 'extra_cols'):
-                # Add the extra columns to the data_dict
-                for col in self.extra_cols:
-                    if col in old_dict.keys():
-                        self.data_dict[col] = old_dict[col]
-                del old_dict
+        #     if hasattr(self, 'extra_cols'):
+        #         # Add the extra columns to the data_dict
+        #         for col in self.extra_cols:
+        #             if col in old_dict.keys():
+        #                 self.data_dict[col] = old_dict[col]
+        #         del old_dict
 
-            self.identify_independent_vars()
+        #     self.identify_independent_vars()
 
-            self.prepare_dataset()
+        #     self.prepare_dataset()
 
-            self.data_loaded=True
+        #     self.data_loaded=True
         
-        else:
-            self.data_loaded=False
-            self.dataset=None
-
-        self.index_x = 0
-        self.index_y = 1
-
-        #self.dataset_id = "#" + self.dataset.location.split("#", 1)[1].split("_", 1)[0]
-        self.dataset_id = "#" + dirname.split("#", 1)[1].split("_", 1)[0]
-        self.settings["title"] = '#'+self.label#[:120]#self.dataset_id
-        self.DEFAULT_PLOT_SETTINGS['title']= '#'+self.label#[:120]#self.dataset_id
+        # else:
 
     def prepare_dataset(self):
         pars = list(self.data_dict.keys())
         self.dims = self.data_dict[pars[1]].shape
 
-        if len(self.independent_parameters) > 1:
+        if len(self.independent_parameter_names) > 1:
             pars = list(self.data_dict.keys())
             self.dims = self.data_dict[pars[1]].shape
-            if len(self.data_dict[self.all_parameters[0]["array_id"]]) < self.dims[0]*self.dims[1]:
-                self.data_dict[self.all_parameters[0]["array_id"]] = np.repeat(self.data_dict[self.all_parameters[0]["array_id"]], self.dims[1])
+            if len(self.data_dict[self.all_parameter_names[0]]) < self.dims[0]*self.dims[1]:
+                self.data_dict[self.all_parameter_names[0]] = np.repeat(self.data_dict[self.all_parameter_names[0]], self.dims[1])
             self.dim=3
         
         else:
             self.dim=2
 
     def isFinished(self):
-        self.set_x = self.data_dict[self.all_parameters[0]["array_id"]]
+        self.set_x = self.data_dict[self.all_parameter_names[0]]
         self.set_x = np.unique(self.set_x[~np.isnan(self.set_x)])
         return len(self.set_x) == self.dims[0]
     
@@ -115,7 +98,7 @@ class qcodesppData(BaseClassData):
         except KeyError:
             self.settings['xlabel'] = Xdataname
         
-        if len(self.independent_parameters) == 1: # data is 1D
+        if len(self.independent_parameter_names) == 1: # data is 1D
             ydata = self.data_dict[Ydataname]
             try:
                 self.settings['ylabel'] = f'{self.channels[Ydataname]['label']} ({self.channels[Ydataname]['unit']})'
@@ -139,11 +122,13 @@ class qcodesppData(BaseClassData):
             self.settings['default_histlabel'] = self.settings['default_ylabel']
             self.settings['default_fftxlabel'] = f'1/{self.settings['default_xlabel']}'
 
-        elif len(self.independent_parameters) > 1: # data is 2D
+        elif len(self.independent_parameter_names) > 1: # data is 2D
             ydata = self.data_dict[self.settings['Y data']]
-            self.settings['ylabel'] = f'{self.channels[self.settings['Y data']]['label']} ({self.channels[self.settings['Y data']]['unit']})'
+            self.settings['ylabel'] = (f'{self.channels[self.settings['Y data']]['label']} '
+                                        f'({self.channels[self.settings['Y data']]['unit']})')
             zdata = self.data_dict[self.settings['Z data']]
-            self.settings['clabel'] = f'{self.channels[self.settings['Z data']]['label']} ({self.channels[self.settings['Z data']]['unit']})'
+            self.settings['clabel'] = (f'{self.channels[self.settings['Z data']]['label']} '
+                                        f'({self.channels[self.settings['Z data']]['unit']})')
 
             column_data = np.column_stack((xdata.flatten(),
                                          ydata.flatten(),
@@ -174,17 +159,17 @@ class qcodesppData(BaseClassData):
     
 
     def load_and_reshape_data(self, reload_data=False,reload_from_file=True,linefrompopup=None):
-        if not self.data_loaded or reload_data and reload_from_file:
+        if self.loaded_data is None or reload_data and reload_from_file:
             if '.dat' in self.filepath:
-                self.dataset=load_data(os.path.dirname(self.filepath))
+                self.loaded_data=load_data(os.path.dirname(self.filepath))
             else:
-                self.dataset=load_data(self.filepath)
+                self.loaded_data=load_data(self.filepath)
 
             if hasattr(self, 'extra_cols'):
             # Processed data that has been added to the data_dict. Need to preserve it!
                 old_dict = copy.deepcopy(self.data_dict)
 
-            self.data_dict = self.dataset.arrays.copy()
+            self.data_dict = self.loaded_data.arrays.copy()
     
             if hasattr(self, 'extra_cols'):
                 # Add the extra columns to the data_dict
@@ -196,8 +181,6 @@ class qcodesppData(BaseClassData):
             self.identify_independent_vars()
 
             self.prepare_dataset()
-
-            self.data_loaded=True
 
         column_data = self.get_column_data(line=linefrompopup)
         if column_data.ndim == 1: # if empty array or single-row array
@@ -239,12 +222,9 @@ class qcodesppData(BaseClassData):
         for chan in self.channels.keys():
             if self.channels[chan]["array_id"] not in self.all_parameter_names:
                 if self.channels[chan]["is_setpoint"] and self.channels[chan]["array_id"] in list(self.data_dict.keys()):
-                    self.independent_parameters.append(self.channels[chan])
                     self.independent_parameter_names.append(self.channels[chan]["array_id"])
                 elif self.channels[chan]["array_id"] in list(self.data_dict.keys()):
-                    self.dependent_parameters.append(self.channels[chan])
                     self.dependent_parameter_names.append(self.channels[chan]["array_id"])
-        self.all_parameters = self.independent_parameters + self.dependent_parameters
         self.all_parameter_names = self.independent_parameter_names + self.dependent_parameter_names
         
         # Default to conductance as dependent variable if present.
@@ -261,7 +241,7 @@ class qcodesppData(BaseClassData):
         if 'X data' not in self.settings.keys() or self.settings['X data'] == '':
             self.settings['X data'] = self.independent_parameter_names[0]
 
-        if len(self.independent_parameters) > 1:
+        if len(self.independent_parameter_names) > 1:
             if 'Y data' not in self.settings.keys() or self.settings['Y data'] == '':
                 self.settings['Y data'] = self.independent_parameter_names[1]
             if 'Z data' not in self.settings.keys() or self.settings['Z data'] == '':
@@ -366,7 +346,7 @@ class qcodesppData(BaseClassData):
         colname= f'Filtered: {paramname}'
 
         self.add_array_to_data_dict(processed_data, colname)
-        
+
         self.channels[colname] = {'label': colname,
                                         'unit': self.channels[paramname]['unit'],
                                         'array_id': colname,
