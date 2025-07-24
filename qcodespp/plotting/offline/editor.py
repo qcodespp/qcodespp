@@ -442,7 +442,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         
         self.setWindowTitle(f'InSpectra Gadget{linked_info}{self.window_title_auto_refresh}{session_name}')
 
-    def load_data_item(self,filepath,load_the_data=True):
+    def load_data_item(self,filepath):
         filename, extension = os.path.splitext(filepath)
         if extension == '.npy': # Numpy files (old saved sessions)
             dataset_list = np.load(filepath, allow_pickle=True)
@@ -457,7 +457,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 os.path.isfile(os.path.dirname(filepath)+'/snapshot.json')):
             metapath = os.path.dirname(filepath)+'/snapshot.json'
             try:
-                item = DataItem(qcodesppData(filepath, self.canvas, metapath,load_the_data))
+                item = DataItem(qcodesppData(filepath, self.canvas, metapath))
                 return item
             except Exception as e:
                 self.log_error(f'Failed to add qcodes++ dataset {filepath}: {e}')
@@ -466,7 +466,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             item = DataItem(BaseClassData(filepath, self.canvas))
             return item
 
-    def open_files(self, filepaths=None, load_the_data=True, attr_dicts=None, overrideautocheck=False):
+    def open_files(self, filepaths=None, attr_dicts=None, overrideautocheck=False):
         self.file_list.itemClicked.disconnect(self.file_clicked)
         self.file_list.itemChanged.disconnect(self.file_checked)
         minilog=[]
@@ -511,7 +511,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         item=DataItem(MixedInternalData(self.canvas,label_name,dataset2d_type,dataset1d_type,**kwargs))
 
                     else:
-                        item=self.load_data_item(filepath,load_the_data)
+                        item=self.load_data_item(filepath)
 
                     item.filepath=filepath
                     self.file_list.addItem(item)
@@ -710,7 +710,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             filepaths.append((st_ctime,filepath,subdir))
             if not os.path.split(filepaths[0][2])[1].startswith('#'): #If it's qcodespp data, it's already sorted. If not, sort by time
                 filepaths.sort(key=lambda tup: tup[0])
-            self.open_files([file[1] for file in filepaths],load_the_data=False)
+            self.open_files([file[1] for file in filepaths])
     
     def check_already_loaded(self, subdir, filepaths):
         loaded=False
@@ -768,7 +768,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if not os.path.split(new_files[0][2])[1].startswith('#'): #If it's qcodespp data, it's already sorted. If not, sort by time
                     new_files.sort(key=lambda tup: tup[0])
                 new_filepaths = [new_file[1] for new_file in new_files]
-                self.open_files(new_filepaths,load_the_data=False)
+                self.open_files(new_filepaths)
                 for new_filepath in new_filepaths:
                     self.linked_files.append(new_filepath) 
                     
@@ -1021,7 +1021,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 data = [data[i] for i in range(len(data)) if data[i]['filepath'].replace('\\','/') not in unresolved_files]
                                 for i, filepath in enumerate(file_list):
                                     data[i]['filepath'] = filepath
-                                self.open_files(file_list,load_the_data=False,attr_dicts=data)
+                                self.open_files(file_list,attr_dicts=data)
                             except:
                                 pass
                     else:
@@ -1029,7 +1029,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         try:
                             for i, filepath in enumerate(file_list):
                                 data[i]['filepath'] = filepath
-                            self.open_files(file_list,load_the_data=False,attr_dicts=data)
+                            self.open_files(file_list,attr_dicts=data)
                         except: # If it fails, the messages should occur during open_files. And we need to keep going, to ensure temporary files are deleted
                             pass
                 self.session_filepath = session_filepath

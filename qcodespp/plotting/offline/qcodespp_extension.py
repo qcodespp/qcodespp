@@ -7,7 +7,7 @@ from qcodespp.plotting.offline.datatypes import BaseClassData
 
 class qcodesppData(BaseClassData):
 
-    def __init__(self, filepath, canvas, metapath, load_the_data=True):
+    def __init__(self, filepath, canvas, metapath):
         super().__init__(filepath, canvas)
         # Open meta file and set label
         with open(metapath) as f:
