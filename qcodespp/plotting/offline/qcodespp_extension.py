@@ -224,7 +224,6 @@ class qcodesppData(BaseClassData):
     def load_and_reshape_data(self, reload_data=False,reload_from_file=True,linefrompopup=None):
         # qcodespp data is _already_ in the correct shape for IG plotting, so we don't have to do much
         # Just load the data if necessary, and then choose the right columns/parameters to plot.
-
         if not self.data_loaded or (reload_data and reload_from_file):
             self.load_data_from_file()
 
