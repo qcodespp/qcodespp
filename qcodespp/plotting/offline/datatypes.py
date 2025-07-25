@@ -94,7 +94,7 @@ class BaseClassData:
             self.loaded_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'],skip_header=1)
 
         if self.loaded_data.shape[0] > 0 and self.loaded_data.shape[1] > 0:
-            
+            # Only do stuff if data has actually been loaded.
             if self.settings['transpose'] == 'False':
                 self.loaded_data = np.transpose(self.loaded_data)
 
@@ -159,11 +159,9 @@ class BaseClassData:
             self.filter_menu_options = {'Multiply': allnames,
                                         'Divide': allnames,
                                         'Add/Subtract': allnames}
-            
-            return None
+
         else:
-            self.data_dict = None
-            return ValueError(f"Could not load data from {self.filepath}. The file may be empty or not formatted correctly.")
+            return ValueError(f'Could not load data from {self.filepath}. File may be empty or not formatted correctly.')
         
     def get_column_data(self,line=None):
         if line is not None:
@@ -289,7 +287,6 @@ class BaseClassData:
         else:
             data_to_send = self.processed_data[axes[axis]]
             colname= f'Filtered: {self.settings[f'{axis} data']}'
-
         self.add_array_to_data_dict(data_to_send, colname)
 
     def copy_raw_to_processed_data(self,line=None):
@@ -463,12 +460,6 @@ class BaseClassData:
                         self.cbar = self.figure.colorbar(self.image)
                         if self.view_settings['CBarHist'] == True:
                             self.add_cbar_hist()
-                    if hasattr(self, 'dimension_mismatch') and self.dimension_mismatch:
-                        self.axes.text(0.5, 0.5, 'Cannot plot arrays of\ndifferent shape,\n plot not updated', 
-                                       horizontalalignment='center', 
-                                       verticalalignment='center', 
-                                       transform=self.axes.transAxes, 
-                                       fontsize=20, color='white')
 
                 if not self.labels_changed:
                     self.apply_default_lables()
@@ -885,54 +876,57 @@ class MixedInternalData(BaseClassData):
         self.dataset2d.reset_view_settings()
 
     def add_plot(self, editor_window):
-        self.dataset2d.axes=self.axes
-        self.dataset2d.figure=self.figure
-        self.dataset1d.axes=self.axes
-        self.dataset1d.figure=self.figure
+        try:
+            self.dataset2d.axes=self.axes
+            self.dataset2d.figure=self.figure
+            self.dataset1d.axes=self.axes
+            self.dataset1d.figure=self.figure
 
-        if self.show_2d_data:
-            cmap_str = self.dataset2d.view_settings['Colormap']
-            if self.dataset2d.view_settings['Reverse']:
-                cmap_str += '_r'
-            cmap = cm.get_cmap(cmap_str, lut=int(self.dataset2d.settings['cmap levels']))
-            cmap.set_bad(self.dataset2d.settings['maskcolor'])
+            if self.show_2d_data:
+                cmap_str = self.dataset2d.view_settings['Colormap']
+                if self.dataset2d.view_settings['Reverse']:
+                    cmap_str += '_r'
+                cmap = cm.get_cmap(cmap_str, lut=int(self.dataset2d.settings['cmap levels']))
+                cmap.set_bad(self.dataset2d.settings['maskcolor'])
 
-            norm = MidpointNormalize(vmin=self.dataset2d.view_settings['Minimum'], 
-                                        vmax=self.dataset2d.view_settings['Maximum'], 
-                                        midpoint=self.dataset2d.view_settings['Midpoint'])
-            self.image = self.axes.pcolormesh(self.dataset2d.processed_data[0], 
-                                                self.dataset2d.processed_data[1], 
-                                                self.dataset2d.processed_data[2], 
-                                                shading=self.dataset2d.settings['shading'], 
-                                                norm=norm, cmap=cmap,
-                                                rasterized=self.dataset2d.settings['rasterized'])
-            if self.dataset2d.settings['colorbar'] == 'True':
-                self.cbar = self.figure.colorbar(self.image)
-                if self.view_settings['CBarHist'] == True:
-                    self.add_cbar_hist()
+                norm = MidpointNormalize(vmin=self.dataset2d.view_settings['Minimum'], 
+                                            vmax=self.dataset2d.view_settings['Maximum'], 
+                                            midpoint=self.dataset2d.view_settings['Midpoint'])
+                self.image = self.axes.pcolormesh(self.dataset2d.processed_data[0], 
+                                                    self.dataset2d.processed_data[1], 
+                                                    self.dataset2d.processed_data[2], 
+                                                    shading=self.dataset2d.settings['shading'], 
+                                                    norm=norm, cmap=cmap,
+                                                    rasterized=self.dataset2d.settings['rasterized'])
+                if self.dataset2d.settings['colorbar'] == 'True':
+                    self.cbar = self.figure.colorbar(self.image)
+                    if self.view_settings['CBarHist'] == True:
+                        self.add_cbar_hist()
 
-        # Now plot 1D data on top
-        if not hasattr(self, 'sidebar1D'):
-            self.sidebar1D = Sidebar1D(self.dataset1d,editor_window=editor_window)
-            self.sidebar1D.running = True
-            if hasattr(self.dataset1d, 'plotted_lines'):
-                for line in self.dataset1d.plotted_lines.keys():
-                    self.sidebar1D.append_trace_to_table(line)
-        
-        if not hasattr(self.dataset1d, 'plotted_lines'):
-            # Should basically never happen; user should always have created a plot before since it's 'combine _checked_ files'
-            self.dataset1d.init_plotted_lines()
-            self.sidebar1D.append_trace_to_table(0)
-
-        self.sidebar1D.lims_label.setText('Fit limits')
+            # Now plot 1D data on top
+            if not hasattr(self, 'sidebar1D'):
+                self.sidebar1D = Sidebar1D(self.dataset1d,editor_window=editor_window)
+                self.sidebar1D.running = True
+                if hasattr(self.dataset1d, 'plotted_lines'):
+                    for line in self.dataset1d.plotted_lines.keys():
+                        self.sidebar1D.append_trace_to_table(line)
             
-        self.sidebar1D.update(clearplot=False)
+            if not hasattr(self.dataset1d, 'plotted_lines'):
+                # Should basically never happen; user should always have created a plot before since it's 'combine _checked_ files'
+                self.dataset1d.init_plotted_lines()
+                self.sidebar1D.append_trace_to_table(0)
 
-        self.cursor = Cursor(self.axes, useblit=True, 
-                                color='black', linewidth=0.5)
-        self.apply_plot_settings()
-        self.apply_axlim_settings()
-        self.apply_axscale_settings()
+            self.sidebar1D.lims_label.setText('Fit limits')
+                
+            self.sidebar1D.update(clearplot=False)
+
+            self.cursor = Cursor(self.axes, useblit=True, 
+                                    color='black', linewidth=0.5)
+            self.apply_plot_settings()
+            self.apply_axlim_settings()
+            self.apply_axscale_settings()
+        except Exception as e:
+            editor_window.log_error(f"Error while plotting {self.label}: {e}")
 
     def apply_all_filters(self, update_color_limits=True,filter_box_index=None):
         if filter_box_index ==1:
