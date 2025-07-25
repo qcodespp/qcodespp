@@ -22,8 +22,8 @@ classifiers = [
 license = {text = "MIT"}
 requires-python = ">=3.10"
 dependencies = [ 
-    "qcodes",
-    'numpy>=1.10',
+    "qcodes>=0.53",
+    'numpy>=2.2.0',
     'pyqtgraph',
     'matplotlib',
     'PyQt5',

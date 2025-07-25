@@ -2,14 +2,12 @@ import time
 
 
 from qcodes import Instrument
-from qcodes.utils.validators import Numbers, Ints, Enum
-from qcodes.instrument.sweep_values import SweepFixedValues
+from qcodes.validators import Numbers, Enum
+from qcodes.parameters import SweepFixedValues
 
 from functools import partial
 import numpy as np
-from datetime import datetime
 
-import PyDAQmx
 from PyDAQmx.DAQmxFunctions import *
 from PyDAQmx.DAQmxConstants import *
 from PyDAQmx import Task, int32, DAQmxStartTask

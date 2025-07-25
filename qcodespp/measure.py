@@ -1,15 +1,15 @@
 from datetime import datetime
 import numpy as np
 
+from qcodes.utils import full_class, thread_map
+from qcodes.metadatable import Metadatable
+
 from qcodespp.parameters import Parameter
 from qcodespp.actions import _actions_snapshot
-from qcodes.utils.helpers import full_class
-from qcodes.metadatable import Metadatable
 from qcodespp.station import Station
 from qcodespp.data.data_set import new_data
 from qcodespp.data.data_array import DataArray
 from qcodespp.actions import _QcodesBreak
-from qcodes.utils.threading import thread_map
 
 
 class Measure(Metadatable):

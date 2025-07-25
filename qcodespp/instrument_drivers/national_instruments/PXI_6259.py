@@ -2,8 +2,8 @@ import time
 
 
 from qcodes import Instrument
-from qcodes.utils.validators import Numbers, Ints, Enum
-from qcodes.instrument.sweep_values import SweepFixedValues
+from qcodes.validators import Numbers, Ints, Enum
+from qcodes.parameters import SweepFixedValues
 
 from functools import partial
 import numpy as np

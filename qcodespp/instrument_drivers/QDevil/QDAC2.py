@@ -5,7 +5,6 @@ import warnings
 from time import sleep as sleep_s
 from qcodes.parameters.cache import _Cache
 from qcodes import InstrumentChannel, ChannelList, VisaInstrument, MultiParameter
-from datetime import date
 import time
 from json import dump as json_dump
 from json import load as json_load

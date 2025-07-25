@@ -1,9 +1,8 @@
 from qcodes import param_move
 from qcodes.instrument.base import Instrument
-from qcodes.instrument.channel import InstrumentChannel, ChannelList
+from qcodes.instrument.channel import InstrumentChannel
 import numpy as np
-import time
-from qcodes.utils import validators
+from qcodes import validators
 
 
 class MultiplexerChannel(InstrumentChannel):

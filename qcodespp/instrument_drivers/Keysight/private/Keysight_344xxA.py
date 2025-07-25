@@ -5,7 +5,7 @@ import numpy as np
 import logging
 
 from qcodes.parameters import ArrayParameter
-import qcodes.utils.validators as vals
+import qcodes.validators as vals
 from qcodes import VisaInstrument
 from pyvisa import VisaIOError
 

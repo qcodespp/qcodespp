@@ -1,5 +1,5 @@
 from qcodes import Instrument
-from qcodes.utils.validators import Numbers
+from qcodes.validators import Numbers
 
 from typing import Union
 

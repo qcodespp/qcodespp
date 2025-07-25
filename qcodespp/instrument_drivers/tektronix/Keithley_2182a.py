@@ -1,7 +1,5 @@
 from qcodes import VisaInstrument
-from qcodes.utils.validators import Numbers, Ints, Enum, MultiType, Bool
-
-from functools import partial
+from qcodes.validators import Numbers, Ints, Enum, MultiType, Bool
 
 
 def parse_output_string(s):

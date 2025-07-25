@@ -5,9 +5,9 @@ import logging
 import numpy as np
 
 from qcodes.instrument.base import Instrument
-from qcodes.utils.validators import Numbers
-from qcodes.instrument.parameter import MultiParameter, Parameter, ArrayParameter
-from qcodes.instrument.channel import InstrumentChannel, ChannelList
+from qcodes.validators import Numbers
+from qcodes.parameters import MultiParameter, Parameter, ArrayParameter
+from qcodes.instrument import InstrumentChannel, ChannelList
 
 log = logging.getLogger(__name__)
 

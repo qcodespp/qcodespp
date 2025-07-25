@@ -1,7 +1,7 @@
 import numpy as np
 import collections
 
-from qcodes.utils.helpers import DelegateAttributes, full_class, warn_units
+from qcodes.utils import DelegateAttributes, full_class
 
 
 class DataArray(DelegateAttributes):
@@ -117,16 +117,13 @@ class DataArray(DelegateAttributes):
 
     def __init__(self, parameter=None, name=None, full_name=None, label=None,
                  snapshot=None, array_id=None, set_arrays=(), shape=None,
-                 action_indices=(), unit=None, units=None, is_setpoint=False,
+                 action_indices=(), unit=None, is_setpoint=False,
                  preset_data=None,data_type=None):
         self.name = name
         self.full_name = full_name or name
         self.label = label
         self.shape = shape
-        if units is not None:
-            warn_units('DataArray', self)
-            if unit is None:
-                unit = units
+
         self.unit = unit
         self.array_id = array_id
         self.is_setpoint = is_setpoint
@@ -548,8 +545,3 @@ class DataArray(DelegateAttributes):
             last_index = max(last_index, self.synced_index)
 
         return (last_index + 1) / self.ndarray.size
-
-    @property
-    def units(self):
-        warn_units('DataArray', self)
-        return self.unit

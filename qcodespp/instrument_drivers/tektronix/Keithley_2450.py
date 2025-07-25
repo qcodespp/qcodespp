@@ -1,5 +1,5 @@
 from qcodes import VisaInstrument
-from qcodes.utils.validators import Strings, Enum,Bool
+from qcodes.validators import Strings, Enum
 
 
 class Keithley_2450(VisaInstrument):

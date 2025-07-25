@@ -2,8 +2,8 @@ import numpy as np
 from typing import cast
 
 from qcodes import VisaInstrument, InstrumentChannel, ChannelList
-from qcodes.utils.validators import Enum, Numbers
-from qcodes.parameters.group_parameter import GroupParameter, Group
+from qcodes.validators import Enum, Numbers
+from qcodes.parameters import GroupParameter, Group
 
 
 class Model_340_Curve(InstrumentChannel):

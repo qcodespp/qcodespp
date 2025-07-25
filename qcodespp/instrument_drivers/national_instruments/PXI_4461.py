@@ -2,7 +2,7 @@ import time
 
 
 from qcodes import Instrument
-from qcodes.utils.validators import Numbers, Ints, Enum
+from qcodes.validators import Numbers, Ints, Enum
 
 
 from functools import partial

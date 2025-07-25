@@ -1,9 +1,9 @@
 import re
 import itertools
 from time import sleep as sleep_s
-from qcodes.instrument.parameter import DelegateParameter
+from qcodes.parameters import DelegateParameter
 from qcodes.instrument.visa import Instrument
-from qcodes.utils import validators
+from qcodes import validators
 from pyvisa.errors import VisaIOError
 from typing import (
     Tuple, Sequence, List, Dict, Set, Union, Optional)

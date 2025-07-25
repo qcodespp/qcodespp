@@ -4,11 +4,8 @@
 Exists in qcodes++ solely to support an old Oxford MercuryiPS. All new drivers should be based on VisaInstrument or just Instrument.
 """
 import serial
-import logging
-import time
 
 from qcodes import Instrument
-import qcodes.utils.validators as vals
 
 
 class SerialInstrument(Instrument):

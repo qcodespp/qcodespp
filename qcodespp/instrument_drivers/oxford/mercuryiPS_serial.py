@@ -11,7 +11,6 @@ import numpy as np
 import collections
 
 from .serial import SerialInstrument
-from qcodes.utils.validators import Enum, Anything
 from qcodes import MultiParameter
 
 

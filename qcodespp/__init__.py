@@ -48,7 +48,6 @@ from qcodes.parameters import (
     combine,
 )
 
-from qcodes.utils import deprecate
 from qcodes.parameters import ElapsedTimeParameter
 
 # modules from qcodes that have been extended/modified

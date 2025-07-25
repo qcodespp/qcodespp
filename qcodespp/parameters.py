@@ -19,7 +19,6 @@ from qcodes.parameters import (
 from typing import Any
 
 from qcodes.parameters.sequence_helpers import is_sequence
-from qcodes.parameters.sweep_values import make_sweep
 
 def move(self,end_value,steps=101,step_time=0.03):
     """

@@ -63,9 +63,9 @@ from tqdm.auto import tqdm
 from qcodespp.station import Station
 from qcodespp.data.data_set import new_data, load_data
 from qcodespp.data.data_array import DataArray
-from qcodes.utils.helpers import full_class
+from qcodes.utils import full_class
 from qcodespp.utils.helpers import wait_secs, tprint
-from qcodes.utils.metadata import Metadatable
+from qcodes.metadatable import Metadatable
 from qcodes.parameters import MultiParameter
 from qcodespp.plotting.RemotePlot import live_plot
 import os

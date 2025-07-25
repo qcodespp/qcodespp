@@ -26,10 +26,10 @@ import logging
 from functools import partial
 
 from qcodes import VisaInstrument
-from qcodes.utils.validators import Strings as StringValidator
-from qcodes.utils.validators import Ints as IntsValidator
-from qcodes.utils.validators import Numbers as NumbersValidator
-from qcodes.utils.validators import Enum
+from qcodes.validators import Strings as StringValidator
+from qcodes.validators import Ints as IntsValidator
+from qcodes.validators import Numbers as NumbersValidator
+from qcodes.validators import Enum
 
 
 # %% Helper functions
