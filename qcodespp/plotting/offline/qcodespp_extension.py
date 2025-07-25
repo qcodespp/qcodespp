@@ -122,10 +122,10 @@ class qcodesppData(BaseClassData):
         else:
             Xdataname = self.settings['X data']
             Ydataname = self.settings['Y data']
+
         self.fix_x_dimension()
         # If user has selected X data, use that, otherwise use the first independent parameter
         # X data is the same no matter the data dimension
-
         xdata = self.data_dict[Xdataname]
         try:
             self.settings['xlabel'] = f'{self.channels[Xdataname]['label']} ({self.channels[Xdataname]['unit']})'
@@ -178,7 +178,7 @@ class qcodesppData(BaseClassData):
                                          ydata,
                                         zdata
                                         ))
-            
+
             self.settings['default_xlabel'] = self.settings['xlabel']
             self.settings['default_ylabel'] = self.settings['ylabel']
             self.settings['default_clabel'] = self.settings['clabel']
@@ -333,3 +333,4 @@ class qcodesppData(BaseClassData):
                                         'unit': self.channels[paramname]['unit'],
                                         'array_id': colname,
                                         'is_setpoint': False}
+

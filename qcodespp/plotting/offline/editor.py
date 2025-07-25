@@ -515,7 +515,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                     item.filepath=filepath
                     self.file_list.addItem(item)
-                    if attr_dicts is not None: #then a previous session is being loaded
+                    if attr_dicts: #then a previous session is being loaded
                         for attr in attr_dicts[i]:
                             if attr not in ['filename','checkState','extra_cols',
                                             'dataset1d_type','dataset2d_type',
@@ -566,6 +566,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                             if attr=='plotted_lines':
                                 self.reload_plotted_lines(item.data,item)
+
+                            if 'processed_data' in attr_dicts[i]: # If the data had been plotted we need to force load it here
+                                                                # otherwise the data will be in some weird state.
+                                item.data.prepare_data_for_plot(reload_data=True,reload_from_file=True)
 
                     else:
                         for setting in ['titlesize','labelsize','ticksize']:
@@ -886,12 +890,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     error = self.remove_temp_files(dirpath)
 
                     if error:
-                        message=(f'Error cleaning up temporary files after saving session: {error}\n'
-                                'Do not panic! The session should have saved successfully (unless you were warned of any '
-                                'other errors) and you can safely delete the igtemp folder in the session directory, or let '
-                                'InSpectra Gadget do it next time you load or save a session.\n'
-                                'This usually happens if a cloud service (e.g. OneDrive, Dropbox) tries to sync the temporary files '
-                                'exactly when InSpectra Gadget tries to delete them. ')
+                        message=(f'Error cleaning up temporary files after saving session: {error}\n\n'
+                                'Do not panic! The session should have been saved successfully (unless you were warned of any '
+                                'other errors). You can safely delete the igtemp folder in the session directory if you like, '
+                                'or simply let InSpectra Gadget delete it next time you load or save a session.'
+                                'This usually happens if a cloud service tries to sync the temporary files '
+                                'exactly when InSpectra Gadget is trying to delete them.')
                         self.log_error(message, show_popup=True)
                     
                     del dictionary_list
@@ -1019,6 +1023,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 for i, filepath in enumerate(file_list):
                                     data[i]['filepath'] = filepath
                                 self.open_files(file_list,attr_dicts=data)
+
                             except:
                                 pass
                     else:
@@ -1237,7 +1242,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.log_error('No processed data to export', show_popup=True)
                
     def file_checked(self, item):
-
         if item.checkState() == 2:
             self.file_list.setCurrentItem(item)
             self.show_or_hide_mixeddata_widgets()

@@ -276,7 +276,7 @@ class BaseClassData:
         if not hasattr(self, 'extra_cols'):
             self.extra_cols = []
         self.extra_cols.append(name)
-        
+
     def filttocol(self, axis):
         axes={'X': 0, 'Y': 1, 'Z': 2}
         if hasattr(self, 'sidebar1D'):
@@ -288,7 +288,6 @@ class BaseClassData:
             data_to_send = self.processed_data[axes[axis]]
             colname= f'Filtered: {self.settings[f'{axis} data']}'
         self.add_array_to_data_dict(data_to_send, colname)
-
 
     def copy_raw_to_processed_data(self,line=None):
         if line is not None:
@@ -482,7 +481,7 @@ class BaseClassData:
                 self.apply_axlim_settings()
                 self.apply_axscale_settings()
             except Exception as e:
-                editor_window.log_error(f"Error while ploting {self.label}: {e}")
+                editor_window.log_error(f"Error while plotting {self.label}: {e}")
 
     def apply_default_lables(self):
         if 'default_xlabel' in self.settings.keys():
