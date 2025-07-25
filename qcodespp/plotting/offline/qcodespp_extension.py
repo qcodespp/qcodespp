@@ -69,14 +69,10 @@ class qcodesppData(BaseClassData):
         if column_data.ndim == 1: # if empty array or single-row array
             self.raw_data = None
         else:
-            # # Determine the number of unique values in the first column to determine the shape of the data
-            columns = self.get_columns()
-            data_shape = self.dims
-
-            if data_shape[0] > 1: # If two or more sweeps are finished
+            columns = [i for i in range(self.dim)]
+            if self.dims[0] > 1: # If two or more sweeps are finished
                 
-                # Determine if file is 1D or 2D by checking if first two values in first column are repeated
-                if len(data_shape) == 1:
+                if self.dim == 2: # if data is 1D
                     self.raw_data = [column_data[:,x] for x in range(column_data.shape[1])]            
                     columns = columns[:2]
                 else: 
@@ -84,15 +80,15 @@ class qcodesppData(BaseClassData):
                     if column_data[:,columns[0]][-1] < column_data[:,columns[0]][0]: 
                         column_data = np.flipud(column_data)
                         self.udflipped=True
-                    self.raw_data = [np.reshape(column_data[:,x], data_shape) 
+                    self.raw_data = [np.reshape(column_data[:,x], self.dims) 
                                      for x in range(column_data.shape[1])]
                     # flip if second column is sorted from high to low
                     if self.raw_data[1][0,0] > self.raw_data[1][0,1]: 
                         self.raw_data = [np.fliplr(self.raw_data[x]) for x in range(column_data.shape[1])]
                         self.lrflipped=True
                         
-            elif data_shape[0] == 1: # if first two sweeps are not finished -> duplicate data of first sweep to enable 3D plotting
-                self.raw_data = [np.tile(column_data[:data_shape[1],x], (2,1)) for x in range(column_data.shape[1])]    
+            elif self.dims[0] == 1: # if first two sweeps are not finished -> duplicate data of first sweep to enable 3D plotting
+                self.raw_data = [np.tile(column_data[:self.dims[1],x], (2,1)) for x in range(column_data.shape[1])]    
 
                 self.raw_data[columns[0]][0,:] = columns[0]-1
                 self.raw_data[columns[0]][1,:] = columns[0]+1
