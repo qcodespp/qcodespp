@@ -196,8 +196,6 @@ class qcodesppData(BaseClassData):
 
         else:
             return np.empty((1,1))
-          
-        self.measured_data_points = column_data.shape[0]
 
         return column_data
     
