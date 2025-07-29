@@ -28,9 +28,8 @@ class qcodesppData(BaseClassData):
         self.channels = self.meta['arrays']
 
         if hasattr(self, 'extra_cols'):
-            for col in self.extra_cols:
-                if col in old_chans.keys():
-                    self.channels[col] = old_chans[col]
+            for key,val in old_chans.items():
+                self.channels[key] = val
             del old_chans
 
     def load_from_file(self):
@@ -47,9 +46,8 @@ class qcodesppData(BaseClassData):
 
         if hasattr(self, 'extra_cols'):
             # Add the extra columns to the data_dict
-            for col in self.extra_cols:
-                if col in old_dict.keys():
-                    self.data_dict[col] = old_dict[col]
+            for key,val in old_dict.items():
+                self.data_dict[key] = val
             del old_dict
 
     def load_and_reshape_data(self, reload_data=False,reload_from_file=True,linefrompopup=None):
@@ -78,10 +76,11 @@ class qcodesppData(BaseClassData):
             self.dims = np.shape(self.data_dict[self.independent_parameter_names[self.dim-2]])
 
         column_data = self.get_column_data(line=linefrompopup)
+
         if isinstance(column_data, Exception):
-            print(column_data)
             self.raw_data = None
             return column_data
+        
         else:
             columns = [i for i in range(self.dim)]
             if self.dims[0] > 1: # If two or more sweeps are finished
@@ -98,9 +97,8 @@ class qcodesppData(BaseClassData):
                         self.raw_data = [np.flipud(array) for array in self.raw_data]
                         self.udflipped=True
 
-                        
             elif self.dims[0] == 1: # if first two sweeps are not finished -> duplicate data of first sweep to enable 3D plotting
-                self.raw_data = np.column_stack((column_data[0].flatten(),
+                column_data = np.column_stack((column_data[0].flatten(),
                                                  column_data[1].flatten(),
                                                  column_data[2].flatten()))
                 self.raw_data = [np.tile(column_data[:self.dims[1],x], (2,1)) for x in range(column_data.shape[1])]    
@@ -384,7 +382,7 @@ class qcodesppData(BaseClassData):
 #             self.fix_x_dimension()
 
 #         column_data = self.get_column_data(line=linefrompopup)
-#         print(self.filepath)
+
 #         if column_data.ndim == 1: # if empty array or single-row array
 #             self.raw_data = None
 #         else:

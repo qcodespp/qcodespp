@@ -130,8 +130,6 @@ class BaseClassData:
                 for i,name in enumerate(self.all_parameter_names):
                     self.data_dict[name]=self.loaded_data[i]
 
-            self.measured_data_points = self.loaded_data.shape[0]
-
             self.settings['X data'] = self.all_parameter_names[0]
             self.settings['Y data'] = self.all_parameter_names[1]
             self.settings['xlabel'] = self.all_parameter_names[0]
