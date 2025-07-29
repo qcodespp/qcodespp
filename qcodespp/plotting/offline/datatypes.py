@@ -424,12 +424,6 @@ class BaseClassData:
     def add_plot(self, editor_window):
         if self.processed_data:
             try:
-                cmap_str = self.view_settings['Colormap']
-                if self.view_settings['Reverse']:
-                    cmap_str += '_r'
-                cmap = cm.get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
-                cmap.set_bad(self.settings['maskcolor'])
-
                 if self.dim == 2:
                     if not hasattr(self, 'plotted_lines'):
                         self.init_plotted_lines()
@@ -447,15 +441,23 @@ class BaseClassData:
                         self.settings.pop('Y data')
 
                 elif self.dim == 3:
+                    cmap_str = self.view_settings['Colormap']
+                    if self.view_settings['Reverse']:
+                        cmap_str += '_r'
+                    cmap = cm.get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
+                    cmap.set_bad(self.settings['maskcolor'])
+
                     norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
                                             vmax=self.view_settings['Maximum'], 
                                             midpoint=self.view_settings['Midpoint'])
+                    
                     self.image = self.axes.pcolormesh(self.processed_data[0], 
                                                     self.processed_data[1], 
                                                     self.processed_data[2], 
                                                     shading=self.settings['shading'], 
                                                     norm=norm, cmap=cmap,
                                                     rasterized=self.settings['rasterized'])
+                    
                     if self.settings['colorbar'] == 'True':
                         self.cbar = self.figure.colorbar(self.image)
                         if self.view_settings['CBarHist'] == True:
