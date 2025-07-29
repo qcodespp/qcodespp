@@ -1385,9 +1385,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             # remove it from the gui
             widgetToRemove.setParent(None)
 
-    def update_plots(self, item=None,update_data=True,clear_figure=True,update_color_limits=False):
-        if clear_figure:
-            self.figure.clf()
+    def update_plots(self, item=None,update_data=True,update_color_limits=False):
+        self.figure.clf()
 
         self.clear_sidebar1D()
 

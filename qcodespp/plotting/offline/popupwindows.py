@@ -675,7 +675,7 @@ class LineCutWindow(QtWidgets.QWidget):
             self.update()
 
         except Exception as e:
-            self.editor_window.log_error(f'Error changing linecut position: {e}', show_popup=True)
+            self.editor_window.log_error(f'Error changing linecut position: {type(e).__name__} {e}', show_popup=True)
 
     def index_changed(self,row):
         self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
@@ -691,7 +691,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.cuts_table.item(row,2).setText(f'{self.parent.processed_data[0][data_index,0]:6g}')
             self.parent.linecuts[self.orientation]['lines'][linecut]['data_index'] = data_index
         except Exception as e:
-            self.editor_window.log_error(f'Error changing linecut index: {e}', show_popup=True)
+            self.editor_window.log_error(f'Error changing linecut index: {type(e).__name__} {e}', show_popup=True)
         self.cuts_table.setCurrentItem(self.cuts_table.item(row,0)) # Hopefully fixes a bug that if the index is changed, the focus goes weird.
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
 
@@ -736,7 +736,7 @@ class LineCutWindow(QtWidgets.QWidget):
                                                 DraggablePoint(self.parent,x_1,y_1,int(max_index+1),self.orientation,draw_line=True)]
             self.append_cut_to_table(int(max_index+1))
         except IndexError as e:
-            self.editor_window.log_error(f'Tried to add linecut with index out of range: {e}')
+            self.editor_window.log_error(f'Tried to add linecut with index out of range: IndexError {e}')
         if update: # Don't update every time a cut is added when 'generate' is used
             self.update()
 
@@ -751,7 +751,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.parent.linecuts[self.orientation]['lines'].pop(linecut)
                 self.cuts_table.removeRow(row)
             except Exception as e:
-                self.editor_window.log_error(f'Could not remove linecut: {e}', show_popup=True)
+                self.editor_window.log_error(f'Could not remove linecut: {type(e).__name__} {e}', show_popup=True)
         elif which=='all':
             for linecut in self.parent.linecuts[self.orientation]['lines'].keys():
                 if 'draggable_points' in self.parent.linecuts[self.orientation]['lines'][linecut].keys():
@@ -946,7 +946,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 elif action == uncheck_all_action:
                     self.change_all_checkstate(column,QtCore.Qt.Unchecked)
             except Exception as e:
-                self.editor_window.log_error(f'Could not change checkstate in linecut window: {e}')
+                self.editor_window.log_error(f'Could not change checkstate in linecut window: {type(e).__name__} {e}')
             self.cuts_table.itemChanged.connect(self.cuts_table_edited)
 
     def limits_edited(self):
@@ -1108,8 +1108,8 @@ class LineCutWindow(QtWidgets.QWidget):
                                                     xdata=x_forfit,ydata=y_forfit, p0=p0, inputinfo=inputinfo)
 
                 if isinstance(fit_result, Exception):
-                    self.output_window.setText(f'Curve could not be fitted: {fit_result}')
-                    self.editor_window.log_error(f'Curve could not be fitted: {fit_result}')
+                    self.output_window.setText(f'Curve could not be fitted: {type(fit_result).__name__} {fit_result}')
+                    self.editor_window.log_error(f'Curve could not be fitted: {type(fit_result).__name__} {fit_result}')
                     if multilinefit:
                         return fit_result
                     
@@ -1152,8 +1152,8 @@ class LineCutWindow(QtWidgets.QWidget):
                     success=True
 
             except Exception as e:
-                self.output_window.setText(f'Curve could not be fitted: {e}')
-                self.editor_window.log_error(f'Curve could not be fitted: {e}')
+                self.output_window.setText(f'Curve could not be fitted: {type(e).__name__} {e}')
+                self.editor_window.log_error(f'Curve could not be fitted: {type(e).__name__} {e}')
                 if multilinefit:
                     return e
         
@@ -1327,7 +1327,8 @@ class LineCutWindow(QtWidgets.QWidget):
                     elif self.orientation == 'circular':
                         self.xlabel = 'Angle (rad)'
                 except Exception as e:
-                    self.editor_window.log_error(f'Could not plot diagonal linecut: {e}', show_popup=True)
+                    self.editor_window.log_error(f'Could not plot diagonal linecut: {type(e).__name__} {e}', 
+                                                show_popup=True)
 
         self.ylabel = self.parent.settings['clabel']
         self.cursor = Cursor(self.axes, useblit=True, color='grey', linewidth=0.5)
@@ -1424,8 +1425,8 @@ class LineCutWindow(QtWidgets.QWidget):
                                     row.append('')
                             writer.writerow(row)
             except Exception as e:
-                self.editor_window.log_error(f'Could not save data: {e}', show_popup=True)
-    
+                self.editor_window.log_error(f'Could not save data: {type(e).__name__} {e}', show_popup=True)
+
     def save_fit_result(self):
         current_row = self.cuts_table.currentRow()
         line = int(self.cuts_table.item(current_row,0).text())
@@ -1457,7 +1458,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 with open(filename, 'w', encoding='utf-8') as f:
                     jsondump(export_dict, f, ensure_ascii=False,indent=4)
             except Exception as e:
-                self.editor_window.log_error(f'Could not save statistics: {e}', show_popup=True)
+                self.editor_window.log_error(f'Could not save statistics: {type(e).__name__} {e}', show_popup=True)
 
     def save_all_fits(self):
         # Can save _either_ fits or stats, and decide which to do based on whether the current line has a fit or stats.
@@ -1499,9 +1500,10 @@ class LineCutWindow(QtWidgets.QWidget):
                 with open(filename, 'w', encoding='utf-8') as f:
                     jsondump(export_dict, f, ensure_ascii=False,indent=4)
             except Exception as e:
-                self.editor_window.log_error(f'Could not save statistics: {e}', show_popup=True)
+                self.editor_window.log_error(f'Could not save statistics: {type(e).__name__} {e}', show_popup=True)
         else:
-            self.editor_window.log_error('First select a linecut with either a fit or statistics. Either the fits or stats for all linecuts will be saved, based on that.',
+            self.editor_window.log_error('First select a linecut with either a fit or statistics. '
+                                        'Either the fits or statistics for all linecuts will be saved, based on that.',
                                         show_popup=True)
 
 
@@ -1541,8 +1543,8 @@ class LineCutWindow(QtWidgets.QWidget):
             for line in self.parent.linecuts[self.orientation]['lines'].keys():
                 self.clear_fit(line)
         except Exception as e:
-            self.editor_window.log_error(f'Could not clear all fits: {e}', show_popup=True)
-            
+            self.editor_window.log_error(f'Could not clear all fits: {type(e).__name__} {e}', show_popup=True)
+
         fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
         self.output_window.setText('Information about selected fit type:\n'+fit_function['description'])
         self.update()
@@ -1585,7 +1587,8 @@ class LineCutWindow(QtWidgets.QWidget):
                         header += '\t'+param+'_error'
                 success=True
             except Exception as e:
-                self.editor_window.log_error(f'Could not compile parameter dependency array: {e}', show_popup=True)
+                self.editor_window.log_error(f'Could not compile parameter dependency array: {type(e).__name__} {e}', 
+                                            show_popup=True)
                 success=False
 
         elif 'stats' in self.parent.linecuts[self.orientation]['lines'][current_line].keys():
@@ -1680,7 +1683,8 @@ class LineCutWindow(QtWidgets.QWidget):
                 success=True
 
             except Exception as e:
-                self.editor_window.log_error(f'Could not compile statistics array: {e}', show_popup=True)
+                self.editor_window.log_error(f'Could not compile statistics array: {type(e).__name__} {e}',
+                                            show_popup=True)
                 success=False
 
         if success:
@@ -1691,7 +1695,8 @@ class LineCutWindow(QtWidgets.QWidget):
                 try:
                     self.editor_window.open_files([filename],overrideautocheck=True)
                 except Exception as e:
-                    self.editor_window.log_error(f'Fit dependency was saved at {filename}, but could not be opened in the main window: {e}',
+                    self.editor_window.log_error(f'Fit dependency was saved at {filename}, '
+                                                 f'but could not be opened in the main window: {type(e).__name__} {e}',
                                                  show_popup=True)
 
     def save_image(self):
@@ -1719,7 +1724,7 @@ class LineCutWindow(QtWidgets.QWidget):
         QtWidgets.QApplication.clipboard().setImage(QtGui.QImage.fromData(buf.getvalue()))
         buf.close()
         self.cursor.horizOn = True
-        self.cursor.vertOn = True                       
+        self.cursor.vertOn = True
         self.canvas.draw()
         if DARK_THEME and qdarkstyle_imported:
             rcParams_to_dark_theme()
