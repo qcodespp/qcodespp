@@ -36,6 +36,9 @@ class qcodesppData(BaseClassData):
             self.prepare_dataset()       # Otherwise, data is loaded when first plotted.
 
     def prepare_dataset(self):
+        # Loads the data from file, and prepares a data_dict. This is significantly easier than in the BaseClassData,
+        # since qcodespp data is already in a dictionary. We can also use the metadata to easily work out if the data
+        # is 1D or 2D purely based on how many independent parameters there are.
         if '.dat' in self.filepath:
             self.loaded_data=load_data(os.path.dirname(self.filepath))
         else:
@@ -89,6 +92,7 @@ class qcodesppData(BaseClassData):
         if self.loaded_data is None or reload_data and reload_from_file:
             self.prepare_dataset()
 
+        # Get the required X, Y (and Z) data from the data_dict.
         column_data = self.get_column_data(line=linefrompopup)
 
         if isinstance(column_data, Exception):
@@ -102,7 +106,7 @@ class qcodesppData(BaseClassData):
                 if self.dim == 2: # if data is 1D
                     self.raw_data = column_data#[column_data[:,x] for x in range(column_data.shape[1])]            
 
-                else: 
+                else: # data is 2D. We make sure X and Y are ascending so that the filters can behave predictably.
                     self.raw_data = column_data
                     if self.raw_data[0][0,0] > self.raw_data[0][0,1]: 
                         self.raw_data = [np.fliplr(array) for array in self.raw_data]
@@ -122,7 +126,7 @@ class qcodesppData(BaseClassData):
             else:
                 self.raw_data = None
                 
-            self.settings['columns'] = ','.join([str(i) for i in columns])
+            self.settings['columns'] = ','.join([str(i) for i in columns]) # Legacy. Don't want to yet remove for fear of breaking. Will one day.
 
     def get_column_data(self, line=None):
         if line is not None:
