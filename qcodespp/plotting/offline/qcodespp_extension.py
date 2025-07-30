@@ -72,6 +72,18 @@ class qcodesppData(BaseClassData):
                     if array.shape[0] > non_nan_len:
                         self.data_dict[arrayname] = array[:non_nan_len]
 
+            # There was a time where NaNs could occur in the middle of the data. 
+            # This should never happen anymore, but for old datasets,
+            # we can remove them here while it doesn't cost much extra time.
+            if self.dim == 3:
+                for arrayname, array in self.data_dict.items():
+                    if np.isnan(array).any():
+                        for i,j in np.argwhere(np.isnan(array)):
+                            if i > 0:
+                                array[i,j] = array[i-1,j]
+                            else:
+                                array[i,j] = array[i+1,j]
+
             # self.dims is the shape of each data array
             self.dims = np.shape(self.data_dict[self.independent_parameter_names[self.dim-2]])
 
