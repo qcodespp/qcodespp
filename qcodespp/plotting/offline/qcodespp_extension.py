@@ -7,7 +7,7 @@ from qcodespp.plotting.offline.datatypes import BaseClassData
 
 class qcodesppData(BaseClassData):
 
-    def __init__(self, filepath, canvas, metapath):
+    def __init__(self, filepath, canvas, metapath,load_the_data=False):
         super().__init__(filepath, canvas)
         # Open meta file and set label
         with open(metapath) as f:
@@ -32,7 +32,10 @@ class qcodesppData(BaseClassData):
                 self.channels[key] = val
             del old_chans
 
-    def load_from_file(self):
+        if load_the_data:               # Should only need to happen for (Mixed)InternalData.
+            self.prepare_dataset()       # Otherwise, data is loaded when first plotted.
+
+    def prepare_dataset(self):
         if '.dat' in self.filepath:
             self.loaded_data=load_data(os.path.dirname(self.filepath))
         else:
@@ -50,42 +53,41 @@ class qcodesppData(BaseClassData):
                 self.data_dict[key] = val
             del old_dict
 
+        # Identify the independent and dependent parameters, put various labels in the right place
+        self.identify_variables()
+
+        # Assign dimension based on number of independent parameters
+        if len(self.independent_parameter_names) > 1:
+            self.dim = 3
+        else:
+            self.dim = 2
+
+        # Check if the data is finished, and if not, remove NaNs from the _end_ of the data.
+        if not self.loaded_data.fraction_complete()==1:
+            set_x = self.data_dict[self.all_parameter_names[0]]
+            non_nan_len = len(np.unique(set_x[~np.isnan(set_x)]))-1
+            for arrayname, array in self.data_dict.items():
+                if array.shape[0] > non_nan_len:
+                    self.data_dict[arrayname] = array[:non_nan_len]
+
+        # There was a time where NaNs could occur in the middle of the data. 
+        # This should never happen anymore, but for old datasets,
+        # we can deal with them here.
+        if self.dim == 3:
+            for arrayname, array in self.data_dict.items():
+                if np.isnan(array).any():
+                    for i,j in np.argwhere(np.isnan(array)):
+                        if i > 0:
+                            array[i,j] = array[i-1,j]
+                        else:
+                            array[i,j] = array[i+1,j]
+
+        # self.dims is the shape of each data array
+        self.dims = np.shape(self.data_dict[self.independent_parameter_names[self.dim-2]])
+
     def load_and_reshape_data(self, reload_data=False,reload_from_file=True,linefrompopup=None):
         if self.loaded_data is None or reload_data and reload_from_file:
-            # Load the data from file
-            self.load_from_file()
-            
-            # Identify the independent and dependent parameters, put various labels in the right place
             self.prepare_dataset()
-
-            # Assign dimension based on number of independent parameters
-            if len(self.independent_parameter_names) > 1:
-                self.dim = 3
-            else:
-                self.dim = 2
-
-            # Check if the data is finished, and if not, remove NaNs
-            if not self.loaded_data.fraction_complete()==1:
-                set_x = self.data_dict[self.all_parameter_names[0]]
-                non_nan_len = len(np.unique(set_x[~np.isnan(set_x)]))-1
-                for arrayname, array in self.data_dict.items():
-                    if array.shape[0] > non_nan_len:
-                        self.data_dict[arrayname] = array[:non_nan_len]
-
-            # There was a time where NaNs could occur in the middle of the data. 
-            # This should never happen anymore, but for old datasets,
-            # we can remove them here while it doesn't cost much extra time.
-            if self.dim == 3:
-                for arrayname, array in self.data_dict.items():
-                    if np.isnan(array).any():
-                        for i,j in np.argwhere(np.isnan(array)):
-                            if i > 0:
-                                array[i,j] = array[i-1,j]
-                            else:
-                                array[i,j] = array[i+1,j]
-
-            # self.dims is the shape of each data array
-            self.dims = np.shape(self.data_dict[self.independent_parameter_names[self.dim-2]])
 
         column_data = self.get_column_data(line=linefrompopup)
 
@@ -198,8 +200,8 @@ class qcodesppData(BaseClassData):
             return ValueError("No data found in this dataset.")
 
         return column_data
-    
-    def prepare_dataset(self):
+
+    def identify_variables(self):
         for chan in self.channels.keys():
             if self.channels[chan]["array_id"] not in self.all_parameter_names:
                 if self.channels[chan]["is_setpoint"] and self.channels[chan]["array_id"] in list(self.data_dict.keys()):
