@@ -481,7 +481,7 @@ class BaseClassData:
                 self.apply_axlim_settings()
                 self.apply_axscale_settings()
             except Exception as e:
-                editor_window.log_error(f"Error while plotting {self.label}: {e}")
+                return type(e)(f"Error while plotting {self.label}:\n{type(e).__name__}: {e}")
 
     def apply_default_lables(self):
         if 'default_xlabel' in self.settings.keys():

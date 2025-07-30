@@ -587,8 +587,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 item.data.settings[setting]=self.global_text_size
 
                 except Exception as e:
-                    self.log_error(f'Failed to open {filepath}: {type(e).__name__} {e}')
-                    minilog.append(f'Failed to open {filepath}: {type(e).__name__} {e}')
+                    self.log_error(f'Failed to open {filepath}:\n{type(e).__name__}: {e}')
+                    minilog.append(f'Failed to open {filepath}:\n{type(e).__name__}: {e}')
 
             if self.file_list.count() > 0:
                 last_item = self.file_list.item(self.file_list.count()-1)
@@ -717,7 +717,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 try: # on Mac
                                     st_ctime = os.stat(filepath).st_birthtime
                                 except Exception as e:
-                                    self.log_error(f'Failed to get creation time for {filepath}: {type(e).__name__} {e}')
+                                    self.log_error(f'Failed to get creation time for {filepath}:\n{type(e).__name__}: {e}')
                             filepaths.append((st_ctime,filepath,subdir))
             if not os.path.split(filepaths[0][2])[1].startswith('#'): #If it's qcodespp data, it's already sorted. If not, sort by time
                 filepaths.sort(key=lambda tup: tup[0])
@@ -762,7 +762,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                         try: # on Mac
                                             st_ctime = os.stat(filepath).st_birthtime
                                         except Exception as e:
-                                            self.log_error(f'Failed to get creation time for {filepath}: {type(e).__name__} {e}')
+                                            self.log_error(f'Failed to get creation time for {filepath}:\n{type(e).__name__}: {e}')
                                     new_files.append((st_ctime,filepath,subdir))
 
                             else:
@@ -773,7 +773,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                         try: # on Mac
                                             st_ctime = os.stat(filepath).st_birthtime
                                         except Exception as e:
-                                            self.log_error(f'Failed to get creation time for {filepath}: {type(e).__name__} {e}')
+                                            self.log_error(f'Failed to get creation time for {filepath}:\n{type(e).__name__}: {e}')
                                     new_files.append((st_ctime,filepath,subdir))
             if new_files:
                 if not os.path.split(new_files[0][2])[1].startswith('#'): #If it's qcodespp data, it's already sorted. If not, sort by time
@@ -830,8 +830,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     if os.path.exists(dirpath+'/igtemp'):
                         error = self.remove_temp_files(dirpath)
                         if error:
-                            self.log_error(f'Error removing temporary files before loading session: '
-                                           f'{type(error).__name__} {error}')
+                            self.log_error(f'Error removing temporary files before loading session:\n'
+                                           f'{type(error).__name__}: {error}')
 
                     dictionary_list = []
                     os.makedirs(dirpath+'/igtemp', exist_ok=True)
@@ -879,9 +879,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                             dictionary_list.append(item_dictionary)
                         except Exception as e:
-                            error_type = type(e)
-                            save_error_log.append(f'Error saving item {item.filepath}: {error_type.__name__} {e}')
-                            self.log_error(f'Error saving item {item.filepath}: {error_type.__name__} {e}')
+                            save_error_log.append(f'Error saving item {item.filepath}:\n{type(e).__name__}: {e}')
+                            self.log_error(f'Error saving item {item.filepath}:\n{type(e).__name__}: {e}')
 
                     from qcodespp import __version__
                     dictionary_list.append({
@@ -919,7 +918,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     del dictionary_list
 
             except Exception as e:
-                self.log_error(f'Error saving session: {type(e).__name__} {e}', show_popup=True)
+                self.log_error(f'Error saving session:\n{type(e).__name__}: {e}', show_popup=True)
         self.set_window_title()
         return saved
 
@@ -1000,7 +999,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if os.path.exists(dirpath+'/igtemp'):
                 error = self.remove_temp_files(dirpath)
                 if error:
-                    self.log_error(f'Error removing temporary files before loading session: {type(error).__name__} {error}')
+                    self.log_error(f'Error removing temporary files before loading session:\n{type(error).__name__}: {error}')
 
             if self.file_list.count() > 0:
                 self.remove_files('all')
@@ -1056,11 +1055,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.log_error(f'Session loaded from {session_filepath}')
                 del data
             except Exception as e:
-                self.log_error(f'Error loading session: {type(e).__name__} {e}',show_popup=True)
+                self.log_error(f'Error loading session:\n{type(e).__name__}: {e}',show_popup=True)
 
             error = self.remove_temp_files(dirpath)
             if error:
-                message=(f'Error cleaning up temporary files after loading session: {type(error).__name__} {error}\n'
+                message=(f'Error cleaning up temporary files after loading session:\n{type(error).__name__}: {error}\n'
                         'Do not panic! The session should have saved successfully (unless you were warned of any '
                         'other errors) and you can safely delete the igtemp folder in the session directory, or let '
                         'InSpectra Gadget do it next time you load or save a session.\n'
@@ -1169,7 +1168,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                                 processed_data.append(current_item.data.plotted_lines[line]['processed_data'][1])
                                         np.savetxt(filepath, np.column_stack(processed_data),header=header)
                             except Exception as e:
-                                self.log_error(f'Error saving processed data as .dat: {type(e).__name__} {e}', show_popup=True)
+                                self.log_error(f'Error saving processed data as .dat:\n{type(e).__name__}: {e}', show_popup=True)
 
                     else:
                         data={}
@@ -1208,7 +1207,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                             for component in fit_components:
                                                 data[f'{line}_{current_item.data.plotted_lines[line]['Y data']}'+'_'+component]=fit_components[component].tolist()
                         except Exception as e:
-                            self.log_error(f'Error processing data for export: {type(e).__name__} {e}', show_popup=True)
+                            self.log_error(f'Error processing data for export:\n{type(e).__name__}: {e}', show_popup=True)
 
                         if '.json' in ext:
                             try:
@@ -1216,7 +1215,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 with open(filepath, 'w') as json_file:
                                     jsondump(data, json_file,ensure_ascii=False, indent=4)
                             except Exception as e:
-                                self.log_error(f'Error exporting processed data as .json: {type(e).__name__} {e}', show_popup=True)
+                                self.log_error(f'Error exporting processed data as .json:\n{type(e).__name__}: {e}', show_popup=True)
 
                         elif '.csv' in ext:
                             try:
@@ -1242,7 +1241,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                                     row.append('')
                                             writer.writerow(row)
                             except Exception as e:
-                                self.log_error(f'Error exporting processed data as .csv: {type(e).__name__} {e}', show_popup=True)
+                                self.log_error(f'Error exporting processed data as .csv:\n{type(e).__name__}: {e}', show_popup=True)
                 else:
                     self.log_error('No processed data to export', show_popup=True)
 
@@ -1253,7 +1252,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             with open(filepath,'w') as dat_file:
                                 np.savetxt(filepath, current_item.data.processed_data[-1])
                         except Exception as e:
-                            self.log_error(f'Error exporting processed Z data as .dat: {type(e).__name__} {e}', show_popup=True)
+                            self.log_error(f'Error exporting processed Z data as .dat:\n{type(e).__name__}: {e}', show_popup=True)
                     else:
                         self.log_error('Exporting processed Z data as MxN array only possible to .dat files.')
                 else:
@@ -1319,7 +1318,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 
                     lineedits[which].setText(str(current_item.data.settings[f'bins{which}']))
                 except Exception as e:
-                    self.log_error(f'Could not change plot type: {type(e).__name__} {e}', show_popup=True)
+                    self.log_error(f'Could not change plot type:\n{type(e).__name__}: {e}', show_popup=True)
 
             self.update_plots(update_data=True,update_color_limits=True)
 
@@ -1386,6 +1385,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             widgetToRemove.setParent(None)
 
     def update_plots(self, item=None,update_data=True,update_color_limits=False):
+        minilog=[]
+
         self.figure.clf()
 
         self.clear_sidebar1D()
@@ -1398,7 +1399,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     if not hasattr(item.data, 'processed_data'):
                         error=item.data.prepare_data_for_plot(reload_data=True)
                         if error:
-                            self.log_error(f'Error preparing data for plot: {type(error).__name__} {error}', show_popup=True)
+                            self.log_error(f'Error preparing data for plot:\n{type(error).__name__}: {error}', show_popup=True)
                             item.setCheckState(QtCore.Qt.Unchecked)
                             continue
                     elif hasattr(item.data, 'dim'):
@@ -1409,7 +1410,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                     item.data.figure = self.figure
                     item.data.axes = item.data.figure.add_subplot(rows, cols, index+1)
-                    item.data.add_plot(editor_window=self)
+                    error=item.data.add_plot(editor_window=self)
+                    if error:
+                        minilog.append(str(error))
+                        self.log_error(str(error))
+                        continue
                     if hasattr(item.data, 'linecuts'):
                         for orientation in ['horizontal', 'vertical', 'diagonal']:
                             if len(item.data.linecuts[orientation]['lines']) > 0:
@@ -1420,14 +1425,16 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     if hasattr(item.data, 'sidebar1D') and self.file_list.currentItem() == item:
                         self.oneD_layout.addWidget(item.data.sidebar1D)
                 except Exception as e:
-                    self.log_error(f'Could not plot {item.data.filepath}: {type(e).__name__} {e}', show_popup=True)
-                    raise
+                    self.log_error(f'Could not plot {item.data.filepath}:\n{type(e).__name__}: {e}')
+                    minilog.append(f'Could not plot {item.data.filepath}:\n{type(e).__name__}: {e}')
+                    continue
         try:
             self.show_current_all()
             self.figure.tight_layout()
             self.canvas.draw()
         except Exception as e:
-            self.log_error(f'Exception encountered updating plots: {e}', show_popup=True)
+            self.log_error(f'Exception encountered updating plots:\n{type(e).__name__}: {e}')
+            minilog.append(f'Exception encountered updating plots:\n{type(e).__name__}: {e}')
 
         if hasattr(self, 'live_track_item') and self.live_track_item:
             if (self.live_track_item.checkState() and 
@@ -1436,7 +1443,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.remaining_time_label.setText(self.live_track_item.data.remaining_time_string)
             else:
                 self.remaining_time_label.setText('')
-    
+
+        if len(minilog) > 0:
+            message = 'The following errors occurred while plotting:\n\n'+'\n\n'.join(minilog)
+            self.ew = ErrorWindow(message)
+
     # The below is not working and not implemented, but could be useful to fix and include.
     # def to_next_file(self):
     #     checked_items, indices = self.get_checked_items(return_indices=True)
@@ -1643,7 +1654,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.metadata_button.hide()
                  
         except Exception as e:
-            self.log_error(f'Error populating new plot settings. {e}', show_popup=True)
+            self.log_error(f'Error populating new plot settings:\n{type(e).__name__}: {e}', show_popup=True)
         self.plot_type_box.currentIndexChanged.connect(self.plot_type_changed)
 
     def show_current_plot_settings(self):
@@ -1751,7 +1762,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 try:
                     self.append_filter_to_table()
                 except Exception as e:
-                    self.log_error(f'Error appending filter: {type(e).__name__} {e}', show_popup=True)
+                    self.log_error(f'Error appending filter:\n{type(e).__name__}: {e}', show_popup=True)
 
     def global_text_changed(self):
         self.global_text_size=self.global_text_lineedit.text()
@@ -1811,7 +1822,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 current_item.data.apply_plot_settings()
                 self.canvas.draw()
             except Exception as e: # if invalid value is typed: reset to previous settings
-                self.log_error(f'Invalid value of plot setting: {type(e).__name__} {e}', show_popup=True)
+                self.log_error(f'Invalid value of plot setting:\n{type(e).__name__}: {e}', show_popup=True)
                 self.paste_plot_settings(which='old')
 
     def axlim_setting_edited(self, edited_setting):
@@ -1842,7 +1853,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 current_item.data.apply_axlim_settings()
                 self.canvas.draw()
             except Exception as e:
-                self.log_error(f'Invalid axis limit: {type(e).__name__} {e}', show_popup=True)
+                self.log_error(f'Invalid axis limit:\n{type(e).__name__}: {e}', show_popup=True)
                 self.paste_axlim_settings(which='old')
 
     def reset_axlim_settings(self):
@@ -1917,7 +1928,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 current_item.data.apply_view_settings()
                 self.canvas.draw()
             except Exception as e:
-                self.log_error(f'Invalid value of colourbar setting: {type(e).__name__} {e}', show_popup=True)
+                self.log_error(f'Invalid value of colourbar setting:\n{type(e).__name__}: {e}', show_popup=True)
                 self.paste_view_settings(which='old')
                 
     def fill_colormap_box(self):
@@ -2076,7 +2087,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 try:
                     self.combine_plots()
                 except Exception as e:
-                    self.log_error(f'Could not combine files: {type(e).__name__} {e}', show_popup=True)
+                    self.log_error(f'Could not combine files:\n{type(e).__name__}: {e}', show_popup=True)
 
     def duplicate_item(self, new_plot_button=False):
         original_item = self.file_list.currentItem()
@@ -2239,8 +2250,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 try:
                                     combined_data.append(np.hstack([data_list[j].data_dict[parameter_name] for j in range(len(data_list))]))
                                     combined_parameter_names.append(parameter_name)
-                                except ValueError:
-                                    self.log_error(f'Error combining data for {parameter_name}: Check data dimensions.', 
+                                except ValueError as e:
+                                    self.log_error(f'Error combining data for {parameter_name}:\n{type(e).__name__}: {e}\nCheck data dimesions', 
                                                 show_popup=True)
                     if len(combined_data[0].shape) == 1: # Try to catch BaseClassData that also has a first independent param that is 1D, but this should never happen.
                         combined_data[0]=np.tile(combined_data[0],(combined_data[1].shape[1],1)).T
@@ -2299,10 +2310,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         self.add_internal_data(combined_item)
 
                     except Exception as e:
-                        self.log_error(f'Could not combine data: {type(e).__name__} {e}\n{finalerrormessage}', show_popup=True)
+                        self.log_error(f'Could not combine data:\n{type(e).__name__}: {e}\n{finalerrormessage}', show_popup=True)
 
             except Exception as e:
-                self.log_error(f'Could not combine data: {type(e).__name__} {e}', show_popup=True)
+                self.log_error(f'Could not combine data:\n{type(e).__name__}: {e}', show_popup=True)
 
     def open_plot_settings_menu(self):
         row = self.settings_table.currentRow()
@@ -2398,7 +2409,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.show_current_view_settings()
                     self.reset_axlim_settings()
             except Exception as e:
-                self.log_error(f'Invalid value of filter: {type(e).__name__} {e}', show_popup=True)
+                self.log_error(f'Invalid value of filter:\n{type(e).__name__}: {e}', show_popup=True)
                 self.paste_filters(which='old')
 
     def open_filter_settings_menu(self):
@@ -2463,7 +2474,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             try:
                 self.which_filters(current_item,filt=filt)
             except Exception as e:
-                self.log_error(f'Error adding filter: {type(e).__name__} {e}', show_popup=True)
+                self.log_error(f'Error adding filter:\n{type(e).__name__}: {e}', show_popup=True)
             if current_item.checkState() and filt.checkstate:
                 self.update_plots(update_color_limits=True)
             else:
@@ -2489,7 +2500,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             else:
                 filterlist = list(Filter.DEFAULT_SETTINGS.keys())
         except Exception as e:
-            self.log_error(f'Error initializing filters: {type(e).__name__} {e}')
+            self.log_error(f'Error initializing filters:\n{type(e).__name__}: {e}')
             filterlist = list(Filter.DEFAULT_SETTINGS.keys())
         self.filters_combobox.addItems(filterlist)
         self.filters_combobox.clearFocus()
@@ -2504,7 +2515,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             try:
                 self.filters_table.itemChanged.disconnect(self.filters_table_edited)
             except Exception as e:
-                self.log_error(f'Error disconnecting itemChanged signal: {type(e).__name__} {e}')
+                self.log_error(f'Error disconnecting itemChanged signal:\n{type(e).__name__}: {e}')
             self.filters_table.insertRow(row) 
             filter_item = QtWidgets.QTableWidgetItem(filt.name)
             filter_item.setFlags(QtCore.Qt.ItemIsSelectable | 
@@ -2653,7 +2664,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             linecut_dict['lines'][line] = self.remove_linecutwindows_and_fits(data.linecuts[orientation]['lines'][line])
                         self.copied_linecuts = [orientation,linecut_dict]
                 except Exception as e:
-                    self.log_error(f'Error copying linecuts: {type(e).__name__} {e}', show_popup=True)
+                    self.log_error(f'Error copying linecuts:\n{type(e).__name__}: {e}', show_popup=True)
             else:
                 self.log_error('No linecuts to copy in currently selected file', show_popup=True)
 
@@ -2723,7 +2734,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     else:
                         self.log_error('No linecuts to paste', show_popup=True)
                 except Exception as e:
-                    message = f'Error pasting linecuts: {type(e).__name__} {e}'
+                    message = f'Error pasting linecuts:\n{type(e).__name__}: {e}'
                     minilog.append(message)
                     self.log_error(message)
 
@@ -3149,7 +3160,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                                                     str(data.plotted_lines[current_line]['processed_data'][0][x_max])], checkstate=2)
                     self.which_filters(current_item,filt=filt)
                 except Exception as e:
-                    self.log_error(f'Error cropping X: {type(e).__name__} {e}', show_popup=True)
+                    self.log_error(f'Error cropping X:\n{type(e).__name__}: {e}', show_popup=True)
             if current_item.checkState() and filt.checkstate:
                 self.update_plots(update_color_limits=True)
                 self.reset_axlim_settings()
@@ -3415,7 +3426,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     with open(filename, 'w') as f:
                         jsondump(presets, f)
                 except Exception as e:
-                    self.log_error(f'Could not save preset: {type(e).__name__} {e}', show_popup=True)
+                    self.log_error(f'Could not save preset:\n{type(e).__name__}: {e}', show_popup=True)
 
     def load_preset(self):
         checked_items = self.get_checked_items()
@@ -3435,7 +3446,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             item.data.apply_view_settings()
                             self.update_plots()
                 except Exception as e:
-                    self.log_error(f'Could not load preset: {type(e).__name__} {e}', show_popup=True)
+                    self.log_error(f'Could not load preset:\n{type(e).__name__}: {e}', show_popup=True)
 
     def copy_canvas_to_clipboard(self):
         checked_items = self.get_checked_items()
@@ -3512,7 +3523,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         item.data.raw_data = None
                         item.data.processed_data = None
                     except Exception as e:
-                        self.log_error(f'Could not plot {item.data.filepath} for saving: {type(e).__name__} {e}', show_popup=True)
+                        self.log_error(f'Could not plot {item.data.filepath} for saving:\n{type(e).__name__}: {e}', show_popup=True)
             if DARK_THEME and qdarkstyle_imported:
                 rcParams_to_dark_theme()
                 self.update_plots(update_data=False)
