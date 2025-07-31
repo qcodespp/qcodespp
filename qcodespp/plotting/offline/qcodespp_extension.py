@@ -85,8 +85,11 @@ class qcodesppData(BaseClassData):
                         else:
                             array[i,j] = array[i+1,j]
 
-        # self.dims is the shape of each data array
-        self.dims = np.shape(self.data_dict[self.independent_parameter_names[self.dim-2]])
+        # self.dims is the shape of each data array. It's not necessarily true that all arrays will have the same shape,
+        # but if self.identify_variables() worked, then the Y data array will have the correct shape for the first set of
+        # variables to be plotted; this is true for 1D and 2D data. self.dims gets updated every time the user chooses a new 
+        # (set of) variable(s) to plot.
+        self.dims = np.shape(self.data_dict[self.settings['Y data']])
 
     def load_and_reshape_data(self, reload_data=False,reload_from_file=True,linefrompopup=None):
         if self.loaded_data is None or reload_data and reload_from_file:
@@ -96,10 +99,11 @@ class qcodesppData(BaseClassData):
         column_data = self.get_column_data(line=linefrompopup)
 
         if isinstance(column_data, Exception):
-            self.raw_data = None
+            self.columns_bad=column_data
             return column_data
         
         else:
+            self.columns_bad=False
             columns = [i for i in range(self.dim)]
             if self.dims[0] > 1: # If two or more sweeps are finished
                 
@@ -156,7 +160,7 @@ class qcodesppData(BaseClassData):
             if len(xdata)==len(ydata):
                 column_data = [xdata, ydata]
             else:
-                return ValueError(f"Selected data arrays have different dimensions.\n"
+                return ValueError(f"Selected data arrays have different shapes.\n"
                                      f"Plots not updated.")
                 #column_data = np.zeros((2,2))
                 # This can happen if the user has run statistics, and is trying to plot the result; if they change only
@@ -190,7 +194,7 @@ class qcodesppData(BaseClassData):
                 if name == self.all_parameter_names[0]:
                     column_data[i] = np.repeat(column_data[i], self.dims[1]).reshape(self.dims)
                 if column_data[i].shape != self.dims:
-                    return ValueError(f"Selected data arrays have different dimensions."
+                    return ValueError(f"Selected data arrays have different shapes.\n"
                                      f"Plots not updated.")
 
             self.settings['default_xlabel'] = self.settings['xlabel']

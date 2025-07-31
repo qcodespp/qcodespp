@@ -461,6 +461,13 @@ class BaseClassData:
                         if self.view_settings['CBarHist'] == True:
                             self.add_cbar_hist()
 
+                    if hasattr(self, 'columns_bad') and isinstance(self.columns_bad, Exception):
+                        self.axes.text(
+                            0.5, 0.5, str(self.columns_bad),
+                            ha='center', va='center', fontsize=18, color='white',
+                            transform=self.axes.transAxes
+                        )
+
                 if not self.labels_changed:
                     self.apply_default_lables()
 

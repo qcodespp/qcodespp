@@ -1403,10 +1403,17 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             item.setCheckState(QtCore.Qt.Unchecked)
                             continue
                     elif hasattr(item.data, 'dim'):
-                        if item.data.dim == 3 and update_data==True: # This should only be called when updating 2D data: updating 1D data is taken care of in the datatype and sidebar
-                            item.data.prepare_data_for_plot(update_color_limits=update_color_limits) #reload_data=False by default
+                        if item.data.dim == 3 and update_data==True: 
+                            # Should only be called when updating 2D data: updating 1D data is taken care of in the datatype and sidebar
+                            error=item.data.prepare_data_for_plot(update_color_limits=update_color_limits)
+                            if error:
+                                # Most 'errors' that occur here are not deadly. Just log them.
+                                self.log_error(f'Error preparing 2D data for plot:\n{type(error).__name__}: {error}')
                         elif item.data.dim == 'mixed' and update_data==True: #If MixedInternalData
-                            item.data.dataset2d.prepare_data_for_plot(update_color_limits=update_color_limits)
+                            error=item.data.dataset2d.prepare_data_for_plot(update_color_limits=update_color_limits)
+                            if error:
+                                # Most 'errors' that occur here are not deadly. Just log them.
+                                self.log_error(f'Error preparing 2D data for plot:\n{type(error).__name__}: {error}')
 
                     item.data.figure = self.figure
                     item.data.axes = item.data.figure.add_subplot(rows, cols, index+1)
