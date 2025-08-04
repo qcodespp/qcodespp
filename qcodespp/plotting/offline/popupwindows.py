@@ -123,9 +123,13 @@ class LineCutWindow(QtWidgets.QWidget):
         self.xscale_label = QtWidgets.QLabel('x-axis:')
         self.xscale_box = QtWidgets.QComboBox()
         self.xscale_box.addItems(['linear', 'log', 'symlog', 'logit'])
+        self.xscale_box.setCurrentText(self.parent.linecuts[self.orientation]['xscale'])
         self.yscale_label = QtWidgets.QLabel('y-axis:')
         self.yscale_box = QtWidgets.QComboBox()
         self.yscale_box.addItems(['linear', 'log', 'symlog', 'logit'])
+        self.yscale_box.setCurrentText(self.parent.linecuts[self.orientation]['yscale'])
+        self.legend_checkbox = QtWidgets.QCheckBox('Show legend')
+        self.legend_checkbox.setChecked(self.parent.linecuts[self.orientation]['legend'])
 
         # Fitting widgets
         self.lims_label = QtWidgets.QLabel('Fit limits (left-click plot):')
@@ -201,8 +205,9 @@ class LineCutWindow(QtWidgets.QWidget):
         self.save_image_button.clicked.connect(self.save_image)
         self.copy_image_button.clicked.connect(self.copy_image)
         self.copy_table_button.clicked.connect(self.copy_cuts_table_to_clipboard)
-        self.xscale_box.currentIndexChanged.connect(self.update)
-        self.yscale_box.currentIndexChanged.connect(self.update)
+        self.xscale_box.currentIndexChanged.connect(lambda: self.update_axscale('xscale'))
+        self.yscale_box.currentIndexChanged.connect(lambda: self.update_axscale('yscale'))
+        self.legend_checkbox.toggled.connect(self.update_legend)
 
         self.clear_fit_button.clicked.connect(lambda: self.clear_fit(line='manual'))
         self.fit_class_box.currentIndexChanged.connect(self.fit_class_changed)
@@ -297,6 +302,7 @@ class LineCutWindow(QtWidgets.QWidget):
         #     #self.top_buttons_layout.addWidget(self.orientation_button)
         #     self.top_buttons_layout.addWidget(self.down_button)
         #     self.top_buttons_layout.addWidget(self.up_button)
+        self.bot_buttons_layout.addWidget(self.legend_checkbox)
         self.bot_buttons_layout.addWidget(self.xscale_label)
         self.bot_buttons_layout.addWidget(self.xscale_box)
         self.bot_buttons_layout.addWidget(self.yscale_label)
@@ -986,6 +992,19 @@ class LineCutWindow(QtWidgets.QWidget):
         self.xmax_box.clear()
 
         self.canvas.draw()
+
+    def update_axscale(self,which):
+        if which == 'xscale':
+            self.parent.linecuts[self.orientation]['xscale'] = self.xscale_box.currentText()
+        elif which == 'yscale':
+            self.parent.linecuts[self.orientation]['yscale'] = self.yscale_box.currentText()
+        self.axes.set_xscale(self.parent.linecuts[self.orientation]['xscale'])
+        self.axes.set_yscale(self.parent.linecuts[self.orientation]['yscale'])
+        self.canvas.draw()
+
+    def update_legend(self):
+        self.parent.linecuts[self.orientation]['legend'] = self.legend_checkbox.isChecked()
+        self.update()
   
     def update(self):
         if self.running:
@@ -1260,10 +1279,17 @@ class LineCutWindow(QtWidgets.QWidget):
     def draw_lines(self,x,y,line):
         offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
         size=self.parent.linecuts[self.orientation]['linesize']
+        if self.orientation in ['horizontal', 'vertical']:
+            label = f'{self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value']:.5g}'
+        else:
+            points= self.parent.linecuts[self.orientation]['lines'][line]['points']
+            label = (f'({points[0][0]:.5g}, {points[0][1]:.5g}) : '
+                    f'({points[1][0]:.5g}, {points[1][1]:.5g})')
         self.axes.plot(x, y+offset, self.parent.linecuts[self.orientation]['linestyle'],
                     linewidth=size,
                     markersize=size,
-                    color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'])
+                    color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'],
+                    label= label)
     
     def draw_plot(self):
         checked_editor_items = self.editor_window.get_checked_items()
@@ -1275,8 +1301,8 @@ class LineCutWindow(QtWidgets.QWidget):
         self.figure.clear()
 
         self.axes = self.figure.add_subplot(111)
-        self.axes.set_xscale(self.xscale_box.currentText())
-        self.axes.set_yscale(self.yscale_box.currentText())
+        self.axes.set_xscale(self.parent.linecuts[self.orientation]['xscale'])
+        self.axes.set_yscale(self.parent.linecuts[self.orientation]['yscale'])
         lines = self.get_checked_items()
 
         if self.orientation == 'horizontal':
@@ -1340,6 +1366,8 @@ class LineCutWindow(QtWidgets.QWidget):
         self.axes.tick_params(labelsize='x-large', color=rcParams['axes.edgecolor'])
         if hasattr(self,'title'):
             self.axes.set_title(self.title, size='x-large')
+        if self.parent.linecuts[self.orientation]['legend']:
+            self.axes.legend()
         self.limits_edited()
         self.canvas.draw()
         self.parent.canvas.draw()

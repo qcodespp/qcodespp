@@ -2615,10 +2615,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             current_item.data.filttocol(axis=axis)
 
     def init_linecuts(self,data):
-        data.linecuts={'horizontal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
-                        'vertical':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
-                        'diagonal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5},
-                        'circular':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5}
+        data.linecuts={'horizontal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5,
+                                    'legend':False,'xscale':'linear','yscale':'linear'},
+                        'vertical':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5,
+                                    'legend':False,'xscale':'linear','yscale':'linear'},
+                        'diagonal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5,
+                                    'legend':False,'xscale':'linear','yscale':'linear'},
+                        'circular':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5,
+                                    'legend':False,'xscale':'linear','yscale':'linear'},
                         }
 
     def make_linecut_window(self,orientation, data=None, show=True):
