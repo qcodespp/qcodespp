@@ -202,6 +202,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.resize(1400,1000)
 
         # Hide widgets that shouldn't be shown at startup
+        self.legend_checkbox.hide()
         self.mixeddata_filter_box.hide()
         self.binsX_label.hide()
         self.binsX_lineedit.hide()
@@ -287,6 +288,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.file_list.itemChanged.connect(self.file_checked)
         self.file_list.itemClicked.connect(self.file_clicked)
         self.file_list.itemDoubleClicked.connect(self.file_double_clicked)
+        self.legend_checkbox.clicked.connect(self.legend_checkbox_changed)
         self.plot_type_box.currentIndexChanged.connect(self.plot_type_changed)
         self.binsX_lineedit.editingFinished.connect(lambda: self.bins_changed('X'))
         self.binsY_lineedit.editingFinished.connect(lambda: self.bins_changed('Y'))
@@ -843,7 +845,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             if hasattr(item,'checkState'):
                                 item_dictionary['checkState']=item.checkState()
                             attributes=['label','settings','filters','view_settings','axlim_settings',
-                                        'plot_type','dim','labels_changed',
+                                        'plot_type','dim','labels_changed','legend',
                                         'raw_data','processed_data']
                             if isinstance(item.data, InternalData):
                                 attributes.extend(['loaded_data','label','all_parameter_names','dim'])
@@ -1335,6 +1337,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if isinstance(current_item.data, MixedInternalData):
             current_item.data.show_2d_data = self.show_2d_data_checkbox.isChecked()
             self.update_plots()
+    
+    def legend_checkbox_changed(self):
+        current_item = self.file_list.currentItem()
+        if hasattr(current_item,'data'):
+            current_item.data.legend = self.legend_checkbox.isChecked()
+            print(current_item.data.legend)
+            self.update_plots()
+            print('done')
 
     def show_or_hide_view_settings(self):
         current_item = self.file_list.currentItem()
@@ -1342,6 +1352,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if (hasattr(current_item, 'data') and (hasattr(current_item.data, 'dim') and current_item.data.dim == 3 
                                                    or isinstance(current_item.data, MixedInternalData))):
                 self.stats_button.show()
+                self.legend_checkbox.hide()
                 for i in range(self.view_layout.rowCount()):
                     for j in range(self.view_layout.columnCount()):
                         try:
@@ -1349,6 +1360,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         except:
                             pass
             else:
+                if (hasattr(current_item, 'data') and (hasattr(current_item.data, 'dim') and current_item.data.dim == 2)):
+                    self.legend_checkbox.clicked.disconnect()
+                    self.legend_checkbox.setChecked(current_item.data.legend)
+                    self.legend_checkbox.clicked.connect(self.legend_checkbox_changed)
+                    self.legend_checkbox.show()
+                else:
+                    self.legend_checkbox.hide()
                 self.stats_button.hide()
                 for i in range(self.view_layout.rowCount()):
                     for j in range(self.view_layout.columnCount()):

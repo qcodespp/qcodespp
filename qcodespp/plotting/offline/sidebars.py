@@ -946,13 +946,16 @@ class Sidebar1D(QtWidgets.QWidget):
                                         linewidth=self.parent.plotted_lines[line]['linewidth'],
                                         markersize=self.parent.plotted_lines[line]['linewidth'],
                                         color=self.parent.plotted_lines[line]['linecolor'],
-                                        drawstyle=drawstyle)
+                                        drawstyle=drawstyle,
+                                        label=self.parent.plotted_lines[line]['Y data'])
 
                     if self.parent.plotted_lines[line]['Xerr'] not in [0,'0'] or self.parent.plotted_lines[line]['Yerr'] not in [0,'0']:
                         self.process_uncertainties(line,x,y)
             self.parent.apply_plot_settings()
             #self.parent.apply_axlim_settings()
             self.parent.apply_axscale_settings()
+            if self.parent.legend:
+                self.parent.axes.legend()
         self.editor_window.figure.tight_layout()
 
     def draw_fits(self,line):

@@ -75,6 +75,7 @@ class BaseClassData:
         self.axlim_settings = self.DEFAULT_AXLIM_SETTINGS.copy()
         self.filters = []
         self.labels_changed = False
+        self.legend=False
 
         try: # on Windows
             self.creation_time = os.path.getctime(filepath)
