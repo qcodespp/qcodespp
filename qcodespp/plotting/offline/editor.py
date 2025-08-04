@@ -1342,9 +1342,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current_item = self.file_list.currentItem()
         if hasattr(current_item,'data'):
             current_item.data.legend = self.legend_checkbox.isChecked()
-            print(current_item.data.legend)
             self.update_plots()
-            print('done')
 
     def show_or_hide_view_settings(self):
         current_item = self.file_list.currentItem()
