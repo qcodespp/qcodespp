@@ -1072,7 +1072,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         for item in self.get_all_items():
             if item.filepath == current_item_filepath:
                 self.file_list.setCurrentItem(item)
-                self.file_clicked(item)
+                self.file_clicked()
                 break
 
     def resolve_missing_files(self, filenames):
