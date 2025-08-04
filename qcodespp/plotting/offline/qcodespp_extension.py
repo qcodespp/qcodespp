@@ -87,7 +87,7 @@ class qcodesppData(BaseClassData):
 
         # self.dims is the shape of each data array. It's not necessarily true that all arrays will have the same shape,
         # but if self.identify_variables() worked, then the Y data array will have the correct shape for the first set of
-        # variables to be plotted; this is true for 1D and 2D data. self.dims gets updated every time the user chooses a new 
+        # variables to be plotted for both 1D and 2D data. self.dims gets updated every time the user chooses a new 
         # (set of) variable(s) to plot.
         self.dims = np.shape(self.data_dict[self.settings['Y data']])
 

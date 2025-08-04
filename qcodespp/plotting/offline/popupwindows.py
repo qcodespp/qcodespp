@@ -119,6 +119,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.save_button = QtWidgets.QPushButton('Save Data')
         self.save_image_button = QtWidgets.QPushButton('Save Image')
         self.copy_image_button = QtWidgets.QPushButton('Copy Image')
+        self.copy_table_button = QtWidgets.QPushButton('Copy Table')
         self.xscale_label = QtWidgets.QLabel('x-axis:')
         self.xscale_box = QtWidgets.QComboBox()
         self.xscale_box.addItems(['linear', 'log', 'symlog', 'logit'])
@@ -199,6 +200,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.save_button.clicked.connect(self.save_data)
         self.save_image_button.clicked.connect(self.save_image)
         self.copy_image_button.clicked.connect(self.copy_image)
+        self.copy_table_button.clicked.connect(self.copy_cuts_table_to_clipboard)
         self.xscale_box.currentIndexChanged.connect(self.update)
         self.yscale_box.currentIndexChanged.connect(self.update)
 
@@ -289,6 +291,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.top_buttons_layout.addWidget(self.save_button)
         self.top_buttons_layout.addWidget(self.save_image_button)
         self.top_buttons_layout.addWidget(self.copy_image_button)
+        self.top_buttons_layout.addWidget(self.copy_table_button)
         #self.top_buttons_layout.addStretch()
         # if self.orientation in ['horizontal','vertical']:
         #     #self.top_buttons_layout.addWidget(self.orientation_button)
@@ -1728,7 +1731,40 @@ class LineCutWindow(QtWidgets.QWidget):
         self.canvas.draw()
         if DARK_THEME and qdarkstyle_imported:
             rcParams_to_dark_theme()
-            self.update() 
+            self.update()
+
+    def copy_cuts_table_to_clipboard(self):
+        # Copy the cuts table to clipboard as formatted text
+        row_count = self.cuts_table.rowCount()
+        col_count = 5 # i.e. only interesting ones self.cuts_table.columnCount()
+        headers = [self.cuts_table.horizontalHeaderItem(col).text() for col in range(col_count)]
+        lines = ['\t'.join(headers)]
+        for row in range(row_count):
+            row_items = []
+            for col in range(col_count):
+                item = self.cuts_table.item(row, col)
+                if item is not None:
+                    if col == 4:
+                        text = item.background().color().name()
+                    else:
+                        text = item.text()
+                    # # Add checkmark for checkable columns
+                    if col == 0:
+                        if item.checkState() == QtCore.Qt.Checked:
+                            text = '✔ ' + text
+                        elif item.checkState() == QtCore.Qt.Unchecked:
+                            text = '✘ ' + text
+                else:
+                    # For cell widgets (e.g., spinboxes)
+                    widget = self.cuts_table.cellWidget(row, col)
+                    if isinstance(widget, QtWidgets.QSpinBox):
+                        text = str(widget.value())
+                    else:
+                        text = ''
+                row_items.append(text)
+            lines.append('\t'.join(row_items))
+        clipboard = QtWidgets.QApplication.clipboard()
+        clipboard.setText('\n'.join(lines))
             
     def mouse_scroll_canvas(self, event):
         if event.inaxes:
