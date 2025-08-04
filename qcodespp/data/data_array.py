@@ -545,3 +545,29 @@ class DataArray(DelegateAttributes):
             last_index = max(last_index, self.synced_index)
 
         return (last_index + 1) / self.ndarray.size
+
+    def return_subset(self, indices):
+        """
+        Return a subset of this DataArray.
+
+        Args:
+            indices (sequence): Indices to select from the array.
+                If this is a single index, it will return a scalar.
+                If this is a sequence, it will return a new DataArray
+                with the same metadata as this one, but with the
+                selected data.
+
+        Returns:
+            DataArray or scalar: The selected data.
+        """
+        new_data = self.ndarray[indices]
+        return DataArray(
+            name=self.name,
+            full_name=self.full_name,
+            label=self.label,
+            shape=new_data.shape,
+            unit=self.unit,
+            array_id=self.array_id,
+            is_setpoint=self.is_setpoint,
+            preset_data=new_data,
+            data_type=self.data_type)

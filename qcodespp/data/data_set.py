@@ -85,7 +85,7 @@ def new_data(location=None, loc_record=None, name=None, overwrite=False,
 
     return DataSetPP(location=location, io=io, backup_location=backup_location, force_write=force_write, name=name, **kwargs)
 
-def load_data(location=None, formatter=None, io=None, include_metadata=True):
+def load_data(location=None, formatter=None, io=None, include_metadata=True,remove_incomplete=True):
     """
     Load an existing DataSetPP.
 
@@ -118,9 +118,15 @@ def load_data(location=None, formatter=None, io=None, include_metadata=True):
         data.read()
     else:
         data.read(include_metadata=False)
+    if remove_incomplete:
+        if data.fraction_complete() != 1:
+            data = data.remove_incomplete()
+            log.warning('Data was loaded with incomplete columns removed.\n'
+            'If this is not desired, use remove_incomplete=False in load_data, '
+            'load_data_num, or load_data_nums.')
     return data
 
-def load_data_num(number, datafolder="data", delimiter='_',leadingzeros=3,include_metadata=True):
+def load_data_num(number, datafolder="data", delimiter='_',leadingzeros=3,include_metadata=True,remove_incomplete=True):
     """
     Load a qcodespp DataSetPP using the counter as identifier.
 
@@ -149,10 +155,10 @@ def load_data_num(number, datafolder="data", delimiter='_',leadingzeros=3,includ
     elif np.shape(datapaths[0])[0]==0:
         raise ValueError('No dataset found!')
     else:
-        data = load_data(datapaths[0][0],include_metadata=include_metadata)
+        data = load_data(datapaths[0][0],include_metadata=include_metadata,remove_incomplete=remove_incomplete)
         return data
 
-def load_data_nums(listofnumbers, datafolder="data",delimiter='_',leadingzeros=3,include_metadata=True):
+def load_data_nums(listofnumbers, datafolder="data",delimiter='_',leadingzeros=3,include_metadata=True,remove_incomplete=True):
     """
     Loads numerous DataSetPPs from the specified folder by counter number.
 
@@ -180,16 +186,17 @@ def load_data_nums(listofnumbers, datafolder="data",delimiter='_',leadingzeros=3
         elif np.shape(datapaths[0])[0]==0:
             raise ValueError('No dataset with number {} found! check numbering. '.format(number))
         else:
-            data.append(load_data(datapaths[0][0],include_metadata=include_metadata))
+            data.append(load_data(datapaths[0][0],include_metadata=include_metadata,remove_incomplete=remove_incomplete))
 
     return data
 
 def set_data_format(fmt='data/#{counter}_{name}_{date}_{time}'):
     """
-    Set the default format for storing DataSetPPs. It is not recommended to alter this: instead use set_data_folder.
+    Set the default format for storing DataSetPPs. See qcodespp.data.location for more information.
 
     Args:
         fmt (str): A format string for the location of the data, with wildcards determined by the FormatLocation class.
+            Another useful format may be 'data/{date}/#{counter}_{name}_{time}'.
     """
 
     DataSetPP.location_provider=FormatLocation(fmt=fmt)
@@ -411,6 +418,36 @@ class DataSetPP(DelegateAttributes):
                 total += array.fraction_complete()
 
         return total / (array_count or 1)
+    
+    def remove_incomplete(self):
+        """"
+        Returns a DataSetPP minus any incomplete columns.
+
+        DataArrays are initialized with a set shape and filled with NaNs. 
+        The NaNs get replaced during the measurements, but if the measurement is
+        stopped prematurely, the existence of NaNs can cause problems when plotting.
+
+        Returns:
+            DataSetPP: a new DataSetPP with all incomplete columns removed.
+        """
+        if self.fraction_complete() != 1:
+            try:
+                set_x = self.arrays[list(self.arrays.keys())[0]]
+            except (IndexError, KeyError):
+                set_x = None
+            if set_x is not None:
+                new_dataset = new_data(location=False)
+                non_nan_len = len(np.unique(set_x[~np.isnan(set_x)])) - 1
+                for array in self.arrays.values():
+                    if array.shape[0] > non_nan_len:
+                        new_dataset.add_array(array.return_subset(slice(None, non_nan_len)))
+                return new_dataset
+            else:
+                log.warning('DataSetPP has no setpoint arrays, cannot remove incomplete columns')
+                return self
+        else:
+            log.warning('DataSetPP is already complete, no incomplete columns to remove')
+            return self
 
     def complete(self, delay=1.5):
         """
