@@ -40,9 +40,9 @@ class qcodesppData(BaseClassData):
         # since qcodespp data is already in a dictionary. We can also use the metadata to easily work out if the data
         # is 1D or 2D purely based on how many independent parameters there are.
         if '.dat' in self.filepath:
-            self.loaded_data=load_data(os.path.dirname(self.filepath))
+            self.loaded_data=load_data(os.path.dirname(self.filepath), remove_incomplete=False)
         else:
-            self.loaded_data=load_data(self.filepath)
+            self.loaded_data=load_data(self.filepath, remove_incomplete=False)
 
         if hasattr(self, 'extra_cols'):
         # Processed data that has been added to the data_dict. Need to preserve it!
