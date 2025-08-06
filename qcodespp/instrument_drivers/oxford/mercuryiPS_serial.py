@@ -432,7 +432,7 @@ class MercuryiPS_120(SerialInstrument):
         self.remote_status(['Remote and unlocked'])
         self.rtp.get()
 
-    def reset(self):
+    def clear_buffer(self):
         self.serial_handle.read_all()
 
     def hold(self):
