@@ -211,7 +211,7 @@ class Station(QStation):
             vals=self.components.values()
             for action in actions:
                 # If the action is a gettable parameter and neither it nor any of its ancestors are in the Station, warn the user.
-                if hasattr(action,'get') and action not in vals and hasattr(action, 'instrument') and not any([ancestor in vals for ancestor in action.instrument.ancestors]):
+                if hasattr(action,'get') and action not in vals and hasattr(action, 'instrument') and action.instrument is not None and not any([ancestor in vals for ancestor in action.instrument.ancestors]):
                     log.warning(f'Could not find {action.full_name} nor a possible parent instrument in the specified Station. '
                             'It is recommended to add the Parameter and/or Instrument to the Station before measuring to avoid loss of metadata.')
 
