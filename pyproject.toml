@@ -51,3 +51,6 @@ Homepage = "https://github.com/qcodespp/qcodespp"
 
 [project.scripts]
 qcodespp = "qcodespp.cli:main"
+
+[tool.flit.sdist]
+include = ["scripts/"]
