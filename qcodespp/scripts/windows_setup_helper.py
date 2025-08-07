@@ -5,7 +5,6 @@ This script helps Windows users set up QCodes++ with desktop integration.
 """
 
 import sys
-import os
 import subprocess
 import shutil
 from pathlib import Path
@@ -20,7 +19,7 @@ def check_windows():
 
 def install_dependencies():
     """Install required dependencies for Windows integration."""
-    print("Installing Windows integration dependencies...")
+    print("\nInstalling Windows integration dependencies...")
     
     try:
         subprocess.run([
@@ -34,13 +33,12 @@ def install_dependencies():
         return False
 
 
-def create_shortcuts():
+def create_shortcuts(path=None):
     """Create desktop and start menu shortcuts."""
     try:
         from qcodespp.scripts.setup_windows import create_windows_shortcuts
-        create_windows_shortcuts()
-        print("✓ Desktop and start menu shortcuts created")
-        return True
+        success=create_windows_shortcuts(path=path)
+        return success
     except ImportError:
         print("✗ Windows shell libraries not available")
         print("  Try installing them with: pip install pywin32 winshell")
@@ -109,7 +107,7 @@ def copy_scripts_to_desktop():
         return False
 
 
-def main():
+def main(path=None):
     """Main setup function."""
     print("QCodes++ Windows Setup Helper")
     print("=" * 40)
@@ -126,44 +124,54 @@ def main():
         sys.exit(1)
     
     print("\nWhat would you like to do?")
-    print("1. Install Windows dependencies and create shortcuts (recommended)")
-    print("2. Just install Windows dependencies")
-    print("3. Just create shortcuts (requires dependencies)")
-    print("4. Copy script files to desktop")
-    print("5. Test installation")
-    print("6. Do everything")
+    print("1. Create desktop and start menu shortcuts")
+    print("2. Copy script files to desktop")
+    print("3. Test installation")
+    print("4. Do everything")
+    print("Press any other key to exit.")
     
     try:
-        choice = input("\nEnter your choice (1-6): ").strip()
+        choice = input("\nEnter your choice (1-4): ").strip()
     except KeyboardInterrupt:
         print("\nSetup cancelled.")
         sys.exit(0)
     
     success = True
     
-    if choice in ["1", "2", "6"]:
+    if choice in ["1", "2", "4"]:
+        print("\n" + "=" * 40)
         success &= install_dependencies()
-    
-    if choice in ["1", "3", "6"]:
-        success &= create_shortcuts()
-    
-    if choice in ["4", "6"]:
+
+    if choice in ["1", "4"]:
+        if not path:
+            print("\nIf offline_plotting and Jupyter Lab should be launched from a specific folder, " \
+            "specify the path below.\n" \
+            "Otherwise, press Enter to use the default (user's home directory).")
+            try:
+                path = input("\nEnter the path: ").strip()
+            except KeyboardInterrupt:
+                print("\nSetup cancelled.")
+                sys.exit(0)
+            if path == "":
+                path = None
+        print("\n" + "=" * 40)
+        success &= create_shortcuts(path=path)
+
+    if choice in ["2", "4"]:
+        print("\n" + "=" * 40)
         success &= copy_scripts_to_desktop()
-    
-    if choice in ["5", "6"]:
+
+    if choice in ["3", "4"]:
+        print("\n" + "=" * 40)
         success &= test_installation()
-    
-    if choice not in ["1", "2", "3", "4", "5", "6"]:
-        print("Invalid choice. Please run the script again.")
+
+    if choice not in ["1", "2", "3", "4"]:
+        print("Exiting.")
         sys.exit(1)
     
     print("\n" + "=" * 40)
     if success:
-        print("✓ Setup completed successfully!")
-        print("\nYou can now:")
-        print("- Run 'qcodespp offline_plotting' from command line")
-        print("- Use desktop/start menu shortcuts (if created)")
-        print("- Double-click batch/PowerShell scripts (if copied)")
+        print("✓ Setup completed!")
     else:
         print("✗ Setup completed with some errors.")
         print("Check the messages above for details.")

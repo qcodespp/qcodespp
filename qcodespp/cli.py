@@ -40,18 +40,36 @@ def main():
         action="store_true", 
         help="Don't run in a separate thread (may be needed on some systems like macOS)"
     )
+
+        # qcodes install_shortcuts subcommand
+    install_parser = subparsers.add_parser(
+        "install_shortcuts",
+        help="Install QCoDeS shortcuts (Windows only)"
+    )
+
+    install_parser.add_argument(
+        "--path",
+        type=str,
+        default=None,
+        help="Path to directory shortcuts should open in (default: user's home directory)"
+    )
     
     # Parse arguments
     args = parser.parse_args()
     
     if args.command == "offline_plotting":
         from qcodespp.plotting.offline.main import offline_plotting
-        
+
         offline_plotting(
             folder=args.folder,
             link_to_default=not args.no_link_default,
             use_thread=True
         )
+
+    elif args.command == "install_shortcuts":
+        from qcodespp.scripts import windows_setup_helper
+        windows_setup_helper.main(path=args.path)
+
     else:
         parser.print_help()
         return 1

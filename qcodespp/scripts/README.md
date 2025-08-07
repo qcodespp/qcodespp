@@ -1,6 +1,6 @@
-# QCodes++ Windows Scripts
+# qcodes++ Windows Scripts
 
-This directory contains scripts and utilities for setting up QCodes++ on Windows systems.
+This directory contains scripts and utilities for setting up qcodes++ on Windows systems.
 
 ## Files
 
@@ -16,14 +16,14 @@ This directory contains scripts and utilities for setting up QCodes++ on Windows
 
 ## Quick Start for Windows Users
 
-1. Install QCodes++:
+1. Install qcodes++:
    ```bash
    pip install qcodespp
    ```
 
 2. Run the setup helper:
    ```bash
-   python -m qcodespp.scripts.windows_setup_helper
+   qcodes install_shortcuts
    ```
 
 3. Choose option 1 or 6 to set up everything automatically.
@@ -31,7 +31,7 @@ This directory contains scripts and utilities for setting up QCodes++ on Windows
 ## Manual Setup
 
 ### Command Line Usage
-After installing QCodes++, you can launch the offline plotting GUI with:
+After installing qcodes++, you can launch the offline plotting GUI with:
 ```bash
 qcodespp offline_plotting
 ```
@@ -68,6 +68,6 @@ This creates standalone `.exe` files in the `dist/` directory.
 
 - **Python not found**: Ensure Python is in your PATH or use the full path to python.exe
 - **Permission errors**: Run as Administrator or manually create shortcuts
-- **Import errors**: Verify QCodes++ is installed with `pip list | findstr qcodespp`
+- **Import errors**: Verify qcodes++ is installed with `pip list | findstr qcodespp`
 
 For more detailed troubleshooting, see `WINDOWS_INSTALL.md` in the project root.
