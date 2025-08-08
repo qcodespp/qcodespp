@@ -56,7 +56,8 @@ def listVISAinstruments(baudrates='qdac'):
                     print(f'Instrument IDN: {res.query('*IDN?')} VISA Address: {resource}\n')
                     connected=True
                     break
-                except Exception as e2:
+                except Exception as e:
+                    e2=e
                     pass
                 finally:
                     res.baud_rate=9600
