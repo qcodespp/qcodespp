@@ -127,11 +127,17 @@ class QSwitch(Instrument):
         self._check_instrument_name(name)
         if 'ASRL' in address:
             self._udp_mode = False
-            self._switch = visa.ResourceManager(visalib).open_resource(address)
+            try:
+                self._switch = visa.ResourceManager(visalib).open_resource(address)
+            except ValueError:
+                self._switch = visa.ResourceManager().open_resource(address)
             self._set_up_visa()
         elif 'TCPIP' in address: #(TCP/IP connection for fw 1.3 and below)
             self._udp_mode = False
-            self._switch = visa.ResourceManager(visalib).open_resource(address)
+            try:
+                self._switch = visa.ResourceManager(visalib).open_resource(address)
+            except ValueError:
+                self._switch = visa.ResourceManager().open_resource(address)
             self._set_up_visa()
         elif address.count(":") == 0: #(UDP connection for fw 2.0 and above)
             self._udp_mode = True

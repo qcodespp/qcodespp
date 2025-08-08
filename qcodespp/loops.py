@@ -1129,7 +1129,7 @@ class ActiveLoop(Metadatable):
             # If not, save a copy and warn the user.
             if check_written_data==True:
                 try:
-                    writtendata=load_data(self.data_set.location)
+                    writtendata=load_data(self.data_set.location,remove_incomplete=False)
                     for array in self.data_set.arrays:
                         if self.data_set.arrays[array].data_type==float:
                             if not np.array_equal(writtendata.arrays[array],self.data_set.arrays[array],equal_nan=True):
