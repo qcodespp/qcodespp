@@ -63,8 +63,9 @@ def listVISAinstruments(baudrates='qdac'):
                     res.baud_rate=9600
             if connected==False:
                 print(f'Instrument with address {resource} raised exceptions:\n {e1}\n{e2}\n'
-                    'Either the instrument does not accept the \'IDN?\' command (e.g. it does not use SCPI, '
+                    'Possible causes: the instrument does not accept the \'IDN?\' command (e.g. it does not use SCPI, '
                     'it is a composite instrument), or it '
-                    'is already connected, possibly in another program or ipython kernel.\n')
+                    'is already connected, possibly in another program or ipython kernel.\n'
+                    'Or, there is another problem with the instrument configuration, use the exceptions to guide you.')
         if res:
             res.close()
