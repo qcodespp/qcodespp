@@ -41,9 +41,9 @@ def main():
         help="Don't run in a separate thread (may be needed on some systems like macOS)"
     )
 
-        # qcodes install_shortcuts subcommand
+    # qcodes create_shortcuts subcommand
     install_parser = subparsers.add_parser(
-        "install_shortcuts",
+        "create_shortcuts",
         help="Install QCoDeS shortcuts (Windows only)"
     )
 
@@ -66,7 +66,7 @@ def main():
             use_thread=True
         )
 
-    elif args.command == "install_shortcuts":
+    elif args.command == "create_shortcuts":
         from qcodespp.scripts import windows_setup_helper
         windows_setup_helper.main(path=args.path)
 

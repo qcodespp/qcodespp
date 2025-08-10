@@ -23,30 +23,14 @@ This directory contains scripts and utilities for setting up qcodes++ on Windows
 
 2. Run the setup helper:
    ```bash
-   qcodes install_shortcuts
+   qcodes create_shortcuts
    ```
-
-3. Choose option 1 or 6 to set up everything automatically.
-
 ## Manual Setup
 
 ### Command Line Usage
 After installing qcodes++, you can launch the offline plotting GUI with:
 ```bash
 qcodespp offline_plotting
-```
-
-### Creating Shortcuts
-To manually create desktop and start menu shortcuts:
-```bash
-pip install pywin32 winshell
-python -c "from qcodespp.scripts.setup_windows import create_windows_shortcuts; create_windows_shortcuts()"
-```
-
-### Using Batch/PowerShell Scripts
-1. Copy the `.bat` or `.ps1` files to your desktop
-2. Double-click to run
-3. Or create shortcuts pointing to these files
 
 ## Building Standalone Executables
 

@@ -39,22 +39,7 @@ Installation
 
 See https://qcodespp.github.io/installation.html
 
-For Windows users who want to install qcodes++ as a desktop application with shortcuts,
-see the detailed guide in `WINDOWS_INSTALL.md <WINDOWS_INSTALL.md>`__.
-
-Quick Windows Setup
--------------------
-
-After installing qcodes++, you can launch the offline plotting GUI with::
-
-    qcodespp offline_plotting
-
-Or create desktop shortcuts by running::
-
-    pip install pywin32 winshell
-    python -c "from qcodespp.scripts.setup_windows import create_windows_shortcuts; create_windows_shortcuts()"
-
-QCoDeS and qcodes++ are compatible with Python 3.9+. They are primarily intended for use
+QCoDeS and qcodes++ are compatible with Python 3.10+. They are primarily intended for use
 from Jupyter notebooks and Jupyter lab, but can also be used from Spyder, traditional terminal-based
 shells and in stand-alone scripts.
 
