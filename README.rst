@@ -39,7 +39,7 @@ Installation
 
 See https://qcodespp.github.io/installation.html
 
-QCoDeS and qcodes++ are compatible with Python 3.9+. They are primarily intended for use
+QCoDeS and qcodes++ are compatible with Python 3.10+. They are primarily intended for use
 from Jupyter notebooks and Jupyter lab, but can also be used from Spyder, traditional terminal-based
 shells and in stand-alone scripts.
 

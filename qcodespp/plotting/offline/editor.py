@@ -702,7 +702,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.update_plots()
 
     def open_files_from_folder(self, rootdir=None):
-        if rootdir is None:
+        if not rootdir:
             rootdir = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory to Open")
         if rootdir:
             filepaths = []
