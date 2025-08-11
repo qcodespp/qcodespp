@@ -437,6 +437,7 @@ class DataSetPP(DelegateAttributes):
                 set_x = None
             if set_x is not None:
                 new_dataset = new_data(location=False)
+                new_dataset.metadata=self.metadata
                 non_nan_len = len(np.unique(set_x[~np.isnan(set_x)])) - 1
                 for array in self.arrays.values():
                     if array.shape[0] > non_nan_len:

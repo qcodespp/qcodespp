@@ -630,7 +630,7 @@ class ZIMFLI(Instrument):
 
     def _getX(self,path):
         if self.daq.getInt(path.rpartition("/")[0]+"/enable") != 1:
-            print("Tried to get value of disabled channel " + path)
+            #print("Tried to get value of disabled channel " + path)
             x = 0
         else:
             data = self.daq.getSample(path)
@@ -640,7 +640,7 @@ class ZIMFLI(Instrument):
 
     def _getY(self,path):
         if self.daq.getInt(path.rpartition("/")[0]+"/enable") != 1:
-            print("Tried to get value of disabled channel " + path)
+            #print("Tried to get value of disabled channel " + path)
             y = 0
         else:
             data = self.daq.getSample(path)
@@ -650,7 +650,7 @@ class ZIMFLI(Instrument):
 
     def _getR(self,path):
         if self.daq.getInt(path.rpartition("/")[0]+"/enable") != 1:
-            print("Tried to get value of disabled channel " + path)
+            #print("Tried to get value of disabled channel " + path)
             R = 0
         else:
             data = self.daq.getSample(path)
@@ -662,7 +662,7 @@ class ZIMFLI(Instrument):
         
     def _getP(self,path):
         if self.daq.getInt(path.rpartition("/")[0]+"/enable") != 1:
-            print("Tried to get value of disabled channel " + path)
+            #print("Tried to get value of disabled channel " + path)
             P = 0
         else:
             data = self.daq.getSample(path)
@@ -699,7 +699,7 @@ class ZIMFLI(Instrument):
 
     def _getScope(self):
         if self.daq.getInt('/{}/scopes/0/enable'.format(self.serial)) != 1:
-            print("Tried to get value of disabled channel /{}/scopes/0/".format(self.serial))
+            #print("Tried to get value of disabled channel /{}/scopes/0/".format(self.serial))
             return 0
 
         scope=self.daq.scopeModule()
