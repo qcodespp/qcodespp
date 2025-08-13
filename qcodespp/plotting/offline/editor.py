@@ -1827,6 +1827,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     if f'default_{setting_name}' in current_item.data.settings.keys():
                         current_item.data.settings[f'default_{setting_name}'] = current_item.data.settings[f'{setting_name}']
                         self.show_current_plot_settings()
+                        self.update_plots()
                 elif setting_name == 'transpose':
                     current_item.data.prepare_data_for_plot(reload_data=True,reload_from_file=True)
                     self.update_plots()

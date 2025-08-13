@@ -78,6 +78,7 @@ log = logging.getLogger(__name__)
 
 def loop1d(sweep_parameter,
                 start, stop, num, delay,
+                sweep_type='linear',
                 device_info='', instrument_info='',
                 measure=None,
                 plot=None,
@@ -124,8 +125,8 @@ def loop1d(sweep_parameter,
 
     if measure:
         Station.default.set_measurement(*measure)
-    loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*Station.default.measure())
-    
+    loop=Loop(_parse_sweep_type(sweep_parameter, sweep_type)(start,stop,num=num), delay).each(*Station.default.measure())
+
     start_text, stop_text, unit_text = _filename_text(start, stop, sweep_parameter)
 
     name=f'{device_info} {sweep_parameter.full_name}({start_text} {stop_text}){unit_text} with {instrument_info}'
@@ -144,6 +145,8 @@ def loop2d(sweep_parameter,
                 start, stop, num, delay,
                 step_parameter,
                 step_start, step_stop, step_num, step_delay,
+                sweep_type='linear',
+                step_type='linear',
                 snake=False,
                 step_action=None,
                 device_info='', instrument_info='',
@@ -206,12 +209,12 @@ def loop2d(sweep_parameter,
     if measure:
         Station.default.set_measurement(*measure)
 
-    loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*Station.default.measure())
+    loop=Loop(_parse_sweep_type(sweep_parameter, sweep_type)(start,stop,num=num), delay).each(*Station.default.measure())
 
     if step_action:
-        loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay,snake=snake).each(step_action,loop)
+        loop2d=Loop(_parse_sweep_type(step_parameter, step_type)(step_start,step_stop,num=step_num), step_delay,snake=snake).each(step_action,loop)
     else:
-        loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay,snake=snake).each(loop)
+        loop2d=Loop(_parse_sweep_type(step_parameter, step_type)(step_start,step_stop,num=step_num), step_delay,snake=snake).each(loop)
 
     start_text, stop_text, unit_text = _filename_text(start, stop, sweep_parameter)
     step_start_text, step_stop_text, step_unit_text = _filename_text(step_start, step_stop, step_parameter)
@@ -234,6 +237,8 @@ def loop2dUD(sweep_parameter,
                 start, stop, num, delay,
                 step_parameter,
                 step_start, step_stop, step_num, step_delay,
+                sweep_type='linear',
+                step_type='linear',
                 step_action=None,
                 fast_down=False,
                 device_info='', instrument_info='', 
@@ -293,17 +298,17 @@ def loop2dUD(sweep_parameter,
     if measure:
         Station.default.set_measurement(*measure)
 
-    loop=Loop(sweep_parameter.sweep(start,stop,num=num), delay).each(*Station.default.measure())
+    loop=Loop(_parse_sweep_type(sweep_parameter, sweep_type)(start,stop,num=num), delay).each(*Station.default.measure())
 
     if fast_down:
-        loop_down=Loop(sweep_parameter.sweep(stop,start,num=int(num/fast_down),print_warning=False), delay).each(*Station.default.measure())
+        loop_down=Loop(_parse_sweep_type(sweep_parameter, sweep_type)(stop,start,num=int(num/fast_down),print_warning=False), delay).each(*Station.default.measure())
     else:
-        loop_down=Loop(sweep_parameter.sweep(stop,start,num=num,print_warning=False), delay).each(*Station.default.measure())
+        loop_down=Loop(_parse_sweep_type(sweep_parameter, sweep_type)(stop,start,num=num,print_warning=False), delay).each(*Station.default.measure())
 
     if step_action:
-        loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay).each(step_action,loop,loop_down)
+        loop2d=Loop(_parse_sweep_type(step_parameter, step_type)(step_start,step_stop,num=step_num), step_delay).each(step_action,loop,loop_down)
     else:
-        loop2d=Loop(step_parameter.sweep(step_start,step_stop,num=step_num), step_delay).each(loop,loop_down)
+        loop2d=Loop(_parse_sweep_type(step_parameter, step_type)(step_start,step_stop,num=step_num), step_delay).each(loop,loop_down)
 
     start_text, stop_text, unit_text = _filename_text(start, stop, sweep_parameter)
     step_start_text, step_stop_text, step_unit_text = _filename_text(step_start, step_stop, step_parameter)
@@ -321,6 +326,24 @@ def loop2dUD(sweep_parameter,
         loop2d.run()
     
     return loop2d
+
+def _parse_sweep_type(parameter, sweep_type):
+    """
+    Parse the sweep type and return the appropriate sweep method for the parameter.
+
+    Args:
+        parameter (Parameter): The qcodes parameter to sweep over.
+        sweep_type (str): The type of sweep to perform ('linear', 'return', 'log').
+
+    Returns:
+        callable: The method to use for sweeping the parameter.
+    """
+    sweep_type_dict = {
+        'linear': getattr(parameter, 'sweep'),
+        'return': getattr(parameter, 'returnsweep'),
+        'log': getattr(parameter, 'logsweep')
+    }
+    return sweep_type_dict[sweep_type]
 
 def _filename_text(start,stop,parameter):
     '''
