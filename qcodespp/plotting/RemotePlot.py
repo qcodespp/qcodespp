@@ -11,6 +11,7 @@ from qcodespp.data.data_set import DataSetPP
 from qcodespp.data.data_array import DataArray
 from qcodespp.utils.helpers import NumpyJSONEncoder
 from qcodespp.parameters import Parameter
+from qcodes import MultiParameter
 
 def live_plot(*args,data_set=None, data_items=None):
     """
@@ -53,6 +54,11 @@ def live_plot(*args,data_set=None, data_items=None):
         for item in data_items:
             if isinstance(item, Parameter) and not data_set:
                 raise ValueError('Parameters only accepted to data_items if a data_set is also provided.')
+            elif isinstance(item, MultiParameter):
+                for name in item.names:
+                    for array in data_set.arrays:
+                        if name in array:
+                            new_items.append(data_set.arrays[array])
             elif isinstance(item, Parameter):
                 for array in data_set.arrays:
                     if item.full_name in array:
