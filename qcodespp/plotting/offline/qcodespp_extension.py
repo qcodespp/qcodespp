@@ -69,9 +69,10 @@ class qcodesppData(BaseClassData):
         if not self.loaded_data.fraction_complete()==1:
             set_x = self.data_dict[self.all_parameter_names[0]]
             non_nan_len = len(np.unique(set_x[~np.isnan(set_x)]))-1
-            for arrayname, array in self.data_dict.items():
-                if array.shape[0] > non_nan_len:
-                    self.data_dict[arrayname] = array[:non_nan_len]
+            if non_nan_len > 0:
+                for arrayname, array in self.data_dict.items():
+                    if array.shape[0] > non_nan_len:
+                        self.data_dict[arrayname] = array[:non_nan_len]
 
         # There was a time where NaNs could occur in the middle of the data. 
         # This should never happen anymore, but for old datasets,
