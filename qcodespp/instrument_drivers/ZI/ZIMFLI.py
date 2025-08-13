@@ -181,6 +181,13 @@ class ZIMFLI(Instrument):
                                get_cmd= partial(self._getP,'/{}/demods/{}/sample'.format(self.serial,n)),
                                get_parser = float)
 
+            # Return the whole sample
+            self.add_parameter(name='demod{}_sample'.format(n),
+                               label='Sample',
+                               unit='',
+                               get_cmd= partial(self._getSample,'/{}/demods/{}/sample'.format(self.serial,n))
+                               )
+
             # Demod on or off
             self.add_parameter(name='demod{}_enabled'.format(n),
                                label='demod{}'.format(n),
@@ -669,6 +676,13 @@ class ZIMFLI(Instrument):
             P = float(data['phase'])
 
         return P
+
+    def _getSample(self,path):
+        if self.daq.getInt(path.rpartition("/")[0]+"/enable") != 1:
+            samp=0
+        else:
+            samp=self.daq.getSample(path)
+        return samp
 
     def _get_aux_sample0(self,reading):
             channel=0
