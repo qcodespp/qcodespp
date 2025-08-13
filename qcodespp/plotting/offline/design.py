@@ -765,6 +765,8 @@ class Ui_MainWindow(object):
         self.action_exit.setObjectName("action_exit")
         self.action_save_session_as = QtWidgets.QAction(MainWindow)
         self.action_save_session_as.setObjectName("action_save_session_as")
+        self.action_set_refresh_intervals = QtWidgets.QAction(MainWindow)
+        self.action_set_refresh_intervals.setObjectName("action_set_refresh_intervals")
         self.menu_save_session.addAction(self.action_export_data_columns)
         self.menu_save_session.addAction(self.action_export_data_Z)
         self.menu_save_session.addSeparator()
@@ -797,6 +799,7 @@ class Ui_MainWindow(object):
         self.menuFile.addAction(self.action_unlink_folder)
         self.menuFile.addAction(self.action_refresh)
         self.menuFile.addAction(self.action_track_data)
+        self.menuFile.addAction(self.action_set_refresh_intervals)
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.action_save_session)
         self.menuFile.addAction(self.action_save_session_as)
@@ -950,6 +953,7 @@ class Ui_MainWindow(object):
         self.action_refresh.setText(_translate("MainWindow", "Refresh (Ctrl+Shift+R)"))
         self.action_exit.setText(_translate("MainWindow", "Exit"))
         self.action_save_session_as.setText(_translate("MainWindow", "Save session as"))
+        self.action_set_refresh_intervals.setText(_translate("MainWindow", "Set refresh intervals"))
 
 
 if __name__ == "__main__":

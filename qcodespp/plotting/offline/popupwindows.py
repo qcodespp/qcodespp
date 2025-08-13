@@ -2084,3 +2084,73 @@ class ErrorLogWindow(QtWidgets.QDialog):
                     jsondump(self.error_log, f, ensure_ascii=False, indent=4)
             except Exception as e:
                 self.ew=ErrorWindow(f"Error saving log: {e}")
+
+class AutoRefreshPopup(QtWidgets.QDialog):
+    def __init__(self, editor_window, from_dropdown=False):
+        super().__init__()
+        self.editor_window = editor_window
+        self.from_dropdown = from_dropdown
+        self.setWindowTitle("Set intervals for autorefresh")
+        self.resize(300, 150)
+
+        layout = QtWidgets.QVBoxLayout()
+
+        label = QtWidgets.QLabel("Set autorefresh intervals:")
+        layout.addWidget(label)
+
+        self.prev_2d= getattr(editor_window, "refresh_2d", 30)
+        self.prev_1d= getattr(editor_window, "refresh_1d", 5)
+
+        self.lineedit_2d = QtWidgets.QLineEdit(str(self.prev_2d))
+        self.lineedit_2d.setValidator(QtGui.QIntValidator())
+
+        self.lineedit_1d = QtWidgets.QLineEdit(str(self.prev_1d))
+        self.lineedit_1d.setValidator(QtGui.QIntValidator())
+
+        self.lineedit_2d.setMaximumWidth(60)
+        self.lineedit_1d.setMaximumWidth(60)
+        input_layout = QtWidgets.QHBoxLayout()
+        input_layout.addWidget(QtWidgets.QLabel("2D:"))
+        input_layout.addWidget(self.lineedit_2d)
+        input_layout.addWidget(QtWidgets.QLabel("s"))
+        input_layout.addWidget(QtWidgets.QLabel("1D:"))
+        input_layout.addWidget(self.lineedit_1d)
+        input_layout.addWidget(QtWidgets.QLabel("s"))
+
+        layout.addLayout(input_layout)
+
+        if not self.from_dropdown:
+            self.save_until_restart_checkbox = QtWidgets.QCheckBox("Save until restart")
+            self.save_until_restart_checkbox.setChecked(True)
+            layout.addWidget(self.save_until_restart_checkbox)
+
+        button_layout = QtWidgets.QHBoxLayout()
+        ok_button = QtWidgets.QPushButton("OK")
+        cancel_button = QtWidgets.QPushButton("Cancel")
+        button_layout.addStretch()
+        button_layout.addWidget(ok_button)
+        button_layout.addWidget(cancel_button)
+        layout.addLayout(button_layout)
+
+        self.setLayout(layout)
+
+        ok_button.clicked.connect(self.accept)
+        cancel_button.clicked.connect(self.reject)
+
+        self.show()
+
+    def accept(self):
+        try:
+            self.editor_window.refresh_2d = int(self.lineedit_2d.text())
+        except ValueError as e:
+            self.editor_window.refresh_2d = self.prev_2d
+            self.editor_window.log_error(f'Invalid input for 2D refresh interval:\n{type(e).__name__} {e}', show_popup=True)
+        try:
+            self.editor_window.refresh_1d = int(self.lineedit_1d.text())
+        except ValueError as e:
+            self.editor_window.refresh_1d = self.prev_1d
+            self.editor_window.log_error(f'Invalid input for 1D refresh interval:\n{type(e).__name__} {e}', show_popup=True)
+        if not self.from_dropdown:
+            self.editor_window.ask_autorefresh = not self.save_until_restart_checkbox.isChecked()
+        
+        super().accept()

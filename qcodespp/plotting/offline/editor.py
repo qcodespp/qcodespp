@@ -40,7 +40,8 @@ mplstyle.use('fast')
 from lmfit.model import save_modelresult, load_modelresult
 
 import qcodespp.plotting.offline.design as design
-from qcodespp.plotting.offline.popupwindows import LineCutWindow, MetadataWindow, StatsWindow, ErrorWindow, ErrorLogWindow
+from qcodespp.plotting.offline.popupwindows import (LineCutWindow, MetadataWindow, StatsWindow, 
+                                                    ErrorWindow, ErrorLogWindow,AutoRefreshPopup)
 from qcodespp.plotting.offline.sidebars import Sidebar1D
 from qcodespp.plotting.offline.helpers import (cmaps, NavigationToolbarMod,
                       rcParams_to_dark_theme,rcParams_to_light_theme,
@@ -55,8 +56,6 @@ import sys
 
 # UI settings
 DARK_THEME = True
-AUTO_REFRESH_INTERVAL_2D = 1
-AUTO_REFRESH_INTERVAL_3D = 30
 
 # List of custom presets
 PRESETS = [{'title': '', 'labelsize': '9', 'ticksize': '9', 'spinewidth': '0.5',
@@ -200,6 +199,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.linked_folder = None
         self.linked_files = []
         self.resize(1400,1000)
+
+        self.refresh_2d = 30
+        self.refresh_1d = 5
+        self.ask_autorefresh = True
 
         # Hide widgets that shouldn't be shown at startup
         self.legend_checkbox.hide()
@@ -370,6 +373,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.action_link_to_folder.triggered.connect(lambda: self.update_link_to_folder(new_folder=True))
         self.action_unlink_folder.triggered.connect(self.unlink_folder)
         self.action_track_data.triggered.connect(self.track_button_clicked)
+        self.action_set_refresh_intervals.triggered.connect(lambda: self.set_refresh_intervals(from_dropdown=True))
         self.action_refresh.triggered.connect(self.refresh_files)
         self.refresh_file_button.clicked.connect(self.refresh_files)
         self.action_exit.triggered.connect(self.close)
@@ -1523,28 +1527,32 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             return all_items, indices
         else:
             return all_items
-        
-    def refresh_interval_changed(self, interval):
-        AUTO_REFRESH_INTERVAL_3D=float(interval)
-        if self.track_button.text() == 'Stop tracking':
-            self.track_button_clicked()
+
+    def set_refresh_intervals(self, from_dropdown=False):
+        self.refwind = AutoRefreshPopup(self, from_dropdown=from_dropdown)
+        ret = self.refwind.exec_()
+        if ret != 1:
+            return False
+        return True
         
     def track_button_clicked(self):
         current_item = self.file_list.currentItem()
         if (self.track_button.text() == 'Track data' and 
-            current_item and current_item.checkState() and
-            not current_item.data.file_finished()):
+            current_item and current_item.checkState()) and not current_item.data.file_finished():
+            if self.ask_autorefresh:
+                cont=self.set_refresh_intervals()
+                if not cont:
+                    return
             self.live_track_item = current_item
             self.live_track_item.setText('[LIVE] '+self.live_track_item.data.label)
             self.live_track_item.data.prepare_data_for_plot(reload_data=True)
-            if self.live_track_item.data.raw_data:
-                if len(self.live_track_item.data.get_columns()) == 3: # if file is 3D
-                    self.start_auto_refresh(AUTO_REFRESH_INTERVAL_3D)
-                elif len(self.live_track_item.data.get_columns()) == 2: # if file is 2D
-                    self.start_auto_refresh(AUTO_REFRESH_INTERVAL_2D)
+            if hasattr(self.live_track_item.data, 'raw_data') and self.live_track_item.data.raw_data is not None:
+                if self.live_track_item.data.dim == 3:
+                    self.start_auto_refresh(self.refresh_2d)
+                elif self.live_track_item.data.dim == 2:
+                    self.start_auto_refresh(self.refresh_1d)
             else:
-                self.start_auto_refresh(AUTO_REFRESH_INTERVAL_2D, 
-                                        wait_for_file=True)
+                self.start_auto_refresh(self.refresh_1d, wait_for_file=True)
         elif self.track_button.text() == 'Stop tracking':
             self.stop_auto_refresh()
         

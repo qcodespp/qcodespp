@@ -342,6 +342,11 @@ class qcodesppData(BaseClassData):
                                         'unit': self.channels[paramname]['unit'],
                                         'array_id': colname,
                                         'is_setpoint': False}
+        
+    def file_finished(self):
+        if not self.loaded_data.fraction_complete()==1:
+            return False
+        return True
 
 
 # class qcodesppData(BaseClassData):
