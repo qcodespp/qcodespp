@@ -2172,7 +2172,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     new_label= f'{original_label.split('_')[0]}-{duplicate_index}-{original_label.split("_")[1]}'
                 new_item.setText(new_label)
                 new_item.data.label = new_label
-                new_item.data.settings['title']=f'{new_item.data.dataset_id}-{duplicate_index}'
+                new_item.data.settings['title']=new_label
 
             else:
                 new_item.setText(f'Duplicate: {new_item.data.label}')
