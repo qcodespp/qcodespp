@@ -48,7 +48,9 @@ class qcodesppData(BaseClassData):
         # Processed data that has been added to the data_dict. Need to preserve it!
             old_dict = copy.deepcopy(self.data_dict)
 
-        self.data_dict = self.loaded_data.arrays.copy()
+        #self.data_dict = self.loaded_data.arrays.copy()
+
+        self.data_dict = self.remove_string_arrays(self.loaded_data.arrays.copy())
 
         if hasattr(self, 'extra_cols'):
             # Add the extra columns to the data_dict
@@ -91,6 +93,15 @@ class qcodesppData(BaseClassData):
         # variables to be plotted for both 1D and 2D data. self.dims gets updated every time the user chooses a new 
         # (set of) variable(s) to plot.
         self.dims = np.shape(self.data_dict[self.settings['Y data']])
+
+    def remove_string_arrays(self, data_dict):
+        """
+        Removes arrays that have str as data_type, since these cannot be plotted.
+        """
+        for key in list(data_dict.keys()):
+            if hasattr(data_dict[key],'data_type') and data_dict[key].data_type == str:
+                del data_dict[key]
+        return data_dict
 
     def load_and_reshape_data(self, reload_data=False,reload_from_file=True,linefrompopup=None):
         if self.loaded_data is None or reload_data and reload_from_file:
