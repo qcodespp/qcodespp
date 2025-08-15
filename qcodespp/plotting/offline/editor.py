@@ -2130,14 +2130,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def duplicate_item(self, new_plot_button=False):
         original_item = self.file_list.currentItem()
+        original_row = self.file_list.row(original_item)
         X = self.new_plot_X_box.currentText()
         Y = self.new_plot_Y_box.currentText()
         Z = self.new_plot_Z_box.currentText()
         if original_item:
             try:
                 self.clear_sidebar1D()
-                # Copy over data if internal data, or else re-load it. 
-                # The advantage of keeping it this way is that the new data gets the correct data class; it won't be InternalData.
+                # Copy over data if internal data, or else reload it as new item. 
+                # The advantage of reloading is that the new data gets the correct data class; it won't be InternalData.
                 if isinstance(original_item.data, InternalData):
                     item=DataItem(InternalData(self.canvas,original_item.data.loaded_data,
                                             original_item.data.label,
@@ -2160,6 +2161,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.open_files(filepaths=[original_item.data.filepath],overrideautocheck=True)
 
                 new_item = self.file_list.currentItem()
+                current_row = self.file_list.currentRow()
+                self.file_list.takeItem(current_row)
+                self.file_list.insertItem(original_row + 1, new_item)
+                self.file_list.setCurrentRow(original_row + 1)
                 new_item.duplicate = True
 
                 # Copy over settings
@@ -2315,7 +2320,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.add_internal_data(combined_item)
 
                 else:
-                    finalerrormessage=('There are possibilities when combining datasets: \n'
+                    finalerrormessage=('There are three possibilities when combining datasets: \n'
                           '1. Any number of 1D datasets with aribtrary dimension; all parameters available for plotting\n'
                           '2. Any number of 2D datasets with same sets of parameters and y-axis length. The datasets are stacked along the x-axis. \n'
                           '3. A single 2D dataset and a single 1D dataset. Pre-combine 1D and 2D datasets separately if necessary.')
