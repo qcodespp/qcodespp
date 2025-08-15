@@ -481,6 +481,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def open_files(self, filepaths=None, attr_dicts=None, overrideautocheck=False):
         self.file_list.itemClicked.disconnect(self.file_clicked)
         self.file_list.itemChanged.disconnect(self.file_checked)
+        item_to_set_current=None
         minilog=[]
         if not filepaths:
             filepaths, _ = QtWidgets.QFileDialog.getOpenFileNames(
@@ -534,10 +535,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.file_list.addItem(item)
                     if attr_dicts: #then a previous session is being loaded
                         for attr,value in attr_dicts[i].items():
-                            if attr not in ['filename','checkState','duplicate',
+                            if attr not in ['filename','checkState','duplicate','is_current_item',
                                             'extra_cols','dataset1d_type','dataset2d_type',
                                             'dataset1d_plotted_lines','dataset2d_linecuts']:
                                 setattr(item.data,attr,value)
+
+                            elif attr=='is_current_item' and value:
+                                item_to_set_current=item
 
                             elif attr=='extra_cols':
                                 if not hasattr(item.data,'data_dict'):
@@ -602,8 +606,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     minilog.append(f'Failed to open {filepath}:\n{type(e).__name__}: {e}')
 
             if self.file_list.count() > 0:
-                last_item = self.file_list.item(self.file_list.count()-1)
-                self.file_list.setCurrentItem(last_item)
+                if item_to_set_current:
+                    self.file_list.setCurrentItem(item_to_set_current)
+                else:
+                    last_item = self.file_list.item(self.file_list.count()-1)
+                    self.file_list.setCurrentItem(last_item)
                 if not overrideautocheck:
                     for item_index in range(self.file_list.count()-1):
                         self.file_list.item(item_index).setCheckState(QtCore.Qt.Unchecked)
@@ -855,6 +862,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 item_dictionary['checkState']=item.checkState()
                             if hasattr(item,'duplicate'):
                                 item_dictionary['duplicate']=item.duplicate
+                            if item == current_item:
+                                item_dictionary['is_current_item'] = True
                             attributes=['label','settings','filters','view_settings','axlim_settings',
                                         'plot_type','dim','labels_changed','legend',
                                         'raw_data','processed_data']
@@ -899,7 +908,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     dictionary_list.append({
                         'qcodespp_version': __version__
                     })
-                    dictionary_list.append({'current_item': current_item.filepath})
+                    #dictionary_list.append({'current_row': self.file_list.currentRow()})
 
                     # Save all needed files to a temperorary directory and add them to the tarball
                     np.save(dirpath+'/igtemp/numpyfile.npy', dictionary_list)
@@ -1027,9 +1036,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                 # Extract only the elements of the numpy array that are dictionaries representing data items
                 data=[item for item in numpy_file if isinstance(item, dict) and 'filepath' in item.keys()]
-                current_item_filepath = [item for item in numpy_file if isinstance(item, dict) and 'current_item' in item.keys()]
-                if len(current_item_filepath) > 0:
-                    current_item_filepath = current_item_filepath[0]['current_item']
                 file_list=[attr_dict['filepath'] for attr_dict in data]
 
                 # Use the resolve_missing_files function to check for missing files. Ask the user if they want to quit loading the session
@@ -1082,11 +1088,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
             self.update_plots() # Necessary to ensure some settings are applied to the final plot.
         self.set_window_title()
-        for item in self.get_all_items():
-            if item.filepath == current_item_filepath:
-                self.file_list.setCurrentItem(item)
-                self.file_clicked()
-                break
 
     def resolve_missing_files(self, filenames):
         resolved_files = []
