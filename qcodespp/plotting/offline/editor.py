@@ -533,11 +533,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     item.filepath=filepath
                     self.file_list.addItem(item)
                     if attr_dicts: #then a previous session is being loaded
-                        for attr in attr_dicts[i]:
-                            if attr not in ['filename','checkState','extra_cols',
-                                            'dataset1d_type','dataset2d_type',
+                        for attr,value in attr_dicts[i].items():
+                            if attr not in ['filename','checkState','duplicate',
+                                            'extra_cols','dataset1d_type','dataset2d_type',
                                             'dataset1d_plotted_lines','dataset2d_linecuts']:
-                                setattr(item.data,attr,attr_dicts[i][attr])
+                                setattr(item.data,attr,value)
 
                             elif attr=='extra_cols':
                                 if not hasattr(item.data,'data_dict'):
@@ -547,17 +547,17 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 if isinstance(item.data, qcodesppData) and not hasattr(item.data,'channels'):
                                     item.data.channels = {}
 
-                                for colname in attr_dicts[i][attr]:
+                                for colname in value:
                                     item.data.extra_cols.append(colname)
-                                    item.data.data_dict[colname] = attr_dicts[i][attr][colname]['data']
+                                    item.data.data_dict[colname] = value[colname]['data']
                                     if isinstance(item.data, qcodesppData):
-                                        item.data.channels[colname] = attr_dicts[i][attr][colname]['channel']
+                                        item.data.channels[colname] = value[colname]['channel']
                                     elif isinstance(item.data,InternalData):
                                         item.data.all_parameter_names.append(colname)
                             
                             elif attr=='checkState':
-                                item.setCheckState(attr_dicts[i][attr])
-                                if attr_dicts[i][attr]==2:
+                                item.setCheckState(value)
+                                if value==2:
                                     self.file_checked(item)
                                     overrideautocheck=True #If any item is checked, override autochecking. 
                                     # But if NONE of them are checked, let autocheck do its thing.
@@ -568,13 +568,18 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                     if hasattr(item.data,'sidebar1D'):
                                         item.data.sidebar1D.hide()
                                         del item.data.sidebar1D
+                            
+                            elif attr=='duplicate':
+                                item.duplicate = value
+                                if item.duplicate and 'label' in attr_dicts[i]:
+                                    item.setText(attr_dicts[i]['label'])
 
                             elif attr=='dataset1d_plotted_lines':
-                                item.data.dataset1d.plotted_lines= attr_dicts[i][attr]
+                                item.data.dataset1d.plotted_lines= value
                                 self.reload_plotted_lines(item.data.dataset1d,item)
 
                             elif attr=='dataset2d_linecuts':
-                                item.data.dataset2d.linecuts = attr_dicts[i][attr]
+                                item.data.dataset2d.linecuts = value
                                 self.reload_linecuts(item.data.dataset2d,item.checkState())
 
                             if attr=='linecuts':
@@ -848,15 +853,17 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 item_dictionary['filepath']=item.filepath.replace('\\','/') # Replace backslashes with forward slashes for compatibility
                             if hasattr(item,'checkState'):
                                 item_dictionary['checkState']=item.checkState()
+                            if hasattr(item,'duplicate'):
+                                item_dictionary['duplicate']=item.duplicate
                             attributes=['label','settings','filters','view_settings','axlim_settings',
                                         'plot_type','dim','labels_changed','legend',
                                         'raw_data','processed_data']
                             if isinstance(item.data, InternalData):
-                                attributes.extend(['loaded_data','label','all_parameter_names','dim'])
+                                attributes.extend(['loaded_data','all_parameter_names','dim'])
                             elif isinstance(item.data, MixedInternalData):
                                 item_dictionary['dataset2d_type'] = str(item.data.dataset2d_type)
                                 item_dictionary['dataset1d_type'] = str(item.data.dataset2d_type)
-                                attributes.extend(['label','dataset1d_filepath','dataset2d_filepath',
+                                attributes.extend(['dataset1d_filepath','dataset2d_filepath',
                                         'dataset1d_loaded_data','dataset2d_loaded_data',
                                         'dataset1d_label','dataset2d_label',
                                         'dataset1d_all_parameter_names','dataset2d_all_parameter_names',
@@ -2127,117 +2134,121 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         Y = self.new_plot_Y_box.currentText()
         Z = self.new_plot_Z_box.currentText()
         if original_item:
-            self.clear_sidebar1D()
-            # Copy over data if internal data, or else re-load it. 
-            # The advantage of keeping it this way is that the new data gets the correct data class; it won't be InternalData.
-            if isinstance(original_item.data, InternalData):
-                item=DataItem(InternalData(self.canvas,original_item.data.loaded_data,
-                                        original_item.data.label,
-                                        original_item.data.all_parameter_names,
-                                        dimension=original_item.data.dim))
-                item.filepath = 'internal_data'
-                self.add_internal_data(item,check_item=False,uncheck_others=False)
-            
-            elif isinstance(original_item.data, MixedInternalData):
-                item=DataItem(MixedInternalData(self.canvas,original_item.data.label,
-                                        original_item.data.dataset2d_type, original_item.data.dataset1d_type,
-                                        original_item.data.dataset2d_filepath, original_item.data.dataset1d_filepath,
-                                        original_item.data.dataset1d_loaded_data,original_item.data.dataset2d_loaded_data,
-                                        original_item.data.dataset1d_label,original_item.data.dataset2d_label,
-                                        original_item.data.dataset1d_all_parameter_names,original_item.data.dataset2d_all_parameter_names,
-                                        original_item.data.dataset1d_dim,original_item.data.dataset2d_dim))
-                item.filepath = 'mixed_internal_data'
-                self.add_internal_data(item,check_item=False,uncheck_others=False)
-            else:
-                self.open_files(filepaths=[original_item.data.filepath],overrideautocheck=True)
-
-            new_item = self.file_list.currentItem()
-            new_item.duplicate = True
-
-            # Copy over settings
-            new_item.data.settings = original_item.data.settings.copy()
-            new_item.data.view_settings = original_item.data.view_settings.copy()
-            new_item.data.axlim_settings = original_item.data.axlim_settings.copy()
-            # Copy filters to the correct location.
-            self.which_filters(new_item,filters=copy.deepcopy(original_item.data.filters))
-            #new_item.data.filters = copy.deepcopy(original_item.data.filters)
-            if (hasattr(original_item.data, 'linecuts') and
-                any([len(original_item.data.linecuts[orientation]['lines'])>0 for orientation in ['horizontal','vertical','diagonal']])):
-                self.copy_linecuts(orientation='all',item=original_item)
-
-            # Naming the new item in the file-list. qcpp gets special treatment, assuming the counter always comes first in the filename.
-            if isinstance(original_item.data, qcodesppData):
-                original_label= original_item.data.label
-                if hasattr(original_item,'duplicate'):
-                    index_str=original_label.split('-')[0]
+            try:
+                self.clear_sidebar1D()
+                # Copy over data if internal data, or else re-load it. 
+                # The advantage of keeping it this way is that the new data gets the correct data class; it won't be InternalData.
+                if isinstance(original_item.data, InternalData):
+                    item=DataItem(InternalData(self.canvas,original_item.data.loaded_data,
+                                            original_item.data.label,
+                                            original_item.data.all_parameter_names,
+                                            dimension=original_item.data.dim))
+                    item.filepath = 'internal_data'
+                    self.add_internal_data(item,check_item=False,uncheck_others=False)
+                
+                elif isinstance(original_item.data, MixedInternalData):
+                    item=DataItem(MixedInternalData(self.canvas,original_item.data.label,
+                                            original_item.data.dataset2d_type, original_item.data.dataset1d_type,
+                                            original_item.data.dataset2d_filepath, original_item.data.dataset1d_filepath,
+                                            original_item.data.dataset1d_loaded_data,original_item.data.dataset2d_loaded_data,
+                                            original_item.data.dataset1d_label,original_item.data.dataset2d_label,
+                                            original_item.data.dataset1d_all_parameter_names,original_item.data.dataset2d_all_parameter_names,
+                                            original_item.data.dataset1d_dim,original_item.data.dataset2d_dim))
+                    item.filepath = 'mixed_internal_data'
+                    self.add_internal_data(item,check_item=False,uncheck_others=False)
                 else:
-                    index_str=original_label.split('_')[0]
-                items=[item for item in self.get_all_items() if index_str in item.data.label]
-                duplicate_index=len(list(items))-1
-                if hasattr(original_item,'duplicate'):
-                    new_label=f'{original_label.split('-')[0]}-{duplicate_index}-{original_label.split("-")[2]}'
-                else:
-                    new_label= f'{original_label.split('_')[0]}-{duplicate_index}-{original_label.split("_")[1]}'
-                new_item.setText(new_label)
-                new_item.data.label = new_label
-                new_item.data.settings['title']=new_label
+                    self.open_files(filepaths=[original_item.data.filepath],overrideautocheck=True)
 
-            else:
-                new_item.setText(f'Duplicate: {new_item.data.label}')
-                new_item.data.label = f'Duplicate: {new_item.data.label}'
-            
-            # Making new plot if 'Add new plot' button was pressed
-            if new_plot_button:
-                if original_item.data.dim==3 or isinstance(original_item.data, MixedInternalData):
-                    new_item.data.settings['X data'] = X
-                    new_item.data.settings['Y data'] = Y
-                    new_item.data.settings['Z data'] = Z
+                new_item = self.file_list.currentItem()
+                new_item.duplicate = True
+
+                # Copy over settings
+                new_item.data.settings = original_item.data.settings.copy()
+                new_item.data.view_settings = original_item.data.view_settings.copy()
+                new_item.data.axlim_settings = original_item.data.axlim_settings.copy()
+                # Copy filters to the correct location.
+                self.which_filters(new_item,filters=copy.deepcopy(original_item.data.filters))
+                #new_item.data.filters = copy.deepcopy(original_item.data.filters)
+                if (hasattr(original_item.data, 'linecuts') and
+                    any([len(original_item.data.linecuts[orientation]['lines'])>0 for orientation in ['horizontal','vertical','diagonal']])):
+                    self.copy_linecuts(orientation='all',item=original_item)
+
+                # Naming the new item in the file-list. qcpp gets special treatment, assuming the counter always comes first in the filename.
+                if isinstance(original_item.data, qcodesppData):
+                    original_label= original_item.data.label
+                    if hasattr(original_item,'duplicate'):
+                        index_str=original_label.split('-')[0]
+                    else:
+                        index_str=original_label.split('_')[0]
+                    items=[item for item in self.get_all_items() if index_str in item.data.label]
+                    duplicate_index=len(list(items))-1
+                    if hasattr(original_item,'duplicate'):
+                        new_label=f'{original_label.split('-')[0]}-{duplicate_index}-{original_label.split("-")[2]}'
+                    else:
+                        new_label=f'{original_label.split('_')[0]}-{duplicate_index}-{original_label.split("_")[1]}'
+                    new_item.setText(new_label)
+                    new_item.data.label = new_label
+                    new_item.data.settings['title']=new_label
+
                 else:
+                    new_item.setText(f'Duplicate: {new_item.data.label}')
+                    new_item.data.label = f'Duplicate: {new_item.data.label}'
+                
+                # Making new plot if 'Add new plot' button was pressed
+                if new_plot_button:
+                    if original_item.data.dim==3 or isinstance(original_item.data, MixedInternalData):
+                        new_item.data.settings['X data'] = X
+                        new_item.data.settings['Y data'] = Y
+                        new_item.data.settings['Z data'] = Z
+                    else:
+                        # Next two lines basically fix a bug.
+                        new_item.data.settings['X data'] = original_item.data.all_parameter_names[0]
+                        new_item.data.settings['Y data'] = original_item.data.all_parameter_names[1]
+                        new_item.data.prepare_data_for_plot()
+                        new_item.data.sidebar1D = Sidebar1D(new_item.data,editor_window=self)
+                        new_item.data.sidebar1D.running=True
+                        new_item.data.plotted_lines = {0: {'checkstate': 2,
+                                                'X data': X,
+                                                'Y data': Y,
+                                                'Bins': 100,
+                                                'Xerr': 0,
+                                                'Yerr': 0,
+                                                'raw_data': new_item.data.raw_data,
+                                                'processed_data': new_item.data.processed_data,
+                                                'linecolor': (0.1, 0.5, 0.8, 1),
+                                                'linewidth': 1.5,
+                                                'linestyle': '-',
+                                                'filters': []}}
+
+                        new_item.data.sidebar1D.append_trace_to_table(0)
+                        self.oneD_layout.addWidget(new_item.data.sidebar1D)
+
+                elif original_item.data.dim==2:
                     # Next two lines basically fix a bug.
                     new_item.data.settings['X data'] = original_item.data.all_parameter_names[0]
                     new_item.data.settings['Y data'] = original_item.data.all_parameter_names[1]
                     new_item.data.prepare_data_for_plot()
-                    new_item.data.sidebar1D = Sidebar1D(new_item.data,editor_window=self)
-                    new_item.data.sidebar1D.running=True
-                    new_item.data.plotted_lines = {0: {'checkstate': 2,
-                                            'X data': X,
-                                            'Y data': Y,
-                                            'Bins': 100,
-                                            'Xerr': 0,
-                                            'Yerr': 0,
-                                            'raw_data': new_item.data.raw_data,
-                                            'processed_data': new_item.data.processed_data,
-                                            'linecolor': (0.1, 0.5, 0.8, 1),
-                                            'linewidth': 1.5,
-                                            'linestyle': '-',
-                                            'filters': []}}
+                    # Populate trace table from original data. This doesn't work. It links the new item to the old one.
+                    # if hasattr(original_item.data, 'plotted_lines'):
+                    #     new_item.data.sidebar1D = Sidebar1D(new_item.data,self)
+                    #     new_item.data.sidebar1D.running=True
+                    #     new_item.data.plotted_lines = {}
+                    #     for line in original_item.data.plotted_lines:
+                    #         new_item.data.plotted_lines[line] = copy.deepcopy(original_item.data.plotted_lines[line])
+                    #         new_item.data.sidebar1D.append_trace_to_table(line)
+                    #     self.oneD_layout.addWidget(new_item.data.sidebar1D)
+                    new_item.data.init_plotted_lines()
 
-                    new_item.data.sidebar1D.append_trace_to_table(0)
-                    self.oneD_layout.addWidget(new_item.data.sidebar1D)
+                new_item.setCheckState(QtCore.Qt.Checked)
+                if new_plot_button and new_item.data.dim == 3:
+                    self.plot_setting_edited(setting_name='X data')
+                self.update_plots()
+                if (hasattr(original_item.data, 'linecuts') and
+                    any([len(original_item.data.linecuts[orientation]['lines'])>0 for orientation in ['horizontal','vertical','diagonal']])):
+                    self.paste_linecuts(new_item)
 
-            elif original_item.data.dim==2:
-                # Next two lines basically fix a bug.
-                new_item.data.settings['X data'] = original_item.data.all_parameter_names[0]
-                new_item.data.settings['Y data'] = original_item.data.all_parameter_names[1]
-                new_item.data.prepare_data_for_plot()
-                # Populate trace table from original data. This doesn't work. It links the new item to the old one.
-                # if hasattr(original_item.data, 'plotted_lines'):
-                #     new_item.data.sidebar1D = Sidebar1D(new_item.data,self)
-                #     new_item.data.sidebar1D.running=True
-                #     new_item.data.plotted_lines = {}
-                #     for line in original_item.data.plotted_lines:
-                #         new_item.data.plotted_lines[line] = copy.deepcopy(original_item.data.plotted_lines[line])
-                #         new_item.data.sidebar1D.append_trace_to_table(line)
-                #     self.oneD_layout.addWidget(new_item.data.sidebar1D)
-                new_item.data.init_plotted_lines()
-
-            new_item.setCheckState(QtCore.Qt.Checked)
-            if new_plot_button and new_item.data.dim == 3:
-                self.plot_setting_edited(setting_name='X data')
-            self.update_plots()
-            if (hasattr(original_item.data, 'linecuts') and
-                any([len(original_item.data.linecuts[orientation]['lines'])>0 for orientation in ['horizontal','vertical','diagonal']])):
-                self.paste_linecuts(new_item)
+            except Exception as e:
+                self.log_error(f'Error duplicating item:\n{type(e).__name__}: {e}', show_popup=True)
 
     def combine_plots(self):
         checked_items = self.get_checked_items()
