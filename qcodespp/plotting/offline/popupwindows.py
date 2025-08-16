@@ -38,6 +38,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.editor_window = editor_window
         self.running = True
         self.orientation = orientation
+        self.lines = self.parent.linecuts[self.orientation]['lines']
         self.init_cmap = init_cmap
 
         try:
@@ -437,13 +438,13 @@ class LineCutWindow(QtWidgets.QWidget):
         # displays the fit result and/or information.
         row = self.cuts_table.currentRow()
         line = int(self.cuts_table.item(row,0).text())
-        if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
-            fit_result = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result']
+        if 'fit' in self.lines[line].keys():
+            fit_result = self.lines[line]['fit']['fit_result']
             self.output_window.setText(fit_result.fit_report())
-        elif 'stats' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+        elif 'stats' in self.lines[line].keys():
             text='Statistics:\n'
-            for key in self.parent.linecuts[self.orientation]['lines'][line]['stats'].keys():
-                text+=f'{key}: {self.parent.linecuts[self.orientation]['lines'][line]['stats'][key]}\n'
+            for key in self.lines[line]['stats'].keys():
+                text+=f'{key}: {self.lines[line]['stats'][key]}\n'
             self.output_window.setText(text)
         else:
             fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
@@ -467,7 +468,7 @@ class LineCutWindow(QtWidgets.QWidget):
         
     def append_cut_to_table(self,linecut_name):
         row = self.cuts_table.rowCount()
-        linecut=self.parent.linecuts[self.orientation]['lines'][linecut_name]
+        linecut=self.lines[linecut_name]
         # linecut is an entry in the parent.linecuts['orientation']['lines'] dictionary
         # It has keys 'data_index', 'checkstate', 'cut_axis_value', and possibly 'linecolor'
         self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
@@ -555,11 +556,10 @@ class LineCutWindow(QtWidgets.QWidget):
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
 
     def points_dragged(self,line):
-        # This is called when the points are dragged in the plot. It updates the table.
         self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
         line = int(line)
         row = [row for row in range(self.cuts_table.rowCount()) if int(self.cuts_table.item(row,0).text()) == line][0]
-        linecut=self.parent.linecuts[self.orientation]['lines'][line]
+        linecut=self.lines[line]
         self.cuts_table.item(row, 1).setText(f'{linecut['points'][0][0]:.4g}, {linecut['points'][0][1]:.4g}')
         self.cuts_table.item(row, 2).setText(f'{linecut['points'][1][0]:.4g}, {linecut['points'][1][1]:.4g}')
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
@@ -593,20 +593,20 @@ class LineCutWindow(QtWidgets.QWidget):
                 y= float(current_item.text().split(',')[1])
 
                 if current_col == 1:
-                    self.parent.linecuts[self.orientation]['lines'][linecut]['points'][0] = (x,y)
+                    self.lines[linecut]['points'][0] = (x,y)
                 elif current_col == 2:
-                    self.parent.linecuts[self.orientation]['lines'][linecut]['points'][1] = (x,y)
+                    self.lines[linecut]['points'][1] = (x,y)
                 self.update_draggable_points(linecut)
 
             elif current_col == 3: #Change the offset in the dictionary and then replot.
                 linecut = self.cuts_table.item(current_row,0).text()
                 linecut = int(linecut)
                 offset = float(current_item.text())
-                self.parent.linecuts[self.orientation]['lines'][linecut]['offset'] = offset
+                self.lines[linecut]['offset'] = offset
     
             elif current_col == 0: # It's the checkstate, so need to replot and update dictionary
                 linecut = int(self.cuts_table.item(current_row,0).text())
-                self.parent.linecuts[self.orientation]['lines'][linecut]['checkstate'] = current_item.checkState()
+                self.lines[linecut]['checkstate'] = current_item.checkState()
                 if self.orientation in ['diagonal','circular']:
                     if current_item.checkState() in [2,QtCore.Qt.Checked]:
                         replot=True
@@ -616,15 +616,15 @@ class LineCutWindow(QtWidgets.QWidget):
 
             elif current_col == 5: # It's the checkstate for the fit.
                 linecut = int(self.cuts_table.item(current_row,0).text())
-                self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_checkstate'] = current_item.checkState()
+                self.lines[linecut]['fit']['fit_checkstate'] = current_item.checkState()
 
             elif current_col == 6: # It's the checkstate for the fit components.
                 linecut = int(self.cuts_table.item(current_row,0).text())
-                self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_components_checkstate'] = current_item.checkState()
+                self.lines[linecut]['fit']['fit_components_checkstate'] = current_item.checkState()
 
             elif current_col == 7: # It's the checkstate for the fit error.
                 linecut = int(self.cuts_table.item(current_row,0).text())
-                self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_uncertainty_checkstate'] = current_item.checkState()
+                self.lines[linecut]['fit']['fit_uncertainty_checkstate'] = current_item.checkState()
         
             self.update()
 
@@ -634,24 +634,24 @@ class LineCutWindow(QtWidgets.QWidget):
 
     def update_draggable_points(self,linecut,replot=True):
         try:
-            if 'draggable_points' in self.parent.linecuts[self.orientation]['lines'][linecut].keys():
-                self.parent.linecuts[self.orientation]['lines'][linecut]['draggable_points'][0].point_on_plot.remove()
-                self.parent.linecuts[self.orientation]['lines'][linecut]['draggable_points'][1].point_on_plot.remove()
-                self.parent.linecuts[self.orientation]['lines'][linecut]['draggable_points'][1].line_on_plot.remove()
-                self.parent.linecuts[self.orientation]['lines'][linecut]['draggable_points'].pop()
+            if 'draggable_points' in self.lines[linecut].keys():
+                self.lines[linecut]['draggable_points'][0].point_on_plot.remove()
+                self.lines[linecut]['draggable_points'][1].point_on_plot.remove()
+                self.lines[linecut]['draggable_points'][1].line_on_plot.remove()
+                self.lines[linecut]['draggable_points'].pop()
         except Exception as e:
             pass
         if replot:
-            newpoints=self.parent.linecuts[self.orientation]['lines'][linecut]['points']
-            self.parent.linecuts[self.orientation]['lines'][linecut]['draggable_points']=[DraggablePoint(self.parent,newpoints[0][0],newpoints[0][1],linecut,self.orientation),
+            newpoints=self.lines[linecut]['points']
+            self.lines[linecut]['draggable_points']=[DraggablePoint(self.parent,newpoints[0][0],newpoints[0][1],linecut,self.orientation),
                                         DraggablePoint(self.parent,newpoints[1][0],newpoints[1][1],linecut,self.orientation,draw_line=True)]
-            for point in self.parent.linecuts[self.orientation]['lines'][linecut]['draggable_points']:
-                point.color = self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor']
+            for point in self.lines[linecut]['draggable_points']:
+                point.color = self.lines[linecut]['linecolor']
 
     def move_diagonal_line(self,direction):
         # Move the diagonal line in the direction specified.
         linecut = int(self.cuts_table.item(self.cuts_table.currentRow(),0).text())
-        indices=self.parent.linecuts[self.orientation]['lines'][linecut]['indices']
+        indices=self.lines[linecut]['indices']
         try:
             if direction == 'left':
                 new_indices = [indices[0][0]-1,indices[1][0]-1]
@@ -677,7 +677,7 @@ class LineCutWindow(QtWidgets.QWidget):
             newpoints=[(self.parent.processed_data[0][indices[0][0],0],self.parent.processed_data[1][0,indices[0][1]]),
                     (self.parent.processed_data[0][indices[1][0],0],self.parent.processed_data[1][0,indices[1][1]])]
             
-            self.parent.linecuts[self.orientation]['lines'][linecut]['points'] = newpoints
+            self.lines[linecut]['points'] = newpoints
 
             self.update_draggable_points(linecut)
 
@@ -693,12 +693,12 @@ class LineCutWindow(QtWidgets.QWidget):
         linecut = int(self.cuts_table.item(row,0).text())
         try:
             if self.orientation == 'horizontal':
-                self.parent.linecuts[self.orientation]['lines'][linecut]['cut_axis_value']=self.parent.processed_data[1][0,data_index]
+                self.lines[linecut]['cut_axis_value']=self.parent.processed_data[1][0,data_index]
                 self.cuts_table.item(row,2).setText(f'{self.parent.processed_data[1][0,data_index]:6g}')
             elif self.orientation == 'vertical':
-                self.parent.linecuts[self.orientation]['lines'][linecut]['cut_axis_value']=self.parent.processed_data[0][data_index,0]
+                self.lines[linecut]['cut_axis_value']=self.parent.processed_data[0][data_index,0]
                 self.cuts_table.item(row,2).setText(f'{self.parent.processed_data[0][data_index,0]:6g}')
-            self.parent.linecuts[self.orientation]['lines'][linecut]['data_index'] = data_index
+            self.lines[linecut]['data_index'] = data_index
         except Exception as e:
             self.editor_window.log_error(f'Error changing linecut index:\n{type(e).__name__}: {e}', show_popup=True)
         self.cuts_table.setCurrentItem(self.cuts_table.item(row,0)) # Hopefully fixes a bug that if the index is changed, the focus goes weird.
@@ -708,21 +708,21 @@ class LineCutWindow(QtWidgets.QWidget):
         # Add a linecut when the button is pushed or from the generator. Default to zero-th index if it's the push button.
         data_index=int(data_index)
         try:
-            max_index=np.max(list(self.parent.linecuts[self.orientation]['lines'].keys()))
+            max_index=np.max(list(self.lines.keys()))
         except ValueError:
             max_index=-1
         try:
             selected_colormap = cm.get_cmap(self.colormap_box.currentText())
             if self.orientation == 'horizontal':
                 line_colors = selected_colormap(np.linspace(0.1,0.9,len(self.parent.processed_data[1][0,:])))
-                self.parent.linecuts[self.orientation]['lines'][int(max_index+1)]={'data_index':data_index, 
+                self.lines[int(max_index+1)]={'data_index':data_index, 
                         'checkstate':QtCore.Qt.Checked,
                         'cut_axis_value':self.parent.processed_data[1][0,data_index],
                         'offset':offset,
                         'linecolor':line_colors[data_index]}
             elif self.orientation == 'vertical':
                 line_colors = selected_colormap(np.linspace(0.1,0.9,len(self.parent.processed_data[0][:,0])))
-                self.parent.linecuts[self.orientation]['lines'][int(max_index+1)]={'data_index':data_index, 
+                self.lines[int(max_index+1)]={'data_index':data_index, 
                         'checkstate':QtCore.Qt.Checked,
                         'cut_axis_value':self.parent.processed_data[0][data_index,0],
                         'offset':offset,
@@ -736,12 +736,12 @@ class LineCutWindow(QtWidgets.QWidget):
                 x_1=right-(right-left)/10
                 y_0=bottom+(top-bottom)/10
                 y_1=top-(top-bottom)/10
-                self.parent.linecuts[self.orientation]['lines'][int(max_index+1)]={'points':[(x_0, y_0),(x_1, y_1)],
+                self.lines[int(max_index+1)]={'points':[(x_0, y_0),(x_1, y_1)],
                             'checkstate':2,
                             'offset':0,
                             'linecolor':line_colors[int(max_index+1)]
                             }
-                self.parent.linecuts[self.orientation]['lines'][int(max_index+1)]['draggable_points']=[DraggablePoint(self.parent,x_0,y_0,int(max_index+1),self.orientation),
+                self.lines[int(max_index+1)]['draggable_points']=[DraggablePoint(self.parent,x_0,y_0,int(max_index+1),self.orientation),
                                                 DraggablePoint(self.parent,x_1,y_1,int(max_index+1),self.orientation,draw_line=True)]
             self.append_cut_to_table(int(max_index+1))
         except IndexError as e:
@@ -755,17 +755,17 @@ class LineCutWindow(QtWidgets.QWidget):
             try:
                 row = self.cuts_table.currentRow()
                 linecut = int(self.cuts_table.item(row,0).text())
-                if 'draggable_points' in self.parent.linecuts[self.orientation]['lines'][linecut].keys():
+                if 'draggable_points' in self.lines[linecut].keys():
                     self.update_draggable_points(linecut,replot=False)
-                self.parent.linecuts[self.orientation]['lines'].pop(linecut)
+                self.lines.pop(linecut)
                 self.cuts_table.removeRow(row)
             except Exception as e:
                 self.editor_window.log_error(f'Could not remove linecut:\n{type(e).__name__}: {e}', show_popup=True)
         elif which=='all':
-            for linecut in self.parent.linecuts[self.orientation]['lines'].keys():
-                if 'draggable_points' in self.parent.linecuts[self.orientation]['lines'][linecut].keys():
+            for linecut in self.lines.keys():
+                if 'draggable_points' in self.lines[linecut].keys():
                     self.update_draggable_points(linecut,replot=False)
-            self.parent.linecuts[self.orientation]['lines'] = {}
+            self.lines = {}
             self.cuts_table.setRowCount(0)
 
         self.update()
@@ -863,7 +863,8 @@ class LineCutWindow(QtWidgets.QWidget):
             lines_to_color = [int(self.cuts_table.item(row,0).text()) for row in range(self.cuts_table.rowCount())]
 
         elif applymethod == 'Chkd by ind':
-            indexes = [int(self.cuts_table.cellWidget(row,1).value()) for row in range(self.cuts_table.rowCount()) if self.cuts_table.item(row,0).checkState() == QtCore.Qt.Checked]
+            indexes = [int(self.cuts_table.cellWidget(row,1).value()) for row in range(self.cuts_table.rowCount()) 
+                       if self.cuts_table.item(row,0).checkState() == QtCore.Qt.Checked]
             lines_to_color = self.get_checked_items(cuts_or_fits='cuts')
 
         if applymethod in ['All by ind', 'Chkd by ind']:
@@ -877,10 +878,10 @@ class LineCutWindow(QtWidgets.QWidget):
         rows = [self.cuts_table.row(self.cuts_table.findItems(str(line), QtCore.Qt.MatchExactly)[0]) for line in lines_to_color]
         
         for i,line in enumerate(lines_to_color):
-            self.parent.linecuts[self.orientation]['lines'][line]['linecolor'] = line_colors[i]
+            self.lines[line]['linecolor'] = line_colors[i]
             rgbavalue = [int(line_colors[i][0]*255), int(line_colors[i][1]*255), int(line_colors[i][2]*255),int(line_colors[i][3]*255)]
             self.cuts_table.item(rows[i],4).setBackground(QtGui.QColor(*rgbavalue))
-            if 'draggable_points' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+            if 'draggable_points' in self.lines[line].keys():
                 self.update_draggable_points(line,replot=True)
 
         self.cuts_table.itemChanged.connect(self.cuts_table_edited)
@@ -896,13 +897,13 @@ class LineCutWindow(QtWidgets.QWidget):
             item.setCheckState(checkstate)
             linecut=int(self.cuts_table.item(row,0).text())
             if column == 0:
-                self.parent.linecuts[self.orientation]['lines'][linecut]['checkstate'] = checkstate
+                self.lines[linecut]['checkstate'] = checkstate
             elif column == 5:
-                self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_checkstate'] = checkstate
+                self.lines[linecut]['fit']['fit_checkstate'] = checkstate
             elif column == 6:
-                self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_components_checkstate'] = checkstate
+                self.lines[linecut]['fit']['fit_components_checkstate'] = checkstate
             elif column == 7:
-                self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_uncertainty_checkstate'] = checkstate
+                self.lines[linecut]['fit']['fit_uncertainty_checkstate'] = checkstate
         self.update()
         
     def open_cuts_table_menu(self,position):
@@ -923,9 +924,9 @@ class LineCutWindow(QtWidgets.QWidget):
                     if color.isValid():
                         item.setBackground(color)
                         linecut=int(self.cuts_table.item(self.cuts_table.currentRow(),0).text())
-                        self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor'] = color.name()
+                        self.lines[linecut]['linecolor'] = color.name()
                         self.cuts_table.setCurrentItem(self.cuts_table.item(row,0)) # Otherwise the cell stays blue since it's selected.
-                        if 'draggable_points' in self.parent.linecuts[self.orientation]['lines'][linecut].keys():
+                        if 'draggable_points' in self.lines[linecut].keys():
                             self.update_draggable_points(linecut,replot=True)
                         self.update()
         
@@ -1013,7 +1014,7 @@ class LineCutWindow(QtWidgets.QWidget):
             fit_lines = self.get_checked_items(cuts_or_fits='fits')
             if len(fit_lines) > 0:
                 for line in fit_lines:
-                    if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+                    if 'fit' in self.lines[line].keys():
                         self.draw_fits(line)
 
             self.parent.canvas.draw()
@@ -1123,7 +1124,7 @@ class LineCutWindow(QtWidgets.QWidget):
         
         # Try to do the fit.
         if function_name != 'Statistics':
-            if 'stats' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+            if 'stats' in self.lines[line].keys():
                 self.clear_fit(line)
             try:
                 fit_result = fits.fit_data(function_class=function_class, function_name=function_name,
@@ -1138,7 +1139,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 else:
                     y_fit = fit_result.best_fit
 
-                    self.parent.linecuts[self.orientation]['lines'][line]['fit'] = {'fit_result': fit_result,
+                    self.lines[line]['fit'] = {'fit_result': fit_result,
                                                                                     'xdata': x_forfit,
                                                                                     'ydata': y_forfit,
                                                                                     'fitted_y': y_fit,
@@ -1180,9 +1181,9 @@ class LineCutWindow(QtWidgets.QWidget):
                     return e
         
         else:
-            if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+            if 'fit' in self.lines[line].keys():
                 self.clear_fit(line)
-            self.parent.linecuts[self.orientation]['lines'][line]['stats'] = fits.fit_data(function_class=function_class, 
+            self.lines[line]['stats'] = fits.fit_data(function_class=function_class, 
                                                                                            function_name=function_name,
                                                     xdata=x_forfit,ydata=y_forfit, p0=p0, inputinfo=inputinfo)
             success=True
@@ -1208,35 +1209,35 @@ class LineCutWindow(QtWidgets.QWidget):
 
     def print_parameters(self,line):
         self.output_window.clear()
-        if 'stats' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+        if 'stats' in self.lines[line].keys():
             text='Statistics:\n'
-            for key in self.parent.linecuts[self.orientation]['lines'][line]['stats'].keys():
-                text+=f'{key}: {self.parent.linecuts[self.orientation]['lines'][line]['stats'][key]}\n'
+            for key in self.lines[line]['stats'].keys():
+                text+=f'{key}: {self.lines[line]['stats'][key]}\n'
             self.output_window.setText(text)
         else:
             try:
-                self.output_window.setText(self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].fit_report())
+                self.output_window.setText(self.lines[line]['fit']['fit_result'].fit_report())
 
             except Exception as e:
                 self.output_window.setText('Could not print fit parameters:', e)
 
     def get_line_data(self,line):
         if self.orientation == 'horizontal':
-            x = self.parent.processed_data[0][:,self.parent.linecuts[self.orientation]['lines'][line]['data_index']]
-            y = self.parent.processed_data[2][:,self.parent.linecuts[self.orientation]['lines'][line]['data_index']]
-            z = self.parent.processed_data[1][0,self.parent.linecuts[self.orientation]['lines'][line]['data_index']]
+            x = self.parent.processed_data[0][:,self.lines[line]['data_index']]
+            y = self.parent.processed_data[2][:,self.lines[line]['data_index']]
+            z = self.parent.processed_data[1][0,self.lines[line]['data_index']]
             # Confusingly enough, z here is just the value of the y axis of the parent plot/data where the cut is taken
         
         elif self.orientation == 'vertical':
-            x = self.parent.processed_data[1][self.parent.linecuts[self.orientation]['lines'][line]['data_index'],:]
-            y = self.parent.processed_data[2][self.parent.linecuts[self.orientation]['lines'][line]['data_index'],:]
-            z = self.parent.processed_data[0][self.parent.linecuts[self.orientation]['lines'][line]['data_index'],0]
+            x = self.parent.processed_data[1][self.lines[line]['data_index'],:]
+            y = self.parent.processed_data[2][self.lines[line]['data_index'],:]
+            z = self.parent.processed_data[0][self.lines[line]['data_index'],0]
         
         elif self.orientation in ['diagonal', 'circular']:
-            x0 = self.parent.linecuts[self.orientation]['lines'][line]['draggable_points'][0].x
-            y0 = self.parent.linecuts[self.orientation]['lines'][line]['draggable_points'][0].y
-            x1 = self.parent.linecuts[self.orientation]['lines'][line]['draggable_points'][1].x
-            y1 = self.parent.linecuts[self.orientation]['lines'][line]['draggable_points'][1].y
+            x0 = self.lines[line]['draggable_points'][0].x
+            y0 = self.lines[line]['draggable_points'][0].y
+            x1 = self.lines[line]['draggable_points'][1].x
+            y1 = self.lines[line]['draggable_points'][1].y
             l_x, l_y = self.parent.processed_data[0].shape
             x_min = np.amin(self.parent.processed_data[0][:,0])
             x_max = np.amax(self.parent.processed_data[0][:,0])
@@ -1263,7 +1264,7 @@ class LineCutWindow(QtWidgets.QWidget):
                                         np.vstack((x_diag, y_diag)))
                     y_dummy=map_coordinates(self.parent.processed_data[1],
                                         np.vstack((x_diag, y_diag)))
-                    x = np.sqrt((x_dummy-x0)**2+(y_dummy-y0)**2)
+                    x = np.sqrt((x_dummy-x_dummy[0])**2+(y_dummy-y_dummy[0])**2)
 
             if self.orientation == 'circular':
                 n = int(8*np.sqrt((i_x0-i_x1)**2+(i_y0-i_y1)**2))
@@ -1277,18 +1278,18 @@ class LineCutWindow(QtWidgets.QWidget):
         return (x,y,z)
 
     def draw_lines(self,x,y,line):
-        offset = self.parent.linecuts[self.orientation]['lines'][line]['offset']
+        offset = self.lines[line]['offset']
         size=self.parent.linecuts[self.orientation]['linesize']
         if self.orientation in ['horizontal', 'vertical']:
-            label = f'{self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value']:.5g}'
+            label = f'{self.lines[line]['cut_axis_value']:.5g}'
         else:
-            points= self.parent.linecuts[self.orientation]['lines'][line]['points']
+            points= self.lines[line]['points']
             label = (f'({points[0][0]:.5g}, {points[0][1]:.5g}) : '
                     f'({points[1][0]:.5g}, {points[1][1]:.5g})')
         self.axes.plot(x, y+offset, self.parent.linecuts[self.orientation]['linestyle'],
                     linewidth=size,
                     markersize=size,
-                    color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'],
+                    color=self.lines[line]['linecolor'],
                     label= label)
     
     def draw_plot(self):
@@ -1314,13 +1315,13 @@ class LineCutWindow(QtWidgets.QWidget):
             self.title = f'Cuts at fixed {self.parent.settings['ylabel']}'
             for line in lines:
                 x,y,z= self.get_line_data(line)
-                self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value'] = z
+                self.lines[line]['cut_axis_value'] = z
                 self.draw_lines(x, y, line)
                 if parent_marker:
                     self.parent.horimarkers.append(self.parent.axes.axhline(y=z, linestyle='dashed', linewidth=1.5, xmax=0.1,
-                                                    color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
+                                                    color=self.lines[line]['linecolor']))
                     self.parent.horimarkers.append(self.parent.axes.axhline(y=z, linestyle='dashed', linewidth=1.5, xmin=0.9,
-                                                    color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
+                                                    color=self.lines[line]['linecolor']))
 
 
         elif self.orientation == 'vertical':
@@ -1332,13 +1333,13 @@ class LineCutWindow(QtWidgets.QWidget):
             self.title = f'Cuts at fixed {self.parent.settings['xlabel']}'
             for line in lines:
                 x,y,z= self.get_line_data(line)
-                self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value'] = z
+                self.lines[line]['cut_axis_value'] = z
                 self.draw_lines(x, y, line)
                 if parent_marker:
                     self.parent.vertmarkers.append(self.parent.axes.axvline(x=z, linestyle='dashed', linewidth=1.5, ymax=0.1,
-                                                    color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
+                                                    color=self.lines[line]['linecolor']))
                     self.parent.vertmarkers.append(self.parent.axes.axvline(x=z, linestyle='dashed', linewidth=1.5, ymin=0.9,
-                                                    color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
+                                                    color=self.lines[line]['linecolor']))
 
         elif self.orientation == 'diagonal' or self.orientation == 'circular':
             for line in lines:
@@ -1374,17 +1375,17 @@ class LineCutWindow(QtWidgets.QWidget):
               
     def draw_fits(self,line):
         try:
-            offset=self.parent.linecuts[self.orientation]['lines'][line]['offset']
-            fit_result=self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result']
-            x_forfit=self.parent.linecuts[self.orientation]['lines'][line]['fit']['xdata']
+            offset=self.lines[line]['offset']
+            fit_result=self.lines[line]['fit']['fit_result']
+            x_forfit=self.lines[line]['fit']['xdata']
             y_fit=fit_result.best_fit+offset
             self.axes.plot(x_forfit, y_fit, 'k--',
                 linewidth=1.5)
-            if self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_uncertainty_checkstate']==QtCore.Qt.Checked:
+            if self.lines[line]['fit']['fit_uncertainty_checkstate']==QtCore.Qt.Checked:
                 uncertainty=fit_result.eval_uncertainty()
                 self.axes.fill_between(x_forfit, y_fit-uncertainty, y_fit+uncertainty,
                                         color='grey', alpha=0.5, linewidth=0)
-            if self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_components_checkstate']==QtCore.Qt.Checked:
+            if self.lines[line]['fit']['fit_components_checkstate']==QtCore.Qt.Checked:
                 fit_components=fit_result.eval_components()
                 if self.colormap_box.currentText() == 'viridis':
                     selected_colormap = cm.get_cmap('plasma')
@@ -1431,8 +1432,8 @@ class LineCutWindow(QtWidgets.QWidget):
                     data[f'linecut{line}_X'] = x.tolist()
                     data[f'linecut{line}_Y'] = y.tolist()
                 for line in fit_lines:
-                    fit_result=self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result']
-                    data[f'fit{line}_X'] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['xdata'].tolist()
+                    fit_result=self.lines[line]['fit']['fit_result']
+                    data[f'fit{line}_X'] = self.lines[line]['fit']['xdata'].tolist()
                     data[f'fit{line}_Y'] = fit_result.best_fit.tolist()
                     data[f'fit{line}_Y_err'] = fit_result.eval_uncertainty().tolist()
                     fit_components=fit_result.eval_components()
@@ -1463,28 +1464,28 @@ class LineCutWindow(QtWidgets.QWidget):
         line = int(self.cuts_table.item(current_row,0).text())
 
         # Fits get saved in the lmfit format.
-        if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
-            fit_result = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result']
+        if 'fit' in self.lines[line].keys():
+            fit_result = self.lines[line]['fit']['fit_result']
             formats = 'lmfit Model Result (*.sav)'
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Fit Result','', formats)
             save_modelresult(fit_result,filename)
 
         #Stats can simply be saved in a json
-        elif 'stats' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+        elif 'stats' in self.lines[line].keys():
             formats = 'JSON (*.json)'
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Statistics','', formats)
             export_dict={'data_name':self.parent.label,
                          'linecut_orientation':self.orientation}
             if self.orientation in ['horizontal', 'vertical']:
-                export_dict['linecut_index']=int(self.parent.linecuts[self.orientation]['lines'][line]['data_index'])
-                export_dict['linecut_axis_value']=float(self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value'])
-            for key in self.parent.linecuts[self.orientation]['lines'][line]['stats'].keys():
-                if isinstance(self.parent.linecuts[self.orientation]['lines'][line]['stats'][key],np.ndarray):
-                    export_dict[key] = self.parent.linecuts[self.orientation]['lines'][line]['stats'][key].tolist()
+                export_dict['linecut_index']=int(self.lines[line]['data_index'])
+                export_dict['linecut_axis_value']=float(self.lines[line]['cut_axis_value'])
+            for key in self.lines[line]['stats'].keys():
+                if isinstance(self.lines[line]['stats'][key],np.ndarray):
+                    export_dict[key] = self.lines[line]['stats'][key].tolist()
                 else:
-                    export_dict[key] = self.parent.linecuts[self.orientation]['lines'][line]['stats'][key]
+                    export_dict[key] = self.lines[line]['stats'][key]
             try:
                 with open(filename, 'w', encoding='utf-8') as f:
                     jsondump(export_dict, f, ensure_ascii=False,indent=4)
@@ -1494,21 +1495,21 @@ class LineCutWindow(QtWidgets.QWidget):
     def save_all_fits(self):
         # Can save _either_ fits or stats, and decide which to do based on whether the current line has a fit or stats.
         current_line = int(self.cuts_table.item(self.cuts_table.currentRow(),0).text())
-        if 'fit' in self.parent.linecuts[self.orientation]['lines'][current_line].keys():
+        if 'fit' in self.lines[current_line].keys():
             fit_lines = self.get_checked_items(cuts_or_fits='fits')
 
             formats = 'lmfit Model Result (*.sav)'
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Fit Result: Select base name','', formats)
             for line in fit_lines:
-                fit_result = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result']
+                fit_result = self.lines[line]['fit']['fit_result']
                 save_modelresult(fit_result,filename.replace('.sav',f'_{line}.sav'))
         
-        elif 'stats' in self.parent.linecuts[self.orientation]['lines'][current_line].keys():
+        elif 'stats' in self.lines[current_line].keys():
             # We can put all the stats in a single json.
             stat_lines=[]
-            for line in self.parent.linecuts[self.orientation]['lines'].keys():
-                if 'stats' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+            for line in self.lines.keys():
+                if 'stats' in self.lines[line].keys():
                     stat_lines.append(line)
 
             formats = 'JSON (*.json)'
@@ -1520,13 +1521,13 @@ class LineCutWindow(QtWidgets.QWidget):
             for line in stat_lines:
                 export_dict['linecut_stats'][line] = {}
                 if self.orientation in ['horizontal', 'vertical']:
-                    export_dict['linecut_stats'][line]['linecut_index']=int(self.parent.linecuts[self.orientation]['lines'][line]['data_index'])
-                    export_dict['linecut_stats'][line]['linecut_axis_value']=float(self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value'])
-                for key in self.parent.linecuts[self.orientation]['lines'][line]['stats'].keys():
-                    if isinstance(self.parent.linecuts[self.orientation]['lines'][line]['stats'][key],np.ndarray):
-                        export_dict['linecut_stats'][line][key] = self.parent.linecuts[self.orientation]['lines'][line]['stats'][key].tolist()
+                    export_dict['linecut_stats'][line]['linecut_index']=int(self.lines[line]['data_index'])
+                    export_dict['linecut_stats'][line]['linecut_axis_value']=float(self.lines[line]['cut_axis_value'])
+                for key in self.lines[line]['stats'].keys():
+                    if isinstance(self.lines[line]['stats'][key],np.ndarray):
+                        export_dict['linecut_stats'][line][key] = self.lines[line]['stats'][key].tolist()
                     else:
-                        export_dict['linecut_stats'][line][key] = self.parent.linecuts[self.orientation]['lines'][line]['stats'][key]
+                        export_dict['linecut_stats'][line][key] = self.lines[line]['stats'][key]
             try:
                 with open(filename, 'w', encoding='utf-8') as f:
                     jsondump(export_dict, f, ensure_ascii=False,indent=4)
@@ -1550,8 +1551,8 @@ class LineCutWindow(QtWidgets.QWidget):
                 if int(self.cuts_table.item(row,0).text())==line:
                     break
         
-        if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
-            self.parent.linecuts[self.orientation]['lines'][line].pop('fit')
+        if 'fit' in self.lines[line].keys():
+            self.lines[line].pop('fit')
             self.cuts_table.setItem(row,5,QtWidgets.QTableWidgetItem(''))
             self.cuts_table.setItem(row,6,QtWidgets.QTableWidgetItem(''))
             self.cuts_table.setItem(row,7,QtWidgets.QTableWidgetItem(''))
@@ -1559,8 +1560,8 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.update()
 
         # should never be both, but use 'if' just in case
-        if 'stats' in self.parent.linecuts[self.orientation]['lines'][line].keys():
-            self.parent.linecuts[self.orientation]['lines'][line].pop('stats')
+        if 'stats' in self.lines[line].keys():
+            self.lines[line].pop('stats')
 
         if manual:
             fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
@@ -1571,7 +1572,7 @@ class LineCutWindow(QtWidgets.QWidget):
 
     def clear_all_fits(self):
         try:
-            for line in self.parent.linecuts[self.orientation]['lines'].keys():
+            for line in self.lines.keys():
                 self.clear_fit(line)
         except Exception as e:
             self.editor_window.log_error(f'Could not clear all fits:\n{type(e).__name__}: {e}', show_popup=True)
@@ -1584,19 +1585,19 @@ class LineCutWindow(QtWidgets.QWidget):
         # Save the parameters of all fits in a table. The first column is the x-axis value, and the rest are the parameters and their errors.
         # First, for actual fits, then statistics below. Decide between fits or stats based on current linecut
         current_line = int(self.cuts_table.item(self.cuts_table.currentRow(),0).text())
-        if 'fit' in self.parent.linecuts[self.orientation]['lines'][current_line].keys():
+        if 'fit' in self.lines[current_line].keys():
             try:
                 fit_lines = self.get_checked_items(cuts_or_fits='fits')
-                first_result = self.parent.linecuts[self.orientation]['lines'][fit_lines[0]]['fit']['fit_result']
+                first_result = self.lines[fit_lines[0]]['fit']['fit_result']
                 if self.orientation in ['horizontal', 'vertical']:
                     data=np.zeros((len(fit_lines),len(first_result.params.keys())*2+1))
                     for i,line in enumerate(fit_lines):
-                        data[i,0] = self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value']
+                        data[i,0] = self.lines[line]['cut_axis_value']
                         for j,param in enumerate(first_result.params.keys()):
-                            data[i,j+1] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].value
+                            data[i,j+1] = self.lines[line]['fit']['fit_result'].params[param].value
                         last_column=j+2
                         for j,param in enumerate(first_result.params.keys()):
-                            data[i,j+last_column] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].stderr
+                            data[i,j+last_column] = self.lines[line]['fit']['fit_result'].params[param].stderr
                     header='X\t'+'\t'.join(first_result.params.keys())
                     for param in first_result.params.keys():
                         header += '\t'+param+'_error'
@@ -1604,15 +1605,15 @@ class LineCutWindow(QtWidgets.QWidget):
                     data=np.zeros((len(fit_lines),len(first_result.params.keys())*2+5))
                     for i,line in enumerate(fit_lines):
                         data[i,0] = line
-                        data[i,1] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][0]
-                        data[i,2] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][1]
-                        data[i,3] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][0]
-                        data[i,4] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][1]
+                        data[i,1] = self.lines[line]['points'][0][0]
+                        data[i,2] = self.lines[line]['points'][0][1]
+                        data[i,3] = self.lines[line]['points'][1][0]
+                        data[i,4] = self.lines[line]['points'][1][1]
                         for j,param in enumerate(first_result.params.keys()):
-                            data[i,j+5] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].value
+                            data[i,j+5] = self.lines[line]['fit']['fit_result'].params[param].value
                         last_column=j+6
                         for j,param in enumerate(first_result.params.keys()):
-                            data[i,j+last_column] = self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result'].params[param].stderr
+                            data[i,j+last_column] = self.lines[line]['fit']['fit_result'].params[param].stderr
                     header='index\tX_1\tY_1\tX_2\tY_2\t'+'\t'.join(first_result.params.keys())
                     for param in first_result.params.keys():
                         header += '\t'+param+'_error'
@@ -1622,14 +1623,14 @@ class LineCutWindow(QtWidgets.QWidget):
                                             show_popup=True)
                 success=False
 
-        elif 'stats' in self.parent.linecuts[self.orientation]['lines'][current_line].keys():
+        elif 'stats' in self.lines[current_line].keys():
             try:
                 stat_lines=[]
-                for line in self.parent.linecuts[self.orientation]['lines'].keys():
-                    if 'stats' in self.parent.linecuts[self.orientation]['lines'][line].keys():
+                for line in self.lines.keys():
+                    if 'stats' in self.lines[line].keys():
                         stat_lines.append(line)
 
-                first_result = self.parent.linecuts[self.orientation]['lines'][stat_lines[0]]['stats']
+                first_result = self.lines[stat_lines[0]]['stats']
                 params = [key for key in first_result.keys() if key not in ['xdata','ydata']]
                 if 'percentiles' in params:
                     if len(params)>2:
@@ -1648,17 +1649,17 @@ class LineCutWindow(QtWidgets.QWidget):
                         percentile_values_array=np.zeros_like(percentiles_array)
 
                         for i,line in enumerate(stat_lines):
-                            percentile_values_array[i,:]=self.parent.linecuts[self.orientation]['lines'][line]['stats']['percentiles']
+                            percentile_values_array[i,:]=self.lines[line]['stats']['percentiles']
                             for j,value in enumerate(first_result['percentiles']):
-                                percentiles_array[i,j] = self.parent.linecuts[self.orientation]['lines'][line]['stats']['percentile'][j]
+                                percentiles_array[i,j] = self.lines[line]['stats']['percentile'][j]
                                 if self.orientation in ['horizontal', 'vertical']:
-                                    cut_axis_array[i,j]=self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value']
+                                    cut_axis_array[i,j]=self.lines[line]['cut_axis_value']
                                 elif self.orientation in ['diagonal', 'circular']:
                                     indexarray[i,j] = line
-                                    point1xarray[i,j] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][0]
-                                    point1yarray[i,j] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][1]
-                                    point2xarray[i,j] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][0]
-                                    point2yarray[i,j] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][1]
+                                    point1xarray[i,j] = self.lines[line]['points'][0][0]
+                                    point1yarray[i,j] = self.lines[line]['points'][0][1]
+                                    point2xarray[i,j] = self.lines[line]['points'][1][0]
+                                    point2yarray[i,j] = self.lines[line]['points'][1][1]
                         if self.orientation in ['horizontal', 'vertical']:
                             data=np.column_stack((cut_axis_array.flatten(), percentile_values_array.flatten(), percentiles_array.flatten()))
                             header='X\tpercentiles\tpercentile'
@@ -1677,10 +1678,10 @@ class LineCutWindow(QtWidgets.QWidget):
                         sweep_axis_array=np.zeros_like(autocorrelation_array)
 
                         for i,line in enumerate(stat_lines):
-                            sweep_axis_array[i,:]=self.parent.linecuts[self.orientation]['lines'][line]['stats']['xdata']
-                            cut_value = self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value']
+                            sweep_axis_array[i,:]=self.lines[line]['stats']['xdata']
+                            cut_value = self.lines[line]['cut_axis_value']
                             for j,value in enumerate(first_result[name]):
-                                autocorrelation_array[i,j] = self.parent.linecuts[self.orientation]['lines'][line]['stats'][name][j]
+                                autocorrelation_array[i,j] = self.lines[line]['stats'][name][j]
                                 cut_axis_array[i,j] = cut_value
                         data=np.column_stack((cut_axis_array.flatten(), sweep_axis_array.flatten(), autocorrelation_array.flatten()))
                         header='X\tY\tautocorrelation'
@@ -1693,22 +1694,22 @@ class LineCutWindow(QtWidgets.QWidget):
                     if self.orientation in ['horizontal', 'vertical']:
                         data=np.zeros((len(stat_lines),len(params)+1)) # beccause we will exclude the x and y data that is present in stats dictinoaries
                         for i,line in enumerate(stat_lines):
-                            data[i,0] = self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value']
+                            data[i,0] = self.lines[line]['cut_axis_value']
                             for j,param in enumerate(params):
                                 if param not in ['xdata','ydata']:
-                                    data[i,j+1] = self.parent.linecuts[self.orientation]['lines'][line]['stats'][param]
+                                    data[i,j+1] = self.lines[line]['stats'][param]
                         header='X\t'+'\t'.join(params)
                     elif self.orientation in ['diagonal', 'circular']:
                         data=np.zeros((len(stat_lines),len(params)+5))
                         for i,line in enumerate(stat_lines):
                             data[i,0] = line
-                            data[i,1] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][0]
-                            data[i,2] = self.parent.linecuts[self.orientation]['lines'][line]['points'][0][1]
-                            data[i,3] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][0]
-                            data[i,4] = self.parent.linecuts[self.orientation]['lines'][line]['points'][1][1]
+                            data[i,1] = self.lines[line]['points'][0][0]
+                            data[i,2] = self.lines[line]['points'][0][1]
+                            data[i,3] = self.lines[line]['points'][1][0]
+                            data[i,4] = self.lines[line]['points'][1][1]
                             for j,param in enumerate(params):
                                 if param not in ['xdata','ydata']:
-                                    data[i,j+4] = self.parent.linecuts[self.orientation]['lines'][line]['stats'][param]
+                                    data[i,j+4] = self.lines[line]['stats'][param]
                         header='index\tX_1\tY_1\tX_2\tY_2\t'+'\t'.join(params)
 
                 success=True
