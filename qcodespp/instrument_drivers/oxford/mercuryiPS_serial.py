@@ -435,6 +435,19 @@ class MercuryiPS_120(SerialInstrument):
     def clear_buffer(self):
         self.serial_handle.read_all()
 
+    # Overwrite ask, read and write commands while magnet is having communication issues.
+    def ask(self,cmd):
+        self.clear_buffer()
+        return super().ask(cmd)
+
+    def read(self):
+        self.clear_buffer()
+        return super().read()
+
+    def write(self,cmd):
+        self.clear_buffer()
+        return super().write(cmd)
+
     def hold(self):
         self.activity.set(['HOLD'])
 
