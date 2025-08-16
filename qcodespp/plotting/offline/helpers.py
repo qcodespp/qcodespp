@@ -1,4 +1,4 @@
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 import numpy as np
 from collections import OrderedDict
 from matplotlib import rcParams
@@ -77,7 +77,7 @@ class NoScrollQComboBox(QtWidgets.QComboBox):
 
     def wheelEvent(self, *args, **kwargs):
         if self.hasFocus():
-            return QtWidgets.QComboBox.wheelEvent(self, *args, **kwargs)      
+            return QtWidgets.QComboBox.wheelEvent(self, *args, **kwargs)
         
 class DraggablePoint:
     lock = None #  only one can be animated at a time
@@ -85,8 +85,9 @@ class DraggablePoint:
         try:
             self.parent = parent
             self.orientation = orientation
-            self.linecut = linecut
-            self.color=self.parent.linecuts[orientation]['lines'][linecut]['linecolor']
+            self.lc=linecut
+            self.linecut = self.parent.linecuts[orientation]['lines'][linecut]
+            self.color=self.linecut['linecolor']
             
             x_lb, x_ub = self.parent.axes.get_xlim()
             y_lb, y_ub = self.parent.axes.get_ylim()
@@ -99,11 +100,12 @@ class DraggablePoint:
             self.point_on_plot=self.parent.axes.add_patch(self.point)
             self.press = None
             self.background = None
+            self.other_point = None
             self.connect()
             
             if draw_line:
-                line_x = [self.parent.linecuts[orientation]['lines'][linecut]['points'][0][0], self.x]
-                line_y = [self.parent.linecuts[orientation]['lines'][linecut]['points'][0][1], self.y]
+                line_x = [self.linecut['points'][0][0], self.x]
+                line_y = [self.linecut['points'][0][1], self.y]
                 self.line = Line2D(line_x, line_y, 
                                 color=self.color, 
                                 alpha=1.0, linestyle='dashed', linewidth=1.5)
@@ -136,7 +138,16 @@ class DraggablePoint:
         axes = self.point.axes
         self.point.set_animated(True)
 
-        draggable_points = self.parent.linecuts[self.orientation]['lines'][self.linecut]['draggable_points']
+        draggable_points = self.linecut['draggable_points']
+
+        if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
+            if self == draggable_points[0]:
+                self.other_point = draggable_points[1]
+            else:
+                self.other_point = draggable_points[0]
+
+            self.other_point_zero = (self.other_point.x, self.other_point.y)
+            self.other_point.point.set_animated(True)
 
         if hasattr(draggable_points[1], 'line'):
             if self == draggable_points[1]:
@@ -155,6 +166,9 @@ class DraggablePoint:
         canvas.draw()
         self.background = canvas.copy_from_bbox(self.point.axes.bbox)
         axes.draw_artist(self.point)
+        if self.other_point is not None:
+            axes.draw_artist(self.other_point.point)
+
         # below is faster than canvas.draw()
         canvas.blit(axes.bbox)
 
@@ -181,21 +195,24 @@ class DraggablePoint:
         canvas.restore_region(self.background)
         axes.draw_artist(self.point)
 
-        draggable_points = self.parent.linecuts[self.orientation]['lines'][self.linecut]['draggable_points']
+        draggable_points = self.linecut['draggable_points']
+
+        if self.other_point is not None:
+            if self == draggable_points[0]:
+                other_point = draggable_points[1]
+            else:
+                other_point = draggable_points[0]
+            other_point.x = self.other_point_zero[0]+dx
+            other_point.y = self.other_point_zero[1]+dy
+            other_point.point.center = (other_point.x, other_point.y)
+            axes.draw_artist(other_point.point)
 
         if hasattr(draggable_points[1], 'line'):
-            if self == draggable_points[1]:
-                self.line.set_animated(True)
-                axes.draw_artist(self.line)
-                line_x = [draggable_points[0].x, self.x]
-                line_y = [draggable_points[0].y, self.y]
-                self.line.set_data(line_x, line_y)
-            else:
-                draggable_points[1].line.set_animated(True)
-                axes.draw_artist(draggable_points[1].line)
-                line_x = [self.x, draggable_points[1].x]
-                line_y = [self.y, draggable_points[1].y]
-                draggable_points[1].line.set_data(line_x, line_y)
+            draggable_points[1].line.set_animated(True)
+            axes.draw_artist(draggable_points[1].line)
+            line_x = [draggable_points[0].x, draggable_points[1].x]
+            line_y = [draggable_points[0].y, draggable_points[1].y]
+            draggable_points[1].line.set_data(line_x, line_y)
 
         # if (len(self.parent.linecut_points) > 2 and 
         #     hasattr(self.parent.linecut_points[2], 'circle')):
@@ -222,7 +239,7 @@ class DraggablePoint:
         self.press = None
         DraggablePoint.lock = None
         self.point.set_animated(False)
-        draggable_points = self.parent.linecuts[self.orientation]['lines'][self.linecut]['draggable_points']    
+        draggable_points = self.linecut['draggable_points']
 
         # if (len(self.draggable_points) > 2 and 
         #     hasattr(self.draggable_points[2], 'circle')):
@@ -253,32 +270,41 @@ class DraggablePoint:
         self.x = self.point.center[0]
         self.y = self.point.center[1]
 
+        if self.other_point is not None:
+            index_x_1 = (np.abs(self.other_point.x - self.parent.processed_data[0][:,0])).argmin()
+            x_value = self.parent.processed_data[0][index_x_1,0]
+            index_y_1 = (np.abs(self.other_point.y - self.parent.processed_data[1][0,:])).argmin()
+            y_value = self.parent.processed_data[1][0,index_y_1]
+            self.other_point.point.center = (x_value, y_value)
+            self.other_point.x = self.other_point.point.center[0]
+            self.other_point.y = self.other_point.point.center[1]
+            self.other_point.point.set_animated(False)
+            if self.other_point == draggable_points[1]:
+                self.linecut['points'][1] = (self.other_point.x, self.other_point.y)
+                self.linecut['indices'][1] = (index_x_1, index_y_1)
+            else:
+                self.linecut['points'][0] = (self.other_point.x, self.other_point.y)
+                self.linecut['indices'][0] = (index_x_1, index_y_1)
+        self.other_point = None
+
         # Snap line to data
         if hasattr(draggable_points[1], 'line'):
-            if self == draggable_points[1]:
-                self.line.set_animated(True)
-                self.point.axes.draw_artist(self.line)
-                line_x = [draggable_points[0].x, self.x]
-                line_y = [draggable_points[0].y, self.y]
-                self.line.set_data(line_x, line_y)
-                self.line.set_animated(False)
-            else:
-                draggable_points[1].line.set_animated(True)
-                self.point.axes.draw_artist(draggable_points[1].line)
-                line_x = [self.x, draggable_points[1].x]
-                line_y = [self.y, draggable_points[1].y]
-                draggable_points[1].line.set_data(line_x, line_y)
-                draggable_points[1].line.set_animated(False)
+            draggable_points[1].line.set_animated(True)
+            self.point.axes.draw_artist(draggable_points[1].line)
+            line_x = [draggable_points[0].x, draggable_points[1].x]
+            line_y = [draggable_points[0].y, draggable_points[1].y]
+            draggable_points[1].line.set_data(line_x, line_y)
+            draggable_points[1].line.set_animated(False)
 
         self.point.figure.canvas.draw()
 
         if self == draggable_points[1]:
-            self.parent.linecuts[self.orientation]['lines'][self.linecut]['points'][1] = (self.x, self.y)
-            self.parent.linecuts[self.orientation]['lines'][self.linecut]['indices'][1] = (index_x, index_y)
+            self.linecut['points'][1] = (self.x, self.y)
+            self.linecut['indices'][1] = (index_x, index_y)
         else:
-            self.parent.linecuts[self.orientation]['lines'][self.linecut]['points'][0] = (self.x, self.y)
-            self.parent.linecuts[self.orientation]['lines'][self.linecut]['indices'][0] = (index_x, index_y)
-        self.parent.linecuts[self.orientation]['linecut_window'].points_dragged(self.linecut)
+            self.linecut['points'][0] = (self.x, self.y)
+            self.linecut['indices'][0] = (index_x, index_y)
+        self.parent.linecuts[self.orientation]['linecut_window'].points_dragged(self.lc)
         self.parent.linecuts[self.orientation]['linecut_window'].update()
         self.parent.linecuts[self.orientation]['linecut_window'].activateWindow()
 
