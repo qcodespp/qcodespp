@@ -283,7 +283,7 @@ class Sidebar1D(QtWidgets.QWidget):
                    if self.trace_table.item(index,column).checkState() == 2 or 
                    self.trace_table.item(index,column).checkState()== QtCore.Qt.Checked]
         checked_items = [int(self.trace_table.item(index,0).text()) for index in indices]
-        if return_indices:    
+        if return_indices:
             return checked_items, indices
         else:
             return checked_items

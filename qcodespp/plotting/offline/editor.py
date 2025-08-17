@@ -2392,7 +2392,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             # Return the filters to operate on
             if isinstance(item.data,MixedInternalData) and self.mixeddata_filter_box.currentIndex() == 0:
                 filters = item.data.dataset2d.filters
-            elif hasattr(item.data, 'sidebar1D'):
+            elif hasattr(item.data, 'sidebar1D') and item.data.sidebar1D.trace_table.rowCount() > 0:
                 current_1D_row = item.data.sidebar1D.trace_table.currentRow()
                 current_line = int(item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
                 if isinstance(item.data,MixedInternalData):
@@ -2406,7 +2406,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         elif filt is None: # The filters are being set.
             if isinstance(item.data,MixedInternalData) and self.mixeddata_filter_box.currentIndex() == 0:
                 item.data.dataset2d.filters=filters
-            elif hasattr(item.data, 'sidebar1D'):
+            elif hasattr(item.data, 'sidebar1D') and item.data.sidebar1D.trace_table.rowCount() > 0:
                 current_1D_row = item.data.sidebar1D.trace_table.currentRow()
                 current_line = int(item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
                 if isinstance(item.data,MixedInternalData):
@@ -2419,7 +2419,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         else: # A filter is being appended to the table
             if isinstance(item.data,MixedInternalData) and self.mixeddata_filter_box.currentIndex() == 0:
                 item.data.dataset2d.filters.append(filt)
-            elif hasattr(item.data, 'sidebar1D'):
+            elif hasattr(item.data, 'sidebar1D') and item.data.sidebar1D.trace_table.rowCount() > 0:
                 current_1D_row = item.data.sidebar1D.trace_table.currentRow()
                 current_line = int(item.data.sidebar1D.trace_table.item(current_1D_row,0).text())
                 if hasattr(filt, 'method_list') and 'Z' in filt.method_list:
