@@ -14,10 +14,11 @@ frontend to the solid backend of QCoDeS. If you have always wanted to run
 your measurements using python but found QCoDeS too daunting, qcodes++ is 
 the package for you. qcodes++ features
 
-* Text-based data (i.e. readable by e.g. notepad, excel, origin pro, etc)
-* A simple yet powerful method for taking data and running measurements and loops
-* True live plotting and an integrated offline plotting/analysis tool
-* Improvements to core qcodes functions (e.g. Station, Parameters) to streamline data acquisition, protect (meta)data integtrity and minimise user error
+* Simple yet powerful methods for taking data and running measurements
+* True live plotting featuring sub-second, point-by-point updates without performance impact
+* A feature-rich offline plotting/analysis tool for publication-quality figures
+* Text-based data
+* Improvements to core QCoDeS functionalities (e.g. Station, Parameters) to streamline data acquisition, protect (meta)data integrity and minimise user error
 * Improved drivers for certain instruments
 * and other user-friendliness improvements
 
@@ -51,4 +52,4 @@ See `License <https://github.com/QCoDeS/Qcodes/tree/master/LICENSE.rst>`__.
 Contact and contributing
 ==================================================
 
-This package is largely maintained by Damon Carrad. If you have a question, or want to contribute, please don't hesitate to contact me at damonc@dtu.dk. Note I'm mainly doing it in my spare time, but I will always try to help.
+Issue reporting, feedback and contributions are more than welcome! The best way to raise an issue is through the GitHub issue tracker, and the best way to contribute is by forking the repository and submitting a pull request (see the relevant GitHub documentation for how to do this). This package is largely maintained by Damon Carrad. If you have a question but not a GitHub account, you can contact me at damonc@dtu.dk.

@@ -24,7 +24,6 @@ class Sidebar1D(QtWidgets.QWidget):
         self.init_cmap='viridis'
         self.setMaximumWidth(500)
         self.parent = parent
-        self.lines = self.parent.plotted_lines
         self.running = True
         self.init_widgets()
         self.init_connections()
@@ -250,20 +249,20 @@ class Sidebar1D(QtWidgets.QWidget):
         else:
             self.trace_table.setHorizontalHeaderLabels(['#','X data','Y data','style','color', 'width',
                                                         'Xerr','Yerr','show fit','show fit cmpts','show fit err'])
-        for line in self.lines.keys():
+        for line in self.parent.plotted_lines.keys():
             self.append_trace_to_table(line)
 
     def item_clicked(self, item):
         # displays the fit result and/or information.
         row = self.trace_table.currentRow()
         line = int(self.trace_table.item(row,0).text())
-        if 'fit' in self.lines[line].keys():
-            fit_result = self.lines[line]['fit']['fit_result']
+        if 'fit' in self.parent.plotted_lines[line].keys():
+            fit_result = self.parent.plotted_lines[line]['fit']['fit_result']
             self.output_window.setText(fit_result.fit_report())
-        elif 'stats' in self.lines[line].keys():
+        elif 'stats' in self.parent.plotted_lines[line].keys():
             text='Statistics:\n'
-            for key in self.lines[line]['stats'].keys():
-                text+=f'{key}: {self.lines[line]['stats'][key]}\n'
+            for key in self.parent.plotted_lines[line]['stats'].keys():
+                text+=f'{key}: {self.parent.plotted_lines[line]['stats'][key]}\n'
             self.output_window.setText(text)
         else:
             fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
@@ -291,14 +290,14 @@ class Sidebar1D(QtWidgets.QWidget):
         
     def duplicate_trace(self):
         try:
-            max_index=np.max(list(self.lines.keys()))
+            max_index=np.max(list(self.parent.plotted_lines.keys()))
         except ValueError:
             max_index=-1
         current_row = self.trace_table.currentRow()
         try:
             line = int(self.trace_table.item(current_row,0).text())
             new_line = int(max_index+1)
-            self.lines[new_line] = copy.deepcopy(self.lines[line])
+            self.parent.plotted_lines[new_line] = copy.deepcopy(self.parent.plotted_lines[line])
             self.append_trace_to_table(new_line)
             self.editor_window.show_current_plot_settings()
             self.editor_window.update_plots(update_data=False)
@@ -307,7 +306,7 @@ class Sidebar1D(QtWidgets.QWidget):
 
     def add_trace_manually(self): # When 'add' button pressed
         try:
-            max_index=np.max(list(self.lines.keys()))
+            max_index=np.max(list(self.parent.plotted_lines.keys()))
         except ValueError:
             max_index=-1
         try:
@@ -321,10 +320,10 @@ class Sidebar1D(QtWidgets.QWidget):
                 'linewidth': 1.5,
                 'linestyle': '-',
                 'filters':[]}
-            self.lines[int(max_index+1)] = line
+            self.parent.plotted_lines[int(max_index+1)] = line
             self.parent.prepare_data_for_plot(reload_data=True,reload_from_file=False,linefrompopup=int(max_index+1))
-            self.lines[int(max_index+1)]['processed_data'] = self.parent.processed_data
-            self.lines[int(max_index+1)]['raw_data'] = self.parent.raw_data
+            self.parent.plotted_lines[int(max_index+1)]['processed_data'] = self.parent.processed_data
+            self.parent.plotted_lines[int(max_index+1)]['raw_data'] = self.parent.raw_data
             self.append_trace_to_table(int(max_index+1))
             self.editor_window.show_current_plot_settings()
         except Exception as e:
@@ -333,7 +332,7 @@ class Sidebar1D(QtWidgets.QWidget):
 
     def append_trace_to_table(self,index):
         row = self.trace_table.rowCount()
-        line=self.lines[index]
+        line=self.parent.plotted_lines[index]
 
 
         self.trace_table.itemChanged.disconnect(self.trace_table_edited)
@@ -423,23 +422,23 @@ class Sidebar1D(QtWidgets.QWidget):
             edit_dict={1:'X data',2:'Y data',3:'linestyle',5:'linewidth',6:'Xerr',7:'Yerr'}
 
         if current_col in edit_dict.keys():
-            self.lines[line][edit_dict[current_col]] = current_item.text()
+            self.parent.plotted_lines[line][edit_dict[current_col]] = current_item.text()
 
         elif current_col == 8:
-            self.lines[line]['fit']['fit_checkstate'] = current_item.checkState()
+            self.parent.plotted_lines[line]['fit']['fit_checkstate'] = current_item.checkState()
         elif current_col == 9:
-            self.lines[line]['fit']['fit_components_checkstate'] = current_item.checkState()
+            self.parent.plotted_lines[line]['fit']['fit_components_checkstate'] = current_item.checkState()
         elif current_col == 10:
-            self.lines[line]['fit']['fit_uncertainty_checkstate'] = current_item.checkState()
+            self.parent.plotted_lines[line]['fit']['fit_uncertainty_checkstate'] = current_item.checkState()
 
         elif current_col == 0: # It's the checkstate for the linetrace.
-            self.lines[line]['checkstate'] = current_item.checkState()
+            self.parent.plotted_lines[line]['checkstate'] = current_item.checkState()
 
         # If the X or Y data is changed, we need to update the processed data.
         if current_col in [1,2,6,7]:
             try:
                 self.parent.prepare_data_for_plot(reload_data=True,reload_from_file=False,linefrompopup=line)
-                self.lines[line]['processed_data'] = [self.parent.processed_data[0],
+                self.parent.plotted_lines[line]['processed_data'] = [self.parent.processed_data[0],
                                                                     self.parent.processed_data[1]]
                 self.editor_window.show_current_plot_settings()
 
@@ -453,12 +452,12 @@ class Sidebar1D(QtWidgets.QWidget):
             try:
                 row = self.trace_table.currentRow()
                 linetrace = int(self.trace_table.item(row,0).text())
-                self.lines.pop(linetrace)
+                self.parent.plotted_lines.pop(linetrace)
                 self.trace_table.removeRow(row)
             except Exception as e:
                 self.editor_window.log_error(f'Cannot remove selected trace:\n{type(e).__name__}: {e}', show_popup=True)
         elif which=='all':
-            self.lines = {}
+            self.parent.plotted_lines = {}
             self.trace_table.setRowCount(0)
 
         self.editor_window.update_plots(update_data=False)
@@ -502,7 +501,7 @@ class Sidebar1D(QtWidgets.QWidget):
         rows = [self.trace_table.row(self.trace_table.findItems(str(line), QtCore.Qt.MatchExactly)[0]) for line in lines_to_color]
 
         for i,line in enumerate(lines_to_color):
-            self.lines[line]['linecolor'] = line_colors[i]
+            self.parent.plotted_lines[line]['linecolor'] = line_colors[i]
             rgbavalue = [int(line_colors[i][0]*255),
                          int(line_colors[i][1]*255),
                          int(line_colors[i][2]*255),
@@ -534,7 +533,7 @@ class Sidebar1D(QtWidgets.QWidget):
                     if color.isValid():
                         item.setBackground(color)
                         linetrace=int(self.trace_table.item(self.trace_table.currentRow(),0).text())
-                        self.lines[linetrace]['linecolor'] = color.name()
+                        self.parent.plotted_lines[linetrace]['linecolor'] = color.name()
                         self.trace_table.setCurrentItem(self.trace_table.item(row,0)) # Otherwise the cell stays blue since it's selected.
                         self.editor_window.update_plots(update_data=False)
         
@@ -592,13 +591,13 @@ class Sidebar1D(QtWidgets.QWidget):
             item.setCheckState(checkstate)
             linetrace=int(self.trace_table.item(row,0).text())
             if column==0:
-                self.lines[linetrace]['checkstate'] = item.checkState()
+                self.parent.plotted_lines[linetrace]['checkstate'] = item.checkState()
             elif column==8:
-                self.lines[linetrace]['fit']['fit_checkstate'] = item.checkState()
+                self.parent.plotted_lines[linetrace]['fit']['fit_checkstate'] = item.checkState()
             elif column==9:
-                self.lines[linetrace]['fit']['fit_components_checkstate'] = item.checkState()
+                self.parent.plotted_lines[linetrace]['fit']['fit_components_checkstate'] = item.checkState()
             elif column==10:
-                self.lines[linetrace]['fit']['fit_uncertainty_checkstate'] = item.checkState()
+                self.parent.plotted_lines[linetrace]['fit']['fit_uncertainty_checkstate'] = item.checkState()
 
     def replace_table_entry(self, signal):
         item = self.trace_table.currentItem()
@@ -645,7 +644,7 @@ class Sidebar1D(QtWidgets.QWidget):
             fit_lines = self.get_checked_items(traces_or_fits='fits')
             if len(fit_lines) > 0:
                 for line in fit_lines:
-                    if 'fit' in self.lines[line].keys():
+                    if 'fit' in self.parent.plotted_lines[line].keys():
                         self.draw_fits(line)
                         
             if self.xmin_box.text() != '' or self.xmax_box.text() != '':
@@ -758,8 +757,8 @@ class Sidebar1D(QtWidgets.QWidget):
 
         # Try to do the fit.
         if function_name != 'Statistics':
-            if 'stats' in self.lines[line].keys():
-                self.lines[line].pop('stats')
+            if 'stats' in self.parent.plotted_lines[line].keys():
+                self.parent.plotted_lines[line].pop('stats')
             try:
                 fit_result = fits.fit_data(function_class=function_class, function_name=function_name,
                                                     xdata=x_forfit,ydata=y_forfit, p0=p0, inputinfo=inputinfo)
@@ -772,7 +771,7 @@ class Sidebar1D(QtWidgets.QWidget):
                 else:
                     y_fit = fit_result.best_fit
 
-                    self.lines[line]['fit'] = {'fit_result': fit_result,
+                    self.parent.plotted_lines[line]['fit'] = {'fit_result': fit_result,
                                                             'xdata': x_forfit,
                                                             'ydata': y_forfit,
                                                             'fitted_y': y_fit,
@@ -812,20 +811,20 @@ class Sidebar1D(QtWidgets.QWidget):
                     return e
         
         else:
-            if 'fit' in self.lines[line].keys():
+            if 'fit' in self.parent.plotted_lines[line].keys():
                 self.clear_fit(line)
-            self.lines[line]['stats'] = fits.fit_data(function_class=function_class, 
+            self.parent.plotted_lines[line]['stats'] = fits.fit_data(function_class=function_class, 
                                                                                            function_name=function_name,
                                                     xdata=x_forfit,ydata=y_forfit, p0=p0, inputinfo=inputinfo)
-            if 'autocorrelation' in self.lines[line]['stats'].keys():
-                self.parent.add_array_to_data_dict(self.lines[line]['stats']['xdata'],'x_for_autocorr')
-                self.parent.add_array_to_data_dict(self.lines[line]['stats']['autocorrelation'],'autocorrelation')
-            if 'autocorrelation_norm' in self.lines[line]['stats'].keys():
-                self.parent.add_array_to_data_dict(self.lines[line]['stats']['xdata'],'x_for_autocorr')
-                self.parent.add_array_to_data_dict(self.lines[line]['stats']['autocorrelation_norm'],'autocorrelation_norm')
-            if 'percentile' in self.lines[line]['stats'].keys():
-                self.parent.add_array_to_data_dict(self.lines[line]['stats']['percentile'],'percentile')
-                self.parent.add_array_to_data_dict(self.lines[line]['stats']['percentiles'],'percentiles')
+            if 'autocorrelation' in self.parent.plotted_lines[line]['stats'].keys():
+                self.parent.add_array_to_data_dict(self.parent.plotted_lines[line]['stats']['xdata'],'x_for_autocorr')
+                self.parent.add_array_to_data_dict(self.parent.plotted_lines[line]['stats']['autocorrelation'],'autocorrelation')
+            if 'autocorrelation_norm' in self.parent.plotted_lines[line]['stats'].keys():
+                self.parent.add_array_to_data_dict(self.parent.plotted_lines[line]['stats']['xdata'],'x_for_autocorr')
+                self.parent.add_array_to_data_dict(self.parent.plotted_lines[line]['stats']['autocorrelation_norm'],'autocorrelation_norm')
+            if 'percentile' in self.parent.plotted_lines[line]['stats'].keys():
+                self.parent.add_array_to_data_dict(self.parent.plotted_lines[line]['stats']['percentile'],'percentile')
+                self.parent.add_array_to_data_dict(self.parent.plotted_lines[line]['stats']['percentiles'],'percentiles')
             success=True
 
             #self.parent.prepare_data_for_plot(reload_data=True,reload_from_file=False,linefrompopup=line)
@@ -851,14 +850,14 @@ class Sidebar1D(QtWidgets.QWidget):
     
     def print_parameters(self,line):
         self.output_window.clear()
-        if 'stats' in self.lines[line].keys():
+        if 'stats' in self.parent.plotted_lines[line].keys():
             text='Statistics:\n'
-            for key in self.lines[line]['stats'].keys():
-                text+=f'{key}: {self.lines[line]['stats'][key]}\n'
+            for key in self.parent.plotted_lines[line]['stats'].keys():
+                text+=f'{key}: {self.parent.plotted_lines[line]['stats'][key]}\n'
             self.output_window.setText(text)
         else:
             try:
-                self.output_window.setText(self.lines[line]['fit']['fit_result'].fit_report())
+                self.output_window.setText(self.parent.plotted_lines[line]['fit']['fit_result'].fit_report())
 
             except Exception as e:
                 self.output_window.setText('Could not print fit parameters:', e)
@@ -867,8 +866,8 @@ class Sidebar1D(QtWidgets.QWidget):
         # Returns the processed x,y data for a particular entry in the plotted lines dictionary
         self.parent.prepare_data_for_plot(reload_data=True,reload_from_file=False,
                                           linefrompopup=line,plot_type=self.parent.plot_type)
-        x=self.lines[line]['processed_data'][0]
-        y=self.lines[line]['processed_data'][1]
+        x=self.parent.plotted_lines[line]['processed_data'][0]
+        y=self.parent.plotted_lines[line]['processed_data'][1]
         return (x,y)
     
     def plot_Yerr(self,x,y,error,line):
@@ -876,44 +875,44 @@ class Sidebar1D(QtWidgets.QWidget):
             self.parent.axes.errorbar(x, y,
                                     yerr=error,
                                     fmt='none',
-                                    ecolor=self.lines[line]['linecolor'],
-                                    elinewidth=self.lines[line]['linewidth'],
+                                    ecolor=self.parent.plotted_lines[line]['linecolor'],
+                                    elinewidth=self.parent.plotted_lines[line]['linewidth'],
                                     capsize=4)
         else:
             self.parent.axes.fill_between(x, y+error, y-error,
-                                    alpha=0.2, color=self.lines[line]['linecolor'])
+                                    alpha=0.2, color=self.parent.plotted_lines[line]['linecolor'])
                                     
     def plot_Xerr(self,x,y,error,line):
         if self.parent.plot_type == 'Histogram':
             self.parent.axes.errorbar(x, y,
                                     xerr=error,
                                     fmt='none',
-                                    ecolor=self.lines[line]['linecolor'],
-                                    elinewidth=self.lines[line]['linewidth'],
+                                    ecolor=self.parent.plotted_lines[line]['linecolor'],
+                                    elinewidth=self.parent.plotted_lines[line]['linewidth'],
                                     capsize=4)
         else:
             self.parent.axes.fill_betweenx(y, x+error, x-error,
-                                    alpha=0.2, color=self.lines[line]['linecolor'])
+                                    alpha=0.2, color=self.parent.plotted_lines[line]['linecolor'])
     
     def process_uncertainties(self,line,x,y):
         for axiserr in ['Xerr','Yerr']:
-            if self.lines[line][axiserr] not in [0,'0']:
+            if self.parent.plotted_lines[line][axiserr] not in [0,'0']:
                 try: # if a single number
-                    error = float(self.lines[line][axiserr])
+                    error = float(self.parent.plotted_lines[line][axiserr])
                 except ValueError: # if name of array or has %, value error is thrown
-                    if '%' in self.lines[line][axiserr]:
+                    if '%' in self.parent.plotted_lines[line][axiserr]:
                     # For percentage errors, make the absolute value array
                         if axiserr=='Yerr':
-                            error = np.abs(y) * float(self.lines[line][axiserr].replace('%','')) / 100
+                            error = np.abs(y) * float(self.parent.plotted_lines[line][axiserr].replace('%','')) / 100
                         else:
-                            error = np.abs(x) * float(self.lines[line][axiserr].replace('%','')) / 100
+                            error = np.abs(x) * float(self.parent.plotted_lines[line][axiserr].replace('%','')) / 100
                     else:
                     # Get the error data from the loaded data
-                        errorname = self.lines[line][axiserr]
+                        errorname = self.parent.plotted_lines[line][axiserr]
                         error = copy.deepcopy(self.parent.data_dict[errorname])
                 # Only apply multiply or divide filters (and only if they are checked of course)
-                if 'filters' in self.lines[line].keys():
-                    for filt in self.lines[line]['filters']:
+                if 'filters' in self.parent.plotted_lines[line].keys():
+                    for filt in self.parent.plotted_lines[line]['filters']:
                         if filt.checkstate and filt.name in ['Multiply','Divide'] and ((filt.method == 'X' and axiserr=='Xerr') 
                                                                                     or (filt.method == 'Y' and axiserr=='Yerr')):
                             if filt.name == 'Multiply':
@@ -952,14 +951,14 @@ class Sidebar1D(QtWidgets.QWidget):
                         self.parent.settings['xlabel'] = 'Frequency'
                     #self.parent.image = 
                     self.parent.axes.plot(x, y,
-                                        self.lines[line]['linestyle'],
-                                        linewidth=self.lines[line]['linewidth'],
-                                        markersize=self.lines[line]['linewidth'],
-                                        color=self.lines[line]['linecolor'],
+                                        self.parent.plotted_lines[line]['linestyle'],
+                                        linewidth=self.parent.plotted_lines[line]['linewidth'],
+                                        markersize=self.parent.plotted_lines[line]['linewidth'],
+                                        color=self.parent.plotted_lines[line]['linecolor'],
                                         drawstyle=drawstyle,
-                                        label=self.lines[line]['Y data'])
+                                        label=self.parent.plotted_lines[line]['Y data'])
 
-                    if self.lines[line]['Xerr'] not in [0,'0'] or self.lines[line]['Yerr'] not in [0,'0']:
+                    if self.parent.plotted_lines[line]['Xerr'] not in [0,'0'] or self.parent.plotted_lines[line]['Yerr'] not in [0,'0']:
                         self.process_uncertainties(line,x,y)
             self.parent.apply_plot_settings()
             #self.parent.apply_axlim_settings()
@@ -970,16 +969,16 @@ class Sidebar1D(QtWidgets.QWidget):
 
     def draw_fits(self,line):
         try:
-            fit_result=self.lines[line]['fit']['fit_result']
-            x_forfit=self.lines[line]['fit']['xdata']
+            fit_result=self.parent.plotted_lines[line]['fit']['fit_result']
+            x_forfit=self.parent.plotted_lines[line]['fit']['xdata']
             y_fit=fit_result.best_fit
             self.parent.axes.plot(x_forfit, y_fit, 'k--',
-                linewidth=self.lines[line]['linewidth'])
-            if self.lines[line]['fit']['fit_uncertainty_checkstate'] == QtCore.Qt.Checked:
+                linewidth=self.parent.plotted_lines[line]['linewidth'])
+            if self.parent.plotted_lines[line]['fit']['fit_uncertainty_checkstate'] == QtCore.Qt.Checked:
                 uncertainty = fit_result.eval_uncertainty()
                 self.parent.axes.fill_between(x_forfit, y_fit+uncertainty, y_fit-uncertainty,
                     alpha=0.2, color='grey', linewidth=0)
-            if self.lines[line]['fit']['fit_components_checkstate'] == QtCore.Qt.Checked:
+            if self.parent.plotted_lines[line]['fit']['fit_components_checkstate'] == QtCore.Qt.Checked:
                 fit_components=fit_result.eval_components()
                 if self.colormap_box.currentText() == 'viridis':
                     selected_colormap = cm.get_cmap('plasma')
@@ -987,7 +986,7 @@ class Sidebar1D(QtWidgets.QWidget):
                     selected_colormap = cm.get_cmap('viridis')
                 line_colors = selected_colormap(np.linspace(0.1,0.9,len(fit_components.keys())))
                 for i,key in enumerate(fit_components.keys()):
-                    self.parent.axes.plot(x_forfit, fit_components[key], '--', color=line_colors[i],alpha=0.75, linewidth=self.lines[line]['linewidth'])
+                    self.parent.axes.plot(x_forfit, fit_components[key], '--', color=line_colors[i],alpha=0.75, linewidth=self.parent.plotted_lines[line]['linewidth'])
         except Exception as e:
             self.output_window.setText(f'Could not plot fit: {e}')
 
@@ -996,26 +995,26 @@ class Sidebar1D(QtWidgets.QWidget):
         line = int(self.trace_table.item(current_row,0).text())
 
         # Fits get saved in the lmfit format.
-        if 'fit' in self.lines[line].keys():
-            fit_result = self.lines[line]['fit']['fit_result']
+        if 'fit' in self.parent.plotted_lines[line].keys():
+            fit_result = self.parent.plotted_lines[line]['fit']['fit_result']
             formats = 'lmfit Model Result (*.sav)'
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Fit Result','', formats)
             save_modelresult(fit_result,filename)
 
         #Stats can simply be saved in a json
-        elif 'stats' in self.lines[line].keys():
+        elif 'stats' in self.parent.plotted_lines[line].keys():
             formats = 'JSON (*.json)'
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Statistics','', formats)
             export_dict={'data_name':self.parent.label,
-                         'X_param':self.lines[line]['X data'],
-                         'Y_param':self.lines[line]['Y data']}
-            for key in self.lines[line]['stats'].keys():
-                if isinstance(self.lines[line]['stats'][key],np.ndarray):
-                    export_dict[key] = self.lines[line]['stats'][key].tolist()
+                         'X_param':self.parent.plotted_lines[line]['X data'],
+                         'Y_param':self.parent.plotted_lines[line]['Y data']}
+            for key in self.parent.plotted_lines[line]['stats'].keys():
+                if isinstance(self.parent.plotted_lines[line]['stats'][key],np.ndarray):
+                    export_dict[key] = self.parent.plotted_lines[line]['stats'][key].tolist()
                 else:
-                    export_dict[key] = self.lines[line]['stats'][key]
+                    export_dict[key] = self.parent.plotted_lines[line]['stats'][key]
             try:
                 with open(filename, 'w', encoding='utf-8') as f:
                     jsondump(export_dict, f, ensure_ascii=False,indent=4)
@@ -1026,20 +1025,20 @@ class Sidebar1D(QtWidgets.QWidget):
         current_row = self.trace_table.currentRow()
         line = int(self.trace_table.item(current_row,0).text())
         # Can save _either_ fits or stats, and decide which to do based on whether the current line has a fit or stats.
-        if 'fit' in self.lines[line].keys():
+        if 'fit' in self.parent.plotted_lines[line].keys():
             fit_lines = self.get_checked_items(traces_or_fits='fits')
             formats = 'lmfit Model Result (*.sav)'
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Fit Result: Select base name','', formats)
             for line in fit_lines:
-                fit_result = self.lines[line]['fit']['fit_result']
+                fit_result = self.parent.plotted_lines[line]['fit']['fit_result']
                 save_modelresult(fit_result,filename.replace('.sav',f'_{line}.sav'))
 
-        elif 'stats' in self.lines[line].keys():
+        elif 'stats' in self.parent.plotted_lines[line].keys():
             # All the stats can go into a single json.
             stat_lines=[]
-            for line in self.lines.keys():
-                if 'stats' in self.lines[line].keys():
+            for line in self.parent.plotted_lines.keys():
+                if 'stats' in self.parent.plotted_lines[line].keys():
                     stat_lines.append(line)
             formats = 'JSON (*.json)'
             filename, extension = QtWidgets.QFileDialog.getSaveFileName(
@@ -1048,13 +1047,13 @@ class Sidebar1D(QtWidgets.QWidget):
                          'linetrace_stats':{}}
             for line in stat_lines:
                 export_dict['linetrace_stats'][line]={}
-                export_dict['linetrace_stats'][line]['X_param']=self.lines[line]['X data']
-                export_dict['linetrace_stats'][line]['Y_param']=self.lines[line]['Y data']
-                for key in self.lines[line]['stats'].keys():
-                    if isinstance(self.lines[line]['stats'][key],np.ndarray):
-                        export_dict['linetrace_stats'][line][key] = self.lines[line]['stats'][key].tolist()
+                export_dict['linetrace_stats'][line]['X_param']=self.parent.plotted_lines[line]['X data']
+                export_dict['linetrace_stats'][line]['Y_param']=self.parent.plotted_lines[line]['Y data']
+                for key in self.parent.plotted_lines[line]['stats'].keys():
+                    if isinstance(self.parent.plotted_lines[line]['stats'][key],np.ndarray):
+                        export_dict['linetrace_stats'][line][key] = self.parent.plotted_lines[line]['stats'][key].tolist()
                     else:
-                        export_dict['linetrace_stats'][line][key] = self.lines[line]['stats'][key]
+                        export_dict['linetrace_stats'][line][key] = self.parent.plotted_lines[line]['stats'][key]
             try:
                 with open(filename, 'w', encoding='utf-8') as f:
                     jsondump(export_dict, f, ensure_ascii=False,indent=4)
@@ -1077,8 +1076,8 @@ class Sidebar1D(QtWidgets.QWidget):
                 if int(self.trace_table.item(row,0).text())==line:
                     break        
 
-        if 'fit' in self.lines[line].keys():
-            self.lines[line].pop('fit')
+        if 'fit' in self.parent.plotted_lines[line].keys():
+            self.parent.plotted_lines[line].pop('fit')
             self.trace_table.setItem(row,8,QtWidgets.QTableWidgetItem(''))
             self.trace_table.setItem(row,9,QtWidgets.QTableWidgetItem(''))
             self.trace_table.setItem(row,10,QtWidgets.QTableWidgetItem(''))
@@ -1086,8 +1085,8 @@ class Sidebar1D(QtWidgets.QWidget):
                 self.editor_window.update_plots(update_data=False)
 
         # should never be both, but use 'if' just in case
-        if 'stats' in self.lines[line].keys():
-            self.lines[line].pop('stats')
+        if 'stats' in self.parent.plotted_lines[line].keys():
+            self.parent.plotted_lines[line].pop('stats')
 
         if manual:
             fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
@@ -1098,7 +1097,7 @@ class Sidebar1D(QtWidgets.QWidget):
 
     def clear_all_fits(self):
         try:
-            for line in self.lines.keys():
+            for line in self.parent.plotted_lines.keys():
                 self.clear_fit(line)
         except Exception as e:
             self.editor_window.log_error(f'Could not clear all fits:\n{type(e).__name__}: {e}', show_popup=True)
