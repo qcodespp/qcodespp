@@ -653,10 +653,12 @@ class Sidebar1D(QtWidgets.QWidget):
         self.parent.canvas.draw()
     
     def fit_class_changed(self):
+        self.fit_box.currentIndexChanged.disconnect(self.fit_type_changed)
         self.fit_box.clear()
         self.fit_box.addItems(fits.get_names(fitclass=self.fit_class_box.currentText()))
         self.fit_box.setCurrentIndex(0)
         self.fit_type_changed()
+        self.fit_box.currentIndexChanged.connect(self.fit_type_changed)
     
     def fit_type_changed(self):
         fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]

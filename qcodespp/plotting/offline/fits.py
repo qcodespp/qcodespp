@@ -1250,8 +1250,8 @@ def get_names(fitclass='Polynomials and powers'):
     Returns:
         list: A list of function names available in the specified class.
     """
-    return functions[fitclass].keys()
-    
+    return list(functions[fitclass].keys())
+
 def get_parameters(function_class,function_name):
     """Get the parameters required for a given function class and name.
 
