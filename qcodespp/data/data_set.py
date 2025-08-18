@@ -378,7 +378,8 @@ class DataSetPP(DelegateAttributes):
                     self.location = self.location_provider(io, record=loc_record)
                     log.warning('DataSetPP filename has been automatically shortened to avoid Windows maximum character limit')
 
-        # Make this dataset a class attribute so that it can be accessed by other functions, most notably to set its publisher in live plotting.
+        # Make this dataset a class attribute so that it can be accessed by other functions, 
+        # most notably to set its publisher in live plotting.
         DataSetPP.default_dataset = self
 
     def sync(self):
@@ -540,7 +541,7 @@ class DataSetPP(DelegateAttributes):
         Raises:
             ValueError: if there is already an array with this id here.
         """
-        # TODO: mask self.arrays so you *can't* set it directly?
+
         if data_array.array_id in self.arrays:
             raise ValueError('array_id {} already exists in this '
                              'DataSetPP'.format(data_array.array_id))
@@ -598,10 +599,17 @@ class DataSetPP(DelegateAttributes):
                     ai[:1] = []
             else:
                 break
-        for array, ai in zip(arrays, param_action_indices):
-            try:
+        
+        # For ND loops, N>1, we need to add an index to ensure a unique name.
+        array_ids = [array.array_id for array in arrays]
+        if len(array_ids) != len(set(array_ids)):
+            for array, ai in zip(arrays, param_action_indices):
                 array.array_id = name + ''.join('_' + str(ai[0]))
-            except:
+
+        # Complex loops without well-defined dimension need the full set of action indices to be unique.
+        array_ids = [array.array_id for array in arrays]
+        if len(array_ids) != len(set(array_ids)):
+            for array, ai in zip(arrays, param_action_indices):
                 array.array_id = name + ''.join('_' + str(i) for i in ai)
 
     def store(self, loop_indices, ids_values):
