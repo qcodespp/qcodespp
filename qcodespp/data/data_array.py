@@ -318,10 +318,13 @@ class DataArray(DelegateAttributes):
         self._max_indices = [d - 1 for d in self.shape]
 
     def clear(self):
-        """Fill the (already existing) data array with nan."""
-        # only floats can hold nan values. I guess we could
-        # also raise an error in this case? But generally float is
-        # what people want anyway.
+        """Fill the (already existing) data array with nan.
+        
+        Numpy ndarrays have to be filled with something. Zero (or any number) is a bad choice, 
+        so we use NaN for floats and 'nan' for strings. These are the only 
+        data types supported, but Boolean, Int, etc can be cast to float, and 
+        complex numbers can either be broken into two floats, or stored as string.
+        """
         if self.data_type==str:
             self.ndarray=self.ndarray.astype(np.dtypes.StringDType)
             self.ndarray.fill('nan')
