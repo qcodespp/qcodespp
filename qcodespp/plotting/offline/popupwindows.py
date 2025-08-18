@@ -1032,6 +1032,7 @@ class LineCutWindow(QtWidgets.QWidget):
     
     def fit_type_changed(self):
         fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
+        
         if 'default_inputs' in fit_function.keys():
             self.input_edit.setText(fit_function['default_inputs'])
         else:

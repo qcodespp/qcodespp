@@ -2312,10 +2312,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     # For only 1D data, just pile all parameters into a new dataset.
                     combined_data=[]
                     combined_parameter_names=[]
-                    for data in data_list:
+                    for i, data in enumerate(data_list):
                         for parameter_name in data.all_parameter_names:
                             combined_data.append(data.data_dict[parameter_name])
-                            combined_parameter_names.append(f'{data.label[:4]}: {parameter_name}')
+                            new_name= f'{data.label[:4]}: {parameter_name}'
+                            if new_name not in combined_parameter_names:
+                                combined_parameter_names.append(new_name)
+                            else:
+                                # If the name already exists, append the index to make it unique.
+                                combined_parameter_names.append(f'{new_name}_{i}')
                     combined_item=DataItem(InternalData(self.canvas,combined_data,label_name,combined_parameter_names,dimension=2))
                     combined_item.filepath = 'internal_data'
                     self.add_internal_data(combined_item)

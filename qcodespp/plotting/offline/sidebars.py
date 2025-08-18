@@ -683,8 +683,6 @@ class Sidebar1D(QtWidgets.QWidget):
                                    fit_function['description'])
         
     def collect_fit_data(self,x,y):
-        # If diagonal or circular, setting limits doesn't work; however, one can easily change the range during linetrace definition anyway
-
         if self.xmin_box.text() != '':
             xmin = float(self.xmin_box.text())
             min_ind=(np.abs(x - xmin)).argmin()
