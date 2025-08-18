@@ -337,13 +337,18 @@ def _parse_sweep_type(parameter, sweep_type):
 
     Returns:
         callable: The method to use for sweeping the parameter.
+    Raises:
+        ValueError: if the user has provided an unknown sweep type, or this type is not defined for the paramete.r
     """
-    sweep_type_dict = {
-        'linear': getattr(parameter, 'sweep'),
-        'return': getattr(parameter, 'returnsweep'),
-        'log': getattr(parameter, 'logsweep')
-    }
-    return sweep_type_dict[sweep_type]
+    if sweep_type=='linear':
+        return parameter.sweep
+    elif sweep_type=='return' and hasattr(parameter,'returnsweep'):
+        return parameter.returnsweep
+    elif steep_type=='log' and hasattr(parameter,'logsweep'):
+        return parameter.logsweep
+    else:
+        raise ValueError(f'Sweep type {sweep_type} unknown or not defined for parameter {parameter.name}')
+
 
 def _filename_text(start,stop,parameter):
     '''

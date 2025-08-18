@@ -183,6 +183,10 @@ Parameter.logsweep=logsweep
 Parameter.arbsweep=arbsweep
 Parameter.returnsweep=returnsweep
 
+def _set_step(val):
+    pass
+stepper=Parameter(name='stepper',label='Step Number',unit='#',set_cmd=_set_step)
+
 class ArrayParameterWrapper(ArrayParameter):
     """
     Wrapper to easily declare ArrayParameters.
