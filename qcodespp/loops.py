@@ -344,7 +344,7 @@ def _parse_sweep_type(parameter, sweep_type):
         return parameter.sweep
     elif sweep_type=='return' and hasattr(parameter,'returnsweep'):
         return parameter.returnsweep
-    elif steep_type=='log' and hasattr(parameter,'logsweep'):
+    elif sweep_type=='log' and hasattr(parameter,'logsweep'):
         return parameter.logsweep
     else:
         raise ValueError(f'Sweep type {sweep_type} unknown or not defined for parameter {parameter.name}')
@@ -505,7 +505,7 @@ class Loop(Metadatable):
 
         return ActiveLoop(self.sweep_values, self.delay, *actions,
                           then_actions=self.then_actions, station=self.station,
-                          progress_interval=self.progress_interval, snake=self.snake,
+                          progress_interval=self.progress_interval, snake=self.snake, progress_bar=self.progress_bar,
                           bg_task=self.bg_task, bg_final_task=self.bg_final_task, bg_min_delay=self.bg_min_delay)
 
     def with_bg_task(self, task, bg_final_task=None, min_delay=0.01):
@@ -1060,8 +1060,8 @@ class ActiveLoop(Metadatable):
         return self.run(quiet=True, location=False, **kwargs)
 
     def run(self, plot=None, use_threads=False, quiet=False, station=None,
-            progress_interval=False, set_active=True, publisher=None,
-            progress_bar=True, check_written_data=True,
+            progress_interval=None, set_active=True, publisher=None,
+            progress_bar=None, check_written_data=True,
             *args, **kwargs):
         """
         Execute this loop.
@@ -1119,8 +1119,14 @@ class ActiveLoop(Metadatable):
         if plot is not None:
             live_plot(self.data_set,plot)
 
-        self.progress_bar=progress_bar
-        if progress_interval is not False:
+        if progress_bar is not None:
+            if not isinstance(progress_bar, bool):
+                raise TypeError('progress_bar must be a boolean, not {}'.format(type(progress_bar)))
+            self.progress_bar=progress_bar
+
+        if progress_interval is not None:
+            if not isinstance(progress_interval, (int, float)):
+                raise TypeError('progress_interval must be a number (i.e. time in seconds), not {}'.format(type(progress_interval)))
             self.progress_interval = progress_interval
 
         data_set = self.get_data_set(*args, **kwargs)
@@ -1277,14 +1283,18 @@ class ActiveLoop(Metadatable):
 
         self.last_task_failed = False
 
-        station = self.station or Station.default
-        if 'timer' in self.data_set.arrays:
-            station.timer.reset_clock()
-
         # If the parameter to be swept is the outermost loop it is the zeroth array element.
         # Run tqdm in this instance to only give a progress bar for the outermost loop.
-        if self.progress_bar==True and list(self.data_set.arrays)[0]==self.sweep_values.parameter.full_name+'_set':
-            iterator=tqdm(self.sweep_values, bar_format='{l_bar}{bar}{r_bar}. Estimated finish time: {eta}')
+        if list(self.data_set.arrays)[0]==self.sweep_values.parameter.full_name+'_set':
+            if self.progress_bar==True:
+                iterator=tqdm(self.sweep_values, bar_format='{l_bar}{bar}{r_bar}. Estimated finish time: {eta}')
+            else:
+                iterator=self.sweep_values
+
+            station = self.station or Station.default
+            if 'timer' in self.data_set.arrays:
+                station.timer.reset_clock()
+                
         else:
             iterator=self.sweep_values
 
@@ -1292,6 +1302,7 @@ class ActiveLoop(Metadatable):
             i=len(self.sweep_values._values)-1
         else:
             i=0
+
         for value in iterator:
             if self.progress_interval is not None:
                 tprint('loop %s: %d/%d (%.1f [s])' % (
