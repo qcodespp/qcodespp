@@ -379,8 +379,14 @@ class Loop(Metadatable):
             continuing. 0 (default) means no waiting and no warnings. > 0
             means to wait, potentially filling the delay time with monitoring,
             and give an error if you wait longer than expected.
+        progress_bar: Show a tqdm-based progress bar. Default true. The progress
+            bar should only show if this is the outer-most loop.
         progress_interval: show progress of the loop every x seconds. Default
-            is None (no output)
+            is None (no output). Superceded by progress_bar
+        station: qcodes Station to use for this loop. The default station is used
+            if none is provided.
+        snake: If this is an 'outer' Loop, i.e. actions contains a Loop, the sweep
+            order of that inner loop is reversed every alternate step of the outer Loop.
 
     After creating a Loop, you attach one or more ``actions`` to it, making an
     ``ActiveLoop``
@@ -390,8 +396,8 @@ class Loop(Metadatable):
     yield data), ``Wait`` times, or another ``ActiveLoop`` or ``Loop`` to nest
     inside this one.
     """
-    def __init__(self, sweep_values, delay=0, snake=False, station=None,
-                 progress_interval=None,progress_bar=True):
+    def __init__(self, sweep_values, delay=0, station=None,
+                 progress_interval=None,progress_bar=True, snake=False):
         super().__init__()
         if delay < 0:
             raise ValueError('delay must be > 0, not {}'.format(repr(delay)))
@@ -407,7 +413,6 @@ class Loop(Metadatable):
         self.bg_min_delay = None
         self.progress_interval = progress_interval
         self.progress_bar=progress_bar
-        # snake should ONLY be used for 2D loops. For 1D loops nothing will happen, but for higher dimensions unexpected results may occur.
         self.snake = snake
 
     def __getitem__(self, item):
