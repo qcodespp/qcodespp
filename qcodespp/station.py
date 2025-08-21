@@ -15,6 +15,7 @@ import time
 from qcodes.metadatable import MetadatableWithName
 
 from qcodespp.parameters import Parameter
+from qcodespp.actions import BreakIf
 from qcodes.parameters import ParameterBase , ElapsedTimeParameter
 
 from qcodes import Station as QStation
@@ -220,7 +221,7 @@ class Station(QStation):
         if 'timer' in self.components:
             self.default_measurement = self.default_measurement + (self.components['timer'],)
 
-    def communication_time(self,measurement_num=5, return_average=True):
+    def communication_time(self,measurement_num=5, return_average=True, include_callables=False):
         """
         Estimate how long it takes to communicate with the instruments in the station.
 
@@ -228,13 +229,16 @@ class Station(QStation):
             measurement_num: Number of measurements to take to estimate the communication time.
                 Default is 1, but can be set to a higher number for more accurate estimates.
             return_average: Whether to return the average of the measurements or the entire list.
+            include_callables: Whether to estimate the time non-gettable callables takes. 
+                These can be other allowable actions, e.g. qc.Task, qc.BreakIf. Usually they behave 
+                unpredictably and it's best to exclude them.
         Returns:
             Either the average communication time or the list of communication times for each measurement.
         """
         commtimes=[]
         for i in range(measurement_num):
             starttime=time.time()
-            self.measurement()
+            self.measurement(include_callables=include_callables)
             endtime=time.time()
             commtimes.append(endtime-starttime)
         if return_average:
@@ -242,12 +246,13 @@ class Station(QStation):
         else:
             return commtimes
 
-    def measurement(self, *actions):
+    def measurement(self, *actions, include_callables=True):
         """
         Measure the default measurement, or parameters in actions.
 
         Args:
             *actions: parameters to mesure
+            include_callables (bool): Perform non-gettable actions, i.e. Task, BreakIf, etc.
         """
         if not actions:
             actions = self.default_measurement
@@ -261,7 +266,7 @@ class Station(QStation):
         for action in actions:
             if hasattr(action, 'get'):
                 out.append(action.get())
-            elif callable(action):
+            elif callable(action) and include_callables:
                 action()
 
         return out
