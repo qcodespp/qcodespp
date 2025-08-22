@@ -1061,7 +1061,7 @@ class ActiveLoop(Metadatable):
 
     def run(self, plot=None, use_threads=False, quiet=False, station=None,
             progress_interval=None, set_active=True, publisher=None,
-            progress_bar=None, check_written_data=True,
+            progress_bar=None, check_written_data=True, timer_reset='outer',
             *args, **kwargs):
         """
         Execute this loop.
@@ -1116,6 +1116,12 @@ class ActiveLoop(Metadatable):
         returns:
             a DataSetPP object that we can use to plot
         """
+        if timer_reset in ['outer','inner']:
+            self.timer_reset=timer_reset
+        else:
+            raise ValueError('timer_reset must be either "outer" or "inner", not {}'.format(timer_reset))
+
+
         if plot is not None:
             live_plot(self.data_set,plot)
 
@@ -1283,6 +1289,10 @@ class ActiveLoop(Metadatable):
 
         self.last_task_failed = False
 
+        if self.timer_reset=='inner' and 'timer' in self.data_set.arrays:
+            station = self.station or Station.default
+            station.timer.reset_clock()
+
         # If the parameter to be swept is the outermost loop it is the zeroth array element.
         # Run tqdm in this instance to only give a progress bar for the outermost loop.
         if list(self.data_set.arrays)[0]==self.sweep_values.parameter.full_name+'_set':
@@ -1291,8 +1301,8 @@ class ActiveLoop(Metadatable):
             else:
                 iterator=self.sweep_values
 
-            station = self.station or Station.default
-            if 'timer' in self.data_set.arrays:
+            if self.timer_reset=='outer' and 'timer' in self.data_set.arrays:
+                station = self.station or Station.default
                 station.timer.reset_clock()
                 
         else:
