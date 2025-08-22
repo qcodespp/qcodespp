@@ -683,6 +683,7 @@ class ActiveLoop(Metadatable):
         self.was_broken=False
         self.snake = snake
         self.flip = False  # used for 2D loops to flip the order of the inner loop if snake is True. Should never be defined by the user.
+        self.timer_reset=None
         
         if snake and len([action for action in self.actions if isinstance(action, ActiveLoop)]) > 1:
             print('Careful! Using snake for a loop with multiple nested loops may result in strange behavior. Make sure you know what you are doing.')
