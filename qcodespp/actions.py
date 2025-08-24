@@ -187,8 +187,9 @@ class _Nest:
     This should not be constructed manually, only by an ActiveLoop.
     """
 
-    def __init__(self, inner_loop, action_indices):
+    def __init__(self, inner_loop, action_indices,timer_reset='outer'):
         self.inner_loop = inner_loop
+        self.inner_loop.timer_reset = timer_reset
         self.action_indices = action_indices
 
     def __call__(self, **kwargs):

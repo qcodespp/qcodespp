@@ -1242,7 +1242,7 @@ class ActiveLoop(Metadatable):
         if isinstance(action, Wait):
             return Task(self._wait, action.delay)
         elif isinstance(action, ActiveLoop):
-            return _Nest(action, new_action_indices)
+            return _Nest(action, new_action_indices, timer_reset=self.timer_reset)
         else:
             return action
 
@@ -1290,7 +1290,7 @@ class ActiveLoop(Metadatable):
 
         self.last_task_failed = False
 
-        if self.timer_reset=='inner' and 'timer' in self.data_set.arrays:
+        if self.timer_reset=='inner' and any(['timer' in array for array in self.data_set.arrays]):
             station = self.station or Station.default
             station.timer.reset_clock()
 
@@ -1302,7 +1302,7 @@ class ActiveLoop(Metadatable):
             else:
                 iterator=self.sweep_values
 
-            if self.timer_reset=='outer' and 'timer' in self.data_set.arrays:
+            if self.timer_reset=='outer' and any(['timer' in array for array in self.data_set.arrays]):
                 station = self.station or Station.default
                 station.timer.reset_clock()
                 
@@ -1342,7 +1342,7 @@ class ActiveLoop(Metadatable):
                     data_to_store[set_name] = val
             if isinstance(self.sweep_values.parameter,MultiParameter):
                 set_name = self.data_set.action_id_map[action_indices]
-                if type(value) is int or type(value) is float: #then the sweep is common values
+                if type(value) in [int, float]: #then the sweep is common values
                     data_to_store[set_name] = value
                 else:
                     data_to_store[set_name] = i
