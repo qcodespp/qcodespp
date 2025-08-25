@@ -2805,33 +2805,34 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.log_error('Cannot paste linecuts to this data type', show_popup=True)
 
     def reinstate_markers(self, item, orientation):
-        orientations={'horizontal':'horimarkers','vertical':'vertmarkers'}
-        if orientation != 'diagonal':
-            arrayname=orientations[orientation]
-            setattr(item.data,arrayname,[])
         if orientation == 'horizontal':
+            item.data.horimarkers=[]
             for line in item.data.linecuts['horizontal']['lines']:
-                z=item.data.linecuts[orientation]['lines'][line]['cut_axis_value']
-                item.data.horimarkers.append(item.data.axes.axhline(y=z, linestyle='dashed', linewidth=1, xmax=0.1,
-                    color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
-                item.data.horimarkers.append(item.data.axes.axhline(y=z, linestyle='dashed', linewidth=1, xmin=0.9,
-                    color=item.data.linecuts[orientation]['lines'][line]['linecolor']))  
+                if item.data.linecuts[orientation]['lines'][line]['checkstate']:
+                    z=item.data.linecuts[orientation]['lines'][line]['cut_axis_value']
+                    item.data.horimarkers.append(item.data.axes.axhline(y=z, linestyle='dashed', linewidth=1, xmax=0.1,
+                        color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
+                    item.data.horimarkers.append(item.data.axes.axhline(y=z, linestyle='dashed', linewidth=1, xmin=0.9,
+                        color=item.data.linecuts[orientation]['lines'][line]['linecolor']))  
 
         elif orientation == 'vertical':
+            item.data.vertmarkers=[]
             for line in item.data.linecuts['vertical']['lines']:
-                z=item.data.linecuts[orientation]['lines'][line]['cut_axis_value']
-                item.data.vertmarkers.append(item.data.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymax=0.1,
-                    color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
-                item.data.vertmarkers.append(item.data.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymin=0.9,
-                    color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
+                if item.data.linecuts[orientation]['lines'][line]['checkstate']:
+                    z=item.data.linecuts[orientation]['lines'][line]['cut_axis_value']
+                    item.data.vertmarkers.append(item.data.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymax=0.1,
+                        color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
+                    item.data.vertmarkers.append(item.data.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymin=0.9,
+                        color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
                 
         elif orientation == 'diagonal':
             for line in item.data.linecuts[orientation]['lines']:
-                points0= item.data.linecuts[orientation]['lines'][line]['points'][0]
-                points1= item.data.linecuts[orientation]['lines'][line]['points'][1]
-                item.data.linecuts[orientation]['lines'][line]['draggable_points']=[DraggablePoint(item.data, points0[0], points0[1],
-                                                                                            line,orientation),
-                                            DraggablePoint(item.data, points1[0], points1[1],line,orientation,draw_line=True)]
+                if item.data.linecuts[orientation]['lines'][line]['checkstate']:
+                    points0= item.data.linecuts[orientation]['lines'][line]['points'][0]
+                    points1= item.data.linecuts[orientation]['lines'][line]['points'][1]
+                    item.data.linecuts[orientation]['lines'][line]['draggable_points']=[DraggablePoint(item.data, points0[0], points0[1],
+                                                                                                line,orientation),
+                                                DraggablePoint(item.data, points1[0], points1[1],line,orientation,draw_line=True)]
 
     def draggable_point_selected(self, x,y,data):
         selected=False
