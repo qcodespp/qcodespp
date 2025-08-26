@@ -627,62 +627,6 @@
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="track_button">
-          <property name="text">
-           <string>Track data</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLabel" name="refresh_label">
-          <property name="text">
-           <string>Refresh interval:</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="refresh_line_edit">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="minimumSize">
-           <size>
-            <width>40</width>
-            <height>0</height>
-           </size>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>50</width>
-            <height>16777215</height>
-           </size>
-          </property>
-          <property name="inputMethodHints">
-           <set>Qt::ImhNone</set>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLabel" name="refreshunit_label">
-          <property name="text">
-           <string>sec</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLabel" name="remaining_time_label">
-          <property name="text">
-           <string/>
-          </property>
-         </widget>
-        </item>
-        <item>
          <spacer name="horizontalSpacer">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>

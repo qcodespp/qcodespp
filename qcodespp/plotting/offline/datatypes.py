@@ -473,7 +473,8 @@ class BaseClassData:
                             transform=self.axes.transAxes
                         )
 
-                if any([not locked for locked in self.label_locks.values()]):
+                if (any([not locked for locked in self.label_locks.values()]) or
+                    (self.plot_type and ('Histogram' in self.plot_type or 'FFT' in self.plot_type))):
                     self.apply_default_labels()
 
                 self.cursor = Cursor(self.axes, useblit=True, 

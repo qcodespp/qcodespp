@@ -215,11 +215,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.stats_button.hide()
         self.show_2d_data_checkbox.hide()
 
-        #... and some that are not currently in use.
-        self.track_button.hide()
-        self.refresh_label.hide()
-        self.refresh_line_edit.hide()
-        self.refreshunit_label.hide()
+        self.live_tracking = False
 
         self.global_text_size='12'
         self.global_text_lineedit.setText(self.global_text_size)
@@ -359,8 +355,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.action_duplicate_file.triggered.connect(self.duplicate_item)
         self.action_export_data_columns.triggered.connect(lambda: self.export_processed_data('current'))
         self.action_export_data_Z.triggered.connect(lambda: self.export_processed_data('Z'))
-        self.track_button.clicked.connect(self.track_button_clicked)
-        self.refresh_line_edit.editingFinished.connect(lambda: self.refresh_interval_changed(self.refresh_line_edit.text()))
         self.actionSave_plot_s_as.triggered.connect(self.save_image)
         self.action_open_file.triggered.connect(self.open_files)
         self.action_open_files_from_folder.triggered.connect(self.open_files_from_folder)
@@ -372,7 +366,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.action_refresh_stop.setEnabled(False)
         self.action_link_to_folder.triggered.connect(lambda: self.update_link_to_folder(new_folder=True))
         self.action_unlink_folder.triggered.connect(self.unlink_folder)
-        self.action_track_data.triggered.connect(self.track_button_clicked)
+        self.action_track_data.triggered.connect(self.start_stop_tracking)
         self.action_set_refresh_intervals.triggered.connect(lambda: self.set_refresh_intervals(from_dropdown=True))
         self.action_refresh.triggered.connect(self.refresh_files)
         self.refresh_file_button.clicked.connect(self.refresh_files)
@@ -396,7 +390,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.refresh_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+R"), self)
         self.refresh_shortcut.activated.connect(self.refresh_files)
         self.track_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+T"), self)
-        self.track_shortcut.activated.connect(self.track_button_clicked)
+        self.track_shortcut.activated.connect(self.start_stop_tracking)
         self.save_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+S"), self)
         self.save_shortcut.activated.connect(self.save_image)
         self.copy_image_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+C"), self)
@@ -445,7 +439,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             session_name = f' - Session: {os.path.basename(self.session_filepath)}'
         else:
             session_name = ''
-        
+
         self.setWindowTitle(f'InSpectra Gadget{linked_info}{self.window_title_auto_refresh}{session_name}')
 
     def load_data_item(self,filepath):
@@ -808,22 +802,20 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             
     def refresh_files(self):
         checked_items = self.get_checked_items()
-        if checked_items:
-            for item in checked_items:
-                item.data.prepare_data_for_plot(reload_data=True, reload_from_file=True)
-            self.update_plots()
-            for item in checked_items:
-                item.data.reset_axlim_settings()
-                self.show_current_axlim_settings()
-                self.canvas.draw()
         if self.linked_folder:
             old_number_of_items = self.file_list.count()
             self.update_link_to_folder(new_folder=False)
             if self.file_list.count() > old_number_of_items:
                 last_item = self.file_list.item(self.file_list.count()-1)
-                self.file_double_clicked(last_item)
-                self.file_list.setCurrentItem(last_item)
-                #self.track_button_clicked()
+                self.file_checked(last_item)
+            elif checked_items:
+                for item in checked_items:
+                    item.data.prepare_data_for_plot(reload_data=True, reload_from_file=True)
+                self.update_plots()
+                for item in checked_items:
+                    item.data.reset_axlim_settings()
+                    self.show_current_axlim_settings()
+                    self.canvas.draw()
             
     def save_session(self, save_as=False):
         old_title = self.windowTitle()
@@ -1471,14 +1463,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.log_error(f'Exception encountered updating plots:\n{type(e).__name__}: {e}')
             minilog.append(f'Exception encountered updating plots:\n{type(e).__name__}: {e}')
 
-        if hasattr(self, 'live_track_item') and self.live_track_item:
-            if (self.live_track_item.checkState() and 
-                self.track_button.text() == 'Stop tracking' and 
-                hasattr(self.live_track_item.data, 'remaining_time_string')):
-                self.remaining_time_label.setText(self.live_track_item.data.remaining_time_string)
-            else:
-                self.remaining_time_label.setText('')
-
         if len(minilog) > 0:
             message = 'The following errors occurred while plotting:\n\n'+'\n\n'.join(minilog)
             self.ew = ErrorWindow(message)
@@ -1542,10 +1526,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if ret != 1:
             return False
         return True
-        
-    def track_button_clicked(self):
+    
+    def start_stop_tracking(self):
         current_item = self.file_list.currentItem()
-        if (self.track_button.text() == 'Track data' and 
+        if (not self.live_tracking and
             current_item and current_item.checkState()) and not current_item.data.file_finished():
             if self.ask_autorefresh:
                 cont=self.set_refresh_intervals()
@@ -1553,7 +1537,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     return
             self.live_track_item = current_item
             self.live_track_item.setText('[LIVE] '+self.live_track_item.data.label)
-            self.live_track_item.data.prepare_data_for_plot(reload_data=True)
+            self.refresh_files()
             if hasattr(self.live_track_item.data, 'raw_data') and self.live_track_item.data.raw_data is not None:
                 if self.live_track_item.data.dim == 3:
                     self.start_auto_refresh(self.refresh_2d)
@@ -1561,11 +1545,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.start_auto_refresh(self.refresh_1d)
             else:
                 self.start_auto_refresh(self.refresh_1d, wait_for_file=True)
-        elif self.track_button.text() == 'Stop tracking':
+        elif self.live_tracking:
             self.stop_auto_refresh()
         
     def start_auto_refresh(self, time_interval, wait_for_file=False):
-        self.track_button.setText('Stop tracking')
+        self.live_tracking = True
         self.auto_refresh_timer = QtCore.QTimer()
         self.auto_refresh_timer.setInterval(time_interval*1000)
         if wait_for_file:
@@ -1583,33 +1567,27 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.live_track_item.data.prepare_data_for_plot(reload_data=True)
             if self.live_track_item.data.raw_data:
                 self.auto_refresh_timer.stop()
-                self.track_button.setText('Track data')
-                self.track_button_clicked()            
+                self.live_tracking=False
+                self.start_stop_tracking()            
             
     def auto_refresh_call(self):
         if self.live_track_item and self.live_track_item.checkState():
             if self.live_track_item.data.file_finished():
                 self.log_error('Stopped auto refresh')
-                self.live_track_item.data.remaining_time_string = ''
                 self.stop_auto_refresh()
             else:
-                if hasattr(self.live_track_item.data, 'remaining_time_string'):
-                    self.remaining_time_label.setText(self.live_track_item.data.remaining_time_string)
-                else:
-                    self.remaining_time_label.setText('')
-            self.window_title_auto_refresh = ' - Auto-Refreshing Enabled (Refreshing...)'
-            self.set_window_title()
-            self.refresh_files()
-            self.window_title_auto_refresh = ' - Auto-Refreshing Enabled'
-            self.set_window_title()
+                self.window_title_auto_refresh = ' - Auto-Refreshing Enabled (Refreshing...)'
+                self.set_window_title()
+                self.refresh_files()
+                self.window_title_auto_refresh = ' - Auto-Refreshing Enabled'
+                self.set_window_title()
         
     def stop_auto_refresh(self):
-        self.track_button.setText('Track data')
+        self.live_tracking=False
         self.auto_refresh_timer.stop()
         self.action_refresh_stop.setEnabled(False)
         self.window_title_auto_refresh = ''
         self.set_window_title()
-        self.remaining_time_label.setText('')
         self.live_track_item.setText(self.live_track_item.data.label)
         
     def show_current_all(self):
