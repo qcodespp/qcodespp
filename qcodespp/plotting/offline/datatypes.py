@@ -425,7 +425,13 @@ class BaseClassData:
         self.hax.get_yaxis().set_visible(False)
 
     def add_plot(self, editor_window):
-        if self.processed_data:
+        if hasattr(self, 'columns_bad') and isinstance(self.columns_bad, Exception):
+            self.axes.text(
+                    0.5, 0.5, str(self.columns_bad),
+                    ha='center', va='center', fontsize=18, color='k',
+                    transform=self.axes.transAxes
+                )
+        elif self.processed_data:
             try:
                 if self.dim == 2:
                     if not hasattr(self, 'plotted_lines'):
@@ -466,13 +472,6 @@ class BaseClassData:
                         if self.view_settings['CBarHist'] == True:
                             self.add_cbar_hist()
 
-                    if hasattr(self, 'columns_bad') and isinstance(self.columns_bad, Exception):
-                        self.axes.text(
-                            0.5, 0.5, str(self.columns_bad),
-                            ha='center', va='center', fontsize=18, color='white',
-                            transform=self.axes.transAxes
-                        )
-
                 if (any([not locked for locked in self.label_locks.values()]) or
                     (self.plot_type and ('Histogram' in self.plot_type or 'FFT' in self.plot_type))):
                     self.apply_default_labels()
@@ -482,13 +481,13 @@ class BaseClassData:
 
                 # Below removes data options for data types where selecting
                 # axes data from the settings menu isn't implemented.
-                # Remove if implemented for all data types one day.
-                if 'X data' in self.settings.keys() and self.settings['X data'] == '':
-                    self.settings.pop('X data')
-                if 'Y data' in self.settings.keys() and self.settings['Y data'] == '':
-                    self.settings.pop('Y data')
-                if 'Z data' in self.settings.keys() and self.settings['Z data'] == '':
-                    self.settings.pop('Z data')
+                # Should now be implemented for all data types. Marked for deletion 26/08/2025
+                # if 'X data' in self.settings.keys() and self.settings['X data'] == '':
+                #     self.settings.pop('X data')
+                # if 'Y data' in self.settings.keys() and self.settings['Y data'] == '':
+                #     self.settings.pop('Y data')
+                # if 'Z data' in self.settings.keys() and self.settings['Z data'] == '':
+                #     self.settings.pop('Z data')
 
                 self.apply_plot_settings()
                 self.apply_axlim_settings()
@@ -549,8 +548,6 @@ class BaseClassData:
                              size=self.settings['labelsize'])
         self.axes.set_ylabel(self.settings['ylabel'], 
                              size=self.settings['labelsize'])
-        # if isinstance(self.image, list):
-        #     self.image[0].set_linewidth(float(self.settings['linewidth']))
         for axis in ['top','bottom','left','right']:
             self.axes.spines[axis].set_linewidth(float(self.settings['spinewidth']))
         self.axes.tick_params(labelsize=self.settings['ticksize'], 
@@ -566,8 +563,6 @@ class BaseClassData:
         if self.settings['colorbar'] == 'True' and len(self.get_columns()) == 3:
             self.cbar.ax.set_ylabel(self.settings['clabel'], fontsize=self.settings['labelsize'], 
                                  labelpad=10, rotation=270)
-            # self.cbar.ax.set_title(self.settings['clabel'], 
-            #                        size=self.settings['labelsize'])
             self.cbar.ax.tick_params(labelsize=self.settings['ticksize'], 
                                      color=rcParams['axes.edgecolor']) 
             self.cbar.outline.set_linewidth(float(self.settings['spinewidth']))
@@ -602,15 +597,6 @@ class BaseClassData:
                 if self.view_settings['Minimum']<self.hax.get_ylim()[0] or self.view_settings['Maximum']>self.hax.get_ylim()[1]:
                     self.hax.set_ylim([np.min([self.view_settings['Minimum'],np.min(self.cbar_hist_bins)]),
                                 np.max([self.view_settings['Maximum'],np.max(self.cbar_hist_bins)])])
-                
-
-            # Seems like the below does literally nothing. Checked 14/05/2025. Reintroduce if problems in future
-            # if self.settings['colorbar'] == 'True' and hasattr(self, 'cbar'):
-            #     #self.cbar.update_normal(self.image)
-            #     self.cbar.ax.set_title(self.settings['clabel'],
-            #                            size=self.settings['labelsize'])
-            #     self.cbar.ax.tick_params(labelsize=self.settings['ticksize'],
-            #                              color=rcParams['axes.edgecolor'])
 
     def apply_axlim_settings(self):
         self.axes.set_xlim(left=self.axlim_settings['Xmin'], 
@@ -697,19 +683,6 @@ class BaseClassData:
         
     def file_finished(self):
         return False
-    
-    def hide_linecuts(self):  # Likely soon to be unused.
-        if hasattr(self, 'linecut_window'):
-            self.linecut_window.running = False
-        for line in reversed(self.axes.get_lines()):
-            line.remove()
-            del line
-        for patch in reversed(self.axes.patches):
-            patch.remove()
-            del patch
-        if hasattr(self, 'linecut_points'):
-            del self.linecut_points
-        self.canvas.draw()
 
 class NumpyData(BaseClassData):
     def __init__(self, filepath, canvas, dataset):

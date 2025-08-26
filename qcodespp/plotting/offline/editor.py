@@ -203,8 +203,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.refresh_2d = 30
         self.refresh_1d = 5
         self.ask_autorefresh = True
+        self.live_tracking = False
 
-        # Hide widgets that shouldn't be shown at startup
+        # Hide widgets related to specific data types: will not be shown at startup
         self.legend_checkbox.hide()
         self.mixeddata_filter_box.hide()
         self.binsX_label.hide()
@@ -214,8 +215,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.metadata_button.hide()
         self.stats_button.hide()
         self.show_2d_data_checkbox.hide()
-
-        self.live_tracking = False
 
         self.global_text_size='12'
         self.global_text_lineedit.setText(self.global_text_size)

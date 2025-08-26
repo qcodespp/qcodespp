@@ -172,9 +172,11 @@ class qcodesppData(BaseClassData):
             if len(xdata)==len(ydata):
                 column_data = [xdata, ydata]
             else:
-                return ValueError(f"Selected data arrays have different shapes.\n"
-                                     f"Plots not updated.")
-                #column_data = np.zeros((2,2))
+                return ValueError(f'Cannot plot {Ydataname} vs {Xdataname}:\n'
+                                  f"number of data points\n"
+                                  f"{len(xdata)} and {len(ydata)}\n"
+                                  "do not match.")
+
                 # This can happen if the user has run statistics, and is trying to plot the result; if they change only
                 # the X data, the length of the data won't match the Y data until they then select the correct thing.
                 # So, just plot nothing until the user selects something sensible.
@@ -204,8 +206,9 @@ class qcodesppData(BaseClassData):
                 if name == self.all_parameter_names[0]:
                     column_data[i] = np.repeat(column_data[i], self.dims[1]).reshape(self.dims)
                 if column_data[i].shape != self.dims:
-                    return ValueError(f"Selected data arrays have different shapes.\n"
-                                     f"Plots not updated.")
+                    return ValueError("Cannot plot data: shapes of\n"
+                                     f"{column_data[0].shape}, {column_data[1].shape}, {column_data[2].shape}\n"
+                                     f"do not match.")
 
             self.settings['default_histlabel'] = self.settings['default_clabel']
             self.settings['default_fftxlabel'] = f'1/{self.settings['default_xlabel']}'
