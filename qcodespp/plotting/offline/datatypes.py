@@ -74,8 +74,9 @@ class BaseClassData:
         self.view_settings = self.DEFAULT_VIEW_SETTINGS.copy()
         self.axlim_settings = self.DEFAULT_AXLIM_SETTINGS.copy()
         self.filters = []
-        self.labels_changed = False
         self.legend=False
+
+        self.label_locks={'x':False,'y':False,'c':False}
 
         try: # on Windows
             self.creation_time = os.path.getctime(filepath)
@@ -170,8 +171,11 @@ class BaseClassData:
             names = [self.settings['X data'], self.settings['Y data']]
         x=self.data_dict[names[0]]
         y=self.data_dict[names[1]]
+        self.settings['default_xlabel'] = names[0]
+        self.settings['default_ylabel'] = names[1]
         if 'Z data' in self.settings.keys():
             z=self.data_dict[self.settings['Z data']]
+            self.settings['default_clabel'] = self.settings['Z data']
             column_data=np.column_stack((x,y,z))
         else:
             if len(x)==len(y):
@@ -469,8 +473,8 @@ class BaseClassData:
                             transform=self.axes.transAxes
                         )
 
-                if not self.labels_changed:
-                    self.apply_default_lables()
+                if any([not locked for locked in self.label_locks.values()]):
+                    self.apply_default_labels()
 
                 self.cursor = Cursor(self.axes, useblit=True, 
                                     color='black', linewidth=0.5)
@@ -491,12 +495,12 @@ class BaseClassData:
             except Exception as e:
                 return type(e)(f"Error while plotting {self.label}:\n{type(e).__name__}: {e}")
 
-    def apply_default_lables(self):
-        if 'default_xlabel' in self.settings.keys():
+    def apply_default_labels(self):
+        if not self.label_locks['x'] and 'default_xlabel' in self.settings.keys():
             self.settings['xlabel'] = self.settings['default_xlabel']
-        if 'default_ylabel' in self.settings.keys():
+        if not self.label_locks['y'] and 'default_ylabel' in self.settings.keys():
             self.settings['ylabel'] = self.settings['default_ylabel']
-        if 'default_clabel' in self.settings.keys():
+        if not self.label_locks['c'] and 'default_clabel' in self.settings.keys():
             self.settings['clabel'] = self.settings['default_clabel']
 
         if self.dim == 3:

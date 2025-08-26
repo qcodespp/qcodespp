@@ -158,16 +158,16 @@ class qcodesppData(BaseClassData):
         xdata = self.data_dict[Xdataname]
 
         try:
-            self.settings['xlabel'] = f'{self.channels[Xdataname]['label']} ({self.channels[Xdataname]['unit']})'
+            self.settings['default_xlabel'] = f'{self.channels[Xdataname]['label']} ({self.channels[Xdataname]['unit']})'
         except KeyError:
-            self.settings['xlabel'] = Xdataname
+            self.settings['default_xlabel'] = Xdataname
         
         if len(self.independent_parameter_names) == 1: # data is 1D
             ydata = self.data_dict[Ydataname]
             try:
-                self.settings['ylabel'] = f'{self.channels[Ydataname]['label']} ({self.channels[Ydataname]['unit']})'
+                self.settings['default_ylabel'] = f'{self.channels[Ydataname]['label']} ({self.channels[Ydataname]['unit']})'
             except KeyError:
-                self.settings['ylabel'] = Ydataname
+                self.settings['default_ylabel'] = Ydataname
             
             if len(xdata)==len(ydata):
                 column_data = [xdata, ydata]
@@ -179,18 +179,16 @@ class qcodesppData(BaseClassData):
                 # the X data, the length of the data won't match the Y data until they then select the correct thing.
                 # So, just plot nothing until the user selects something sensible.
 
-            self.settings['default_xlabel'] = self.settings['xlabel']
-            self.settings['default_ylabel'] = self.settings['ylabel']
             self.settings['default_histlabel'] = self.settings['default_ylabel']
             self.settings['default_fftxlabel'] = f'1/{self.settings['default_xlabel']}'
 
         elif len(self.independent_parameter_names) > 1: # data is 2D
             ydata = self.data_dict[Ydataname]
-            self.settings['ylabel'] = (f'{self.channels[self.settings['Y data']]['label']} '
+            self.settings['default_ylabel'] = (f'{self.channels[self.settings['Y data']]['label']} '
                                         f'({self.channels[self.settings['Y data']]['unit']})')
             Zdataname = self.settings['Z data']
             zdata = self.data_dict[Zdataname]
-            self.settings['clabel'] = (f'{self.channels[self.settings['Z data']]['label']} '
+            self.settings['default_clabel'] = (f'{self.channels[self.settings['Z data']]['label']} '
                                         f'({self.channels[self.settings['Z data']]['unit']})')
 
             column_data = [xdata, ydata, zdata]
@@ -209,9 +207,6 @@ class qcodesppData(BaseClassData):
                     return ValueError(f"Selected data arrays have different shapes.\n"
                                      f"Plots not updated.")
 
-            self.settings['default_xlabel'] = self.settings['xlabel']
-            self.settings['default_ylabel'] = self.settings['ylabel']
-            self.settings['default_clabel'] = self.settings['clabel']
             self.settings['default_histlabel'] = self.settings['default_clabel']
             self.settings['default_fftxlabel'] = f'1/{self.settings['default_xlabel']}'
             self.settings['default_fftylabel'] = f'1/{self.settings['default_ylabel']}'

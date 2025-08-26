@@ -1839,11 +1839,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.update_plots()
                     self.reset_axlim_settings()
                 elif 'label' in setting_name:
-                    current_item.data.labels_changed=True
-                    if f'default_{setting_name}' in current_item.data.settings.keys():
-                        current_item.data.settings[f'default_{setting_name}'] = current_item.data.settings[f'{setting_name}']
-                        self.show_current_plot_settings()
-                        self.update_plots()
+                    axis=setting_name.strip('label')
+                    current_item.data.label_locks[axis] = True
+                    # if f'default_{setting_name}' in current_item.data.settings.keys():
+                    #     current_item.data.settings[f'default_{setting_name}'] = current_item.data.settings[f'{setting_name}']
+                    self.show_current_plot_settings()
+                    self.update_plots()
                 elif setting_name == 'transpose':
                     current_item.data.prepare_data_for_plot(reload_data=True,reload_from_file=True)
                     self.update_plots()
@@ -2380,6 +2381,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if current_item and hasattr(current_item.data, 'settings_menu_options'):
                 settings.update(current_item.data.settings_menu_options)
             if setting_name in settings.keys():
+                if setting_name in ['xlabel','ylabel','clabel']:
+                    action = QtWidgets.QAction(current_item.data.settings[f'default_{setting_name}'], self)
+                    menu.addAction(action)
                 for entry in settings[setting_name]:
                     action = QtWidgets.QAction(entry, self)
                     menu.addAction(action)
