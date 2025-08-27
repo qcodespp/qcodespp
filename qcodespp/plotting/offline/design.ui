@@ -1247,6 +1247,7 @@
     <addaction name="menuOpen_linecut_window"/>
     <addaction name="menuCopy_linecuts"/>
     <addaction name="actionPasteLinecuts"/>
+    <addaction name="action_show_hide_lc_markers"/>
     <addaction name="separator"/>
     <addaction name="actionSave_plot_s_as"/>
     <addaction name="action_copy_plot_as_image"/>
@@ -1604,6 +1605,11 @@
   <action name="action_set_refresh_intervals">
    <property name="text">
     <string>Set refresh intervals</string>
+   </property>
+  </action>
+  <action name="action_show_hide_lc_markers">
+   <property name="text">
+    <string>Show/Hide Linecut Markers (Ctrl+M)</string>
    </property>
   </action>
  </widget>

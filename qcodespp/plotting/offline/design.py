@@ -742,6 +742,8 @@ class Ui_MainWindow(object):
         self.action_save_session_as.setObjectName("action_save_session_as")
         self.action_set_refresh_intervals = QtWidgets.QAction(MainWindow)
         self.action_set_refresh_intervals.setObjectName("action_set_refresh_intervals")
+        self.action_show_hide_lc_markers = QtWidgets.QAction(MainWindow)
+        self.action_show_hide_lc_markers.setObjectName("action_show_hide_lc_markers")
         self.menu_save_session.addAction(self.action_export_data_columns)
         self.menu_save_session.addAction(self.action_export_data_Z)
         self.menu_save_session.addSeparator()
@@ -761,6 +763,7 @@ class Ui_MainWindow(object):
         self.menuCombine_Plots.addAction(self.menuOpen_linecut_window.menuAction())
         self.menuCombine_Plots.addAction(self.menuCopy_linecuts.menuAction())
         self.menuCombine_Plots.addAction(self.actionPasteLinecuts)
+        self.menuCombine_Plots.addAction(self.action_show_hide_lc_markers)
         self.menuCombine_Plots.addSeparator()
         self.menuCombine_Plots.addAction(self.actionSave_plot_s_as)
         self.menuCombine_Plots.addAction(self.action_copy_plot_as_image)
@@ -926,6 +929,7 @@ class Ui_MainWindow(object):
         self.action_exit.setText(_translate("MainWindow", "Exit"))
         self.action_save_session_as.setText(_translate("MainWindow", "Save session as"))
         self.action_set_refresh_intervals.setText(_translate("MainWindow", "Set refresh intervals"))
+        self.action_show_hide_lc_markers.setText(_translate("MainWindow", "Show/Hide Linecut Markers (Ctrl+M)"))
 
 
 if __name__ == "__main__":

@@ -205,6 +205,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.ask_autorefresh = True
         self.live_tracking = False
 
+        self.show_linecut_markers = True
+
         # Hide widgets related to specific data types: will not be shown at startup
         self.legend_checkbox.hide()
         self.mixeddata_filter_box.hide()
@@ -346,6 +348,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.actionCopyLinecutsVertical.triggered.connect(lambda: self.copy_linecuts('vertical'))
         self.actionCopyLinecutsDiagonal.triggered.connect(lambda: self.copy_linecuts('diagonal'))
         self.actionPasteLinecuts.triggered.connect(self.paste_linecuts)
+        self.action_show_hide_lc_markers.triggered.connect(self.show_hide_linecuts_changed)
         self.action_filters.triggered.connect(self.save_filters)
         self.action_save_session.triggered.connect(self.save_session)
         self.action_save_session_as.triggered.connect(lambda: self.save_session(save_as=True))
@@ -410,7 +413,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.copy_linecuts_shortcut.activated.connect(lambda: self.copy_linecuts('all'))
         self.paste_linecuts_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Alt+V"), self)
         self.paste_linecuts_shortcut.activated.connect(self.paste_linecuts)
-            
+        self.show_hide_linecut_markers_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+M"), self)
+        self.show_hide_linecut_markers_shortcut.activated.connect(self.show_hide_linecuts_changed)
+
     def init_canvas(self):
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
@@ -1441,7 +1446,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         minilog.append(str(error))
                         self.log_error(str(error))
                         continue
-                    if hasattr(item.data, 'linecuts'):
+                    if self.show_linecut_markers and hasattr(item.data, 'linecuts'):
                         for orientation in ['horizontal', 'vertical', 'diagonal']:
                             if len(item.data.linecuts[orientation]['lines']) > 0:
                                 self.reinstate_markers(item,orientation)
@@ -2784,6 +2789,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.ew = ErrorWindow(error_message)
             else:
                 self.log_error('Cannot paste linecuts to this data type', show_popup=True)
+
+    def show_hide_linecuts_changed(self):
+        self.show_linecut_markers = not self.show_linecut_markers
+        self.update_plots()
 
     def reinstate_markers(self, item, orientation):
         if orientation == 'horizontal':
