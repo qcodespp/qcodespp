@@ -1400,7 +1400,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 try:
                     marker.remove()
                     del marker
-                except Exception:
+                except NotImplementedError:
                     pass
             del self.parent.vertmarkers
         if hasattr(self.parent,'horimarkers') and len(self.parent.horimarkers)>0:
@@ -1408,7 +1408,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 try:
                     marker.remove()
                     del marker
-                except Exception:
+                except NotImplementedError:
                     pass
             del self.parent.horimarkers
         # self.parent.hide_linecuts()

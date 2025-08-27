@@ -2808,7 +2808,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     try:
                         marker.remove()
                         del marker
-                    except Exception:
+                    except NotImplementedError:
                         pass
             item.data.horimarkers=[]
             for line in item.data.linecuts['horizontal']['lines']:
@@ -2825,7 +2825,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     try:
                         marker.remove()
                         del marker
-                    except Exception:
+                    except NotImplementedError:
                         pass
             item.data.vertmarkers=[]
             for line in item.data.linecuts['vertical']['lines']:
