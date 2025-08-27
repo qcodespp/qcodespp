@@ -380,6 +380,9 @@ class QSwitch(Instrument):
             connections = list(itertools.zip_longest(numbers, [], fillvalue=0))
             self.open_relays(connections)
 
+    def connect_all(self):
+        self.connect([*list(self._line_names.keys())])
+
     def breakout(self, line: str, tap: str) -> None:
         self.close_relay(self._to_line(line), self._to_tap(tap))
         self.open_relay(self._to_line(line), 0)
