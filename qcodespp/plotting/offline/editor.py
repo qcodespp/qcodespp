@@ -901,10 +901,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             self.log_error(f'Error saving item {item.filepath}:\n{type(e).__name__}: {e}')
 
                     from qcodespp import __version__
+                    # The last item is reserved for 'global' program information.
                     dictionary_list.append({
-                        'qcodespp_version': __version__
+                        'qcodespp_version': __version__,
+                        'show_linecut_markers': self.show_linecut_markers
                     })
-                    #dictionary_list.append({'current_row': self.file_list.currentRow()})
 
                     # Save all needed files to a temperorary directory and add them to the tarball
                     np.save(dirpath+'/igtemp/numpyfile.npy', dictionary_list)
@@ -1056,7 +1057,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                     data[i]['filepath'] = filepath
                                 self.open_files(file_list,attr_dicts=data)
 
-                            except:
+                            except Exception:
                                 pass
                     else:
                         # most of the loading actually happens in the open_files function.
@@ -1064,8 +1065,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             for i, filepath in enumerate(file_list):
                                 data[i]['filepath'] = filepath
                             self.open_files(file_list,attr_dicts=data)
-                        except: # If it fails, the messages should occur during open_files. And we need to keep going, to ensure temporary files are deleted
+                        except Exception: # If it fails, the messages should occur during open_files. And we need to keep going, to ensure temporary files are deleted
                             pass
+
+                    try:
+                        if 'show_linecut_markers' in numpy_file[-1]:
+                            self.show_linecut_markers = numpy_file[-1]['show_linecut_markers']
+                    except Exception as e:
+                        self.log_error(f'Error loading show_linecut_markers from session:\n{type(e).__name__}: {e}')
                 self.session_filepath = session_filepath
                 self.log_error(f'Session loaded from {session_filepath}')
                 del data
