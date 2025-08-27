@@ -1397,13 +1397,19 @@ class LineCutWindow(QtWidgets.QWidget):
     def closeEvent(self, event):
         if hasattr(self.parent,'vertmarkers') and len(self.parent.vertmarkers)>0:
             for marker in self.parent.vertmarkers:
-                marker.remove()
-                del marker
+                try:
+                    marker.remove()
+                    del marker
+                except Exception:
+                    pass
             del self.parent.vertmarkers
         if hasattr(self.parent,'horimarkers') and len(self.parent.horimarkers)>0:
             for marker in self.parent.horimarkers:
-                marker.remove()
-                del marker
+                try:
+                    marker.remove()
+                    del marker
+                except Exception:
+                    pass
             del self.parent.horimarkers
         # self.parent.hide_linecuts()
         self.running = False
