@@ -1298,10 +1298,12 @@ class LineCutWindow(QtWidgets.QWidget):
     
     def draw_plot(self):
         checked_editor_items = self.editor_window.get_checked_items()
-        if self.editor_window.show_linecut_markers and any(item.data == self.parent for item in checked_editor_items):
-            parent_marker = True
-        else:
-            parent_marker = False
+        parent_item=None
+        for item in checked_editor_items:
+            if item.data == self.parent:
+                parent_item = item
+                break
+
         self.running = True
         self.figure.clear()
 
@@ -1311,39 +1313,24 @@ class LineCutWindow(QtWidgets.QWidget):
         lines = self.get_checked_items()
 
         if self.orientation == 'horizontal':
-            if parent_marker and hasattr(self.parent,'horimarkers') and len(self.parent.horimarkers)>0:
-                for marker in self.parent.horimarkers:
-                    marker.remove()
-            self.parent.horimarkers = []
             self.xlabel = self.parent.settings['xlabel']
             self.title = f'Cuts at fixed {self.parent.settings['ylabel']}'
             for line in lines:
                 x,y,z= self.get_line_data(line)
                 self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value'] = z
                 self.draw_lines(x, y, line)
-                if parent_marker:
-                    self.parent.horimarkers.append(self.parent.axes.axhline(y=z, linestyle='dashed', linewidth=1.5, xmax=0.1,
-                                                    color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
-                    self.parent.horimarkers.append(self.parent.axes.axhline(y=z, linestyle='dashed', linewidth=1.5, xmin=0.9,
-                                                    color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
-
+            if self.editor_window.show_linecut_markers and parent_item is not None:
+                self.editor_window.reinstate_markers(parent_item,self.orientation)
 
         elif self.orientation == 'vertical':
-            if parent_marker and hasattr(self.parent,'vertmarkers') and len(self.parent.vertmarkers)>0:
-                for marker in self.parent.vertmarkers:
-                    marker.remove()
-            self.parent.vertmarkers = []
             self.xlabel = self.parent.settings['ylabel']
             self.title = f'Cuts at fixed {self.parent.settings['xlabel']}'
             for line in lines:
                 x,y,z= self.get_line_data(line)
                 self.parent.linecuts[self.orientation]['lines'][line]['cut_axis_value'] = z
                 self.draw_lines(x, y, line)
-                if parent_marker:
-                    self.parent.vertmarkers.append(self.parent.axes.axvline(x=z, linestyle='dashed', linewidth=1.5, ymax=0.1,
-                                                    color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
-                    self.parent.vertmarkers.append(self.parent.axes.axvline(x=z, linestyle='dashed', linewidth=1.5, ymin=0.9,
-                                                    color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor']))
+            if self.editor_window.show_linecut_markers and parent_item is not None:
+                self.editor_window.reinstate_markers(parent_item,self.orientation)
 
         elif self.orientation == 'diagonal' or self.orientation == 'circular':
             for line in lines:

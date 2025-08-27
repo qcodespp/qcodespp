@@ -2803,6 +2803,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def reinstate_markers(self, item, orientation):
         if orientation == 'horizontal':
+            if hasattr(item.data,'horimarkers') and len(item.data.horimarkers)>0:
+                for marker in item.data.horimarkers:
+                    try:
+                        marker.remove()
+                        del marker
+                    except Exception:
+                        pass
             item.data.horimarkers=[]
             for line in item.data.linecuts['horizontal']['lines']:
                 if item.data.linecuts[orientation]['lines'][line]['checkstate']:
@@ -2813,6 +2820,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         color=item.data.linecuts[orientation]['lines'][line]['linecolor']))  
 
         elif orientation == 'vertical':
+            if hasattr(item.data,'vertmarkers') and len(item.data.vertmarkers)>0:
+                for marker in item.data.vertmarkers:
+                    try:
+                        marker.remove()
+                        del marker
+                    except Exception:
+                        pass
             item.data.vertmarkers=[]
             for line in item.data.linecuts['vertical']['lines']:
                 if item.data.linecuts[orientation]['lines'][line]['checkstate']:
