@@ -1298,7 +1298,7 @@ class LineCutWindow(QtWidgets.QWidget):
     
     def draw_plot(self):
         checked_editor_items = self.editor_window.get_checked_items()
-        if any(item.data == self.parent for item in checked_editor_items):
+        if self.editor_window.show_linecut_markers and any(item.data == self.parent for item in checked_editor_items):
             parent_marker = True
         else:
             parent_marker = False
@@ -1408,12 +1408,12 @@ class LineCutWindow(QtWidgets.QWidget):
         self.canvas.draw()
 
     def closeEvent(self, event):
-        if hasattr(self.parent,'vertmarkers'):
+        if hasattr(self.parent,'vertmarkers') and len(self.parent.vertmarkers)>0:
             for marker in self.parent.vertmarkers:
                 marker.remove()
                 del marker
             del self.parent.vertmarkers
-        if hasattr(self.parent,'horimarkers'):
+        if hasattr(self.parent,'horimarkers') and len(self.parent.horimarkers)>0:
             for marker in self.parent.horimarkers:
                 marker.remove()
                 del marker
