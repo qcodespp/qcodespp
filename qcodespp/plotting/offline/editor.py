@@ -2814,9 +2814,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for line in item.data.linecuts['horizontal']['lines']:
                 if item.data.linecuts[orientation]['lines'][line]['checkstate']:
                     z=item.data.linecuts[orientation]['lines'][line]['cut_axis_value']
-                    item.data.horimarkers.append(item.data.axes.axhline(y=z, linestyle='dashed', linewidth=1, xmax=0.1,
+                    item.data.horimarkers.append(item.data.axes.axhline(y=z, linestyle='dashed', linewidth=1, xmax=0.05,
                         color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
-                    item.data.horimarkers.append(item.data.axes.axhline(y=z, linestyle='dashed', linewidth=1, xmin=0.9,
+                    item.data.horimarkers.append(item.data.axes.axhline(y=z, linestyle='dashed', linewidth=1, xmin=0.95,
                         color=item.data.linecuts[orientation]['lines'][line]['linecolor']))  
 
         elif orientation == 'vertical':
@@ -2831,9 +2831,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for line in item.data.linecuts['vertical']['lines']:
                 if item.data.linecuts[orientation]['lines'][line]['checkstate']:
                     z=item.data.linecuts[orientation]['lines'][line]['cut_axis_value']
-                    item.data.vertmarkers.append(item.data.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymax=0.1,
+                    item.data.vertmarkers.append(item.data.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymax=0.05,
                         color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
-                    item.data.vertmarkers.append(item.data.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymin=0.9,
+                    item.data.vertmarkers.append(item.data.axes.axvline(x=z, linestyle='dashed', linewidth=1, ymin=0.95,
                         color=item.data.linecuts[orientation]['lines'][line]['linecolor']))
                 
         elif orientation == 'diagonal':
