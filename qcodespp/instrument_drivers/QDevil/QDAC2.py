@@ -2437,8 +2437,8 @@ class QDac2(VisaInstrument):
         return Arrangement_Context(self, contacts, output_triggers,
                                    internal_triggers)
 
-    def multi_currents(self,channel_list=[i+1 for i in range(24)]):
-        return MultiCurrents_Context(self,channel_list=channel_list)
+    def multi_currents(self,channel_list=[i+1 for i in range(24)],name='qdac_currents'):
+        return MultiCurrents_Context(self,chans=channel_list,name='qdac_currents')
 
     # -----------------------------------------------------------------------
     # Instrument-wide functions

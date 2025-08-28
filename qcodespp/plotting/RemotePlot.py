@@ -54,6 +54,9 @@ def live_plot(*args,data_set=None, data_items=None):
         for item in data_items:
             if isinstance(item, Parameter) and not data_set:
                 raise ValueError('Parameters only accepted to data_items if a data_set is also provided.')
+            elif isinstance(item,str):
+                if item in data_set.arrays.keys():
+                    new_items.append(data_set.arrays[item])
             elif isinstance(item, MultiParameter):
                 for name in item.names:
                     for array in data_set.arrays:
@@ -71,7 +74,8 @@ def live_plot(*args,data_set=None, data_items=None):
                     except:
                         pass
             else:
-                raise TypeError('data_items must be either DataArray or Parameter objects, not %s.' % type(item))
+                raise TypeError('data_items must be either DataArray or Parameter objects, or a string corresponding to the DataArray name, '
+                    'not %s.' % type(item))
         plot.add_multiple(*new_items)
 
     return plot
