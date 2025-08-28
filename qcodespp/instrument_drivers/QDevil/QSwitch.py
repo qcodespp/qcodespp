@@ -330,6 +330,7 @@ class QSwitch(Instrument):
     # -----------------------------------------------------------------------
 
     def close_relays(self, relays: State) -> None:
+        relays=self._convert_many_to_int(relays)
         currently = channel_list_to_state(self._state)
         union = list(itertools.chain(currently, relays))
         self._effectuate(union)
@@ -338,12 +339,27 @@ class QSwitch(Instrument):
         self.close_relays([(line, tap)])
 
     def open_relays(self, relays: State) -> None:
+        relays=self._convert_many_to_int(relays)
         currently = frozenset(channel_list_to_state(self._state))
         subtraction = frozenset(relays)
         self._effectuate(list(currently - subtraction))
 
     def open_relay(self, line: int, tap: int) -> None:
         self.open_relays([(line, tap)])
+
+    def _convert_many_to_int(self,relays):
+        for i,combo in enumerate(relays):
+            line,tap=combo
+            line=self._convert_to_int(line)
+            tap=self._convert_to_int(tap)
+            relays[i]=(line,tap)
+        return relays
+
+    def _convert_to_int(self,val):
+        try:
+            return int(val)
+        except Exception as e:
+            return ValueError(f'Direct manipulation of relays requires ints. Trying to convert {val} to int raised error: {e}')
 
     # -----------------------------------------------------------------------
     # Manipulation by name
@@ -388,7 +404,7 @@ class QSwitch(Instrument):
         self.open_relay(self._to_line(line), 0)
 
 
-    def lineFloat(self, lines: OneOrMore) -> None:
+    def line_float(self, lines: OneOrMore) -> None:
         if isinstance(lines, str):
             for tap in range(relays_per_line+1):
                 self.open_relay(self._to_line(lines), tap)

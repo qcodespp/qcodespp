@@ -11,7 +11,7 @@ class ZISampleParam(qc.MultiParameter):
     the lockin is called; i.e. individually reading X, Y, R, and phase would take four times 
     longer than using this approach.
 
-    Should work for any ZI lockin, using either the qcodes or qcodespp drivers.
+    Should work for any ZI lockin, using either the zhinst-qcodes or qcodespp drivers.
 
     Args:
         name (str): The name of the parameter.
@@ -111,7 +111,7 @@ class R4ptParam(qc.MultiParameter):
     Phase not returned for resistance since it's not obvious what that means. 
     If currents are exactly zero, resistance returns NaN.
 
-    Should work for any ZI lockin, using either the qcodes or qcodespp drivers.
+    Should work for any ZI lockin, using either the zhinst-qcodes or qcodespp drivers.
 
     Args:
         li_a_sample (callable): The .sample method of the current-reading lock-in amplifier.
