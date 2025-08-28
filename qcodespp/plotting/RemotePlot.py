@@ -45,38 +45,7 @@ def live_plot(*args,data_set=None, data_items=None):
             data_items.extend(arg)
 
     plot = Plot()
-    if data_set is None and DataSetPP.default_dataset is not None:
-        data_set = DataSetPP.default_dataset
-    if data_set:
-        data_set.publisher=plot
-    if data_items:
-        new_items=[]
-        for item in data_items:
-            if isinstance(item, Parameter) and not data_set:
-                raise ValueError('Parameters only accepted to data_items if a data_set is also provided.')
-            elif isinstance(item,str):
-                if item in data_set.arrays.keys():
-                    new_items.append(data_set.arrays[item])
-            elif isinstance(item, MultiParameter):
-                for name in item.names:
-                    for array in data_set.arrays:
-                        if name in array:
-                            new_items.append(data_set.arrays[array])
-            elif isinstance(item, Parameter):
-                for array in data_set.arrays:
-                    if item.full_name in array:
-                        new_items.append(data_set.arrays[array])
-            elif isinstance(item, DataArray):
-                new_items.append(item)
-                if not data_set:
-                    try: # Try ONE more time to link some kind of data set to the plot.
-                        item.data_set.publisher = plot
-                    except:
-                        pass
-            else:
-                raise TypeError('data_items must be either DataArray or Parameter objects, or a string corresponding to the DataArray name, '
-                    'not %s.' % type(item))
-        plot.add_multiple(*new_items)
+    plot.add_multiple(*data_items)
 
     return plot
 
@@ -217,14 +186,45 @@ class Plot():
     def clear(self):
         self.publish({'clear_plot': True})
 
-    def add_multiple(self,*z_params):
+    def add_multiple(self,*z_params,data_set=None):
         """Add multiple ``DataArray`` s to the ``Plot``.
         
         Args:
             *z_params (Sequence [DataArray]): DataArrays to be added to the Plot.
                 Each DataArray is added to a separate subplot.
         """
-        for i,z_param in enumerate(z_params):
+        if data_set is None and DataSetPP.default_dataset is not None:
+            data_set = DataSetPP.default_dataset
+        if data_set:
+            data_set.publisher=self
+        new_items=[]
+        for item in z_params:
+            if isinstance(item, Parameter) and not data_set:
+                raise ValueError('Parameters only accepted to add_multiple if a data_set is also provided.')
+            elif isinstance(item,str):
+                if item in data_set.arrays.keys():
+                    new_items.append(data_set.arrays[item])
+            elif isinstance(item, MultiParameter):
+                for name in item.names:
+                    for array in data_set.arrays:
+                        if name in array:
+                            new_items.append(data_set.arrays[array])
+            elif isinstance(item, Parameter):
+                for array in data_set.arrays:
+                    if item.full_name in array:
+                        new_items.append(data_set.arrays[array])
+            elif isinstance(item, DataArray):
+                new_items.append(item)
+                if not data_set:
+                    try: # Try ONE more time to link some kind of data set to the plot.
+                        item.data_set.publisher = plot
+                    except:
+                        pass
+            else:
+                raise TypeError('data_items must be either DataArray or Parameter objects, or a string corresponding to the DataArray name, '
+                    'not %s.' % type(item))
+
+        for i,z_param in enumerate(new_items):
             self.add(z_param,subplot=i) #title=z_param.full_name,name=z_param.name,
 
     def add(self, *args, x=None, y=None, z=None,
