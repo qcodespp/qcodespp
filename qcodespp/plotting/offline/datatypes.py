@@ -434,69 +434,69 @@ class BaseClassData:
                 )
         elif self.processed_data:
             try:
-                if self.dim == 2:
-                    if not hasattr(self, 'plotted_lines'):
-                        self.init_plotted_lines()
-                    if not hasattr(self, 'sidebar1D'):
-                        self.sidebar1D = Sidebar1D(self,editor_window=editor_window)
-                        self.sidebar1D.running = True
-                        self.sidebar1D.append_trace_to_table(0)
-                    self.sidebar1D.update()
+                with warnings.catch_warnings(record=True) as recorded_warnings:
+                    if self.dim == 2:
+                        if not hasattr(self, 'plotted_lines'):
+                            self.init_plotted_lines()
+                        if not hasattr(self, 'sidebar1D'):
+                            self.sidebar1D = Sidebar1D(self,editor_window=editor_window)
+                            self.sidebar1D.running = True
+                            self.sidebar1D.append_trace_to_table(0)
+                        self.sidebar1D.update()
 
-                    # This is horrible, but I need to get rid of these. Ideally I would re-write the extension so they're
-                    # not used at all in the 1D case. Will try later.
-                    if 'X data' in self.settings.keys():
-                        self.settings.pop('X data')
-                    if 'Y data' in self.settings.keys():
-                        self.settings.pop('Y data')
+                        # This is horrible, but I need to get rid of these. Ideally I would re-write the extension so they're
+                        # not used at all in the 1D case. Will try later.
+                        if 'X data' in self.settings.keys():
+                            self.settings.pop('X data')
+                        if 'Y data' in self.settings.keys():
+                            self.settings.pop('Y data')
 
-                elif self.dim == 3:
-                    cmap_str = self.view_settings['Colormap']
-                    if self.view_settings['Reverse']:
-                        cmap_str += '_r'
-                    cmap = cm.get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
-                    cmap.set_bad(self.settings['maskcolor'])
+                    elif self.dim == 3:
+                        cmap_str = self.view_settings['Colormap']
+                        if self.view_settings['Reverse']:
+                            cmap_str += '_r'
+                        cmap = cm.get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
+                        cmap.set_bad(self.settings['maskcolor'])
 
-                    norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
-                                            vmax=self.view_settings['Maximum'], 
-                                            midpoint=self.view_settings['Midpoint'])
-                    with warnings.catch_warnings(record=True) as recorded_warnings:
+                        norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
+                                                vmax=self.view_settings['Maximum'], 
+                                                midpoint=self.view_settings['Midpoint'])
+                        
                         self.image = self.axes.pcolormesh(self.processed_data[0], 
-                                                    self.processed_data[1], 
-                                                    self.processed_data[2], 
-                                                    shading=self.settings['shading'], 
-                                                    norm=norm, cmap=cmap,
-                                                    rasterized=self.settings['rasterized'])
-                    
-                    if self.settings['colorbar'] == 'True':
-                        self.cbar = self.figure.colorbar(self.image)
-                        if self.view_settings['CBarHist'] == True:
-                            self.add_cbar_hist()
+                                                        self.processed_data[1], 
+                                                        self.processed_data[2], 
+                                                        shading=self.settings['shading'], 
+                                                        norm=norm, cmap=cmap,
+                                                        rasterized=self.settings['rasterized'])
+                        
+                        if self.settings['colorbar'] == 'True':
+                            self.cbar = self.figure.colorbar(self.image)
+                            if self.view_settings['CBarHist'] == True:
+                                self.add_cbar_hist()
 
-                if (any([not locked for locked in self.label_locks.values()]) or
-                    (self.plot_type and ('Histogram' in self.plot_type or 'FFT' in self.plot_type))):
-                    self.apply_default_labels()
+                    if (any([not locked for locked in self.label_locks.values()]) or
+                        (self.plot_type and ('Histogram' in self.plot_type or 'FFT' in self.plot_type))):
+                        self.apply_default_labels()
 
-                self.cursor = Cursor(self.axes, useblit=True,
-                                    color='black', linewidth=0.5)
+                    self.cursor = Cursor(self.axes, useblit=True,
+                                        color='black', linewidth=0.5)
 
-                # Below removes data options for data types where selecting
-                # axes data from the settings menu isn't implemented.
-                # Should now be implemented for all data types. Marked for deletion 26/08/2025
-                # if 'X data' in self.settings.keys() and self.settings['X data'] == '':
-                #     self.settings.pop('X data')
-                # if 'Y data' in self.settings.keys() and self.settings['Y data'] == '':
-                #     self.settings.pop('Y data')
-                # if 'Z data' in self.settings.keys() and self.settings['Z data'] == '':
-                #     self.settings.pop('Z data')
+                    # Below removes data options for data types where selecting
+                    # axes data from the settings menu isn't implemented.
+                    # Should now be implemented for all data types. Marked for deletion 26/08/2025
+                    # if 'X data' in self.settings.keys() and self.settings['X data'] == '':
+                    #     self.settings.pop('X data')
+                    # if 'Y data' in self.settings.keys() and self.settings['Y data'] == '':
+                    #     self.settings.pop('Y data')
+                    # if 'Z data' in self.settings.keys() and self.settings['Z data'] == '':
+                    #     self.settings.pop('Z data')
 
-                self.apply_plot_settings()
-                self.apply_axlim_settings()
-                self.apply_axscale_settings()
+                    self.apply_plot_settings()
+                    self.apply_axlim_settings()
+                    self.apply_axscale_settings()
 
-                for w in recorded_warnings:
-                    if issubclass(w.category, UserWarning):
-                        return UserWarning(f"UserWarning while plotting {self.label}:\n{w.message}")
+                if len(recorded_warnings) > 0:
+                    return recorded_warnings
             except Exception as e:
                 return type(e)(f"Error while plotting {self.label}:\n{type(e).__name__}: {e}")
 

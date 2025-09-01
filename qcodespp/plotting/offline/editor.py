@@ -1449,10 +1449,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     item.data.figure = self.figure
                     item.data.axes = item.data.figure.add_subplot(rows, cols, index+1)
                     error=item.data.add_plot(editor_window=self)
-                    if error:
+                    if isinstance(error, list) and len(error)>0:
+                        for w in error:
+                            minilog.append(f'Warning while plotting {item.data.label}\n{w.category.__name__}: {w.message}')
+                            self.log_error(f'Warning while plotting {item.data.label}\n{w.category.__name__}: {w.message}')
+                    elif error:
                         minilog.append(str(error))
                         self.log_error(str(error))
                         continue
+
                     if self.show_linecut_markers and hasattr(item.data, 'linecuts'):
                         for orientation in ['horizontal', 'vertical', 'diagonal']:
                             if len(item.data.linecuts[orientation]['lines']) > 0:
@@ -1816,7 +1821,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 current_item.data.settings[name] = value
             self.settings_table.clearFocus()
             try:
-                if setting_name in ['X data', 'Y data', 'Z data','transpose','delimiter','columns']:
+                if setting_name in ['X data', 'Y data', 'Z data','columns']:
                     if isinstance(current_item.data,MixedInternalData):
                         current_item.data.dataset2d.prepare_data_for_plot(reload_data=True,reload_from_file=False)
                     else:
@@ -1824,6 +1829,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.check_all_filters(signal=None,manual_signal='Uncheck all')
                     self.update_plots()
                     self.reset_axlim_settings()
+                elif setting_name in ['transpose', 'delimiter']:
+                    current_item.data.prepare_data_for_plot(reload_data=True,reload_from_file=True)
+                    self.update_plots()
                 elif 'label' in setting_name:
                     axis=setting_name.strip('label')
                     current_item.data.label_locks[axis] = True
