@@ -1816,37 +1816,21 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 current_item.data.settings[name] = value
             self.settings_table.clearFocus()
             try:
-                if setting_name == 'X data' or setting_name == 'Y data' or setting_name == 'Z data':
+                if setting_name in ['X data', 'Y data', 'Z data','transpose','delimiter','columns']:
                     if isinstance(current_item.data,MixedInternalData):
                         current_item.data.dataset2d.prepare_data_for_plot(reload_data=True,reload_from_file=False)
                     else:
                         current_item.data.prepare_data_for_plot(reload_data=True,reload_from_file=False)
-                    # IF the plotted data has happened, all fits are likely to be irrelevant. Not sure whether to remove by force or not.
-                    # I think keep the fits, because it's easy for the user to remove them, but could be a total pain to re-do if the user has
-                    # changed an axis by mistake. It's also the case for applying a filter, but in this case we uncheck them.
                     self.check_all_filters(signal=None,manual_signal='Uncheck all')
                     self.update_plots()
                     self.reset_axlim_settings()
                 elif 'label' in setting_name:
                     axis=setting_name.strip('label')
                     current_item.data.label_locks[axis] = True
-                    # if f'default_{setting_name}' in current_item.data.settings.keys():
-                    #     current_item.data.settings[f'default_{setting_name}'] = current_item.data.settings[f'{setting_name}']
-                    self.show_current_plot_settings()
                     self.update_plots()
-                elif setting_name == 'transpose':
-                    current_item.data.prepare_data_for_plot(reload_data=True,reload_from_file=True)
-                    self.update_plots()
-                elif setting_name == 'columns' or setting_name == 'delimiter':
-                    current_item.data.prepare_data_for_plot(reload_data=True,reload_from_file=False)
-                    self.update_plots()
-                    self.reset_axlim_settings()
                 elif setting_name == 'maskcolor' or setting_name == 'cmap levels':
                     current_item.data.apply_colormap()
-                elif (setting_name == 'rasterized' or setting_name == 'colorbar'
-                      or setting_name == 'minorticks'):
-                    self.update_plots()
-                elif setting_name == 'shading':
+                elif setting_name in ['rasterized', 'colorbar', 'minorticks','shading']:
                     self.update_plots()
                 current_item.data.extension_setting_edited(self, setting_name)
                 current_item.data.apply_plot_settings()
