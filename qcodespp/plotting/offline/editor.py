@@ -1475,7 +1475,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             minilog.append(f'Exception encountered updating plots:\n{type(e).__name__}: {e}')
 
         if len(minilog) > 0:
-            message = 'The following errors occurred while plotting:\n\n'+'\n\n'.join(minilog)
+            message = 'The following errors/warnings occurred while plotting:\n\n'+'\n\n'.join(minilog)
             self.ew = ErrorWindow(message)
 
     # The below is not working and not implemented, but could be useful to fix and include.

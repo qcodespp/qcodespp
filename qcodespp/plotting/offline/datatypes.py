@@ -496,7 +496,7 @@ class BaseClassData:
 
                 for w in recorded_warnings:
                     if issubclass(w.category, UserWarning):
-                        return RuntimeError(f"UserWarning while plotting {self.label}:\n{w.message}")
+                        return UserWarning(f"UserWarning while plotting {self.label}:\n{w.message}")
             except Exception as e:
                 return type(e)(f"Error while plotting {self.label}:\n{type(e).__name__}: {e}")
 
