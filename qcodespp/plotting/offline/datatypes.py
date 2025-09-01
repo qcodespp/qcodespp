@@ -2,6 +2,7 @@ from PyQt5 import QtWidgets, QtCore
 import numpy as np
 import os
 import copy
+import warnings
 from matplotlib.widgets import Cursor
 from matplotlib import cm, rcParams
 from qcodespp.plotting.offline.helpers import MidpointNormalize
@@ -459,8 +460,8 @@ class BaseClassData:
                     norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
                                             vmax=self.view_settings['Maximum'], 
                                             midpoint=self.view_settings['Midpoint'])
-                    
-                    self.image = self.axes.pcolormesh(self.processed_data[0], 
+                    with warnings.catch_warnings(record=True) as recorded_warnings:
+                        self.image = self.axes.pcolormesh(self.processed_data[0], 
                                                     self.processed_data[1], 
                                                     self.processed_data[2], 
                                                     shading=self.settings['shading'], 
@@ -476,7 +477,7 @@ class BaseClassData:
                     (self.plot_type and ('Histogram' in self.plot_type or 'FFT' in self.plot_type))):
                     self.apply_default_labels()
 
-                self.cursor = Cursor(self.axes, useblit=True, 
+                self.cursor = Cursor(self.axes, useblit=True,
                                     color='black', linewidth=0.5)
 
                 # Below removes data options for data types where selecting
@@ -492,6 +493,10 @@ class BaseClassData:
                 self.apply_plot_settings()
                 self.apply_axlim_settings()
                 self.apply_axscale_settings()
+
+                for w in recorded_warnings:
+                    if issubclass(w.category, UserWarning):
+                        return RuntimeError(f"UserWarning while plotting {self.label}:\n{w.message}")
             except Exception as e:
                 return type(e)(f"Error while plotting {self.label}:\n{type(e).__name__}: {e}")
 
