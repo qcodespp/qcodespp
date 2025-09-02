@@ -442,7 +442,7 @@ class DataSetPP(DelegateAttributes):
                 non_nan_len = len(np.unique(set_x[~np.isnan(set_x)])) - 1
                 for array in self.arrays.values():
                     if array.shape[0] > non_nan_len:
-                        new_dataset.add_array(array.return_subset(slice(None, non_nan_len)))
+                        new_dataset.add_array(array.subset(slice(None, non_nan_len)))
                 return new_dataset
             else:
                 log.warning('DataSetPP has no setpoint arrays, cannot remove incomplete columns')

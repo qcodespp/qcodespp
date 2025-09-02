@@ -555,7 +555,7 @@ class DataArray(DelegateAttributes):
 
         return (last_index + 1) / self.ndarray.size
 
-    def return_subset(self, indices):
+    def subset(self, indices):
         """
         Return a subset of this DataArray.
 
@@ -579,4 +579,72 @@ class DataArray(DelegateAttributes):
             array_id=self.array_id,
             is_setpoint=self.is_setpoint,
             preset_data=new_data,
-            data_type=self.data_type)
+            data_type=self.data_type,
+            set_arrays=self.set_arrays
+        )
+
+    # Overload arithmetic operations; simply return the operation on the ndarray.
+    # == (__eq__) and != (__ne__) not overloaded, since they have special meaning.
+
+    def __add__(self,val):
+        return self.ndarray + val
+
+    def __radd__(self,val):
+        return val + self.ndarray
+
+    def __sub__(self,val):
+        return self.ndarray - val
+
+    def __rsub__(self,val):
+        return val - self.ndarray
+
+    def __mul__(self,val):
+        return self.ndarray * val
+    
+    def __rmul__(self,val):
+        return val * self.ndarray
+
+    def __truediv__(self,val):
+        return self.ndarray / val
+    
+    def __rtruediv__(self,val):
+        return val / self.ndarray
+    
+    def __floordiv__(self,val):
+        return self.ndarray // val
+
+    def __rfloordiv__(self,val):
+        return val // self.ndarray
+
+    def __mod__(self,val):
+        return self.ndarray % val
+
+    def __rmod__(self,val):
+        return val % self.ndarray
+    
+    def __pow__(self,val):
+        return self.ndarray ** val
+
+    def __rpow__(self,val):
+        return val ** self.ndarray
+    
+    def __neg__(self):
+        return -self.ndarray
+    
+    def __pos__(self):
+        return self.ndarray
+    
+    def __abs__(self):
+        return abs(self.ndarray)
+
+    def __lt__(self, val):
+        return self.ndarray < val
+
+    def __le__(self, val):
+        return self.ndarray <= val
+
+    def __gt__(self, val):
+        return self.ndarray > val
+
+    def __ge__(self, val):
+        return self.ndarray >= val
