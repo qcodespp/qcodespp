@@ -95,6 +95,7 @@ class DataArray(DelegateAttributes):
         'label',
         'action_indices',
         'is_setpoint',
+        'set_arrays',
         'data_type')
 
     # attributes of the parameter (or keys in the incoming snapshot)
@@ -110,7 +111,6 @@ class DataArray(DelegateAttributes):
         'ts',
         'value',
         '__class__',
-        'set_arrays',
         'shape',
         'array_id',
         'action_indices')
@@ -366,6 +366,7 @@ class DataArray(DelegateAttributes):
 
     def __getitem__(self, loop_indices):
         return self.ndarray[loop_indices]
+        #return self.return_subset(loop_indices)
 
     delegate_attr_objects = ['ndarray']
 

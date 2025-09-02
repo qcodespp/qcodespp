@@ -117,8 +117,6 @@ class QtPlotWindow(QtWidgets.QWidget):
 
         self.theme = theme
 
-
-
         self.set_title('Plot')
         self.title_parts = []
 

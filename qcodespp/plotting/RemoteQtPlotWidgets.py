@@ -129,7 +129,6 @@ class PlotImage(pg.ImageItem):
     - call set_data() with the updated data
     '''
 
-    # def __init__(self, *args, **kwargs)
     def __init__(self, *args, **kwargs):
         self._hist_range = (np.nan, np.nan)
         self.x_data = None
@@ -137,32 +136,11 @@ class PlotImage(pg.ImageItem):
         self.z_data = None
         super().__init__(*args, **kwargs)
 
-    # def regionChanging(self, *args, **kwargs):
-    #     self.auto_range = False
-    #     pass
-    #     # print('regionChanging', args, kwargs)
-
-    # def regionChanged(self, *args, **kwargs):
-    #     pass
-    #     # print('regionChanged', args, kwargs)
-
     def setImage(self, *args, **kwargs):
-        # self._hist.region.sigRegionChanged.connect(self.regionChanging)
-        # self._hist.region.sigRegionChangeFinished.connect(self.regionChanged)
-
-        # if 'x' in kwargs:
-        #     self.x = kwargs['x']
-        # if 'y' in kwargs:
-        #     self.y = kwargs['y']
-        # if 'z' in kwargs:
-        #     self.z = kwargs['z']
         x = kwargs.get('x', None)
         y = kwargs.get('y', None)
         z = kwargs.get('z', None)
 
-        # self.x = x
-        # self.y = y
-        # self.z = z
         if x is not None:
             self.x_data = x
         if y is not None:
@@ -583,12 +561,9 @@ class QtPlot(QWidget):
 
         QWidget.__init__(self, parent=parent)
 
-        # TODO update data with timing, not at every new datapoint
-        self.auto_updating = False
         self.theme = theme
         self._cmap = cmap
 
-        # if title:
         self.setWindowTitle(title or 'QtPlot')
 
         if figposition:

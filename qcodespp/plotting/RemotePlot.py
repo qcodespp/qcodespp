@@ -10,8 +10,8 @@ from uuid import uuid4
 from qcodespp.data.data_set import DataSetPP
 from qcodespp.data.data_array import DataArray
 from qcodespp.utils.helpers import NumpyJSONEncoder
-from qcodespp.parameters import Parameter
-from qcodes import MultiParameter
+from qcodespp import Parameter, MultiParameter
+import warnings
 
 def live_plot(*args,data_set=None, data_items=None):
     """
@@ -39,13 +39,15 @@ def live_plot(*args,data_set=None, data_items=None):
     for arg in args:
         if isinstance(arg, DataSetPP):
             data_set = arg
-        elif isinstance(arg, (DataArray, Parameter)):
+        elif isinstance(arg, (DataArray, Parameter, np.ndarray, str)):
             data_items.append(arg)
         elif isinstance(arg, (list, tuple)):
             data_items.extend(arg)
+        else:
+            raise TypeError(f'*args to live_plot must be either DataSetPP, DataArray, Parameter, np.ndarray, or str, not {type(arg)}')
 
     plot = Plot()
-    plot.add_multiple(*data_items, data_set=data_set)
+    plot.add_subplots(*data_items, data_set=data_set)
 
     return plot
 
@@ -115,7 +117,7 @@ class Plot():
 
     def __init__(self, title=None, name=None):
         name = name or uuid4().hex
-        topic = 'qcodes.plot.'+name
+        topic = 'qcodes++.Plot.'+name
         self.topic = topic
         self.metadata = {}
         self.data_uuid = uuid4().hex
@@ -187,27 +189,28 @@ class Plot():
         self.publish({'clear_plot': True})
 
     def add_multiple(self,*z_params,data_set=None):
+        warnings.warn('Plot.add_multiple will be deprecated. Use Plot.add_subplots instead.', DeprecationWarning)
         self.add_subplots(*z_params,data_set=data_set)
 
     def add_subplots(self,*z_params,data_set=None):
-        """Add multiple subplots to the ``Plot``.
+        """Add multiple subplots to the ``Plot``, each with a single dependent DataArray.
         
         Args:
             *z_params (Sequence [DataArray/Parameter/str]): DataArrays to be added to the Plot.
                 Supply the DataArray object itself, a Parameter corresponding to a DataArray in the DataSetPP,
-                or a string of the DataArray's data_id.
+                or the DataArray's array_id as a string.
             data_set (DataSetPP, optional): The DataSetPP to link to the live plot. If none provided, the default dataset
                 will be used. Usually this is the most recent DataSetPP to be instantiated.
         """
-        if data_set is None and DataSetPP.default_dataset is not None:
-            data_set = DataSetPP.default_dataset
-        if data_set:
-            data_set.publisher=self
+        data_set = self._find_dataset(data_set)
         new_items=[]
         for item in z_params:
-            if isinstance(item, Parameter):
+            if isinstance(item, (DataArray,np.ndarray,str)):
+                new_items.append(item)
+
+            elif isinstance(item, Parameter):
                 if not data_set:
-                    raise ValueError('Parameters only accepted to add_multiple if a data_set provided to live_plot or Plot, \n'
+                    raise ValueError('Parameters can be provided only if a data_set provided to live_plot or Plot,\n'
                                     'or if DataSetPP.default_dataset is defined correctly.')
                 success=False
                 for array in data_set.arrays:
@@ -215,29 +218,23 @@ class Plot():
                         new_items.append(data_set.arrays[array])
                         success=True
                 if not success:
-                    raise ValueError(f'No DataArray corresponding to parameter {item.full_name} in {data_set}.')
-            elif isinstance(item,str):
-                if not data_set:
-                    raise ValueError('Array_ids only accepted to add_multiple if a data_set provided to live_plot or Plot, \n'
-                                    'or if DataSetPP.default_dataset is defined correctly.')
-                if item in data_set.arrays.keys():
-                    new_items.append(data_set.arrays[item])
-                else:
-                    raise ValueError(f'No DataArray with array_id {item} in {data_set}.')
+                    raise ValueError(f'No DataArray corresponding to parameter {item.full_name} in DataSetPP:\n{data_set.location}\n')
+
             elif isinstance(item, MultiParameter):
                 for name in item.names:
+                    success=False
                     for array in data_set.arrays:
                         if name in array:
                             new_items.append(data_set.arrays[array])
-            elif isinstance(item, DataArray):
-                new_items.append(item)
-                if not data_set:
-                    try: # Try ONE more time to link some kind of data set to the plot.
-                        item.data_set.publisher = self
-                    except:
-                        pass
+                            success=True
+                    if not success:
+                        raise ValueError(f'No DataArray corresponding to parameter {name} in DataSetPP:\n{data_set.location}\n')
             else:
-                raise TypeError(f'data_items must be either DataArray or Parameter objects, or a string corresponding to the '
+                try:
+                    item = np.array(item)
+                    new_items.append(item)
+                except:
+                    raise TypeError(f'add_subplots accepts DataArrays, numpy arrays, Parameters, or a string corresponding to the\n'
                                 f'DataArray array_id, not {type(item)}.')
 
         for i,z_param in enumerate(new_items):
@@ -247,26 +244,67 @@ class Plot():
             except AttributeError:
                 title=None
                 name=None
-            self.add(z_param,title=title,name=name,subplot=i) #title=z_param.full_name,name=z_param.name,
+            self.add(z_param,title=title,name=name,subplot=i,data_set=data_set)
 
+    def _find_dataset(self,data_set):
+        if data_set is None and DataSetPP.default_dataset is not None:
+            data_set = DataSetPP.default_dataset
+        if data_set is not None:
+            data_set.publisher=self
+        return data_set
+    
+    def _find_array(self,item,data_set=None):
+        if isinstance(item, (DataArray,np.ndarray)):
+            return item
+        elif isinstance(item, Parameter):
+            if not data_set:
+                raise ValueError('Parameters only accepted to Plot.add if a data_set also specified,\n'
+                                'or if DataSetPP.default_dataset is defined correctly.')
+            arrays=[]
+            for array in data_set.arrays:
+                if item.full_name in array:
+                    arrays.append(data_set.arrays[array])
+            if len(arrays)==1:
+                return arrays[0]
+            elif len(arrays)==0:
+                raise ValueError(f'No DataArray corresponding to parameter {item.full_name} in DataSetPP:\n{data_set.location}\n')
+            elif len(arrays)>1:
+                raise ValueError(f'Multiple DataArrays corresponding to parameter {item.full_name} in DataSetPP:\n{data_set.location}\n'
+                                 'Please provide either the DataArray directly or the array_id as a string.')
+        elif isinstance(item,str):
+            if not data_set:
+                raise ValueError('Array_ids only accepted to Plot.add if a data_set also specified,\n'
+                                'or if DataSetPP.default_dataset is defined correctly.')
+            if item in data_set.arrays.keys():
+                return data_set.arrays[item]
+            else:
+                raise ValueError(f'No DataArray with array_id {item} in DataSetPP:\n{data_set.location}.')
+        else:
+            try:
+                item=np.array(item)
+                return item
+            except:
+                raise TypeError(f'Plot.add accepts DataArrays, numpy arrays, Parameters (if one DataArray per Parameter),\n'
+                            f'or a string corresponding to the DataArray array_id, not {type(item)}.')
+            
     def add(self, *args, x=None, y=None, z=None,
             subplot=0, name=None, title=None, position=None,
             relativeto=None, xlabel=None, ylabel=None, zlabel=None,
             xunit=None, yunit=None, zunit=None, silent=True,
             symbol=None,#color=None, width=None, pen=False, brush=None,
-            size=None,# antialias=None,
+            size=None, data_set=None, # antialias=None,
             **kwargs):
         """
         Add a trace to the plot.
 
         Args:
-            *args (DataArray): positional arguments, can be:
+            *args (DataArray, str, Parameter, np.ndarray): positional arguments, can be:
                 - ``y`` or ``z``: specify just the 1D or 2D data independent parameter, with the setpoint
                     axis or axes implied from the DataSetPP setpoints.
                 - ``x, y`` or ``x, y, z``: specify all axes of the data.
-            x (DataArray, optional): x-axis data.
-            y (DataArray, optional): y-axis data.
-            z (DataArray, optional): z-axis data.
+            x (DataArray, str, Parameter, np.ndarray, optional): x-axis data.
+            y (DataArray, str, Parameter, np.ndarray, optional): y-axis data.
+            z (DataArray, str, Parameter, np.ndarray, optional): z-axis data.
             subplot (int, optional): Subplot index to add the trace to. Defaults to 0.
             name (str, optional): Name of the trace. If not provided, the name of the DataArray will be used.
             title (str, optional): Title of the trace. If not provided, the name of the DataArray will be used.
@@ -283,12 +321,20 @@ class Plot():
             size (int, optional): Size of the symbol. Defaults to None.
         """
 
+        data_set = self._find_dataset(data_set)
+
         if x is not None:
-            kwargs['x'] = x
+            kwargs['x'] = self._find_array(x,data_set=data_set)
         if y is not None:
-            kwargs['y'] = y
+            kwargs['y'] = self._find_array(y,data_set=data_set)
         if z is not None:
-            kwargs['z'] = z
+            kwargs['z'] = self._find_array(z,data_set=data_set)
+
+        if args is not None and len(args) > 0:
+            args_list=[]
+            for item in args:
+                args_list.append(self._find_array(item,data_set=data_set))
+            args=tuple(args_list)
 
         kwargs['xlabel'] = xlabel
         kwargs['ylabel'] = ylabel
@@ -353,16 +399,16 @@ class Plot():
                     array_id = uuid4().hex
 
 
-            unit = kwargs.get('%sunit'%arr_name, None) or unit
-            label = kwargs.get('%slabel'%arr_name, None) or label
+            unit = kwargs.get(f'{arr_name}_unit', None) or unit
+            label = kwargs.get(f'{arr_name}_label', None) or label
 
-            arguments['%s_info'%arr_name] = {}
-            arguments['%s_info'%arr_name]['location'] = location
-            arguments['%s_info'%arr_name]['label'] = label
-            arguments['%s_info'%arr_name]['unit'] = unit
-            arguments['%s_info'%arr_name]['shape'] = shape
-            arguments['%s_info'%arr_name]['name'] = snap_name or name
-            arguments['%s_info'%arr_name]['array_id'] = array_id
+            arguments[f'{arr_name}_info'] = {}
+            arguments[f'{arr_name}_info']['location'] = location
+            arguments[f'{arr_name}_info']['label'] = label
+            arguments[f'{arr_name}_info']['unit'] = unit
+            arguments[f'{arr_name}_info']['shape'] = shape
+            arguments[f'{arr_name}_info']['name'] = snap_name or name
+            arguments[f'{arr_name}_info']['array_id'] = array_id
             arguments['name'] = name or snap_name
 
         for arr_name, arr in zip(['x', 'y', 'z'], [x, y, z]):
@@ -372,17 +418,14 @@ class Plot():
                 if isinstance(arr, np.ndarray):
                     ndarr = arr
                 else:
-                    try:
-                        ndarr = np.array(arr)
-                    except:
-                        continue
+                    continue
 
                 if (~np.isnan(ndarr)).any():
                     arrays.append(ndarr)
-                    arguments['%s_info'%arr_name]['shape'] = ndarr.shape
-                    arguments['%s_info'%arr_name]['name']
+                    arguments[f'{arr_name}_info']['shape'] = ndarr.shape
+                    arguments[f'{arr_name}_info']['name'] = snap_name or name
 
-                    meta.append({'array_id': arguments['%s_info'%arr_name]['array_id'],
+                    meta.append({'array_id': arguments[f'{arr_name}_info']['array_id'],
                                  'shape': ndarr.shape,
                                  'dtype': str(ndarr.dtype)})
 
@@ -446,8 +489,7 @@ class Plot():
                 ndim = 1
 
             if len(args) not in (1, len(axletters)):
-                raise ValueError('{}D data needs 1 or {} unnamed args'.format(
-                    ndim, len(axletters)))
+                raise ValueError(f'{ndim}D data needs 1 or {len(axletters)} unnamed args')
 
             arg_axletters = axletters[-len(args):]
 
@@ -482,7 +524,6 @@ class Plot():
 
     def save(self, filename=None, subplot=None):
         self.publish({'save_screenshot': {'filename': str(filename), 'subplot': subplot}})
-        # print('Should save a screenshot of the plot now')
 
     def set_xlabel(self, label, subplot=0):
         print('Should set the x-label of a subplot now')
@@ -496,4 +537,3 @@ class Plot():
 
     def close(self):
         self.publish({'close_client': True})
-        print('Should close the plot window now')
