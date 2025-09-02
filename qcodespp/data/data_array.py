@@ -7,7 +7,7 @@ from qcodes.utils import DelegateAttributes, full_class
 class DataArray(DelegateAttributes):
 
     """
-    A container for one parameter in a qcodespp DataSetPP
+    A container for one parameter's data in a qcodespp DataSetPP
 
     A DataArray can either be a setpoint array or a measured parameter.
     If this is a measured parameter, this object doesn't contain
@@ -583,8 +583,8 @@ class DataArray(DelegateAttributes):
             set_arrays=self.set_arrays
         )
 
-    # Overload arithmetic operations; simply return the operation on the ndarray.
-    # == (__eq__) and != (__ne__) not overloaded, since they have special meaning.
+    # Overload arithmetic operations to operate on and return the ndarray.
+    # == (__eq__) and != (__ne__) not overloaded, to preserve hashability.
 
     def __add__(self,val):
         return self.ndarray + val
