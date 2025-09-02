@@ -95,7 +95,7 @@ class DataArray(DelegateAttributes):
         'label',
         'action_indices',
         'is_setpoint',
-        'set_arrays',
+        'set_array_ids',
         'data_type')
 
     # attributes of the parameter (or keys in the incoming snapshot)
@@ -113,6 +113,7 @@ class DataArray(DelegateAttributes):
         '__class__',
         'shape',
         'array_id',
+        'set_arrays'
         'action_indices')
 
     def __init__(self, parameter=None, name=None, full_name=None, label=None,
@@ -195,6 +196,10 @@ class DataArray(DelegateAttributes):
         TODO: make this a weakref
         """
         return self._data_set
+    
+    @property
+    def set_array_ids(self):
+        return tuple(array.array_id for array in self.set_arrays)
 
     @data_set.setter
     def data_set(self, new_data_set):
