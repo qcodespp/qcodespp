@@ -814,7 +814,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.file_checked(last_item)
             elif checked_items:
                 for item in checked_items:
-                    item.data.prepare_data_for_plot(reload_data=True, reload_from_file=True)
+                    if hasattr(item.data,'dim') and item.data.dim==2 and not isinstance(item.data, qcodesppData):
+                        line=0
+                    else:
+                        line=None
+                    item.data.prepare_data_for_plot(reload_data=True, reload_from_file=True, linefrompopup=line)
                 self.update_plots()
                 for item in checked_items:
                     item.data.reset_axlim_settings()
