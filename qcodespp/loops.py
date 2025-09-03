@@ -1069,7 +1069,8 @@ class ActiveLoop(Metadatable):
 
         Args:
             plot: a list of parameters to plot at each point in the loop.
-                Can either be the DataArray objects, or the parameters themselves.
+                Can either be the DataArray objects, a string of the array_id or
+                the parameters themselves.
 
             use_threads: (default False): whenever there are multiple `get` calls
                 back-to-back, execute them in separate threads so they run in

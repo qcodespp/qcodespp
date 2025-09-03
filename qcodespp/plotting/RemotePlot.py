@@ -203,6 +203,9 @@ class Plot():
                 will be used. Usually this is the most recent DataSetPP to be instantiated.
         """
         data_set = self._find_dataset(data_set)
+        if len(z_params)>0 and isinstance(z_params[0], (list,tuple)):
+            z_params = z_params[0]
+
         new_items=[]
         for item in z_params:
             if isinstance(item, (DataArray,np.ndarray,str)):
