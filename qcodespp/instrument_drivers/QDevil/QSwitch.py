@@ -352,6 +352,8 @@ class QSwitch(Instrument):
             line,tap=combo
             line=self._convert_to_int(line)
             tap=self._convert_to_int(tap)
+            self._check_line_range(line)
+            self._check_tap_range(tap)
             relays[i]=(line,tap)
         return relays
 
@@ -360,6 +362,14 @@ class QSwitch(Instrument):
             return int(val)
         except Exception as e:
             return ValueError(f'Direct manipulation of relays requires ints. Trying to convert {val} to int raised error: {e}')
+
+    def _check_line_range(self,line):
+        if not 0<line<=relay_lines:
+            raise ValueError(f'line number must be between 1 and {relay_lines}')
+
+    def _check_tap_range(self,tap):
+        if not 0<=tap<=relays_per_line:
+            raise ValueError(f'tap number must be between 0 and {relays_per_line}')
 
     # -----------------------------------------------------------------------
     # Manipulation by name
