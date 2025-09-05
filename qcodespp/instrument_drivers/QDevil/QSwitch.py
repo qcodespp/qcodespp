@@ -3,7 +3,7 @@ import itertools
 from time import sleep as sleep_s
 from qcodes.parameters import DelegateParameter
 from qcodes.instrument.visa import Instrument
-from qcodes import validators
+from qcodes.validators import Enum
 from pyvisa.errors import VisaIOError
 from typing import (
     Tuple, Sequence, List, Dict, Set, Union, Optional)
@@ -175,7 +175,7 @@ class QSwitch(Instrument):
             set_cmd='aut {0}'.format('{}'),
             get_cmd='aut?',
             get_parser=str,
-            vals=validators.Enum('on', 'off'),
+            vals=Enum('on', 'off'),
             snapshot_value=False,
         )
         self.add_parameter(
@@ -183,7 +183,7 @@ class QSwitch(Instrument):
             set_cmd='beep:stat {0}'.format('{}'),
             get_cmd='beep:stat?',
             get_parser=str,
-            vals=validators.Enum('on', 'off'),
+            vals=Enum('on', 'off'),
             snapshot_value=False,
         )
         self._add_monitor_pseudo_parameters()
@@ -375,11 +375,11 @@ class QSwitch(Instrument):
     # Manipulation by name
     # -----------------------------------------------------------------------
 
-    OneOrMore = Union[str, Sequence[str]]
+    OneOrMore = Union[str, int, Sequence[Union[str,int]]]
 
     def ground(self, lines: OneOrMore) -> None:
         connections: List[Tuple[int, int]] = []
-        if isinstance(lines, str):
+        if isinstance(lines, (int,str)):
             line = self._to_line(lines)
             self.close_relay(line, 0)
             taps = range(1, relays_per_line + 1)
@@ -395,7 +395,7 @@ class QSwitch(Instrument):
             self.open_relays(connections)
 
     def connect(self, lines: OneOrMore) -> None:
-        if isinstance(lines, str):
+        if isinstance(lines, (str,int)):
             self.close_relay(self._to_line(lines), 9)
             self.open_relay(self._to_line(lines), 0)
         else:
@@ -406,18 +406,20 @@ class QSwitch(Instrument):
             connections = list(itertools.zip_longest(numbers, [], fillvalue=0))
             self.open_relays(connections)
 
-    def connect_all(self):
+    def connect_all(self) -> None:
         self.connect([*list(self._line_names.keys())])
 
-    def breakout(self, line: str, tap: str) -> None:
+    def breakout(self, line: Union[str,int], tap: Union[str,int]) -> None:
         self.close_relay(self._to_line(line), self._to_tap(tap))
         self.open_relay(self._to_line(line), 0)
 
 
     def line_float(self, lines: OneOrMore) -> None:
-        if isinstance(lines, str):
-            for tap in range(relays_per_line+1):
-                self.open_relay(self._to_line(lines), tap)
+        if isinstance(lines, (int,str)):
+            line = self._to_line(lines)
+            taps = range(relays_per_line+1)
+            connections = list(itertools.zip_longest([], taps, fillvalue=line))
+            self.open_relays(connections)
         else:
             for tap in range(relays_per_line+1):
                 numbers = map(self._to_line, lines)
@@ -603,13 +605,17 @@ class QSwitch(Instrument):
                 result[line_name].append(tap_name)
         return result
 
-    def _to_line(self, name: str) -> int:
+    def _to_line(self, name: Union[str,int]) -> int:
+        if isinstance(name,int):
+            return name
         try:
             return self._line_names[name]
         except KeyError:
             raise ValueError(f'Unknown line "{name}"')
 
-    def _to_tap(self, name: str) -> int:
+    def _to_tap(self, name: Union[str,int]) -> int:
+        if isinstance(name,int):
+            return name
         try:
             return self._tap_names[name]
         except KeyError:
