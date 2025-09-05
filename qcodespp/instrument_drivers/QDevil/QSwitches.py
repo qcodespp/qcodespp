@@ -7,25 +7,23 @@ try:
     from qcodespp.instrument_drivers.QDevil.QSwitch import (QSwitch,
                                                         channel_list_to_state,
                                                         state_to_compressed_list,
-                                                        state_to_expanded_list,
-                                                        expand_channel_list,
-                                                        compress_channel_list,
                                                         State)
 except ImportError:
     try:
         from qcodes_contrib_drivers.drivers.QDevil.QSwitch import (QSwitch,
                                                             channel_list_to_state,
                                                             state_to_compressed_list,
-                                                            state_to_expanded_list,
-                                                            expand_channel_list,
-                                                            compress_channel_list,
                                                             State)
     except ImportError:
         raise ImportError('Could not find QSwitch driver from either qcodespp or qcodes_contrib_drivers.\n'
                           'Please make sure one of these packages is installed in the current environment.')
 
+OneOrMore=QSwitch.OneOrMore
+
 relay_lines=24
 relays_per_line=10
+# Note the relays_per_line is different to the main driver!!
+# But 10 is the correct number of relays (0-9), and is quite important that it is correct for this driver.
 
 class QSwitches(Instrument):
     '''
@@ -60,7 +58,6 @@ class QSwitches(Instrument):
             if not isinstance(qsw,QSwitch):
                 raise ValueError('Please provide a list or tuple of QSwitch instruments')
                 
-        self._num_qsws=len(qsws)
         self.qsws=qsws
         self._serials=[qsw.IDN()["serial"] for qsw in self.qsws]
         self.linked_BNCs=linked_BNCs
@@ -265,7 +262,6 @@ class QSwitches(Instrument):
     # -----------------------------------------------------------------------
     # Manipulation by name
     # -----------------------------------------------------------------------
-    OneOrMore=QSwitch.OneOrMore
     
     def ground(self, lines: OneOrMore) -> None:
         connections: List[Tuple[int, int]] = []
