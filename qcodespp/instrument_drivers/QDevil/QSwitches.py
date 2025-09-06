@@ -22,32 +22,28 @@ OneOrMore=QSwitch.OneOrMore
 
 relay_lines=24
 relays_per_line=10
-# Note the relays_per_line is different to the main driver!!
+# Note relays_per_line is defined differently to in the main driver, where it is 9!!
 # But 10 is the correct number of relays (0-9), and is quite important that it is correct for this driver.
 
 class QSwitches(Instrument):
     '''
-    Class to treat multiple QSwitches as a single instrument.
+    Treat multiple QSwitches as a single instrument.
 
     Lines are numbered 1 to N*24 where N is the number of QSwitches
     BNC taps are numbered 1-8, 11-18, 21-28, etc.
     Special taps 'ground'  and 'connect' remain marked as 0 and 9.
 
-    linked_BNCs allows for the case where the front BNCs are externally linked such that e.g. a 
-    single instrument input/output can be connected to any of the N*24 lines. The user can then
-    use the lowest value of this link. e.g. if linked_BNCs=[[1,11],[2,12]] then
+    linked_BNCs supports the case of externally linking the front BNCs such that e.g. a single
+    instrument input/output can be connected to any of the N*24 lines. The user can then use the
+    lowest value defined by the link. e.g. if linked_BNCs=[[1,11],[2,12]] then
     qsws.close_relay(28,1) is equivalent to
     qsws.close_relay(28,11), and so on.
     It is assumed maximum one link per QSwitch, since otherwise links can be made internally.
 
     Args:
-        qsws (sequence[QSwitches]): list of initialized/connected qswitches
+        qsws (sequence[QSwitches]): list of already initialized/connected qswitches
         linked_BNCs (list[list]): list of linked BNCs, e.g. [1,11,21,31].
         name (str): QCodes name. Default = 'qsws'
-
-    Not implemented: 
-    Params: auto_save, error_indicator
-    Methods: save_state, load_state, saved_states
     '''
     
     def __init__(self,qsws,linked_BNCs=None,name='qsws',**kwargs):
@@ -78,6 +74,11 @@ class QSwitches(Instrument):
                                     label='overview',
                                     get_cmd=self._get_overview,
                                     snapshot_value=False)
+        
+        self.auto_save=self.add_parameter('auto_save',
+                                    set_cmd=self._set_auto_save,
+                                    get_cmd=self._get_auto_save,
+                                    vals=Enum('on', 'off'))
 
         self.locked_relays=[]
 
@@ -86,9 +87,9 @@ class QSwitches(Instrument):
 
         self._meta_attrs.extend(['serials','linked_BNCs'])
 
-        self.connect_message()
+        self._connect_message()
 
-    def connect_message(self):
+    def _connect_message(self):
         print(f'Initialised QSwitches meta-Instrument {self.name} containing QSwitches with serials '+' '.join(self._serials))
         self.log.info(f"Initialised QSwitches meta-Instrument: {self.name}")
         
@@ -96,11 +97,29 @@ class QSwitches(Instrument):
     # Bring instrument-wide functions into this driver
     # -----------------------------------------------------------------------
     
+    def _set_auto_save(self,val):
+        for qsw in self.qsws:
+            qsw.auto_save(val)
+
+    def _get_auto_save(self):
+        answers=[]
+        for qsw in self.qsws:
+            answers.append(qsw.auto_save())
+        if not all(answer==answers[0] for answer in answers):
+            return 'Warning: not all QSwitches have the same auto_save setting. Set auto_save to the desired value to fix.'
+        return answers[0]
+
     def reset(self):
+        '''
+        Reset all QSwitches to their default state, i.e. connected to ground through 1MOhm.
+        '''
         for qsw in self.qsws:
             qsw.reset()
 
     def soft_reset(self,force=False) -> None:
+        '''
+        Soft reset all QSwitches, i.e. connect all lines through 1MOhm to ground unless locked via self.locked_relays.
+        '''
         if not self.locked_relays and not force:
             raise ValueError("No relays are locked. Use force=True to reset all relays anyway.")
         for i,qsw in enumerate(self.qsws):
@@ -128,6 +147,172 @@ class QSwitches(Instrument):
     def abort(self) -> None:
         for qsw in self.qsws:
             qsw.abort()
+
+    def save_state(self, name: str) -> None:
+        QSwitch.save_state(self, name)
+
+    def load_state(self, name: str) -> None:
+        QSwitch.load_state(self, name)
+
+    def saved_states(self) -> Dict[str, str]:
+        return QSwitch.saved_states(self)
+
+    # -----------------------------------------------------------------------
+    # Direct manipulation of the relays
+    # -----------------------------------------------------------------------
+  
+    def open_relay(self, line: int, tap: int) -> None:
+        '''
+        Open a relay at the specified line and tap.
+        '''
+        idx=int((line-1)/relay_lines)
+        qsw=self.qsws[idx]
+        qsw.open_relay(self._step_line_down(line,idx),self._step_tap_down(tap,idx))
+        
+    def close_relay(self, line: int, tap: int) -> None:
+        '''
+        Close a relay at the specified line and tap.
+        '''
+        idx=int((line-1)/relay_lines)
+        qsw=self.qsws[idx]
+        qsw.close_relay(self._step_line_down(line,idx),self._step_tap_down(tap,idx))
+
+    def close_relays(self, relays: State) -> None:
+        '''
+        Close multiple relays at once.
+
+        Args:
+            relays: A list of tuples specifying the (line, tap) of each relay to close.
+                e.g. [(1, 0), (2, 1)]
+        '''
+        states=[[] for _ in self.qsws]
+        for line,tap in relays:
+            idx=int((line-1)/relay_lines)
+            states[idx].append((self._step_line_down(line,idx),
+                                self._step_tap_down(tap,idx)))
+        for i,qsw in enumerate(self.qsws):
+            qsw.close_relays(states[i])
+
+    def open_relays(self, relays: State) -> None:
+        '''
+        Open multiple relays at once.
+
+        Args:
+            relays: A list of tuples specifying the (line, tap) of each relay to open.
+                e.g. [(1, 0), (2, 1)]
+        '''
+        states=[[] for _ in self.qsws]
+        for line,tap in relays:
+            idx=int((line-1)/relay_lines)
+            states[idx].append((self._step_line_down(line,idx),
+                                self._step_tap_down(tap,idx)))
+        for i,qsw in enumerate(self.qsws):
+            qsw.open_relays(states[i])
+
+    # -----------------------------------------------------------------------
+    # Manipulation by name
+    # -----------------------------------------------------------------------
+    
+    def ground(self, lines: OneOrMore) -> None:
+        '''
+        Connect the specified lines to ground through 1MOhm resistors.
+
+        Args:
+            lines: The line(s) to connect to ground. Specify a single line through its integer value
+                or its name, or multiple lines through a list of integers or names.
+        '''
+        connections: List[Tuple[int, int]] = []
+        if isinstance(lines, (int,str)):
+            line = self._to_line(lines)
+            self.close_relay(line, 0)
+            idx = int((line-1)/relay_lines)
+            taps = range(1+idx*relays_per_line, (1+idx)*relays_per_line)
+            connections = list(itertools.zip_longest([], taps, fillvalue=line))
+            self.open_relays(connections)
+        else:
+            numbers = map(self._to_line, lines)
+            grounds = list(itertools.zip_longest(numbers, [], fillvalue=0))
+            self.close_relays(grounds)
+            for tap in range(1, relays_per_line):
+                connections += itertools.zip_longest(
+                                    map(self._to_line, lines), [], fillvalue=tap)
+            for i,connection in enumerate(connections):
+                line=connection[0]
+                idx = int((line-1)/relay_lines)
+                connections[i]=(line,self._step_tap_up(tap,idx))
+            self.open_relays(connections)
+            
+    def connect(self, lines: OneOrMore) -> None:
+        '''
+        Connect the specified lines directly through to the output (i.e. connect tap 9)
+
+        Args:
+            lines: The line(s) to connect to the output. Specify a single line through its integer value
+                or its name, or multiple lines through a list of integers or names.
+        '''
+        if isinstance(lines, (str,int)):
+            self.close_relay(self._to_line(lines), 9)
+            self.open_relay(self._to_line(lines), 0)
+        else:
+            numbers = map(self._to_line, lines)
+            pairs = list(itertools.zip_longest(numbers, [], fillvalue=9))
+            self.close_relays(pairs)
+            numbers = map(self._to_line, lines)
+            connections = list(itertools.zip_longest(numbers, [], fillvalue=0))
+            self.open_relays(connections)
+            
+    def connect_all(self) -> None:
+        '''
+        Connect all lines on all QSwitches through to their outputs, i.e. close tap 9 for all lines.
+        '''
+        for qsw in self.qsws:
+            qsw.connect_all()
+    
+    def breakout(self, line: Union[str,int], tap: Union[str,int]) -> None:
+        '''
+        Connect the specified line to the specified tap AND disconnect ground.
+        '''
+        self.close_relay(self._to_line(line), self._to_tap(tap))
+        self.open_relay(self._to_line(line), 0)
+
+    def line_float(self, lines: OneOrMore) -> None:
+        '''
+        Open _all_ relays on one or more lines such that the line is floating.
+
+        Args:
+            lines: The line(s) to float. Specify a single line through its integer value
+                or its name, or multiple lines through a list of integers or names.
+        '''
+        if isinstance(lines, (int,str)):
+            line = self._to_line(lines)
+            idx = int((line-1)/relay_lines)
+            taps = range(idx*relays_per_line, (1+idx)*relays_per_line-1)
+            connections = list(itertools.zip_longest([], taps, fillvalue=line))
+            self.open_relays(connections)
+        else:
+            for tap in range(relays_per_line+1):
+                numbers = map(self._to_line, lines)
+                pairs = list(itertools.zip_longest(numbers, [], fillvalue=tap))
+                for i,connection in enumerate(pairs):
+                    line=connection[0]
+                    idx = int((line-1)/relay_lines)
+                    pairs[i]=(line,self._step_tap_up(tap,idx))
+                self.open_relays(pairs)
+        
+    def arrange(self, breakouts: Optional[Dict[str, int]] = None,
+                lines: Optional[Dict[str, int]] = None) -> None:
+        """An arrangement of names for lines and breakouts
+
+        Args:
+            breakouts (Dict[str, int]): Name/breakout pairs
+            lines (Dict[str, int]): Name/line pairs
+        """
+        if lines:
+            for name, line in lines.items():
+                self._line_names[name] = line
+        if breakouts:
+            for name, tap in breakouts.items():
+                self._tap_names[name] = tap
 
     # -----------------------------------------------------------------------
     # Support functions to translate line and tap values to/from individual insts.
@@ -207,7 +392,7 @@ class QSwitches(Instrument):
         states=[[] for _ in self.qsws]
         for line,tap in channel_list_to_state(state):
             idx=int((line-1)/relay_lines)
-            states[idx-1].append((self._step_line_down(line,idx),
+            states[idx].append((self._step_line_down(line,idx),
                                 self._step_tap_down(tap,idx)))
         for i,qsw in enumerate(self.qsws):
             qsw.state(state_to_compressed_list(states[i]))
@@ -226,117 +411,7 @@ class QSwitches(Instrument):
                         taps[j]=f'breakout {tap_num}'
                 overview[str(line)]=taps
         return overview
-        
-    # -----------------------------------------------------------------------
-    # Direct manipulation of the relays
-    # -----------------------------------------------------------------------
-  
-    def open_relay(self, line: int, tap: int) -> None:
-        idx=int((line-1)/relay_lines)
-        qsw=self.qsws[idx]
-        qsw.open_relay(self._step_line_down(line,idx),self._step_tap_down(tap,idx))
-        
-    def close_relay(self, line: int, tap: int) -> None:
-        idx=int((line-1)/relay_lines)
-        qsw=self.qsws[idx]
-        qsw.close_relay(self._step_line_down(line,idx),self._step_tap_down(tap,idx))
 
-    def close_relays(self, relays: State) -> None:
-        states=[[] for _ in self.qsws]
-        for line,tap in relays:
-            idx=int((line-1)/relay_lines)
-            states[idx].append((self._step_line_down(line,idx),
-                                self._step_tap_down(tap,idx)))
-        for i,qsw in enumerate(self.qsws):
-            qsw.close_relays(states[i])
-
-    def open_relays(self, relays: State) -> None:
-        states=[[] for _ in self.qsws]
-        for line,tap in relays:
-            idx=int((line-1)/relay_lines)
-            states[idx].append((self._step_line_down(line,idx),
-                                self._step_tap_down(tap,idx)))
-        for i,qsw in enumerate(self.qsws):
-            qsw.open_relays(states[i])
-
-    # -----------------------------------------------------------------------
-    # Manipulation by name
-    # -----------------------------------------------------------------------
-    
-    def ground(self, lines: OneOrMore) -> None:
-        connections: List[Tuple[int, int]] = []
-        if isinstance(lines, (int,str)):
-            line = self._to_line(lines)
-            self.close_relay(line, 0)
-            idx = int((line-1)/relay_lines)
-            taps = range(1+idx*relays_per_line, (1+idx)*relays_per_line)
-            connections = list(itertools.zip_longest([], taps, fillvalue=line))
-            self.open_relays(connections)
-        else:
-            numbers = map(self._to_line, lines)
-            grounds = list(itertools.zip_longest(numbers, [], fillvalue=0))
-            self.close_relays(grounds)
-            for tap in range(1, relays_per_line):
-                connections += itertools.zip_longest(
-                                    map(self._to_line, lines), [], fillvalue=tap)
-            for i,connection in enumerate(connections):
-                line=connection[0]
-                idx = int((line-1)/relay_lines)
-                connections[i]=(line,self._step_tap_up(tap,idx))
-            self.open_relays(connections)
-            
-    def connect(self, lines: OneOrMore) -> None:
-        if isinstance(lines, (str,int)):
-            self.close_relay(self._to_line(lines), 9)
-            self.open_relay(self._to_line(lines), 0)
-        else:
-            numbers = map(self._to_line, lines)
-            pairs = list(itertools.zip_longest(numbers, [], fillvalue=9))
-            self.close_relays(pairs)
-            numbers = map(self._to_line, lines)
-            connections = list(itertools.zip_longest(numbers, [], fillvalue=0))
-            self.open_relays(connections)
-            
-    def connect_all(self) -> None:
-        for qsw in self.qsws:
-            qsw.connect_all()
-    
-    def breakout(self, line: Union[str,int], tap: Union[str,int]) -> None:
-        self.close_relay(self._to_line(line), self._to_tap(tap))
-        self.open_relay(self._to_line(line), 0)
-
-    def line_float(self, lines: OneOrMore) -> None:
-        if isinstance(lines, (int,str)):
-            line = self._to_line(lines)
-            idx = int((line-1)/relay_lines)
-            taps = range(idx*relays_per_line, (1+idx)*relays_per_line-1)
-            connections = list(itertools.zip_longest([], taps, fillvalue=line))
-            self.open_relays(connections)
-        else:
-            for tap in range(relays_per_line+1):
-                numbers = map(self._to_line, lines)
-                pairs = list(itertools.zip_longest(numbers, [], fillvalue=tap))
-                for i,connection in enumerate(pairs):
-                    line=connection[0]
-                    idx = int((line-1)/relay_lines)
-                    pairs[i]=(line,self._step_tap_up(tap,idx))
-                self.open_relays(pairs)
-        
-    def arrange(self, breakouts: Optional[Dict[str, int]] = None,
-                lines: Optional[Dict[str, int]] = None) -> None:
-        """An arrangement of names for lines and breakouts
-
-        Args:
-            breakouts (Dict[str, int]): Name/breakout pairs
-            lines (Dict[str, int]): Name/line pairs
-        """
-        if lines:
-            for name, line in lines.items():
-                self._line_names[name] = line
-        if breakouts:
-            for name, tap in breakouts.items():
-                self._tap_names[name] = tap
-                
     # -----------------------------------------------------------------------
     # Support Functions for addressing by name.
     # -----------------------------------------------------------------------
