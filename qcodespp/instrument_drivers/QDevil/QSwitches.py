@@ -148,8 +148,8 @@ class QSwitches(Instrument):
         for qsw in self.qsws:
             qsw.abort()
 
-    def save_state(self, name: str) -> None:
-        QSwitch.save_state(self, name)
+    def save_state(self, name: str, overwrite=False) -> None:
+        QSwitch.save_state(self, name, overwrite=overwrite)
 
     def load_state(self, name: str) -> None:
         QSwitch.load_state(self, name)

@@ -237,7 +237,7 @@ class QSwitch(Instrument):
         self._set_state_raw(self.ask('stat?'))
 
 
-    def save_state(self, name: str, unique=False) -> None:
+    def save_state(self, name: str, unique=False, overwrite=False) -> None:
         """Save the current state of the relays
 
         Args:
@@ -260,6 +260,8 @@ class QSwitch(Instrument):
                 savedstates = {}
 
             # Add the current state to the saved states
+            if not overwrite and name in savedstates:
+                raise ValueError(f"State '{name}' already exists. Use overwrite=True to overwrite.")
             savedstates[name] = self.state
 
             # Write the updated states back to the file
@@ -267,7 +269,7 @@ class QSwitch(Instrument):
                 json.dump(savedstates, f, indent=4)
 
         except Exception as e:
-            raise ValueError(f"Failed to save state: {e}")
+            raise type(e)(f"Failed to save state: {e}")
         
 
     def load_state(self, name: str, unique = False) -> None:
