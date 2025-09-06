@@ -286,11 +286,11 @@ class QSwitches(Instrument):
         if isinstance(lines, (int,str)):
             line = self._to_line(lines)
             idx = int((line-1)/relay_lines)
-            taps = range(idx*relays_per_line, (1+idx)*relays_per_line-1)
+            taps = range(idx*relays_per_line, (1+idx)*relays_per_line)
             connections = list(itertools.zip_longest([], taps, fillvalue=line))
             self.open_relays(connections)
         else:
-            for tap in range(relays_per_line+1):
+            for tap in range(relays_per_line):
                 numbers = map(self._to_line, lines)
                 pairs = list(itertools.zip_longest(numbers, [], fillvalue=tap))
                 for i,connection in enumerate(pairs):
