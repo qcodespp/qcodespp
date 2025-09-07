@@ -1424,14 +1424,12 @@ class ActiveLoop(Metadatable):
             t = wait_secs(finish_clock)
             time.sleep(t)
 
-# Cannot find anything that uses the below. Marked for deletion.
+def active_loop():
+    return ActiveLoop.active_loop
 
-# def active_loop():
-#     return ActiveLoop.active_loop
-
-# def active_data_set():
-#     loop = active_loop()
-#     if loop is not None and loop.data_set is not None:
-#         return loop.data_set
-#     else:
-#         return None
+def active_data_set():
+    loop = active_loop()
+    if loop is not None and loop.data_set is not None:
+        return loop.data_set
+    else:
+        return None
