@@ -682,11 +682,11 @@ class ActiveLoop(Metadatable):
         self.progress_bar=progress_bar
         self.was_broken=False
         self.snake = snake
-        self.flip = False  # used for 2D loops to flip the order of the inner loop if snake is True. Should never be defined by the user.
+        self._flip = False  # used for 2D loops to flip the order of the inner loop if snake is True. Should never be defined by the user.
         self.timer_reset=None
         
         if snake and len([action for action in self.actions if isinstance(action, ActiveLoop)]) > 1:
-            print('Careful! Using snake for a loop with multiple nested loops may result in strange behavior. Make sure you know what you are doing.')
+            log.warning('Careful! Using snake for a loop with multiple nested loops may result in strange behavior. Make sure you know what you are doing.')
 
         # if the first action is another loop, it changes how delays
         # happen - the outer delay happens *after* the inner var gets
@@ -1038,7 +1038,7 @@ class ActiveLoop(Metadatable):
             raise RuntimeError('No DataSetPP yet defined for this loop')
         station = station or self.station or Station.default
         if station is None:
-            print('Note: Station not declared. Estimate does not include'
+            log.warning('Note: Station not declared. Estimate does not include'
                     'an estimate of communication time.')
         else:
             commtime=station.communication_time(measurement_num=5)
@@ -1310,7 +1310,7 @@ class ActiveLoop(Metadatable):
         else:
             iterator=self.sweep_values
 
-        if self.flip:
+        if self._flip:
             i=len(self.sweep_values._values)-1
         else:
             i=0
@@ -1369,7 +1369,7 @@ class ActiveLoop(Metadatable):
                     # if this is an outer snake loop
                     if self.snake and isinstance(f,_Nest):
                         f.inner_loop.sweep_values.reverse()
-                        f.inner_loop.flip = not f.inner_loop.flip
+                        f.inner_loop._flip = not f.inner_loop._flip
 
                     # after the first action, no delay is inherited
                     delay = 0
@@ -1398,7 +1398,7 @@ class ActiveLoop(Metadatable):
                         log.exception("Failed to execute bg task")
 
                     last_task = t
-            if self.flip:
+            if self._flip:
                 i=i-1
             else:
                 i=i+1
