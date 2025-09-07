@@ -370,12 +370,16 @@ class MultiParameterWrapper(MultiParameter):
             step_time (float, optional): Time in seconds between each step. Defaults to 0.03.
         """
 
-        if type(end_values) in [int, float]:
-            for i,param in enumerate(self.parameters):
-                param.move(end_values,steps,step_time)       
+        if isinstance(end_values, (int, float)):
+            setpoints=[numpy.linspace(self.parameters[i](),end_values,steps) for i in range(len(self.parameters))]
+        elif numpy.array(end_values).shape != numpy.array(self.parameters).shape:
+            raise ValueError('Number of end values must match number of parameters')
         else:
+            setpoints=[numpy.linspace(self.parameters[i](),end_values[i],steps) for i in range(len(self.parameters))]
+        
+        for j in range(steps):
             for i,param in enumerate(self.parameters):
-                param.move(list(end_values)[i],steps,step_time)
+                param(setpoints[i][j])
 
     def sweep(self, start_vals,stop_vals,num,print_warning=True):
         """
