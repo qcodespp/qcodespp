@@ -175,8 +175,7 @@ class QSwitch(Instrument):
             set_cmd='aut {0}'.format('{}'),
             get_cmd='aut?',
             get_parser=str,
-            vals=Enum('on', 'off'),
-            snapshot_value=False,
+            vals=Enum('on', 'off')
         )
         self.add_parameter(
             name='error_indicator',
@@ -262,7 +261,7 @@ class QSwitch(Instrument):
             # Add the current state to the saved states
             if not overwrite and name in savedstates:
                 raise ValueError(f"State '{name}' already exists. Use overwrite=True to overwrite.")
-            savedstates[name] = self.state
+            savedstates[name] = self.state()
 
             # Write the updated states back to the file
             with open(savedstates_path, 'w') as f:
@@ -785,7 +784,8 @@ class QSwitches(Instrument):
             answers.append(qsw.auto_save())
         if not all(answer==answers[0] for answer in answers):
             return 'Warning: not all QSwitches have the same auto_save setting. Set auto_save to the desired value to fix.'
-        return answers[0]
+        decoder={'0':'off','1':'on'}
+        return decoder[answers[0]]
 
     def reset(self):
         '''
