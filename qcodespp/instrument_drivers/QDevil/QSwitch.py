@@ -602,6 +602,9 @@ class QSwitch(Instrument):
             else:
                 tap_name = f'breakout {tap_names[tap]}'
                 result[line_name].append(tap_name)
+        for line in self._line_names.keys():
+            if line not in result.keys():
+                result[line]=['floating']
         return result
 
     def _to_line(self, name: Union[str,int]) -> int:
