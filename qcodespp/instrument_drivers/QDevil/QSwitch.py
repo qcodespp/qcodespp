@@ -769,6 +769,9 @@ class QSwitches(Instrument):
 
         self._connect_message()
 
+    def get_idn(self):
+        return (f'QSwitches meta-Instrument for serials '+' '.join(self._serials))
+
     def _connect_message(self):
         print(f'Initialised QSwitches meta-Instrument {self.name} containing QSwitches with serials '+' '.join(self._serials))
         self.log.info(f"Initialised QSwitches meta-Instrument: {self.name}")

@@ -109,6 +109,10 @@ class Station(QStation):
         if add_variables is not None:
             self.auto_add(add_variables)
 
+    def add_components(self,components):
+        for component in components:
+            self.add_component(component)
+
     def auto_add(self,variables,add_instruments: bool=True,add_parameters: bool=True,update_snapshot: bool=True):
         """
         Automatically add previously defined instruments and parameters to the station. Usually, auto_add=globals().
