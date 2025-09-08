@@ -712,7 +712,7 @@ class QSwitches(Instrument):
 
     Args:
         qsws (sequence[QSwitches]): list of already initialized/connected qswitches
-        linked_BNCs (list[list]): list of linked BNCs, e.g. [1,11,21,31].
+        linked_BNCs (list[list]): list of linked BNCs, e.g. [[1,11],[2,12],[4,31]].
         name (str): QCodes name. Default = 'qsws'
 
     Usage:
