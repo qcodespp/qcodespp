@@ -70,7 +70,7 @@ from qcodespp.data.data_set import new_data, load_data, load_data_num, load_data
 
 from qcodespp.utils.visa_helpers import listVISAinstruments
 
-from qcodespp.parameters import MultiParameterWrapper, ArrayParameterWrapper
+from qcodespp.parameters import MultiParameterWrapper, ArrayParameterWrapper, stepper
 
 # ensure to close all instruments when interpreter is closed
 import atexit

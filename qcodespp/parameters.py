@@ -4,6 +4,7 @@ In addition, two wrapper classes are provided to easily create ArrayParameters a
 MultiParameters created with this method become settable, sweepable and movable.
 """
 
+import logging
 import time
 
 import numpy
@@ -19,6 +20,8 @@ from qcodes.parameters import (
 from typing import Any
 
 from qcodes.parameters.sequence_helpers import is_sequence
+
+log = logging.getLogger(__name__)
 
 def move(self,end_value,steps=101,step_time=0.03):
     """
@@ -67,7 +70,7 @@ def sweep(self, start, stop, step=None, num=None, print_warning=True):
     sweeprange= numpy.abs(stop - start)
     try:
         if numpy.abs(self.get()-start)>sweeprange*1e-3 and print_warning:
-            print('Are you sure? Start value for {}.sweep is {} {} but {}()={} {}'.format(self.name,start,self.unit,self.name,self.get(),self.unit))
+            log.warning('Are you sure? Start value for {}.sweep is {} {} but {}()={} {}'.format(self.name,start,self.unit,self.name,self.get(),self.unit))
     except TypeError: #Sometimes a parameter (especially a dummy parameter) will return None if it has not been set yet.
         pass
     return SweepFixedValues(self, start=start, stop=stop,
@@ -91,7 +94,7 @@ def logsweep(self, start, stop, num=None, print_warning=True):
     """
     try:
         if numpy.abs(self.get()-start)>start*1e-3 and print_warning:
-            print('Are you sure? Start value for {}.logsweep is {} {} but {}()={} {}'.format(self.name,start,self.unit,self.name,self.get(),self.unit))
+            log.warning('Are you sure? Start value for {}.logsweep is {} {} but {}()={} {}'.format(self.name,start,self.unit,self.name,self.get(),self.unit))
     except TypeError:
         pass
     setpoints=numpy.geomspace(start,stop,num=num)
@@ -114,7 +117,7 @@ def arbsweep(self, setpoints, print_warning=True):
     sweeprange=numpy.abs(numpy.max(setpoints) - numpy.min(setpoints))
     try:
         if numpy.abs(self.get()-setpoints[0])>sweeprange*1e-3 and print_warning:
-            print('Are you sure? Start value for {}.arbsweep is {} {} but {}()={} {}'.format(self.name,setpoints[0],self.unit,self.name,self.get(),self.unit))
+            log.warning('Are you sure? Start value for {}.arbsweep is {} {} but {}()={} {}'.format(self.name,setpoints[0],self.unit,self.name,self.get(),self.unit))
     except TypeError:
         pass
     return SweepFixedValues(self, setpoints)
@@ -158,7 +161,7 @@ def returnsweep(self, start, stop, step=None, num=None, print_warning=True):
     sweeprange= numpy.abs(stop - start)
     try:
         if numpy.abs(self.get()-start)>sweeprange*1e-3 and print_warning:
-            print('Are you sure? Start value for {}.returnsweep is {} {} but {}()={} {}'.format(self.name,start,self.unit,self.name,self.get(),self.unit))
+            log.warning('Are you sure? Start value for {}.returnsweep is {} {} but {}()={} {}'.format(self.name,start,self.unit,self.name,self.get(),self.unit))
     except TypeError:
         pass
     return SweepFixedValues(self, setpoints)
@@ -370,12 +373,16 @@ class MultiParameterWrapper(MultiParameter):
             step_time (float, optional): Time in seconds between each step. Defaults to 0.03.
         """
 
-        if type(end_values) in [int, float]:
-            for i,param in enumerate(self.parameters):
-                param.move(end_values,steps,step_time)       
+        if isinstance(end_values, (int, float)):
+            setpoints=[numpy.linspace(self.parameters[i](),end_values,steps) for i in range(len(self.parameters))]
+        elif numpy.array(end_values).shape != numpy.array(self.parameters).shape:
+            raise ValueError('Number of end values must match number of parameters')
         else:
+            setpoints=[numpy.linspace(self.parameters[i](),end_values[i],steps) for i in range(len(self.parameters))]
+        
+        for j in range(steps):
             for i,param in enumerate(self.parameters):
-                param.move(list(end_values)[i],steps,step_time)
+                param(setpoints[i][j])
 
     def sweep(self, start_vals,stop_vals,num,print_warning=True):
         """
@@ -414,7 +421,7 @@ class MultiParameterWrapper(MultiParameter):
             for i,parameter in enumerate(self.parameters):
                 try:
                     if print_warning and numpy.abs(parameter.get()-start_vals)>sweeprange*1e-3:
-                        print(f'Are you sure? Start value for {parameter.name} sweep is '
+                        log.warning(f'Are you sure? Start value for {parameter.name} sweep is '
                             f'{start_vals} {parameter.unit} but '
                             f'{parameter.name}()={parameter.get()} {parameter.unit}')
                 except TypeError: #Sometimes a parameter (especially a dummy parameter) will return None if it has not been set yet.
@@ -435,7 +442,7 @@ class MultiParameterWrapper(MultiParameter):
                 sweeprange= numpy.abs(stop_vals[i] - start_vals[i])
                 try:
                     if print_warning and numpy.abs(parameter.get()-start_vals[i])>sweeprange*1e-3:
-                        print(f'Are you sure? Start value for {parameter.name} sweep is '
+                        log.warning(f'Are you sure? Start value for {parameter.name} sweep is '
                                 f'{start_vals[i]} {parameter.unit} but '
                                 f'{parameter.name}()={parameter.get()} {parameter.unit}')
                 except TypeError: #Sometimes a parameter (especially a dummy parameter) will return None if it has not been set yet.
