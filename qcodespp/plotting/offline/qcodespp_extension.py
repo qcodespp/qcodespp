@@ -51,8 +51,6 @@ class qcodesppData(BaseClassData):
         # Processed data that has been added to the data_dict. Need to preserve it!
             old_dict = copy.deepcopy(self.data_dict)
 
-        #self.data_dict = self.loaded_data.arrays.copy()
-
         self.data_dict = self.remove_string_arrays(self.loaded_data.arrays.copy())
 
         if hasattr(self, 'extra_cols'):
@@ -62,15 +60,15 @@ class qcodesppData(BaseClassData):
             del old_dict
 
         # Identify the independent and dependent parameters, put various labels in the right place
-
         self.identify_variables()
 
         # Assign dimension based on number of independent parameters
         if len(self.data_dict[self.independent_parameter_names[-1]].shape)==3:
+            self.dim=4
             datasets=self.decompose_3D_data()
             self.decomposed=True
             return datasets
-        if len(self.independent_parameter_names) > 1:
+        elif len(self.independent_parameter_names) > 1:
             self.dim = 3
         else:
             self.dim = 2
@@ -79,15 +77,21 @@ class qcodesppData(BaseClassData):
         if not self.loaded_data.fraction_complete()==1:
             set_x = self.data_dict[self.all_parameter_names[0]]
             non_nan_len = len(np.unique(set_x[~np.isnan(set_x)]))-1
-            if non_nan_len > 0:
+            if non_nan_len >= 0:
                 for arrayname, array in self.data_dict.items():
                     if array.shape[0] > non_nan_len:
                         self.data_dict[arrayname] = array[:non_nan_len]
 
+        # self.dims is the shape of each data array. It's not necessarily true that all arrays will have the same shape,
+        # but if self.identify_variables() worked, then the Y data array will have the correct shape for the first set of
+        # variables to be plotted for both 1D and 2D data. self.dims gets updated every time the user chooses a new 
+        # (set of) variable(s) to plot.
+        self.dims = np.shape(self.data_dict[self.settings['Y data']])
+
         # There was a time where NaNs could occur in the middle of the data. 
         # This should never happen anymore, but for old datasets,
         # we can deal with them here.
-        if self.dim == 3:
+        if self.dim == 3 and not any(dim < 1 for dim in self.dims):
             for arrayname, array in self.data_dict.items():
                 if np.isnan(array).any():
                     for i,j in np.argwhere(np.isnan(array)):
@@ -95,12 +99,6 @@ class qcodesppData(BaseClassData):
                             array[i,j] = array[i-1,j]
                         else:
                             array[i,j] = array[i+1,j]
-
-        # self.dims is the shape of each data array. It's not necessarily true that all arrays will have the same shape,
-        # but if self.identify_variables() worked, then the Y data array will have the correct shape for the first set of
-        # variables to be plotted for both 1D and 2D data. self.dims gets updated every time the user chooses a new 
-        # (set of) variable(s) to plot.
-        self.dims = np.shape(self.data_dict[self.settings['Y data']])
 
     def decompose_3D_data(self):
         num=self.label.split('_')[0]
@@ -191,10 +189,10 @@ class qcodesppData(BaseClassData):
 
         # Now self.dims is defined, deal with a few obvious errors to stop the code going any further:
         if self.dims == () or any(dim < 1 for dim in self.dims):
-            return ValueError(f"No data found in {self.label}.")
+            return ValueError(f"No data found in file, or no complete sweeps of 2D data were made.")
         if len(self.dims) > 2: # if data is 3D and the decompose_3D_data worked, then we won't get here. 
                             # This is for even higher dimenstions or just weird stuff.
-            return ValueError(f"Cannot load {self.label}: Higher dimensional data is not supported.\n"
+            return ValueError(f"Higher dimensional data is not supported.\n"
                                "Manually decompose the data into 1D or 2D datasets and load those instead.")
 
         # Get the required X, Y (and Z) data from the data_dict.
@@ -366,7 +364,6 @@ class qcodesppData(BaseClassData):
                         'linewidth': 1.5,
                         'linestyle': '-',
                         'filters': []}}
-        
 
     def apply_single_filter(self, processed_data, filt):
         if filt.name in ['Multiply', 'Divide', 'Add/Subtract']:
