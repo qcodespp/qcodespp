@@ -36,6 +36,8 @@ class qcodesppData(BaseClassData):
         if load_the_data:               # Should only need to happen for (Mixed)InternalData.
             self.prepare_dataset()       # Otherwise, data is loaded when first plotted.
 
+        self.decomposed=False
+
     def prepare_dataset(self):
         # Loads the data from file, and prepares a data_dict. This is significantly easier than in the BaseClassData,
         # since qcodespp data is already in a dictionary. We can also use the metadata to easily work out if the data
@@ -65,7 +67,9 @@ class qcodesppData(BaseClassData):
 
         # Assign dimension based on number of independent parameters
         if len(self.data_dict[self.independent_parameter_names[-1]].shape)==3:
-            return self.decompose_3D_data()
+            datasets=self.decompose_3D_data()
+            self.decomposed=True
+            return datasets
         if len(self.independent_parameter_names) > 1:
             self.dim = 3
         else:
@@ -103,12 +107,14 @@ class qcodesppData(BaseClassData):
         decompose_axis, ok = QInputDialog.getInt(
             None,
             "Decompose 3D Data",
-            "3D data detected: The data can be decomposed into 2D items.\nEnter the axis along which to decompose (0, 1, or 2):",
+            ("3D dataset: The data can be decomposed into a series of 2D datasets.\n"
+            "Enter which independent variable should be constant for each 2D dataset:\n"
+            f"0: {self.independent_parameter_names[0]}\n1: {self.independent_parameter_names[1]}\n2: {self.independent_parameter_names[2]}"),
             min=0,
             max=2
         )
         if not ok:
-            return []
+            return ['cancel']
         items=[]
         if decompose_axis==0:
             shape=(self.data_dict[self.independent_parameter_names[2]].shape[1],self.data_dict[self.independent_parameter_names[2]].shape[2])
@@ -174,7 +180,7 @@ class qcodesppData(BaseClassData):
         return data_dict
 
     def load_and_reshape_data(self, reload_data=False,reload_from_file=True,linefrompopup=None):
-        if self.loaded_data is None or reload_data and reload_from_file:
+        if self.loaded_data is None or (reload_data and reload_from_file) or self.decomposed:
             items=self.prepare_dataset()
             if items:
                 return items

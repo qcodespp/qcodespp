@@ -653,7 +653,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def add_internal_data(self,item,check_item=True,uncheck_others=True):
         # Add internal data to the file list (from combined plots/files, fitting dependency, etc)
         #item.filepath='internal_data'
-        self.file_list.itemChanged.disconnect(self.file_checked)
+        try:
+            self.file_list.itemChanged.disconnect(self.file_checked)
+        except TypeError:
+            pass
         self.file_list.addItem(item)
         self.file_list.setCurrentItem(item)
         if uncheck_others:
@@ -1434,6 +1437,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     if not hasattr(item.data, 'processed_data'):
                         error=item.data.prepare_data_for_plot(reload_data=True)
                         if error and isinstance(error, list):
+                            if error[0]=='cancel':
+                                self.log_error(f'Decomposing data from {item.data.label} cancelled by user.')
+                                item.setCheckState(QtCore.Qt.Unchecked)
+                                continue
                             self.set_window_title(' - Decomposing data...')
                             for dataitem in error:
                                 new_item=DataItem(dataitem)
