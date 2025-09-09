@@ -109,7 +109,9 @@ class qcodesppData(BaseClassData):
             "Decompose 3D Data",
             ("3D dataset: The data can be decomposed into a series of 2D datasets.\n"
             "Enter which independent variable should be constant for each 2D dataset:\n"
-            f"0: {self.independent_parameter_names[0]}\n1: {self.independent_parameter_names[1]}\n2: {self.independent_parameter_names[2]}"),
+            f"0: {self.independent_parameter_names[0]}\n"
+            f"1: {self.independent_parameter_names[1]}\n"
+            f"2: {self.independent_parameter_names[2]}"),
             min=0,
             max=2
         )
@@ -117,7 +119,8 @@ class qcodesppData(BaseClassData):
             return ['cancel']
         items=[]
         if decompose_axis==0:
-            shape=(self.data_dict[self.independent_parameter_names[2]].shape[1],self.data_dict[self.independent_parameter_names[2]].shape[2])
+            shape=(self.data_dict[self.independent_parameter_names[2]].shape[1],
+                   self.data_dict[self.independent_parameter_names[2]].shape[2])
             for i, value in enumerate(self.data_dict[self.independent_parameter_names[0]]):
                 new_data_dict={}
                 for key, array in self.data_dict.items():
@@ -131,7 +134,8 @@ class qcodesppData(BaseClassData):
                 label=f'{num}_{i}_{self.independent_parameter_names[0]}={value:.3g}'
                 items.append(self.make_decomposed_item(new_data_dict, label))
         elif decompose_axis==1:
-            shape=(self.data_dict[self.independent_parameter_names[2]].shape[0],self.data_dict[self.independent_parameter_names[2]].shape[2])
+            shape=(self.data_dict[self.independent_parameter_names[2]].shape[0],
+                   self.data_dict[self.independent_parameter_names[2]].shape[2])
             for i, value in enumerate(self.data_dict[self.independent_parameter_names[1]][0]):
                 new_data_dict={}
                 for key, array in self.data_dict.items():
@@ -180,10 +184,18 @@ class qcodesppData(BaseClassData):
         return data_dict
 
     def load_and_reshape_data(self, reload_data=False,reload_from_file=True,linefrompopup=None):
-        if self.loaded_data is None or (reload_data and reload_from_file) or self.decomposed:
+        if self.loaded_data is None or (reload_data and reload_from_file):
             items=self.prepare_dataset()
             if items:
                 return items
+
+        # Now self.dims is defined, deal with a few obvious errors to stop the code going any further:
+        if self.dims == () or any(dim < 1 for dim in self.dims):
+            return ValueError(f"No data found in {self.label}.")
+        if len(self.dims) > 2: # if data is 3D and the decompose_3D_data worked, then we won't get here. 
+                            # This is for even higher dimenstions or just weird stuff.
+            return ValueError(f"Cannot load {self.label}: Higher dimensional data is not supported.\n"
+                               "Manually decompose the data into 1D or 2D datasets and load those instead.")
 
         # Get the required X, Y (and Z) data from the data_dict.
         column_data = self.get_column_data(line=linefrompopup)

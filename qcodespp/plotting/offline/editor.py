@@ -655,8 +655,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         #item.filepath='internal_data'
         try:
             self.file_list.itemChanged.disconnect(self.file_checked)
+            already_disconnected=False
         except TypeError:
-            pass
+            already_disconnected=True
         self.file_list.addItem(item)
         self.file_list.setCurrentItem(item)
         if uncheck_others:
@@ -666,7 +667,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.clear_sidebar1D()
             item.setCheckState(QtCore.Qt.Checked)
             self.file_checked(item)
-        self.file_list.itemChanged.connect(self.file_checked)
+        if not already_disconnected:
+            self.file_list.itemChanged.connect(self.file_checked)
 
     def remove_files(self, which='current'):
         if self.file_list.count() > 0:
@@ -1422,6 +1424,47 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             # remove it from the gui
             widgetToRemove.setParent(None)
 
+    def initial_data_load(self, item):
+        try:
+            message = item.data.prepare_data_for_plot(reload_data=True, reload_from_file=True)
+            # Three possibilities: no message = everything is good.
+            # If the message is a list, it's qcodesppData that has been decomposed into multiple DataItems.
+            # If the message is something else, it's an error message.
+            if message is not None:
+                try:
+                    self.file_list.itemChanged.disconnect(self.file_checked)
+                    already_disconnected=False
+                except TypeError:
+                    already_disconnected=True
+                item.setCheckState(QtCore.Qt.Unchecked)
+                if not already_disconnected:
+                    self.file_list.itemChanged.connect(self.file_checked)
+                if isinstance(message,list):
+                    if message[0]=='cancel':
+                        self.log_error(f'Decomposing data from {item.data.label} cancelled by user.')
+                        self.update_plots()
+                        return 'break'
+                    self.set_window_title(' - Decomposing data...')
+                    for dataitem in message:
+                        if dataitem==message[-1]:
+                            check_item=True
+                        else:
+                            check_item=False
+                        new_item=DataItem(dataitem)
+                        new_item.filepath='internal_data'
+                        self.add_internal_data(new_item,check_item=check_item,uncheck_others=False)
+                    self.set_window_title()
+                    return 'break'
+                else:
+                    self.log_error(f'Error preparing {item.data.label} for plot:'
+                                f'\n{type(message).__name__}: {message}', show_popup=True)
+                    self.update_plots()
+                    return 'break'
+
+        except Exception as e:
+            self.log_error(f'Error preparing {item.data.label} for plot:\n{type(e).__name__}: {e}', show_popup=True)
+            return 'break'
+
     def update_plots(self, item=None,update_data=True,update_color_limits=False):
         minilog=[]
 
@@ -1435,25 +1478,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for index, item in enumerate(checked_items):
                 try:
                     if not hasattr(item.data, 'processed_data'):
-                        error=item.data.prepare_data_for_plot(reload_data=True)
-                        if error and isinstance(error, list):
-                            if error[0]=='cancel':
-                                self.log_error(f'Decomposing data from {item.data.label} cancelled by user.')
-                                item.setCheckState(QtCore.Qt.Unchecked)
-                                continue
-                            self.set_window_title(' - Decomposing data...')
-                            for dataitem in error:
-                                new_item=DataItem(dataitem)
-                                new_item.filepath='internal_data'
-                                self.add_internal_data(new_item)
-                            self.set_window_title()
-                            continue
-                        elif error:
-                            self.log_error(f'Error preparing data for plot:\n{type(error).__name__}: {error}', show_popup=True)
-                            item.setCheckState(QtCore.Qt.Unchecked)
-                            continue
-                    elif hasattr(item.data, 'dim'):
-                        if item.data.dim == 3 and update_data==True: 
+                        message=self.initial_data_load(item)
+                        if message == 'break':
+                            break
+
+                    elif hasattr(item.data, 'dim'): # I think this check is redundant, all data should have a dim attribute if they have processed_date.
+                        if item.data.dim == 3 and update_data==True:
                             # Should only be called when updating 2D data: updating 1D data is taken care of in the datatype and sidebar
                             error=item.data.prepare_data_for_plot(update_color_limits=update_color_limits)
                             if error:
