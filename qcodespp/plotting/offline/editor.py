@@ -434,7 +434,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.figure.subplots_adjust(top=0.893, bottom=0.137, 
                                     left=0.121, right=0.86)
         
-    def set_window_title(self):
+    def set_window_title(self,extra_info=''):
         if hasattr(self, 'linked_folder') and self.linked_folder:
             linked_info = f' - Linked to {self.linked_folder}'
         else:
@@ -444,7 +444,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         else:
             session_name = ''
 
-        self.setWindowTitle(f'InSpectra Gadget{linked_info}{self.window_title_auto_refresh}{session_name}')
+        self.setWindowTitle(f'InSpectra Gadget{linked_info}{self.window_title_auto_refresh}{session_name}{extra_info}')
 
     def load_data_item(self,filepath):
         filename, extension = os.path.splitext(filepath)
@@ -1433,7 +1433,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 try:
                     if not hasattr(item.data, 'processed_data'):
                         error=item.data.prepare_data_for_plot(reload_data=True)
-                        if error:
+                        if error and isinstance(error, list):
+                            self.set_window_title(' - Decomposing data...')
+                            for dataitem in error:
+                                new_item=DataItem(dataitem)
+                                new_item.filepath='internal_data'
+                                self.add_internal_data(new_item)
+                            self.set_window_title()
+                            continue
+                        elif error:
                             self.log_error(f'Error preparing data for plot:\n{type(error).__name__}: {error}', show_popup=True)
                             item.setCheckState(QtCore.Qt.Unchecked)
                             continue

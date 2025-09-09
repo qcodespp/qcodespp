@@ -3,7 +3,8 @@ import os
 import json
 import copy
 from qcodespp.data.data_set import load_data
-from qcodespp.plotting.offline.datatypes import BaseClassData
+from qcodespp.plotting.offline.datatypes import BaseClassData, InternalData
+from PyQt5.QtWidgets import QInputDialog
 
 class qcodesppData(BaseClassData):
 
@@ -59,9 +60,12 @@ class qcodesppData(BaseClassData):
             del old_dict
 
         # Identify the independent and dependent parameters, put various labels in the right place
+
         self.identify_variables()
 
         # Assign dimension based on number of independent parameters
+        if len(self.data_dict[self.independent_parameter_names[-1]].shape)==3:
+            return self.decompose_3D_data()
         if len(self.independent_parameter_names) > 1:
             self.dim = 3
         else:
@@ -94,6 +98,72 @@ class qcodesppData(BaseClassData):
         # (set of) variable(s) to plot.
         self.dims = np.shape(self.data_dict[self.settings['Y data']])
 
+    def decompose_3D_data(self):
+        num=self.label.split('_')[0]
+        decompose_axis, ok = QInputDialog.getInt(
+            None,
+            "Decompose 3D Data",
+            "3D data detected: The data can be decomposed into 2D items.\nEnter the axis along which to decompose (0, 1, or 2):",
+            min=0,
+            max=2
+        )
+        if not ok:
+            return []
+        items=[]
+        if decompose_axis==0:
+            shape=(self.data_dict[self.independent_parameter_names[2]].shape[1],self.data_dict[self.independent_parameter_names[2]].shape[2])
+            for i, value in enumerate(self.data_dict[self.independent_parameter_names[0]]):
+                new_data_dict={}
+                for key, array in self.data_dict.items():
+                    try:
+                        new_data_dict[key]=array[i,:,:]
+                    except IndexError:
+                        try:
+                            new_data_dict[key]=np.repeat(array[i,:], shape[1]).reshape(shape)
+                        except IndexError:
+                            pass
+                label=f'{num}_{i}_{self.independent_parameter_names[0]}={value:.3g}'
+                items.append(self.make_decomposed_item(new_data_dict, label))
+        elif decompose_axis==1:
+            shape=(self.data_dict[self.independent_parameter_names[2]].shape[0],self.data_dict[self.independent_parameter_names[2]].shape[2])
+            for i, value in enumerate(self.data_dict[self.independent_parameter_names[1]][0]):
+                new_data_dict={}
+                for key, array in self.data_dict.items():
+                    if not key==self.independent_parameter_names[1]:
+                        try:
+                            new_data_dict[key]=array[:,i,:]
+                        except IndexError:
+                            try:
+                                new_data_dict[key]=np.repeat(array[:,i], shape[1]).reshape(shape)
+                            except IndexError:
+                                new_data_dict[key]=np.repeat(array, shape[1]).reshape(shape)
+                label=f'{num}_{i}_{self.independent_parameter_names[1]}={value:.3g}'
+                items.append(self.make_decomposed_item(new_data_dict, label))
+        elif decompose_axis==2:
+            for i, value in enumerate(self.data_dict[self.independent_parameter_names[2]][0][0]):
+                new_data_dict={}
+                for key, array in self.data_dict.items():
+                    if not key==self.independent_parameter_names[2]:
+                        try:
+                            new_data_dict[key]=array[:,:,i]
+                        except IndexError:
+                            try:
+                                new_data_dict[key]=array[:,:]
+                            except IndexError:
+                                shape=self.data_dict[self.independent_parameter_names[1]].shape
+                                new_data_dict[key]=np.repeat(array, shape[1]).reshape(shape)
+                label=f'{num}_{i}_{self.independent_parameter_names[2]}={value:.3g}'
+                items.append(self.make_decomposed_item(new_data_dict, label))
+        return items
+
+    def make_decomposed_item(self, new_data_dict, label):
+        item=InternalData(canvas=self.canvas,
+                        dataset=list(new_data_dict.values()), 
+                        label_name=label,
+                        all_parameter_names=list(new_data_dict.keys()),
+                        dimension=3)
+        return item
+
     def remove_string_arrays(self, data_dict):
         """
         Removes arrays that have str as data_type, since these cannot be plotted.
@@ -105,7 +175,9 @@ class qcodesppData(BaseClassData):
 
     def load_and_reshape_data(self, reload_data=False,reload_from_file=True,linefrompopup=None):
         if self.loaded_data is None or reload_data and reload_from_file:
-            self.prepare_dataset()
+            items=self.prepare_dataset()
+            if items:
+                return items
 
         # Get the required X, Y (and Z) data from the data_dict.
         column_data = self.get_column_data(line=linefrompopup)
