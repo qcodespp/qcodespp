@@ -355,7 +355,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.action_restore_session.triggered.connect(self.load_session)
         self.action_combine_files.triggered.connect(self.combine_plots)
         self.action_duplicate_file.triggered.connect(self.duplicate_item)
-        self.action_export_data_columns.triggered.connect(lambda: self.export_processed_data('current'))
+        self.action_export_data_columns.triggered.connect(lambda: self.export_processed_data('all'))
         self.action_export_data_Z.triggered.connect(lambda: self.export_processed_data('Z'))
         self.actionSave_plot_s_as.triggered.connect(self.save_image)
         self.action_open_file.triggered.connect(self.open_files)
@@ -474,7 +474,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 return item
             except Exception as e:
                 error_type = type(e)
-                return error_type(f'Failed to add .dat dataset {filepath}: {error_type.__name__} {e}')
+                return error_type(f'Failed to add dataset from {filepath}: {error_type.__name__} {e}')
 
     def open_files(self, filepaths=None, attr_dicts=None, overrideautocheck=False):
         self.file_list.itemClicked.disconnect(self.file_clicked)
@@ -1155,17 +1155,17 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
  
         return resolved_files, unresolved_files
 
-    def export_processed_data(self, which='current'):
+    def export_processed_data(self, which='all'):
         current_item = self.file_list.currentItem()
         if current_item:
-            if which == 'current':
+            if which == 'all':
                 formats='JSON (*.json);;CSV (*.csv);;Numpy text (*.dat)'
             elif which == 'Z':
                 formats='Numpy text (*.dat)'
             suggested_filename = current_item.data.label
             filepath, ext = QtWidgets.QFileDialog.getSaveFileName(
             self, 'Export Data As', suggested_filename, formats)
-            if which == 'current':
+            if which == 'all':
                 if hasattr(current_item.data,'processed_data'):
                     if '.dat' in ext:
                         header=''
@@ -1175,7 +1175,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                     labels=['xlabel','ylabel','clabel']
                                     for label in labels:
                                         if current_item.data.settings[label] != '':
-                                            header+=f'{current_item.data.settings[label]}\t'
+                                            header+=f'{current_item.data.settings[label].replace(' ','_')}\t'
                                     header=header.strip('\t')
                                     dat_file.write(f'# {header}\n')
                                     for j in range(np.shape(current_item.data.processed_data[2])[0]):
@@ -1189,7 +1189,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                         processed_data=[]
                                         for line in current_item.data.plotted_lines.keys():
                                             if current_item.data.plotted_lines[line]['checkstate']:
-                                                header+=f'{line}_{current_item.data.plotted_lines[line]["X data"]}\t{line}_{current_item.data.plotted_lines[line]["Y data"]}\t'
+                                                header+=(f'{line}_{current_item.data.plotted_lines[line]["X data"].replace(' ','_')}\t'
+                                                         f'{line}_{current_item.data.plotted_lines[line]["Y data"].replace(' ','_')}\t')
                                                 processed_data.append(current_item.data.plotted_lines[line]['processed_data'][0])
                                                 processed_data.append(current_item.data.plotted_lines[line]['processed_data'][1])
                                         np.savetxt(filepath, np.column_stack(processed_data),header=header)
