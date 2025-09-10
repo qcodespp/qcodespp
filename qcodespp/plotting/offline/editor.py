@@ -473,8 +473,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 item = DataItem(BaseClassData(filepath, self.canvas))
                 return item
             except Exception as e:
-                error_type = type(e)
-                return error_type(f'Failed to add dataset from {filepath}: {error_type.__name__} {e}')
+                return type(e)(f'Failed to add dataset from {filepath}: {type(e).__name__} {e}')
 
     def open_files(self, filepaths=None, attr_dicts=None, overrideautocheck=False):
         self.file_list.itemClicked.disconnect(self.file_clicked)
@@ -728,7 +727,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for subdir, dirs, files in os.walk(rootdir):
                 for file in files:
                     filename, file_extension = os.path.splitext(file)
-                    if file_extension == '.dat':
+                    if file_extension in ['.dat', '.json'] and filename != 'snapshot':
                         already_loaded=self.check_already_loaded(subdir,[file[1] for file in filepaths])
                         if not already_loaded:
                             filepath = os.path.join(subdir, file)
@@ -762,7 +761,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for subdir, dirs, files in os.walk(self.linked_folder):
                 for file in files:
                     filename, file_extension = os.path.splitext(file)
-                    if file_extension == '.dat':
+                    if file_extension in ['.dat', '.json'] and filename != 'snapshot':
                         already_loaded=self.check_already_loaded(subdir,[file[1] for file in new_files])
                         if not already_loaded:
                             filepath = os.path.join(subdir, file)
