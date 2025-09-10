@@ -457,7 +457,7 @@ class QSwitch(Instrument):
 
     def breakout(self, line: Union[str,int], tap: Union[str,int]) -> None:
         '''
-        Connect the specified line to the specified tap AND disconnect ground.
+        Connect the specified line to the specified tap and disconnect ground.
 
         Args:
             line: The line to connect to the breakout. Specify either its integer value or its name.
@@ -469,7 +469,7 @@ class QSwitch(Instrument):
 
     def line_float(self, lines: OneOrMore) -> None:
         '''
-        Open _all_ relays on one or more lines such that the line is floating.
+        Open all relays on one or more lines such that the line is floating.
 
         Args:
             lines: The line(s) to float. Specify a single line through its integer value
@@ -772,7 +772,8 @@ class QSwitches(Instrument):
     It is assumed maximum one link per QSwitch, since otherwise links can be made internally.
 
     Args:
-        qsws (sequence[QSwitches]): list of already initialized/connected qswitches
+        qsws (sequence[QSwitches]): list of already initialized/connected qswitches OR
+            list of addresses (str) of qswitches to be initialized/connected.
         linked_BNCs (list[list]): list of linked BNCs, e.g. [[1,11],[2,12],[4,31]].
         name (str): QCodes name. Default = 'qsws'
 
@@ -846,11 +847,9 @@ class QSwitches(Instrument):
             qsw.auto_save(val)
 
     def _get_auto_save(self):
-        answers=[]
-        for qsw in self.qsws:
-            answers.append(qsw.auto_save())
+        answers=[qsw.auto_save() for qsw in self.qsws]
         if not all(answer==answers[0] for answer in answers):
-            return 'Warning: not all QSwitches have the same auto_save setting. Set auto_save to the desired value to fix.'
+            raise ValueError('Not all QSwitches have the same auto_save setting. Set auto_save to the desired value to fix.')
         decoder={'0':'off','1':'on'}
         return decoder[answers[0]]
 
@@ -1117,7 +1116,7 @@ class QSwitches(Instrument):
         tap=self._step_link_up(tap,i)
         if tap%relays_per_line not in [0,9] and not i*relays_per_line<tap<(i+1)*relays_per_line:
             raise ValueError(f'Tap {tap} cannot be connected to the specified line since they are not on the same QSwitch.\n'
-                             'If you have manually linked the BNC taps, you must explicitely declare this.')
+                             'If you have manually linked the BNC taps, declare this using linked_BNCs.')
         return tap%relays_per_line
 
     def _step_link_down(self,tap):
