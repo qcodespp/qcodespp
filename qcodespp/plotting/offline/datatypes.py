@@ -1,5 +1,6 @@
 from PyQt5 import QtWidgets, QtCore
 import numpy as np
+import json
 import os
 import copy
 import warnings
@@ -87,10 +88,7 @@ class BaseClassData:
             except Exception:
                 self.creation_time = None
 
-    def prepare_dataset(self):
-        # Loads the data from file and prepares a data_dict, where the arrays are stored identified by 
-        # either their header column names, or by their column number if no header is present.
-        # These names are then sent to various parts of the GUI.
+    def load_dat(self):
         try:
             self.loaded_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'])
         except ValueError: # Can occur if python doesn't recognise a header
@@ -120,6 +118,11 @@ class BaseClassData:
             except Exception as e:
                 pass
 
+            if len(self.data_dict.keys()) == 0:
+                self.all_parameter_names=[f"column_{i}" for i in range(self.loaded_data.shape[0])]
+                for i,name in enumerate(self.all_parameter_names):
+                    self.data_dict[name]=self.loaded_data[i]
+
             if hasattr(self, 'extra_cols'):
                 # Add the extra columns to the data_dict
                 for col in self.extra_cols:
@@ -128,10 +131,54 @@ class BaseClassData:
                         self.all_parameter_names.append(col)
                 del old_dict
 
-            if len(self.data_dict.keys()) == 0:
-                self.all_parameter_names=[f"column_{i}" for i in range(self.loaded_data.shape[0])]
-                for i,name in enumerate(self.all_parameter_names):
-                    self.data_dict[name]=self.loaded_data[i]
+        else:
+            raise ValueError(f'Could not load data from {self.filepath}. File may be empty or not formatted correctly.')
+
+    def load_json(self):
+        try:
+            with open(self.filepath, 'r') as f:
+                json_data = json.load(f)
+
+            if hasattr(self, 'extra_cols'):
+                # Processed data that has been added to the data_dict. Need to preserve it!
+                old_dict = copy.deepcopy(self.data_dict)
+
+            self.data_dict = copy.deepcopy(json_data)
+
+            if hasattr(self, 'extra_cols'):
+                # Add the extra columns to the data_dict
+                for col in self.extra_cols:
+                    if col in old_dict.keys():
+                        self.data_dict[col] = old_dict[col]
+                del old_dict
+
+            self.all_parameter_names = list(self.data_dict.keys())
+        except Exception as e:
+            raise type(e)(f'Trying to open json at {self.filepath} raised error: {e}')
+
+    def prepare_dataset(self):
+        # Loads the data from file and prepares a data_dict, where the arrays are stored identified by 
+        # either their header column names, or by their column number if no header is present.
+        # These names are then sent to various parts of the GUI.
+        if self.filepath.endswith('.dat'):
+            try:
+                self.load_dat()
+                success=True
+            except Exception as e:
+                success=False
+                return e
+        elif self.filepath.endswith('.json'):
+            try:
+                self.load_json()
+                success=True
+            except Exception as e:
+                success=False
+                return e
+            
+        else:
+            return ValueError(f'File type of {self.filepath} not recognized. See documentation for supported types.')
+
+        if success:
 
             self.settings['X data'] = self.all_parameter_names[0]
             self.settings['Y data'] = self.all_parameter_names[1]
@@ -141,7 +188,7 @@ class BaseClassData:
             self.settings['default_ylabel'] = self.all_parameter_names[1]
             self.settings['default_fftxlabel'] = f'1/{self.all_parameter_names[0]}'
 
-            if self.loaded_data[0,1] == self.loaded_data[0,0] and len(self.all_parameter_names) > 2:
+            if self.data_dict[self.all_parameter_names[0]][1] == self.data_dict[self.all_parameter_names[0]][0] and len(self.all_parameter_names) > 2:
                 self.settings['Z data'] = self.all_parameter_names[2]
                 self.settings['clabel'] = self.all_parameter_names[2]
                 self.settings['default_clabel'] = self.all_parameter_names[2]
