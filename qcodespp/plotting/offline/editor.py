@@ -483,7 +483,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         minilog=[]
         if not filepaths:
             filepaths, _ = QtWidgets.QFileDialog.getOpenFileNames(
-                self, 'Open File', '', 'Data Files (*.dat *.npy *.csv)')
+                self, 'Open File', '', 'Data Files (*.dat *.npy *.csv *.json)')
         if filepaths:
             for i,filepath in enumerate(filepaths):
                 try:
@@ -3282,6 +3282,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         for url in urls:
             if not (url.toLocalFile().endswith('.dat') or url.toLocalFile().endswith('.npy')
                     or url.toLocalFile().endswith('.txt') or url.toLocalFile().endswith('.igs')
+                    or url.toLocalFile().endswith('.json')
                     or os.path.isdir(url.toLocalFile())):
                 return False
             else:
@@ -3291,7 +3292,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def drop_files_tester(self, urls):
         for url in urls:
             if not (url.toLocalFile().endswith('.dat') or url.toLocalFile().endswith('.npy') \
-                    or url.toLocalFile().endswith('.txt')):
+                    or url.toLocalFile().endswith('.txt') or url.toLocalFile().endswith('.json')):
                 return False
             else:
                 continue
