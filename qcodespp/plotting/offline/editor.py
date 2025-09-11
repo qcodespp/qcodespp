@@ -431,9 +431,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                              (3,4),(3,4),(3,4),(3,4),(4,4),(4,4),(4,4),(4,4),
                              (4,5),(4,5),(4,5),(4,5),(4,5),(5,5),(5,5),(5,5),
                              (5,5)]
-        self.figure.subplots_adjust(top=0.893, bottom=0.137, 
-                                    left=0.121, right=0.86)
-        
+        self.subplotpars = {key: rcParams[f'figure.subplot.{key}'] for key in
+                            ['left', 'bottom', 'right', 'top', 'wspace', 'hspace']}
+        # self.subplotpars['left'] = 0.121
+        # self.subplotpars['right'] = 0.86
+        # self.subplotpars['bottom'] = 0.137
+        # self.subplotpars['top'] = 0.893
+        self.figure.subplots_adjust(**self.subplotpars)
+
     def set_window_title(self,extra_info=''):
         if hasattr(self, 'linked_folder') and self.linked_folder:
             linked_info = f' - Linked to {self.linked_folder}'
@@ -912,7 +917,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     # The last item is reserved for 'global' program information.
                     dictionary_list.append({
                         'qcodespp_version': __version__,
-                        'show_linecut_markers': self.show_linecut_markers
+                        'show_linecut_markers': self.show_linecut_markers,
+                        'subplotpars': self.subplotpars
                     })
 
                     # Save all needed files to a temperorary directory and add them to the tarball
@@ -1080,7 +1086,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         if 'show_linecut_markers' in numpy_file[-1]:
                             self.show_linecut_markers = numpy_file[-1]['show_linecut_markers']
                     except Exception as e:
-                        self.log_error(f'Error loading show_linecut_markers from session:\n{type(e).__name__}: {e}')
+                        self.log_error(f'Error loading show_linecut_markers from session {session_filepath}:\n'
+                                        f'{type(e).__name__}: {e}')
+
                 self.session_filepath = session_filepath
                 self.log_error(f'Session loaded from {session_filepath}')
                 del data
@@ -1098,6 +1106,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.log_error(message, show_popup=True)
 
             self.update_plots() # Necessary to ensure some settings are applied to the final plot.
+            try:
+                if 'subplotpars' in numpy_file[-1]:
+                    self.subplotpars = numpy_file[-1]['subplotpars']
+                    self.figure.subplots_adjust(**self.subplotpars)
+            except Exception as e:
+                self.log_error(f'Error loading subplotpars from session {session_filepath}:\n'
+                                f'{type(e).__name__}: {e}')
         self.set_window_title()
 
     def resolve_missing_files(self, filenames):
@@ -1472,7 +1487,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         self.clear_sidebar1D()
 
+        if hasattr(self,'checked_item_len'):
+            old_checked_item_len=self.checked_item_len
+        else:
+            old_checked_item_len=0
         checked_items = self.get_checked_items()
+        self.checked_item_len=len(checked_items)
         if checked_items:
             rows, cols = self.subplot_grid[len(checked_items)-1]
             for index, item in enumerate(checked_items):
@@ -1522,8 +1542,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     continue
         try:
             self.show_current_all()
-            self.figure.tight_layout()
-            self.canvas.draw()
+            if old_checked_item_len != self.checked_item_len:
+                self.tight_layout()
+            else:
+                self.figure.subplots_adjust(**self.subplotpars)
+                self.canvas.draw()
         except Exception as e:
             self.log_error(f'Exception encountered updating plots:\n{type(e).__name__}: {e}')
             minilog.append(f'Exception encountered updating plots:\n{type(e).__name__}: {e}')
@@ -1984,7 +2007,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         view_settings[edited_setting] = True
                         if not hasattr(current_item.data,'hax'):
                             current_item.data.add_cbar_hist()
-                            self.figure.tight_layout()
+                            #self.tight_layout()
                     else:
                         view_settings[edited_setting] = False
                         if hasattr(current_item.data, 'hax'):
@@ -1994,7 +2017,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             except:
                                 pass
                             del current_item.data.hax
-                            self.figure.tight_layout()
+                            #self.tight_layout()
                 
                 current_item.data.apply_view_settings()
                 self.canvas.draw()
@@ -3474,25 +3497,30 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if (event.x < lb and event.y > bb and event.y < tb):
                 if (event.step > 0 or 
                     (event.step < 0 and self.figure.subplotpars.left > 0.07)):
-                    self.figure.subplots_adjust(left=(1+speed*event.step)*
-                                                self.figure.subplotpars.left)
+                    self.subplotpars['left']=(1+speed*event.step)*self.subplotpars['left']
+                    self.figure.subplots_adjust(left=self.subplotpars['left'])
             elif (event.x > rb and event.y > bb and event.y < tb):
                   if (event.step < 0 or 
                       (event.step > 0 and self.figure.subplotpars.right < 0.97)):
-                      self.figure.subplots_adjust(right=(1+speed*0.5*event.step)*
-                                                  self.figure.subplotpars.right)
+                      self.subplotpars['right']=(1+speed*0.5*event.step)*self.subplotpars['right']
+                      self.figure.subplots_adjust(right=self.subplotpars['right'])
             elif (event.y < bb and event.x > lb and event.x < rb):
                   if (event.step > 0 or 
                       (event.step < 0 and self.figure.subplotpars.bottom > 0.07)):
-                      self.figure.subplots_adjust(bottom=(1+speed*event.step)*
-                                                  self.figure.subplotpars.bottom)
+                      self.subplotpars['bottom']=(1+speed*event.step)*self.subplotpars['bottom']
+                      self.figure.subplots_adjust(bottom=self.subplotpars['bottom'])
             elif (event.y > tb and event.x > lb and event.x < rb):
                   if (event.step < 0 or 
                       (event.step > 0 and self.figure.subplotpars.top < 0.94)):
-                      self.figure.subplots_adjust(top=(1+speed*0.5*event.step)*
-                                                  self.figure.subplotpars.top)
+                      self.subplotpars['top']=(1+speed*0.5*event.step)*self.subplotpars['top']
+                      self.figure.subplots_adjust(top=self.subplotpars['top'])
             else:
-                self.figure.subplots_adjust(wspace=(1+speed*event.step)*self.figure.subplotpars.wspace)
+                if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
+                    self.subplotpars['hspace']=(1+speed*event.step)*self.subplotpars['hspace']
+                    self.figure.subplots_adjust(hspace=self.subplotpars['hspace'])
+                else:
+                    self.subplotpars['wspace']=(1+speed*event.step)*self.subplotpars['wspace']
+                    self.figure.subplots_adjust(wspace=self.subplotpars['wspace'])
             self.canvas.draw()
             
     def keyPressEvent(self, event): 
@@ -3642,6 +3670,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def tight_layout(self):
         self.figure.tight_layout()
+        for key in ['left','right','top','bottom','wspace','hspace']:
+            self.subplotpars[key]=getattr(self.figure.subplotpars,key)
         self.canvas.draw()
 
     def log_error(self, error_message, show_popup=False):
