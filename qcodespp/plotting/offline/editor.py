@@ -1519,10 +1519,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     item.data.axes = item.data.figure.add_subplot(rows, cols, index+1)
                     error=item.data.add_plot(editor_window=self)
                     if isinstance(error, list) and len(error)>0:
+                        # Warnings come back as a list (since it's possible to have multiple warnings, in contrast to exceptions)
+                        # Since matplotlib can generate a lot of warnings for perfectly fine data, we just log them, and don't 
+                        # show a popup that will probably annoy the user.
                         for w in error:
-                            minilog.append(f'Warning while plotting {item.data.label}\n{w.category.__name__}: {w.message}')
+                            #minilog.append(f'Warning while plotting {item.data.label}\n{w.category.__name__}: {w.message}')
                             self.log_error(f'Warning while plotting {item.data.label}\n{w.category.__name__}: {w.message}')
                     elif error:
+                        # Exceptions.
                         minilog.append(str(error))
                         self.log_error(str(error))
                         continue
@@ -1552,7 +1556,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             minilog.append(f'Exception encountered updating plots:\n{type(e).__name__}: {e}')
 
         if len(minilog) > 0:
-            message = 'The following errors/warnings occurred while plotting:\n\n'+'\n\n'.join(minilog)
+            message = 'The following errors occurred while plotting:\n\n'+'\n\n'.join(minilog)
             self.ew = ErrorWindow(message)
 
     # The below is not working and not implemented, but could be useful to fix and include.
