@@ -662,6 +662,9 @@ class BaseClassData:
         
     def reset_axlim_settings(self):
         self.axes.autoscale()
+        self.populate_axlim_settings()
+
+    def populate_axlim_settings(self):
         self.axlim_settings['Xmin'] = self.axes.get_xlim()[0]
         self.axlim_settings['Xmax'] = self.axes.get_xlim()[1]
         self.axlim_settings['Ymin'] = self.axes.get_ylim()[0]
