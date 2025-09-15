@@ -2929,18 +2929,18 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         return selected
     
     def mouse_click_canvas(self, event):
-        if self.navi_toolbar.mode == '': # If not using the navigation toolbar tools
-            if event.inaxes:
-                x, y = event.xdata, event.ydata
-                checked_items = self.get_checked_items()
-                self.plot_in_focus = [checked_item for checked_item in checked_items 
-                                      if checked_item.data.axes == event.inaxes]
-                if self.plot_in_focus:
-                    if self.file_list.currentItem() != self.plot_in_focus[0]:
-                        # If the clicked plot is not the current one, set it as current before doing anything else.
-                        self.file_list.setCurrentItem(self.plot_in_focus[0])
-                        self.file_clicked()
-                    else:
+        if event.inaxes:
+            x, y = event.xdata, event.ydata
+            checked_items = self.get_checked_items()
+            self.plot_in_focus = [checked_item for checked_item in checked_items 
+                                if checked_item.data.axes == event.inaxes]
+            if self.plot_in_focus:
+                if self.file_list.currentItem() != self.plot_in_focus[0]:
+                    # If the clicked plot is not the current one, set it as current before doing anything else.
+                    self.file_list.setCurrentItem(self.plot_in_focus[0])
+                    self.file_clicked()
+                else:
+                    if self.navi_toolbar.mode == '': # If not using the navigation toolbar tools
                         self.file_list.setCurrentItem(self.plot_in_focus[0])
                         self.file_clicked()
                         data = self.plot_in_focus[0].data
@@ -3076,25 +3076,34 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                 #         else:
                 #             self.press = event.ydata
+
+                    else:
+                        self.press = ['toolbar'] # The toolbar is being used.
+
         else:
             item, axis = self.get_axis_in_focus(event)
             if item:
-                data= item.data
-                if any(data.axlim_settings.values()) == None:
-                    data.populate_axlim_settings()
-                width, height = self.canvas.get_width_height()
-                bbox=data.axes.get_position().get_points()
-                x0, x1 = bbox[0][0]*width, bbox[1][0]*width
-                y0, y1 = bbox[0][1]*height, bbox[1][1]*height
-                if axis == 'x':
-                    min_0, max_0 = data.axes.get_xbound()
-                    pixels_per_unit = (x1 - x0) / (max_0 - min_0)
-                    axpress = event.x
-                elif axis == 'y':
-                    min_0, max_0 = data.axes.get_ybound()
-                    pixels_per_unit = (y1 - y0) / (max_0 - min_0)
-                    axpress = event.y
-                self.press = [axis,item,axpress,pixels_per_unit,min_0,max_0]
+                if self.file_list.currentItem() != item:
+                    # If the clicked plot is not the current one, set it as current before doing anything else.
+                    self.file_list.setCurrentItem(item)
+                    self.file_clicked()
+                else:
+                    data= item.data
+                    if any(data.axlim_settings.values()) == None or self.navi_toolbar.mode != '':
+                        data.populate_axlim_settings()
+                    width, height = self.canvas.get_width_height()
+                    bbox=data.axes.get_position().get_points()
+                    x0, x1 = bbox[0][0]*width, bbox[1][0]*width
+                    y0, y1 = bbox[0][1]*height, bbox[1][1]*height
+                    if axis == 'x':
+                        min_0, max_0 = data.axes.get_xbound()
+                        pixels_per_unit = (x1 - x0) / (max_0 - min_0)
+                        axpress = event.x
+                    elif axis == 'y':
+                        min_0, max_0 = data.axes.get_ybound()
+                        pixels_per_unit = (y1 - y0) / (max_0 - min_0)
+                        axpress = event.y
+                    self.press = [axis,item,axpress,pixels_per_unit,min_0,max_0]
 
     def on_motion(self, event):
         if hasattr(self,'press') and self.press != None:
@@ -3173,6 +3182,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 fig = data.axes.get_figure()
                 fig.canvas.toolbar.push_current()
 
+            elif self.press == ['toolbar']:
+                item=self.plot_in_focus[0]
+                if item:
+                    data=item.data
+                    data.populate_axlim_settings()
+                    self.show_current_axlim_settings()
+
 
         else:
             # Mouse is moving around without a press event (i.e. not clicked). Turn it into a move cursor if over a haxfill.
@@ -3199,6 +3215,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.canvas.setCursor(QtCore.Qt.ArrowCursor)
 
     def on_release(self, event):
+        if hasattr(self,'press') and self.press == ['toolbar']:
+            item=self.plot_in_focus[0]
+            if item:
+                data=item.data
+                data.populate_axlim_settings()
+                self.show_current_axlim_settings()
         self.press = None
         if hasattr(self,'hax_marker'):
             self.hax_marker.remove()
