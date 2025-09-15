@@ -3390,14 +3390,94 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if not hasattr(item.data,'statspopup'):
                 item.data.statspopup=StatsWindow(item.data)
             item.data.statspopup.show()
-            
+
+    # def axis_in_focus(self,event):
+    #     for checked_item in self.get_checked_items():
+    #         width, height = self.canvas.get_width_height()
+    #         pos= [checked_item.data.axes.get_xbound(), checked_item.data.axes.get_ybound()]
+    #         x0, y0, x1, y1 = pos[0][0]*width, pos[0][1]*height, pos[1][0]*width, pos[1][1]*height
+
+    #         if event.x
+
+    def get_axis_in_focus(self,event):
+        for checked_item in self.get_checked_items():
+            if checked_item.data.axes.xaxis.contains(event)[0]:
+                return checked_item, 'x'
+            elif checked_item.data.axes.yaxis.contains(event)[0]:
+                return checked_item, 'y'
+        return None, None
+    
+    def zoom_plot(self, event, axis, item):
+        scale=1.2
+        data = item.data
+        axes = data.axes
+        scale_factor = np.power(scale, -event.step)
+
+        # if any(scale != 'linear' for scale in [data.axlim_settings['Xscale'],
+        #                                         data.axlim_settings['Yscale']]):
+            # This zoom method works well for non-linear plots, but is slightly slower since requires more calculation.
+        x = event.x
+        y = event.y
+        #convert pixels to axes
+        tranP2A = axes.transAxes.inverted().transform
+        #convert axes to data limits
+        tranA2D= axes.transLimits.inverted().transform
+        #convert the scale (for log plots)
+        tranSclA2D = axes.transScale.inverted().transform
+        #x,y position of the mouse in range (0,1)
+        xa,ya = tranP2A((x,y))
+        newxlims=[xa - xa*scale_factor, xa + (1-xa)*scale_factor]
+        newylims=[ya - ya*scale_factor, ya + (1-ya)*scale_factor]
+        new_xlim0,new_ylim0 = tranSclA2D(tranA2D((newxlims[0],newxlims[0])))
+        new_xlim1,new_ylim1 = tranSclA2D(tranA2D((newylims[1],newylims[1])))
+
+        if axis == 'x':
+            data.axlim_settings['Xmin']=new_xlim0
+            data.axlim_settings['Xmax']=new_xlim1
+        elif axis == 'y':
+            data.axlim_settings['Ymin']=new_ylim0
+            data.axlim_settings['Ymax']=new_ylim1
+        else:
+            data.axlim_settings['Xmin']=new_xlim0
+            data.axlim_settings['Xmax']=new_xlim1
+            data.axlim_settings['Ymin']=new_ylim0
+            data.axlim_settings['Ymax']=new_ylim1
+        # else:
+        #     xdata = event.xdata
+        #     ydata = event.ydata
+        #     x_left = xdata - axes.get_xlim()[0]
+        #     x_right = axes.get_xlim()[1] - xdata
+        #     y_top = ydata - axes.get_ylim()[0]
+        #     y_bottom = axes.get_ylim()[1] - ydata
+        #     newxlims=[xdata - x_left * scale_factor, xdata + x_right * scale_factor]
+        #     newylims=[ydata - y_top * scale_factor, ydata + y_bottom * scale_factor]
+        #     if axis == 'x':
+        #         data.axlim_settings['Xmin']=newxlims[0]
+        #         data.axlim_settings['Xmax']=newxlims[1]
+        #     elif axis == 'y':
+        #         data.axlim_settings['Ymin']=newylims[0]
+        #         data.axlim_settings['Ymax']=newylims[1]
+        #     else:
+        #         data.axlim_settings['Xmin']=newxlims[0]
+        #         data.axlim_settings['Xmax']=newxlims[1]
+        #         data.axlim_settings['Ymin']=newylims[0]
+        #         data.axlim_settings['Ymax']=newylims[1]
+
+
+        data.apply_axlim_settings()
+        axes.figure.canvas.draw()
+        self.show_current_axlim_settings()
+        # Update toolbar so back/forward buttons work
+        fig = axes.get_figure()
+        fig.canvas.toolbar.push_current()
+    
     def mouse_scroll_canvas(self, event):
         if event.inaxes:
             checked_items = self.get_checked_items()
             self.plot_in_focus = [checked_item for checked_item in checked_items 
                                   if checked_item.data.axes == event.inaxes]
-            self.cbar_in_focus = [checked_item for checked_item in checked_items
-                        if hasattr(checked_item.data, 'cbar') and checked_item.data.cbar.ax == event.inaxes]
+            # self.cbar_in_focus = [checked_item for checked_item in checked_items
+            #             if hasattr(checked_item.data, 'cbar') and checked_item.data.cbar.ax == event.inaxes]
             
             # Scolling within plot bounds zooms
             if self.plot_in_focus:
@@ -3406,68 +3486,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.file_list.setCurrentItem(self.plot_in_focus[0])
                     self.file_clicked()
                 else:
-                    scale=1.2
-                    data = self.plot_in_focus[0].data
-                    scale_factor = np.power(scale, -event.step)
-
-                    if any(scale != 'linear' for scale in [data.axlim_settings['Xscale'],
-                                                            data.axlim_settings['Yscale']]):
-                        # This zoom method works well for non-linear plots, but is slightly slower since requires more calculation.
-                        x = event.x
-                        y = event.y
-                        #convert pixels to axes
-                        tranP2A = event.inaxes.transAxes.inverted().transform
-                        #convert axes to data limits
-                        tranA2D= event.inaxes.transLimits.inverted().transform
-                        #convert the scale (for log plots)
-                        tranSclA2D = event.inaxes.transScale.inverted().transform
-                        #x,y position of the mouse in range (0,1)
-                        xa,ya = tranP2A((x,y))
-                        newxlims=[xa - xa*scale_factor, xa + (1-xa)*scale_factor]
-                        newylims=[ya - ya*scale_factor, ya + (1-ya)*scale_factor]
-                        new_xlim0,new_ylim0 = tranSclA2D(tranA2D((newxlims[0],newxlims[0])))
-                        new_xlim1,new_ylim1 = tranSclA2D(tranA2D((newylims[1],newylims[1])))
-
-                        if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
-                            data.axlim_settings['Xmin']=new_xlim0
-                            data.axlim_settings['Xmax']=new_xlim1
-                        elif QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
-                            data.axlim_settings['Ymin']=new_ylim0
-                            data.axlim_settings['Ymax']=new_ylim1
-                        else:
-                            data.axlim_settings['Xmin']=new_xlim0
-                            data.axlim_settings['Xmax']=new_xlim1
-                            data.axlim_settings['Ymin']=new_ylim0
-                            data.axlim_settings['Ymax']=new_ylim1
+                    if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
+                        self.zoom_plot(event, axis='x', item=self.plot_in_focus[0])
+                    elif QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
+                        self.zoom_plot(event, axis='y', item=self.plot_in_focus[0])
                     else:
-                        xdata = event.xdata
-                        ydata = event.ydata
-                        x_left = xdata - event.inaxes.get_xlim()[0]
-                        x_right = event.inaxes.get_xlim()[1] - xdata
-                        y_top = ydata - event.inaxes.get_ylim()[0]
-                        y_bottom = event.inaxes.get_ylim()[1] - ydata
-                        newxlims=[xdata - x_left * scale_factor, xdata + x_right * scale_factor]
-                        newylims=[ydata - y_top * scale_factor, ydata + y_bottom * scale_factor]
-                        if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
-                            data.axlim_settings['Xmin']=newxlims[0]
-                            data.axlim_settings['Xmax']=newxlims[1]
-                        elif QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
-                            data.axlim_settings['Ymin']=newylims[0]
-                            data.axlim_settings['Ymax']=newylims[1]
-                        else:
-                            data.axlim_settings['Xmin']=newxlims[0]
-                            data.axlim_settings['Xmax']=newxlims[1]
-                            data.axlim_settings['Ymin']=newylims[0]
-                            data.axlim_settings['Ymax']=newylims[1]
-
-
-                    data.apply_axlim_settings()
-                    event.inaxes.figure.canvas.draw()
-                    self.show_current_axlim_settings()
-                    # Update toolbar so back/forward buttons work
-                    fig = event.inaxes.get_figure()
-                    fig.canvas.toolbar.push_current()
-
+                        self.zoom_plot(event, axis='both', item=self.plot_in_focus[0])
             #Scrolling within colourbar changes limits
             # elif self.cbar_in_focus:
             #     if self.file_list.currentItem() != self.cbar_in_focus[0]:
@@ -3495,37 +3519,64 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         # Scrolling outside of plot bounds changes the whitespace around/between plots
         else:
-            width, height = self.canvas.get_width_height()
-            speed = 0.03
-            lb, rb, tb, bb = 0.15*width, 0.85*width, 0.85*height, 0.15*height
-            if (event.x < lb and event.y > bb and event.y < tb):
-                if (event.step > 0 or 
-                    (event.step < 0 and self.figure.subplotpars.left > 0.07)):
-                    self.subplotpars['left']=(1+speed*event.step)*self.subplotpars['left']
-                    self.figure.subplots_adjust(left=self.subplotpars['left'])
-            elif (event.x > rb and event.y > bb and event.y < tb):
-                  if (event.step < 0 or 
-                      (event.step > 0 and self.figure.subplotpars.right < 0.97)):
-                      self.subplotpars['right']=(1+speed*0.5*event.step)*self.subplotpars['right']
-                      self.figure.subplots_adjust(right=self.subplotpars['right'])
-            elif (event.y < bb and event.x > lb and event.x < rb):
-                  if (event.step > 0 or 
-                      (event.step < 0 and self.figure.subplotpars.bottom > 0.07)):
-                      self.subplotpars['bottom']=(1+speed*event.step)*self.subplotpars['bottom']
-                      self.figure.subplots_adjust(bottom=self.subplotpars['bottom'])
-            elif (event.y > tb and event.x > lb and event.x < rb):
-                  if (event.step < 0 or 
-                      (event.step > 0 and self.figure.subplotpars.top < 0.94)):
-                      self.subplotpars['top']=(1+speed*0.5*event.step)*self.subplotpars['top']
-                      self.figure.subplots_adjust(top=self.subplotpars['top'])
-            else:
-                if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
-                    self.subplotpars['hspace']=(1+speed*event.step)*self.subplotpars['hspace']
-                    self.figure.subplots_adjust(hspace=self.subplotpars['hspace'])
+            item, axis = self.get_axis_in_focus(event)
+            if item:
+                if self.file_list.currentItem() != item:
+                    # If the clicked plot is not the current one, set it as current before doing anything else.
+                    self.file_list.setCurrentItem(item)
+                    self.file_clicked()
                 else:
-                    self.subplotpars['wspace']=(1+speed*event.step)*self.subplotpars['wspace']
-                    self.figure.subplots_adjust(wspace=self.subplotpars['wspace'])
-            self.canvas.draw()
+                    self.zoom_plot(event, axis=axis, item=item)
+
+            else:
+                width, height = self.canvas.get_width_height()
+                speed = 0.03
+                lb, rb, tb, bb = 0.15*width, 0.85*width, 0.85*height, 0.15*height
+                if (event.x < lb and event.y > bb and event.y < tb):
+                    if (event.step > 0 or 
+                        (event.step < 0 and self.figure.subplotpars.left > 0.07)):
+                        self.subplotpars['left']=(1+speed*event.step)*self.subplotpars['left']
+                        self.figure.subplots_adjust(left=self.subplotpars['left'])
+                elif (event.x > rb and event.y > bb and event.y < tb):
+                    if (event.step < 0 or 
+                        (event.step > 0 and self.figure.subplotpars.right < 0.97)):
+                        self.subplotpars['right']=(1+speed*0.5*event.step)*self.subplotpars['right']
+                        self.figure.subplots_adjust(right=self.subplotpars['right'])
+                elif (event.y < bb and event.x > lb and event.x < rb):
+                    if (event.step > 0 or 
+                        (event.step < 0 and self.figure.subplotpars.bottom > 0.07)):
+                        self.subplotpars['bottom']=(1+speed*event.step)*self.subplotpars['bottom']
+                        self.figure.subplots_adjust(bottom=self.subplotpars['bottom'])
+                elif (event.y > tb and event.x > lb and event.x < rb):
+                    if (event.step < 0 or 
+                        (event.step > 0 and self.figure.subplotpars.top < 0.94)):
+                        self.subplotpars['top']=(1+speed*0.5*event.step)*self.subplotpars['top']
+                        self.figure.subplots_adjust(top=self.subplotpars['top'])
+                else:
+                    dir=None
+                    speed=0.05
+                    for checked_item in self.get_checked_items():
+                        x0, y0 = checked_item.data.axes.get_position().get_points()[0]
+                        x1, y1 = checked_item.data.axes.get_position().get_points()[1]
+                        if x0*width < event.x < x1*width:
+                            dir = 'hspace'
+                            break
+                        elif y0*height < event.y < y1*height:
+                            dir = 'wspace'
+                            break
+                    if dir:
+                        if dir == 'wspace':
+                            self.subplotpars['wspace']=(1+speed*event.step)*self.subplotpars['wspace']
+                            self.figure.subplots_adjust(wspace=self.subplotpars['wspace'])
+                        elif dir == 'hspace':
+                            self.subplotpars['hspace']=(1+speed*event.step)*self.subplotpars['hspace']
+                            self.figure.subplots_adjust(hspace=self.subplotpars['hspace'])
+                    else:
+                        self.subplotpars['wspace']=(1+speed*event.step)*self.subplotpars['wspace']
+                        self.subplotpars['hspace']=(1+speed*event.step)*self.subplotpars['hspace']
+                        self.figure.subplots_adjust(wspace=self.subplotpars['wspace'],
+                                                    hspace=self.subplotpars['hspace'])
+                self.canvas.draw()
             
     def keyPressEvent(self, event): 
         # if event.key() == QtCore.Qt.Key_C and event.modifiers() == QtCore.Qt.ControlModifier:
