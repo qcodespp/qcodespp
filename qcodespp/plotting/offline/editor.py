@@ -2724,13 +2724,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def init_linecuts(self,data):
         data.linecuts={'horizontal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5,
-                                    'legend':False,'xscale':'linear','yscale':'linear'},
+                                    'legend':False,'xscale':'linear','yscale':'linear','lock_scaling':False},
                         'vertical':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5,
-                                    'legend':False,'xscale':'linear','yscale':'linear'},
+                                    'legend':False,'xscale':'linear','yscale':'linear','lock_scaling':False},
                         'diagonal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5,
-                                    'legend':False,'xscale':'linear','yscale':'linear'},
+                                    'legend':False,'xscale':'linear','yscale':'linear','lock_scaling':False},
                         'circular':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5,
-                                    'legend':False,'xscale':'linear','yscale':'linear'},
+                                    'legend':False,'xscale':'linear','yscale':'linear','lock_scaling':False},
                         }
 
     def make_linecut_window(self,orientation, data=None, show=True):

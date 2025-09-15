@@ -107,6 +107,8 @@ class LineCutWindow(QtWidgets.QWidget):
         self.linesize_box.setValue(self.parent.linecuts[self.orientation]['linesize'])
 
         # Plotting widgets
+        self.autoscale_checkbox = QtWidgets.QCheckBox('Lock axis limits')
+        self.autoscale_checkbox.setChecked(self.parent.linecuts[self.orientation]['lock_scaling'])
         self.reset_plot_limits_button = QtWidgets.QPushButton('Autoscale axes')
         self.plot_against_label = QtWidgets.QLabel('Plot against:')
         self.plot_against_box = QtWidgets.QComboBox() #For diagonal linecuts
@@ -194,6 +196,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.cuts_table.itemClicked.connect(self.item_clicked)
 
         self.reset_plot_limits_button.clicked.connect(self.autoscale_axes)
+        self.autoscale_checkbox.toggled.connect(self.toggle_lock_scaling)
         self.plot_against_box.currentIndexChanged.connect(self.update)
         if self.orientation == 'diagonal':
             self.left_button.clicked.connect(lambda: self.move_diagonal_line('left'))
@@ -308,6 +311,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.bot_buttons_layout.addWidget(self.yscale_label)
         self.bot_buttons_layout.addWidget(self.yscale_box)
         self.bot_buttons_layout.addStretch()
+        self.bot_buttons_layout.addWidget(self.autoscale_checkbox)
         self.bot_buttons_layout.addWidget(self.reset_plot_limits_button)
         
         # Sub-layouts(s) in fitting box
@@ -1305,6 +1309,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 break
 
         self.running = True
+        old_lims=[self.axes.get_xlim(), self.axes.get_ylim()] if hasattr(self,'axes') else None
         self.figure.clear()
 
         self.axes = self.figure.add_subplot(111)
@@ -1362,6 +1367,12 @@ class LineCutWindow(QtWidgets.QWidget):
         if self.parent.linecuts[self.orientation]['legend']:
             self.axes.legend()
         self.limits_edited()
+        if self.parent.linecuts[self.orientation]['lock_scaling'] and old_lims is not None:
+            try:
+                self.axes.set_xlim(old_lims[0])
+                self.axes.set_ylim(old_lims[1])
+            except Exception as e:
+                pass
         self.canvas.draw()
         self.parent.canvas.draw()
               
@@ -1389,6 +1400,9 @@ class LineCutWindow(QtWidgets.QWidget):
         except Exception as e:
             self.output_window.setText(f'Could not plot fit: {e}')
         self.canvas.draw()
+
+    def toggle_lock_scaling(self):
+        self.parent.linecuts[self.orientation]['lock_scaling'] = self.autoscale_checkbox.isChecked()
 
     def autoscale_axes(self):
         self.axes.autoscale()
