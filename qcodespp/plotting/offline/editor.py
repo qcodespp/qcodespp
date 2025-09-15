@@ -3076,25 +3076,25 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                 #         else:
                 #             self.press = event.ydata
-            else:
-                item, axis = self.get_axis_in_focus(event)
-                if item:
-                    data= item.data
-                    if any(data.axlim_settings.values()) == None:
-                        data.populate_axlim_settings()
-                    width, height = self.canvas.get_width_height()
-                    bbox=data.axes.get_position().get_points()
-                    x0, x1 = bbox[0][0]*width, bbox[1][0]*width
-                    y0, y1 = bbox[0][1]*height, bbox[1][1]*height
-                    if axis == 'x':
-                        min_0, max_0 = data.axes.get_xbound()
-                        pixels_per_unit = (x1 - x0) / (max_0 - min_0)
-                        axpress = event.x
-                    elif axis == 'y':
-                        min_0, max_0 = data.axes.get_ybound()
-                        pixels_per_unit = (y1 - y0) / (max_0 - min_0)
-                        axpress = event.y
-                    self.press = [axis,item,axpress,pixels_per_unit,min_0,max_0]
+        else:
+            item, axis = self.get_axis_in_focus(event)
+            if item:
+                data= item.data
+                if any(data.axlim_settings.values()) == None:
+                    data.populate_axlim_settings()
+                width, height = self.canvas.get_width_height()
+                bbox=data.axes.get_position().get_points()
+                x0, x1 = bbox[0][0]*width, bbox[1][0]*width
+                y0, y1 = bbox[0][1]*height, bbox[1][1]*height
+                if axis == 'x':
+                    min_0, max_0 = data.axes.get_xbound()
+                    pixels_per_unit = (x1 - x0) / (max_0 - min_0)
+                    axpress = event.x
+                elif axis == 'y':
+                    min_0, max_0 = data.axes.get_ybound()
+                    pixels_per_unit = (y1 - y0) / (max_0 - min_0)
+                    axpress = event.y
+                self.press = [axis,item,axpress,pixels_per_unit,min_0,max_0]
 
     def on_motion(self, event):
         if hasattr(self,'press') and self.press != None:
