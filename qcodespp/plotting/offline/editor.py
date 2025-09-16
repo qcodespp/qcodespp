@@ -3081,6 +3081,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         self.press = ['toolbar'] # The toolbar is being used.
 
         else:
+            # Click and drag on axes pans them
             item, axis = self.get_axis_in_focus(event)
             if item:
                 if self.file_list.currentItem() != item:
@@ -3469,64 +3470,36 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         axes = data.axes
         scale_factor = np.power(scale, -event.step)
 
-        if any(scale != 'linear' for scale in [data.axlim_settings['Xscale'],
-                                                    data.axlim_settings['Yscale']]):
-            # This zoom method works well for non-linear plots, but is slightly slower since requires more calculation.
-            x = event.x
-            y = event.y
-            #convert pixels to axes
-            tranP2A = axes.transAxes.inverted().transform
-            #convert axes to data limits
-            tranA2D= axes.transLimits.inverted().transform
-            #convert the scale (for log plots)
-            tranSclA2D = axes.transScale.inverted().transform
-            #x,y position of the mouse in range (0,1)
-            xa,ya = tranP2A((x,y))
-            newxlims=[xa - xa*scale_factor, xa + (1-xa)*scale_factor]
-            newylims=[ya - ya*scale_factor, ya + (1-ya)*scale_factor]
-            new_xlim0,new_ylim0 = tranSclA2D(tranA2D((newxlims[0],newxlims[0])))
-            new_xlim1,new_ylim1 = tranSclA2D(tranA2D((newylims[1],newylims[1])))
+        #convert pixels to axes
+        tranP2A = axes.transAxes.inverted().transform
+        xdata, ydata = tranP2A((event.x,event.y))
+        #convert axes to data limits
+        tranA2D= axes.transLimits.inverted().transform
+        #convert the scale (for log plots)
+        tranSclA2D = axes.transScale.inverted().transform
+        #x,y position of the mouse in range (0,1)
+        newxlims=[xdata - xdata*scale_factor, xdata + (1-xdata)*scale_factor]
+        newylims=[ydata - ydata*scale_factor, ydata + (1-ydata)*scale_factor]
+        new_xlim0,new_ylim0 = tranSclA2D(tranA2D((newxlims[0],newxlims[0])))
+        new_xlim1,new_ylim1 = tranSclA2D(tranA2D((newylims[1],newylims[1])))
 
-            if axis == 'x':
-                data.axlim_settings['Xmin']=new_xlim0
-                data.axlim_settings['Xmax']=new_xlim1
-            elif axis == 'y':
-                data.axlim_settings['Ymin']=new_ylim0
-                data.axlim_settings['Ymax']=new_ylim1
-            else:
-                data.axlim_settings['Xmin']=new_xlim0
-                data.axlim_settings['Xmax']=new_xlim1
-                data.axlim_settings['Ymin']=new_ylim0
-                data.axlim_settings['Ymax']=new_ylim1
+        if axis == 'x':
+            data.axlim_settings['Xmin']=new_xlim0
+            data.axlim_settings['Xmax']=new_xlim1
+        elif axis == 'y':
+            data.axlim_settings['Ymin']=new_ylim0
+            data.axlim_settings['Ymax']=new_ylim1
         else:
-            width, height = self.canvas.get_width_height()
-            xdata = event.x/width
-            ydata = event.y/height
-            x_left = xdata - axes.get_xlim()[0]
-            x_right = axes.get_xlim()[1] - xdata
-            y_top = ydata - axes.get_ylim()[0]
-            y_bottom = axes.get_ylim()[1] - ydata
-            newxlims=[xdata - x_left * scale_factor, xdata + x_right * scale_factor]
-            newylims=[ydata - y_top * scale_factor, ydata + y_bottom * scale_factor]
-            if axis == 'x':
-                data.axlim_settings['Xmin']=newxlims[0]
-                data.axlim_settings['Xmax']=newxlims[1]
-            elif axis == 'y':
-                data.axlim_settings['Ymin']=newylims[0]
-                data.axlim_settings['Ymax']=newylims[1]
-            else:
-                data.axlim_settings['Xmin']=newxlims[0]
-                data.axlim_settings['Xmax']=newxlims[1]
-                data.axlim_settings['Ymin']=newylims[0]
-                data.axlim_settings['Ymax']=newylims[1]
-
+            data.axlim_settings['Xmin']=new_xlim0
+            data.axlim_settings['Xmax']=new_xlim1
+            data.axlim_settings['Ymin']=new_ylim0
+            data.axlim_settings['Ymax']=new_ylim1
 
         data.apply_axlim_settings()
-        axes.figure.canvas.draw()
+        self.canvas.draw()
         self.show_current_axlim_settings()
         # Update toolbar so back/forward buttons work
-        fig = axes.get_figure()
-        fig.canvas.toolbar.push_current()
+        self.canvas.toolbar.push_current()
     
     def mouse_scroll_canvas(self, event):
         if event.inaxes:
