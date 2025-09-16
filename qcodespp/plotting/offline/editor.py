@@ -3472,9 +3472,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def get_axis_in_focus(self,event):
         for checked_item in self.get_checked_items():
-            if checked_item.data.axes.xaxis.contains(event)[0]:
+            axes=checked_item.data.axes
+            if (axes.xaxis.contains(event)[0] and
+                event.y < axes.get_window_extent().y1):
                 return checked_item, 'x'
-            elif checked_item.data.axes.yaxis.contains(event)[0]:
+            elif (axes.yaxis.contains(event)[0] and
+                  event.x < axes.get_window_extent().x1):
                 return checked_item, 'y'
         return None, None
     
@@ -3605,6 +3608,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     for checked_item in self.get_checked_items():
                         x0, y0 = checked_item.data.axes.get_position().get_points()[0]
                         x1, y1 = checked_item.data.axes.get_position().get_points()[1]
+                        if hasattr(checked_item.data, 'cbar') and checked_item.data.settings['colorbar'] == 'True':
+                            x1 = checked_item.data.cbar.ax.yaxis.label.get_position()[0]/width
                         if x0*width < event.x < x1*width:
                             dir = 'hspace'
                             break
