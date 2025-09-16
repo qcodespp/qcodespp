@@ -1551,6 +1551,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             else:
                 self.figure.subplots_adjust(**self.subplotpars)
                 self.canvas.draw()
+            self.update_pick_radii()
         except Exception as e:
             self.log_error(f'Exception encountered updating plots:\n{type(e).__name__}: {e}')
             minilog.append(f'Exception encountered updating plots:\n{type(e).__name__}: {e}')
@@ -1558,6 +1559,19 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if len(minilog) > 0:
             message = 'The following errors occurred while plotting:\n\n'+'\n\n'.join(minilog)
             self.ew = ErrorWindow(message)
+
+    def update_pick_radii(self):
+        # Define pick radius for the axes to be anywhere between the axis label and the axis spine.
+        for item in self.get_checked_items():
+            ax=item.data.axes
+            xlabpos=ax.xaxis.label.get_position()[1]
+            ylabpos=ax.yaxis.label.get_position()[0]
+            windowex=ax.get_window_extent()
+            xrad=np.abs(windowex.y0-xlabpos)
+            yrad=np.abs(windowex.x0-ylabpos)
+            ax.xaxis.set_pickradius(xrad)
+            ax.yaxis.set_pickradius(yrad)
+
 
     # The below is not working and not implemented, but could be useful to fix and include.
     # def to_next_file(self):

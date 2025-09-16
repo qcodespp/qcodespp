@@ -1025,9 +1025,21 @@ class LineCutWindow(QtWidgets.QWidget):
                 for line in fit_lines:
                     if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
                         self.draw_fits(line)
-
+            self.canvas.draw()
             self.parent.canvas.draw()
+            self.update_pick_radius()
             self.show()
+
+    def update_pick_radius(self):
+        # Define pick radius for the axes to be anywhere between the axis label and the axis spine.
+        ax=self.axes
+        xlabpos=ax.xaxis.label.get_position()[1]
+        ylabpos=ax.yaxis.label.get_position()[0]
+        windowex=ax.get_window_extent()
+        xrad=np.abs(windowex.y0-xlabpos)
+        yrad=np.abs(windowex.x0-ylabpos)
+        ax.xaxis.set_pickradius(xrad)
+        ax.yaxis.set_pickradius(yrad)
                
     def fit_class_changed(self):
         self.fit_box.currentIndexChanged.disconnect(self.fit_type_changed)
@@ -1376,8 +1388,8 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.axes.set_ylim(old_lims[1])
             except Exception as e:
                 pass
-        self.canvas.draw()
-        self.parent.canvas.draw()
+        #self.canvas.draw()
+        #self.parent.canvas.draw()
               
     def draw_fits(self,line):
         try:
