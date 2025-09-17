@@ -955,6 +955,10 @@ class QSwitches(Instrument):
     def breakout(self, line: Union[str,int], tap: Union[str,int]) -> None:
         '''
         Connect the specified line to the specified tap AND disconnect ground.
+
+        Args:
+            line: the output line
+            tap: the input BNC tap
         '''
         self.close_relay(self._to_line(line), self._to_tap(tap))
         self.open_relay(self._to_line(line), 0)
