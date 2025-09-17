@@ -538,6 +538,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     if attr_dicts: #then a previous session is being loaded
                         for attr,value in attr_dicts[i].items():
                             if attr not in ['filename','checkState','duplicate','is_current_item',
+                                            'view_settings',
                                             'extra_cols','dataset1d_type','dataset2d_type',
                                             'dataset1d_plotted_lines','dataset2d_linecuts']:
                                 setattr(item.data,attr,value)
@@ -597,6 +598,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         if 'processed_data' in attr_dicts[i]: # If the data had been plotted we need to force load it here
                                                                 # otherwise the data will be in some weird state.
                             item.data.prepare_data_for_plot(reload_data=True,reload_from_file=True)
+                        
+                        if 'view_settings' in attr_dicts[i]:
+                            item.data.view_settings = attr_dicts[i]['view_settings']
 
                     else:
                         for setting in ['titlesize','labelsize','ticksize']:
