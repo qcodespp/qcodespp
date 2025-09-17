@@ -120,7 +120,8 @@ class QSwitch(Instrument):
 
         Args:
             name (str): Name for instrument
-            address (str): Address identification string, either a visa identification address (for USB or TCP/IP (fw<=1.3)) or IP address (for UDP (fw>=2.0))
+            address (str): Address identification string, either a visa identification address 
+                (for USB or TCP/IP (fw<=1.3)) or IP address (for UDP (fw>=2.0))
         """
         visalib = kwargs.pop('visalib', '@py')
         super().__init__(name, **kwargs)
@@ -199,8 +200,9 @@ class QSwitch(Instrument):
         self.state_force_update()
 
     def soft_reset(self, force=False) -> None:
-        """ Resets the relays to the default state excluding the relays in self.lokced_relays
-            The check for locked relays prevents accidentally reseting e.g. a gate in the case that the kernel is restarted but the locked_relays parameter is not updated.
+        """ Resets the relays to the default state excluding the relays in self.locked_relays
+            The check for locked relays prevents accidentally reseting e.g. a gate in the case that
+            the kernel is restarted but the locked_relays parameter is not updated.
         Args:
             force (bool): If True, all relays are reset to the default state. Bypasses the check for locked relays.
         """
@@ -331,21 +333,49 @@ class QSwitch(Instrument):
     # -----------------------------------------------------------------------
 
     def close_relays(self, relays: State) -> None:
+        '''
+        Close multiple relays at once.
+
+        Args:
+            relays: A list of tuples (line, tap) specifying the each relay to close.
+                e.g. [(1, 0), (2, 1)]
+        '''
         relays=self._convert_many_to_int(relays)
         currently = channel_list_to_state(self._state)
         union = list(itertools.chain(currently, relays))
         self._effectuate(union)
 
     def close_relay(self, line: int, tap: int) -> None:
+        '''
+        Close a relay at the specified line and tap.
+
+        Args:
+            line: The line number (1 to N*24)
+            tap: The tap number (0 for ground, 1-8 for breakouts, 9 for connect)
+        '''
         self.close_relays([(line, tap)])
 
     def open_relays(self, relays: State) -> None:
+        '''
+        Open multiple relays at once.
+
+        Args:
+            relays: A list of tuples (line, tap) specifying the relays to open.
+                e.g. [(1, 0), (2, 1)]
+        '''
         relays=self._convert_many_to_int(relays)
         currently = frozenset(channel_list_to_state(self._state))
         subtraction = frozenset(relays)
         self._effectuate(list(currently - subtraction))
 
     def open_relay(self, line: int, tap: int) -> None:
+        '''
+        Open a relay at the specified line and tap.
+
+        Args:
+            line: The line number (1 to N*24)
+            tap: The tap number (0 for ground, 1-8 for breakouts, 9 for connect)
+        '''
         self.open_relays([(line, tap)])
 
     def _convert_many_to_int(self,relays):
@@ -362,21 +392,28 @@ class QSwitch(Instrument):
         try:
             return int(val)
         except Exception as e:
-            return ValueError(f'Direct manipulation of relays requires ints. Trying to convert {val} to int raised error: {e}')
+            return ValueError(f'Direct manipulation of relays requires ints. '
+                f'Trying to convert {val} to int raised error: {e}')
 
     def _check_line_range(self,line):
         if not 0<line<=relay_lines:
-            raise ValueError(f'line number must be between 1 and {relay_lines}')
+            raise ValueError(f'line number must be between 1 and {relay_lines}, not {line}')
 
     def _check_tap_range(self,tap):
         if not 0<=tap<=relays_per_line-1:
-            raise ValueError(f'tap number must be between 0 and {relays_per_line-1}')
+            raise ValueError(f'tap number must be between 0 and {relays_per_line-1}, not {tap}')
 
     # -----------------------------------------------------------------------
     # Manipulation by name
     # -----------------------------------------------------------------------
 
     def ground(self, lines: OneOrMore) -> None:
+        '''
+        Connect one or more lines to ground (tap 0).
+        
+        Args:
+            lines: A line name, number, or list of names/numbers.
+        '''
         connections: List[Tuple[int, int]] = []
         if isinstance(lines, (int,str)):
             line = self._to_line(lines)
@@ -394,6 +431,13 @@ class QSwitch(Instrument):
             self.open_relays(connections)
 
     def connect(self, lines: OneOrMore) -> None:
+        '''
+        Connect the specified lines directly through to the output (i.e. connect tap 9)
+
+        Args:
+            lines: The line(s) to connect to the output. Specify a single line through its integer value
+                or its name, or multiple lines through a list of integers or names.
+        '''
         if isinstance(lines, (str,int)):
             self.close_relay(self._to_line(lines), 9)
             self.open_relay(self._to_line(lines), 0)
@@ -406,14 +450,31 @@ class QSwitch(Instrument):
             self.open_relays(connections)
 
     def connect_all(self) -> None:
+        '''
+        Connect all lines on all QSwitches through to their outputs, i.e. close tap 9 for all lines.
+        '''
         self.connect([*list(self._line_names.keys())])
 
     def breakout(self, line: Union[str,int], tap: Union[str,int]) -> None:
+        '''
+        Connect the specified line to the specified tap and disconnect ground.
+
+        Args:
+            line: The line to connect to the breakout. Specify either its integer value or its name.
+            tap: The tap to connect the line to. Specify either its integer value or its name
+        '''
         self.close_relay(self._to_line(line), self._to_tap(tap))
         self.open_relay(self._to_line(line), 0)
 
 
     def line_float(self, lines: OneOrMore) -> None:
+        '''
+        Open all relays on one or more lines such that the line is floating.
+
+        Args:
+            lines: The line(s) to float. Specify a single line through its integer value
+                or its name, or multiple lines through a list of integers or names.
+        '''
         if isinstance(lines, (int,str)):
             line = self._to_line(lines)
             taps = range(relays_per_line)
@@ -711,7 +772,8 @@ class QSwitches(Instrument):
     It is assumed maximum one link per QSwitch, since otherwise links can be made internally.
 
     Args:
-        qsws (sequence[QSwitches]): list of already initialized/connected qswitches
+        qsws (sequence[QSwitches]): list of already initialized/connected qswitches OR
+            list of addresses (str) of qswitches to be initialized/connected.
         linked_BNCs (list[list]): list of linked BNCs, e.g. [[1,11],[2,12],[4,31]].
         name (str): QCodes name. Default = 'qsws'
 
@@ -785,11 +847,9 @@ class QSwitches(Instrument):
             qsw.auto_save(val)
 
     def _get_auto_save(self):
-        answers=[]
-        for qsw in self.qsws:
-            answers.append(qsw.auto_save())
+        answers=[qsw.auto_save() for qsw in self.qsws]
         if not all(answer==answers[0] for answer in answers):
-            return 'Warning: not all QSwitches have the same auto_save setting. Set auto_save to the desired value to fix.'
+            raise ValueError('Not all QSwitches have the same auto_save setting. Set auto_save to the desired value to fix.')
         decoder={'0':'off','1':'on'}
         return decoder[answers[0]]
 
@@ -848,6 +908,10 @@ class QSwitches(Instrument):
     def open_relay(self, line: int, tap: int) -> None:
         '''
         Open a relay at the specified line and tap.
+
+        Args:
+            line: The line number (1 to N*24)
+            tap: The tap number (0 for ground, 1-8 for breakouts, 9 for connect)
         '''
         idx=int((line-1)/relay_lines)
         qsw=self.qsws[idx]
@@ -856,6 +920,10 @@ class QSwitches(Instrument):
     def close_relay(self, line: int, tap: int) -> None:
         '''
         Close a relay at the specified line and tap.
+
+        Args:
+            line: The line number (1 to N*24)
+            tap: The tap number (0 for ground, 1-8 for breakouts, 9 for connect)
         '''
         idx=int((line-1)/relay_lines)
         qsw=self.qsws[idx]
@@ -957,8 +1025,13 @@ class QSwitches(Instrument):
         Connect the specified line to the specified tap AND disconnect ground.
 
         Args:
+<<<<<<< HEAD
             line: the output line
             tap: the input BNC tap
+=======
+            line: The line to connect to the breakout. Specify either its integer value or its name.
+            tap: The tap to connect the line to. Specify either its integer value or its name
+>>>>>>> c65014386b1786e5da6c4ba84ebeab899ef91341
         '''
         self.close_relay(self._to_line(line), self._to_tap(tap))
         self.open_relay(self._to_line(line), 0)
@@ -1048,7 +1121,7 @@ class QSwitches(Instrument):
         tap=self._step_link_up(tap,i)
         if tap%relays_per_line not in [0,9] and not i*relays_per_line<tap<(i+1)*relays_per_line:
             raise ValueError(f'Tap {tap} cannot be connected to the specified line since they are not on the same QSwitch.\n'
-                             'If you have manually linked the BNC taps, you must explicitely declare this.')
+                             'If you have manually linked the BNC taps, declare this using linked_BNCs.')
         return tap%relays_per_line
 
     def _step_link_down(self,tap):

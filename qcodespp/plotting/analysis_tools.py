@@ -221,3 +221,30 @@ def load_2d_json(filename):
     
     else:
         raise ValueError("Cannot reshape data: The JSON file does not contain a shape entry.")
+    
+def export_2d_to_IG(x,y,z,filename):
+    '''Export 2D data to a .dat file in a format that InSpectra Gadget can import.
+    
+    Args:
+        x (array-like): x-axis values. Shape must match z's or z's first dimension
+        y (array-like): y-axis values. Shape must match z's or z's second dimension
+        z (2D array-like): z values
+        filename (str): name of the file to save the data to, without extension.
+    '''
+
+    shape = np.shape(z)
+    if len(shape) != 2:
+        raise ValueError('z must be a 2D array-like')
+    if np.shape(x) != shape and np.shape(x) != (shape[0],):
+        raise ValueError('x must be a 1D array-like with length matching z\'s first dimension, '
+                        'or a 2D array-like with shape matching z\'s')
+    if np.shape(y) != shape and np.shape(y) != (shape[1],):
+        raise ValueError('y must be a 1D array-like with length matching z\'s second dimension, '
+                        'or a 2D array-like with shape matching z\'s')
+    
+    if len(np.shape(x)) == 1:
+        x = np.tile(x[:, np.newaxis], (1, shape[1]))
+    if len(np.shape(y)) == 1:
+        y = np.tile(y[np.newaxis, :], (shape[0], 1))
+    export_data = np.column_stack((x.flatten(), y.flatten(), z.flatten()))
+    np.savetxt(filename + '.dat', export_data, delimiter='\t', header='X\tY\tZ')

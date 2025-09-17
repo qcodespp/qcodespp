@@ -3,7 +3,8 @@ import os
 import json
 import copy
 from qcodespp.data.data_set import load_data
-from qcodespp.plotting.offline.datatypes import BaseClassData
+from qcodespp.plotting.offline.datatypes import BaseClassData, InternalData
+from PyQt5.QtWidgets import QInputDialog
 
 class qcodesppData(BaseClassData):
 
@@ -35,6 +36,8 @@ class qcodesppData(BaseClassData):
         if load_the_data:               # Should only need to happen for (Mixed)InternalData.
             self.prepare_dataset()       # Otherwise, data is loaded when first plotted.
 
+        self.decomposed=False
+
     def prepare_dataset(self):
         # Loads the data from file, and prepares a data_dict. This is significantly easier than in the BaseClassData,
         # since qcodespp data is already in a dictionary. We can also use the metadata to easily work out if the data
@@ -48,8 +51,6 @@ class qcodesppData(BaseClassData):
         # Processed data that has been added to the data_dict. Need to preserve it!
             old_dict = copy.deepcopy(self.data_dict)
 
-        #self.data_dict = self.loaded_data.arrays.copy()
-
         self.data_dict = self.remove_string_arrays(self.loaded_data.arrays.copy())
 
         if hasattr(self, 'extra_cols'):
@@ -62,7 +63,12 @@ class qcodesppData(BaseClassData):
         self.identify_variables()
 
         # Assign dimension based on number of independent parameters
-        if len(self.independent_parameter_names) > 1:
+        if len(self.data_dict[self.independent_parameter_names[-1]].shape)==3:
+            self.dim=4
+            datasets=self.decompose_3D_data()
+            self.decomposed=True
+            return datasets
+        elif len(self.independent_parameter_names) > 1:
             self.dim = 3
         else:
             self.dim = 2
@@ -71,15 +77,21 @@ class qcodesppData(BaseClassData):
         if not self.loaded_data.fraction_complete()==1:
             set_x = self.data_dict[self.all_parameter_names[0]]
             non_nan_len = len(np.unique(set_x[~np.isnan(set_x)]))-1
-            if non_nan_len > 0:
+            if non_nan_len >= 0:
                 for arrayname, array in self.data_dict.items():
                     if array.shape[0] > non_nan_len:
                         self.data_dict[arrayname] = array[:non_nan_len]
 
+        # self.dims is the shape of each data array. It's not necessarily true that all arrays will have the same shape,
+        # but if self.identify_variables() worked, then the Y data array will have the correct shape for the first set of
+        # variables to be plotted for both 1D and 2D data. self.dims gets updated every time the user chooses a new 
+        # (set of) variable(s) to plot.
+        self.dims = np.shape(self.data_dict[self.settings['Y data']])
+
         # There was a time where NaNs could occur in the middle of the data. 
         # This should never happen anymore, but for old datasets,
         # we can deal with them here.
-        if self.dim == 3:
+        if self.dim == 3 and not any(dim < 1 for dim in self.dims):
             for arrayname, array in self.data_dict.items():
                 if np.isnan(array).any():
                     for i,j in np.argwhere(np.isnan(array)):
@@ -88,11 +100,77 @@ class qcodesppData(BaseClassData):
                         else:
                             array[i,j] = array[i+1,j]
 
-        # self.dims is the shape of each data array. It's not necessarily true that all arrays will have the same shape,
-        # but if self.identify_variables() worked, then the Y data array will have the correct shape for the first set of
-        # variables to be plotted for both 1D and 2D data. self.dims gets updated every time the user chooses a new 
-        # (set of) variable(s) to plot.
-        self.dims = np.shape(self.data_dict[self.settings['Y data']])
+    def decompose_3D_data(self):
+        num=self.label.split('_')[0]
+        decompose_axis, ok = QInputDialog.getInt(
+            None,
+            "Decompose 3D Data",
+            ("3D dataset: The data can be decomposed into a series of 2D datasets.\n"
+            "Enter which independent variable should be constant for each 2D dataset:\n"
+            f"0: {self.independent_parameter_names[0]}\n"
+            f"1: {self.independent_parameter_names[1]}\n"
+            f"2: {self.independent_parameter_names[2]}"),
+            min=0,
+            max=2
+        )
+        if not ok:
+            return ['cancel']
+        items=[]
+        if decompose_axis==0:
+            shape=(self.data_dict[self.independent_parameter_names[2]].shape[1],
+                   self.data_dict[self.independent_parameter_names[2]].shape[2])
+            for i, value in enumerate(self.data_dict[self.independent_parameter_names[0]]):
+                new_data_dict={}
+                for key, array in self.data_dict.items():
+                    try:
+                        new_data_dict[key]=array[i,:,:]
+                    except IndexError:
+                        try:
+                            new_data_dict[key]=np.repeat(array[i,:], shape[1]).reshape(shape)
+                        except IndexError:
+                            pass
+                label=f'{num}_{i}_{self.independent_parameter_names[0]}={value:.3g}'
+                items.append(self.make_decomposed_item(new_data_dict, label))
+        elif decompose_axis==1:
+            shape=(self.data_dict[self.independent_parameter_names[2]].shape[0],
+                   self.data_dict[self.independent_parameter_names[2]].shape[2])
+            for i, value in enumerate(self.data_dict[self.independent_parameter_names[1]][0]):
+                new_data_dict={}
+                for key, array in self.data_dict.items():
+                    if not key==self.independent_parameter_names[1]:
+                        try:
+                            new_data_dict[key]=array[:,i,:]
+                        except IndexError:
+                            try:
+                                new_data_dict[key]=np.repeat(array[:,i], shape[1]).reshape(shape)
+                            except IndexError:
+                                new_data_dict[key]=np.repeat(array, shape[1]).reshape(shape)
+                label=f'{num}_{i}_{self.independent_parameter_names[1]}={value:.3g}'
+                items.append(self.make_decomposed_item(new_data_dict, label))
+        elif decompose_axis==2:
+            for i, value in enumerate(self.data_dict[self.independent_parameter_names[2]][0][0]):
+                new_data_dict={}
+                for key, array in self.data_dict.items():
+                    if not key==self.independent_parameter_names[2]:
+                        try:
+                            new_data_dict[key]=array[:,:,i]
+                        except IndexError:
+                            try:
+                                new_data_dict[key]=array[:,:]
+                            except IndexError:
+                                shape=self.data_dict[self.independent_parameter_names[1]].shape
+                                new_data_dict[key]=np.repeat(array, shape[1]).reshape(shape)
+                label=f'{num}_{i}_{self.independent_parameter_names[2]}={value:.3g}'
+                items.append(self.make_decomposed_item(new_data_dict, label))
+        return items
+
+    def make_decomposed_item(self, new_data_dict, label):
+        item=InternalData(canvas=self.canvas,
+                        dataset=list(new_data_dict.values()), 
+                        label_name=label,
+                        all_parameter_names=list(new_data_dict.keys()),
+                        dimension=3)
+        return item
 
     def remove_string_arrays(self, data_dict):
         """
@@ -104,8 +182,18 @@ class qcodesppData(BaseClassData):
         return data_dict
 
     def load_and_reshape_data(self, reload_data=False,reload_from_file=True,linefrompopup=None):
-        if self.loaded_data is None or reload_data and reload_from_file:
-            self.prepare_dataset()
+        if self.loaded_data is None or (reload_data and reload_from_file):
+            items=self.prepare_dataset()
+            if items:
+                return items
+
+        # Now self.dims is defined, deal with a few obvious errors to stop the code going any further:
+        if self.dims == () or any(dim < 1 for dim in self.dims):
+            return ValueError(f"No data found in file, or no complete sweeps of 2D data were made.")
+        if len(self.dims) > 2: # if data is 3D and the decompose_3D_data worked, then we won't get here. 
+                            # This is for even higher dimenstions or just weird stuff.
+            return ValueError(f"Higher dimensional data is not supported.\n"
+                               "Manually decompose the data into 1D or 2D datasets and load those instead.")
 
         # Get the required X, Y (and Z) data from the data_dict.
         column_data = self.get_column_data(line=linefrompopup)
@@ -276,7 +364,6 @@ class qcodesppData(BaseClassData):
                         'linewidth': 1.5,
                         'linestyle': '-',
                         'filters': []}}
-        
 
     def apply_single_filter(self, processed_data, filt):
         if filt.name in ['Multiply', 'Divide', 'Add/Subtract']:

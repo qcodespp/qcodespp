@@ -355,7 +355,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.action_restore_session.triggered.connect(self.load_session)
         self.action_combine_files.triggered.connect(self.combine_plots)
         self.action_duplicate_file.triggered.connect(self.duplicate_item)
-        self.action_export_data_columns.triggered.connect(lambda: self.export_processed_data('current'))
+        self.action_export_data_columns.triggered.connect(lambda: self.export_processed_data('all'))
         self.action_export_data_Z.triggered.connect(lambda: self.export_processed_data('Z'))
         self.actionSave_plot_s_as.triggered.connect(self.save_image)
         self.action_open_file.triggered.connect(self.open_files)
@@ -431,10 +431,15 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                              (3,4),(3,4),(3,4),(3,4),(4,4),(4,4),(4,4),(4,4),
                              (4,5),(4,5),(4,5),(4,5),(4,5),(5,5),(5,5),(5,5),
                              (5,5)]
-        self.figure.subplots_adjust(top=0.893, bottom=0.137, 
-                                    left=0.121, right=0.86)
-        
-    def set_window_title(self):
+        self.subplotpars = {key: rcParams[f'figure.subplot.{key}'] for key in
+                            ['left', 'bottom', 'right', 'top', 'wspace', 'hspace']}
+        # self.subplotpars['left'] = 0.121
+        # self.subplotpars['right'] = 0.86
+        # self.subplotpars['bottom'] = 0.137
+        # self.subplotpars['top'] = 0.893
+        self.figure.subplots_adjust(**self.subplotpars)
+
+    def set_window_title(self,extra_info=''):
         if hasattr(self, 'linked_folder') and self.linked_folder:
             linked_info = f' - Linked to {self.linked_folder}'
         else:
@@ -444,7 +449,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         else:
             session_name = ''
 
-        self.setWindowTitle(f'InSpectra Gadget{linked_info}{self.window_title_auto_refresh}{session_name}')
+        self.setWindowTitle(f'InSpectra Gadget{linked_info}{self.window_title_auto_refresh}{session_name}{extra_info}')
 
     def load_data_item(self,filepath):
         filename, extension = os.path.splitext(filepath)
@@ -473,8 +478,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 item = DataItem(BaseClassData(filepath, self.canvas))
                 return item
             except Exception as e:
-                error_type = type(e)
-                return error_type(f'Failed to add .dat dataset {filepath}: {error_type.__name__} {e}')
+                return type(e)(f'Failed to add dataset from {filepath}: {type(e).__name__} {e}')
 
     def open_files(self, filepaths=None, attr_dicts=None, overrideautocheck=False):
         self.file_list.itemClicked.disconnect(self.file_clicked)
@@ -483,7 +487,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         minilog=[]
         if not filepaths:
             filepaths, _ = QtWidgets.QFileDialog.getOpenFileNames(
-                self, 'Open File', '', 'Data Files (*.dat *.npy *.csv)')
+                self, 'Open File', '', 'Data Files (*.dat *.npy *.csv *.json)')
         if filepaths:
             for i,filepath in enumerate(filepaths):
                 try:
@@ -534,6 +538,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     if attr_dicts: #then a previous session is being loaded
                         for attr,value in attr_dicts[i].items():
                             if attr not in ['filename','checkState','duplicate','is_current_item',
+                                            'view_settings',
                                             'extra_cols','dataset1d_type','dataset2d_type',
                                             'dataset1d_plotted_lines','dataset2d_linecuts']:
                                 setattr(item.data,attr,value)
@@ -593,6 +598,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         if 'processed_data' in attr_dicts[i]: # If the data had been plotted we need to force load it here
                                                                 # otherwise the data will be in some weird state.
                             item.data.prepare_data_for_plot(reload_data=True,reload_from_file=True)
+                        
+                        if 'view_settings' in attr_dicts[i]:
+                            item.data.view_settings = attr_dicts[i]['view_settings']
 
                     else:
                         for setting in ['titlesize','labelsize','ticksize']:
@@ -653,7 +661,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def add_internal_data(self,item,check_item=True,uncheck_others=True):
         # Add internal data to the file list (from combined plots/files, fitting dependency, etc)
         #item.filepath='internal_data'
-        self.file_list.itemChanged.disconnect(self.file_checked)
+        try:
+            self.file_list.itemChanged.disconnect(self.file_checked)
+            already_disconnected=False
+        except TypeError:
+            already_disconnected=True
         self.file_list.addItem(item)
         self.file_list.setCurrentItem(item)
         if uncheck_others:
@@ -663,7 +675,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.clear_sidebar1D()
             item.setCheckState(QtCore.Qt.Checked)
             self.file_checked(item)
-        self.file_list.itemChanged.connect(self.file_checked)
+        if not already_disconnected:
+            self.file_list.itemChanged.connect(self.file_checked)
 
     def remove_files(self, which='current'):
         if self.file_list.count() > 0:
@@ -723,7 +736,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for subdir, dirs, files in os.walk(rootdir):
                 for file in files:
                     filename, file_extension = os.path.splitext(file)
-                    if file_extension == '.dat':
+                    if file_extension in ['.dat', '.json'] and filename != 'snapshot':
                         already_loaded=self.check_already_loaded(subdir,[file[1] for file in filepaths])
                         if not already_loaded:
                             filepath = os.path.join(subdir, file)
@@ -757,7 +770,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for subdir, dirs, files in os.walk(self.linked_folder):
                 for file in files:
                     filename, file_extension = os.path.splitext(file)
-                    if file_extension == '.dat':
+                    if file_extension in ['.dat', '.json'] and filename != 'snapshot':
                         already_loaded=self.check_already_loaded(subdir,[file[1] for file in new_files])
                         if not already_loaded:
                             filepath = os.path.join(subdir, file)
@@ -908,7 +921,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     # The last item is reserved for 'global' program information.
                     dictionary_list.append({
                         'qcodespp_version': __version__,
-                        'show_linecut_markers': self.show_linecut_markers
+                        'show_linecut_markers': self.show_linecut_markers,
+                        'subplotpars': self.subplotpars
                     })
 
                     # Save all needed files to a temperorary directory and add them to the tarball
@@ -1076,7 +1090,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         if 'show_linecut_markers' in numpy_file[-1]:
                             self.show_linecut_markers = numpy_file[-1]['show_linecut_markers']
                     except Exception as e:
-                        self.log_error(f'Error loading show_linecut_markers from session:\n{type(e).__name__}: {e}')
+                        self.log_error(f'Error loading show_linecut_markers from session {session_filepath}:\n'
+                                        f'{type(e).__name__}: {e}')
+
                 self.session_filepath = session_filepath
                 self.log_error(f'Session loaded from {session_filepath}')
                 del data
@@ -1094,6 +1110,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.log_error(message, show_popup=True)
 
             self.update_plots() # Necessary to ensure some settings are applied to the final plot.
+            try:
+                if 'subplotpars' in numpy_file[-1]:
+                    self.subplotpars = numpy_file[-1]['subplotpars']
+                    self.figure.subplots_adjust(**self.subplotpars)
+            except Exception as e:
+                self.log_error(f'Error loading subplotpars from session {session_filepath}:\n'
+                                f'{type(e).__name__}: {e}')
         self.set_window_title()
 
     def resolve_missing_files(self, filenames):
@@ -1150,17 +1173,17 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
  
         return resolved_files, unresolved_files
 
-    def export_processed_data(self, which='current'):
+    def export_processed_data(self, which='all'):
         current_item = self.file_list.currentItem()
         if current_item:
-            if which == 'current':
+            if which == 'all':
                 formats='JSON (*.json);;CSV (*.csv);;Numpy text (*.dat)'
             elif which == 'Z':
                 formats='Numpy text (*.dat)'
             suggested_filename = current_item.data.label
             filepath, ext = QtWidgets.QFileDialog.getSaveFileName(
             self, 'Export Data As', suggested_filename, formats)
-            if which == 'current':
+            if which == 'all':
                 if hasattr(current_item.data,'processed_data'):
                     if '.dat' in ext:
                         header=''
@@ -1170,7 +1193,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                     labels=['xlabel','ylabel','clabel']
                                     for label in labels:
                                         if current_item.data.settings[label] != '':
-                                            header+=f'{current_item.data.settings[label]}\t'
+                                            header+=f'{current_item.data.settings[label].replace(' ','_')}\t'
                                     header=header.strip('\t')
                                     dat_file.write(f'# {header}\n')
                                     for j in range(np.shape(current_item.data.processed_data[2])[0]):
@@ -1184,7 +1207,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                         processed_data=[]
                                         for line in current_item.data.plotted_lines.keys():
                                             if current_item.data.plotted_lines[line]['checkstate']:
-                                                header+=f'{line}_{current_item.data.plotted_lines[line]["X data"]}\t{line}_{current_item.data.plotted_lines[line]["Y data"]}\t'
+                                                header+=(f'{line}_{current_item.data.plotted_lines[line]["X data"].replace(' ','_')}\t'
+                                                         f'{line}_{current_item.data.plotted_lines[line]["Y data"].replace(' ','_')}\t')
                                                 processed_data.append(current_item.data.plotted_lines[line]['processed_data'][0])
                                                 processed_data.append(current_item.data.plotted_lines[line]['processed_data'][1])
                                         np.savetxt(filepath, np.column_stack(processed_data),header=header)
@@ -1419,6 +1443,47 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             # remove it from the gui
             widgetToRemove.setParent(None)
 
+    def initial_data_load(self, item):
+        try:
+            message = item.data.prepare_data_for_plot(reload_data=True, reload_from_file=True)
+            # Three possibilities: no message = everything is good.
+            # If the message is a list, it's qcodesppData that has been decomposed into multiple DataItems.
+            # If the message is something else, it's an error message.
+            if message is not None:
+                try:
+                    self.file_list.itemChanged.disconnect(self.file_checked)
+                    already_disconnected=False
+                except TypeError:
+                    already_disconnected=True
+                item.setCheckState(QtCore.Qt.Unchecked)
+                if not already_disconnected:
+                    self.file_list.itemChanged.connect(self.file_checked)
+                if isinstance(message,list):
+                    if message[0]=='cancel':
+                        self.log_error(f'Decomposing data from {item.data.label} cancelled by user.')
+                        self.update_plots()
+                        return 'break'
+                    self.set_window_title(' - Decomposing data...')
+                    for dataitem in message:
+                        if dataitem==message[-1]:
+                            check_item=True
+                        else:
+                            check_item=False
+                        new_item=DataItem(dataitem)
+                        new_item.filepath='internal_data'
+                        self.add_internal_data(new_item,check_item=check_item,uncheck_others=False)
+                    self.set_window_title()
+                    return 'break'
+                else:
+                    self.log_error(f'Error preparing {item.data.label} for plot:'
+                                f'\n{type(message).__name__}: {message}', show_popup=True)
+                    self.update_plots()
+                    return 'break'
+
+        except Exception as e:
+            self.log_error(f'Error preparing {item.data.label} for plot:\n{type(e).__name__}: {e}', show_popup=True)
+            return 'break'
+
     def update_plots(self, item=None,update_data=True,update_color_limits=False):
         minilog=[]
 
@@ -1426,19 +1491,23 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         self.clear_sidebar1D()
 
+        if hasattr(self,'checked_item_len'):
+            old_checked_item_len=self.checked_item_len
+        else:
+            old_checked_item_len=0
         checked_items = self.get_checked_items()
+        self.checked_item_len=len(checked_items)
         if checked_items:
             rows, cols = self.subplot_grid[len(checked_items)-1]
             for index, item in enumerate(checked_items):
                 try:
                     if not hasattr(item.data, 'processed_data'):
-                        error=item.data.prepare_data_for_plot(reload_data=True)
-                        if error:
-                            self.log_error(f'Error preparing data for plot:\n{type(error).__name__}: {error}', show_popup=True)
-                            item.setCheckState(QtCore.Qt.Unchecked)
-                            continue
-                    elif hasattr(item.data, 'dim'):
-                        if item.data.dim == 3 and update_data==True: 
+                        message=self.initial_data_load(item)
+                        if message == 'break':
+                            break
+
+                    elif hasattr(item.data, 'dim'): # I think this check is redundant, all data should have a dim attribute if they have processed_date.
+                        if item.data.dim == 3 and update_data==True:
                             # Should only be called when updating 2D data: updating 1D data is taken care of in the datatype and sidebar
                             error=item.data.prepare_data_for_plot(update_color_limits=update_color_limits)
                             if error:
@@ -1454,10 +1523,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     item.data.axes = item.data.figure.add_subplot(rows, cols, index+1)
                     error=item.data.add_plot(editor_window=self)
                     if isinstance(error, list) and len(error)>0:
+                        # Warnings come back as a list (since it's possible to have multiple warnings, in contrast to exceptions)
+                        # Since matplotlib can generate a lot of warnings for perfectly fine data, we just log them, and don't 
+                        # show a popup that will probably annoy the user.
                         for w in error:
-                            minilog.append(f'Warning while plotting {item.data.label}\n{w.category.__name__}: {w.message}')
+                            #minilog.append(f'Warning while plotting {item.data.label}\n{w.category.__name__}: {w.message}')
                             self.log_error(f'Warning while plotting {item.data.label}\n{w.category.__name__}: {w.message}')
                     elif error:
+                        # Exceptions.
                         minilog.append(str(error))
                         self.log_error(str(error))
                         continue
@@ -1477,15 +1550,32 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     continue
         try:
             self.show_current_all()
-            self.figure.tight_layout()
-            self.canvas.draw()
+            if old_checked_item_len != self.checked_item_len:
+                self.tight_layout()
+            else:
+                self.figure.subplots_adjust(**self.subplotpars)
+                self.canvas.draw()
+            self.update_pick_radii()
         except Exception as e:
             self.log_error(f'Exception encountered updating plots:\n{type(e).__name__}: {e}')
             minilog.append(f'Exception encountered updating plots:\n{type(e).__name__}: {e}')
 
         if len(minilog) > 0:
-            message = 'The following errors/warnings occurred while plotting:\n\n'+'\n\n'.join(minilog)
+            message = 'The following errors occurred while plotting:\n\n'+'\n\n'.join(minilog)
             self.ew = ErrorWindow(message)
+
+    def update_pick_radii(self):
+        # Define pick radius for the axes to be anywhere between the axis label and the axis spine.
+        for item in self.get_checked_items():
+            ax=item.data.axes
+            xlabpos=ax.xaxis.label.get_position()[1]
+            ylabpos=ax.yaxis.label.get_position()[0]
+            windowex=ax.get_window_extent()
+            xrad=np.abs(windowex.y0-xlabpos)
+            yrad=np.abs(windowex.x0-ylabpos)
+            ax.xaxis.set_pickradius(xrad)
+            ax.yaxis.set_pickradius(yrad)
+
 
     # The below is not working and not implemented, but could be useful to fix and include.
     # def to_next_file(self):
@@ -1939,7 +2029,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         view_settings[edited_setting] = True
                         if not hasattr(current_item.data,'hax'):
                             current_item.data.add_cbar_hist()
-                            self.figure.tight_layout()
+                            #self.tight_layout()
                     else:
                         view_settings[edited_setting] = False
                         if hasattr(current_item.data, 'hax'):
@@ -1949,7 +2039,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             except:
                                 pass
                             del current_item.data.hax
-                            self.figure.tight_layout()
+                            #self.tight_layout()
                 
                 current_item.data.apply_view_settings()
                 self.canvas.draw()
@@ -2652,13 +2742,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def init_linecuts(self,data):
         data.linecuts={'horizontal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5,
-                                    'legend':False,'xscale':'linear','yscale':'linear'},
+                                    'legend':False,'xscale':'linear','yscale':'linear','lock_scaling':False},
                         'vertical':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5,
-                                    'legend':False,'xscale':'linear','yscale':'linear'},
+                                    'legend':False,'xscale':'linear','yscale':'linear','lock_scaling':False},
                         'diagonal':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5,
-                                    'legend':False,'xscale':'linear','yscale':'linear'},
+                                    'legend':False,'xscale':'linear','yscale':'linear','lock_scaling':False},
                         'circular':{'linecut_window':None,'lines':{},'linestyle':'-','linesize':1.5,
-                                    'legend':False,'xscale':'linear','yscale':'linear'},
+                                    'legend':False,'xscale':'linear','yscale':'linear','lock_scaling':False},
                         }
 
     def make_linecut_window(self,orientation, data=None, show=True):
@@ -2857,18 +2947,18 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         return selected
     
     def mouse_click_canvas(self, event):
-        if self.navi_toolbar.mode == '': # If not using the navigation toolbar tools
-            if event.inaxes:
-                x, y = event.xdata, event.ydata
-                checked_items = self.get_checked_items()
-                self.plot_in_focus = [checked_item for checked_item in checked_items 
-                                      if checked_item.data.axes == event.inaxes]
-                if self.plot_in_focus:
-                    if self.file_list.currentItem() != self.plot_in_focus[0]:
-                        # If the clicked plot is not the current one, set it as current before doing anything else.
-                        self.file_list.setCurrentItem(self.plot_in_focus[0])
-                        self.file_clicked()
-                    else:
+        if event.inaxes:
+            x, y = event.xdata, event.ydata
+            checked_items = self.get_checked_items()
+            self.plot_in_focus = [checked_item for checked_item in checked_items 
+                                if checked_item.data.axes == event.inaxes]
+            if self.plot_in_focus:
+                if self.file_list.currentItem() != self.plot_in_focus[0]:
+                    # If the clicked plot is not the current one, set it as current before doing anything else.
+                    self.file_list.setCurrentItem(self.plot_in_focus[0])
+                    self.file_clicked()
+                else:
+                    if self.navi_toolbar.mode == '': # If not using the navigation toolbar tools
                         self.file_list.setCurrentItem(self.plot_in_focus[0])
                         self.file_clicked()
                         data = self.plot_in_focus[0].data
@@ -3005,8 +3095,37 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 #         else:
                 #             self.press = event.ydata
 
+                    else:
+                        self.press = ['toolbar'] # The toolbar is being used.
+
+        else:
+            # Click and drag on axes pans them
+            item, axis = self.get_axis_in_focus(event)
+            if item:
+                if self.file_list.currentItem() != item:
+                    # If the clicked plot is not the current one, set it as current before doing anything else.
+                    self.file_list.setCurrentItem(item)
+                    self.file_clicked()
+                else:
+                    data= item.data
+                    if any(data.axlim_settings.values()) == None or self.navi_toolbar.mode != '':
+                        data.populate_axlim_settings()
+                    width, height = self.canvas.get_width_height()
+                    bbox=data.axes.get_position().get_points()
+                    x0, x1 = bbox[0][0]*width, bbox[1][0]*width
+                    y0, y1 = bbox[0][1]*height, bbox[1][1]*height
+                    if axis == 'x':
+                        min_0, max_0 = data.axes.get_xbound()
+                        pixels_per_unit = (x1 - x0) / (max_0 - min_0)
+                        axpress = event.x
+                    elif axis == 'y':
+                        min_0, max_0 = data.axes.get_ybound()
+                        pixels_per_unit = (y1 - y0) / (max_0 - min_0)
+                        axpress = event.y
+                    self.press = [axis,item,axpress,pixels_per_unit,min_0,max_0]
+
     def on_motion(self, event):
-        if hasattr(self,'press') and self.press != None:
+        if hasattr(self,'press') and self.press is not None:
             # if hasattr(self,'cbar_in_focus') and self.cbar_in_focus:
             #     try:
             #         ypress = self.press
@@ -3060,6 +3179,36 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 data.hax.set_ylim(axmin-dy,axmax-dy)
                 self.canvas.draw()
 
+            elif self.press[0] in ['x', 'y']:
+                data= self.press[1].data
+                axpress = self.press[2]
+                pixels_per_unit = self.press[3]
+                min_0 = self.press[4]
+                max_0 = self.press[5]
+                if self.press[0] == 'x':
+                    dx = (event.x - axpress) / pixels_per_unit
+                    data.axlim_settings['Xmin']=min_0 - dx
+                    data.axlim_settings['Xmax']=max_0 - dx
+                elif self.press[0] == 'y':
+                    dy = (event.y - axpress) / pixels_per_unit
+                    data.axlim_settings['Ymin']=min_0 - dy
+                    data.axlim_settings['Ymax']=max_0 - dy
+
+                data.apply_axlim_settings()
+                self.canvas.draw()
+                self.show_current_axlim_settings()
+                # Update toolbar so back/forward buttons work
+                fig = data.axes.get_figure()
+                fig.canvas.toolbar.push_current()
+
+            elif self.press == ['toolbar']:
+                item=self.plot_in_focus[0]
+                if item:
+                    data=item.data
+                    data.populate_axlim_settings()
+                    self.show_current_axlim_settings()
+
+
         else:
             # Mouse is moving around without a press event (i.e. not clicked). Turn it into a move cursor if over a haxfill.
             histograms = [checked_item for checked_item in self.get_checked_items() if
@@ -3085,6 +3234,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.canvas.setCursor(QtCore.Qt.ArrowCursor)
 
     def on_release(self, event):
+        if hasattr(self,'press') and self.press == ['toolbar']:
+            item=self.plot_in_focus[0]
+            if item:
+                data=item.data
+                data.populate_axlim_settings()
+                self.show_current_axlim_settings()
         self.press = None
         if hasattr(self,'hax_marker'):
             self.hax_marker.remove()
@@ -3236,6 +3391,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         for url in urls:
             if not (url.toLocalFile().endswith('.dat') or url.toLocalFile().endswith('.npy')
                     or url.toLocalFile().endswith('.txt') or url.toLocalFile().endswith('.igs')
+                    or url.toLocalFile().endswith('.json')
                     or os.path.isdir(url.toLocalFile())):
                 return False
             else:
@@ -3245,7 +3401,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def drop_files_tester(self, urls):
         for url in urls:
             if not (url.toLocalFile().endswith('.dat') or url.toLocalFile().endswith('.npy') \
-                    or url.toLocalFile().endswith('.txt')):
+                    or url.toLocalFile().endswith('.txt') or url.toLocalFile().endswith('.json')):
                 return False
             else:
                 continue
@@ -3317,14 +3473,62 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if not hasattr(item.data,'statspopup'):
                 item.data.statspopup=StatsWindow(item.data)
             item.data.statspopup.show()
-            
+
+    def get_axis_in_focus(self,event):
+        for checked_item in self.get_checked_items():
+            axes=checked_item.data.axes
+            if (axes.xaxis.contains(event)[0] and
+                event.y < axes.get_window_extent().y1):
+                return checked_item, 'x'
+            elif (axes.yaxis.contains(event)[0] and
+                  event.x < axes.get_window_extent().x1):
+                return checked_item, 'y'
+        return None, None
+    
+    def zoom_plot(self, event, axis, item):
+        scale=1.2
+        data = item.data
+        axes = data.axes
+        scale_factor = np.power(scale, -event.step)
+
+        #convert pixels to axes
+        tranP2A = axes.transAxes.inverted().transform
+        xdata, ydata = tranP2A((event.x,event.y))
+        #convert axes to data limits
+        tranA2D= axes.transLimits.inverted().transform
+        #convert the scale (for log plots)
+        tranSclA2D = axes.transScale.inverted().transform
+        #x,y position of the mouse in range (0,1)
+        newxlims=[xdata - xdata*scale_factor, xdata + (1-xdata)*scale_factor]
+        newylims=[ydata - ydata*scale_factor, ydata + (1-ydata)*scale_factor]
+        new_xlim0,new_ylim0 = tranSclA2D(tranA2D((newxlims[0],newxlims[0])))
+        new_xlim1,new_ylim1 = tranSclA2D(tranA2D((newylims[1],newylims[1])))
+
+        if axis == 'x':
+            data.axlim_settings['Xmin']=new_xlim0
+            data.axlim_settings['Xmax']=new_xlim1
+        elif axis == 'y':
+            data.axlim_settings['Ymin']=new_ylim0
+            data.axlim_settings['Ymax']=new_ylim1
+        else:
+            data.axlim_settings['Xmin']=new_xlim0
+            data.axlim_settings['Xmax']=new_xlim1
+            data.axlim_settings['Ymin']=new_ylim0
+            data.axlim_settings['Ymax']=new_ylim1
+
+        data.apply_axlim_settings()
+        self.canvas.draw()
+        self.show_current_axlim_settings()
+        # Update toolbar so back/forward buttons work
+        self.canvas.toolbar.push_current()
+    
     def mouse_scroll_canvas(self, event):
         if event.inaxes:
             checked_items = self.get_checked_items()
             self.plot_in_focus = [checked_item for checked_item in checked_items 
                                   if checked_item.data.axes == event.inaxes]
-            self.cbar_in_focus = [checked_item for checked_item in checked_items
-                        if hasattr(checked_item.data, 'cbar') and checked_item.data.cbar.ax == event.inaxes]
+            # self.cbar_in_focus = [checked_item for checked_item in checked_items
+            #             if hasattr(checked_item.data, 'cbar') and checked_item.data.cbar.ax == event.inaxes]
             
             # Scolling within plot bounds zooms
             if self.plot_in_focus:
@@ -3333,68 +3537,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.file_list.setCurrentItem(self.plot_in_focus[0])
                     self.file_clicked()
                 else:
-                    scale=1.2
-                    data = self.plot_in_focus[0].data
-                    scale_factor = np.power(scale, -event.step)
-
-                    if any(scale != 'linear' for scale in [data.axlim_settings['Xscale'],
-                                                            data.axlim_settings['Yscale']]):
-                        # This zoom method works well for non-linear plots, but is slightly slower since requires more calculation.
-                        x = event.x
-                        y = event.y
-                        #convert pixels to axes
-                        tranP2A = event.inaxes.transAxes.inverted().transform
-                        #convert axes to data limits
-                        tranA2D= event.inaxes.transLimits.inverted().transform
-                        #convert the scale (for log plots)
-                        tranSclA2D = event.inaxes.transScale.inverted().transform
-                        #x,y position of the mouse in range (0,1)
-                        xa,ya = tranP2A((x,y))
-                        newxlims=[xa - xa*scale_factor, xa + (1-xa)*scale_factor]
-                        newylims=[ya - ya*scale_factor, ya + (1-ya)*scale_factor]
-                        new_xlim0,new_ylim0 = tranSclA2D(tranA2D((newxlims[0],newxlims[0])))
-                        new_xlim1,new_ylim1 = tranSclA2D(tranA2D((newylims[1],newylims[1])))
-
-                        if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
-                            data.axlim_settings['Xmin']=new_xlim0
-                            data.axlim_settings['Xmax']=new_xlim1
-                        elif QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
-                            data.axlim_settings['Ymin']=new_ylim0
-                            data.axlim_settings['Ymax']=new_ylim1
-                        else:
-                            data.axlim_settings['Xmin']=new_xlim0
-                            data.axlim_settings['Xmax']=new_xlim1
-                            data.axlim_settings['Ymin']=new_ylim0
-                            data.axlim_settings['Ymax']=new_ylim1
+                    if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
+                        self.zoom_plot(event, axis='x', item=self.plot_in_focus[0])
+                    elif QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
+                        self.zoom_plot(event, axis='y', item=self.plot_in_focus[0])
                     else:
-                        xdata = event.xdata
-                        ydata = event.ydata
-                        x_left = xdata - event.inaxes.get_xlim()[0]
-                        x_right = event.inaxes.get_xlim()[1] - xdata
-                        y_top = ydata - event.inaxes.get_ylim()[0]
-                        y_bottom = event.inaxes.get_ylim()[1] - ydata
-                        newxlims=[xdata - x_left * scale_factor, xdata + x_right * scale_factor]
-                        newylims=[ydata - y_top * scale_factor, ydata + y_bottom * scale_factor]
-                        if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
-                            data.axlim_settings['Xmin']=newxlims[0]
-                            data.axlim_settings['Xmax']=newxlims[1]
-                        elif QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
-                            data.axlim_settings['Ymin']=newylims[0]
-                            data.axlim_settings['Ymax']=newylims[1]
-                        else:
-                            data.axlim_settings['Xmin']=newxlims[0]
-                            data.axlim_settings['Xmax']=newxlims[1]
-                            data.axlim_settings['Ymin']=newylims[0]
-                            data.axlim_settings['Ymax']=newylims[1]
-
-
-                    data.apply_axlim_settings()
-                    event.inaxes.figure.canvas.draw()
-                    self.show_current_axlim_settings()
-                    # Update toolbar so back/forward buttons work
-                    fig = event.inaxes.get_figure()
-                    fig.canvas.toolbar.push_current()
-
+                        self.zoom_plot(event, axis='both', item=self.plot_in_focus[0])
             #Scrolling within colourbar changes limits
             # elif self.cbar_in_focus:
             #     if self.file_list.currentItem() != self.cbar_in_focus[0]:
@@ -3420,34 +3568,71 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             #         self.canvas.draw()
             #         self.show_current_view_settings()
 
-        # Scrolling outside of plot bounds changes the whitespace around/between plots
         else:
-            width, height = self.canvas.get_width_height()
-            speed = 0.03
-            lb, rb, tb, bb = 0.15*width, 0.85*width, 0.85*height, 0.15*height
-            if (event.x < lb and event.y > bb and event.y < tb):
-                if (event.step > 0 or 
-                    (event.step < 0 and self.figure.subplotpars.left > 0.07)):
-                    self.figure.subplots_adjust(left=(1+speed*event.step)*
-                                                self.figure.subplotpars.left)
-            elif (event.x > rb and event.y > bb and event.y < tb):
-                  if (event.step < 0 or 
-                      (event.step > 0 and self.figure.subplotpars.right < 0.97)):
-                      self.figure.subplots_adjust(right=(1+speed*0.5*event.step)*
-                                                  self.figure.subplotpars.right)
-            elif (event.y < bb and event.x > lb and event.x < rb):
-                  if (event.step > 0 or 
-                      (event.step < 0 and self.figure.subplotpars.bottom > 0.07)):
-                      self.figure.subplots_adjust(bottom=(1+speed*event.step)*
-                                                  self.figure.subplotpars.bottom)
-            elif (event.y > tb and event.x > lb and event.x < rb):
-                  if (event.step < 0 or 
-                      (event.step > 0 and self.figure.subplotpars.top < 0.94)):
-                      self.figure.subplots_adjust(top=(1+speed*0.5*event.step)*
-                                                  self.figure.subplotpars.top)
+            item, axis = self.get_axis_in_focus(event)
+            if item:
+                if self.file_list.currentItem() != item:
+                    # If the clicked plot is not the current one, set it as current before doing anything else.
+                    self.file_list.setCurrentItem(item)
+                    self.file_clicked()
+                else:
+                    self.zoom_plot(event, axis=axis, item=item)
+
+            # Scrolling outside of plot bounds changes the whitespace around/between plots
             else:
-                self.figure.subplots_adjust(wspace=(1+speed*event.step)*self.figure.subplotpars.wspace)
-            self.canvas.draw()
+                width, height = self.canvas.get_width_height()
+                speed = 0.03
+                lb, rb, tb, bb = 0.15*width, 0.85*width, 0.85*height, 0.15*height
+                # Borders
+                if (event.x < lb and event.y > bb and event.y < tb):
+                    if (event.step > 0 or 
+                        (event.step < 0 and self.figure.subplotpars.left > 0.07)):
+                        self.subplotpars['left']=(1+speed*event.step)*self.subplotpars['left']
+                        self.figure.subplots_adjust(left=self.subplotpars['left'])
+                elif (event.x > rb and event.y > bb and event.y < tb):
+                    if (event.step < 0 or 
+                        (event.step > 0 and self.figure.subplotpars.right < 0.97)):
+                        self.subplotpars['right']=(1+speed*0.5*event.step)*self.subplotpars['right']
+                        self.figure.subplots_adjust(right=self.subplotpars['right'])
+                elif (event.y < bb and event.x > lb and event.x < rb):
+                    if (event.step > 0 or 
+                        (event.step < 0 and self.figure.subplotpars.bottom > 0.07)):
+                        self.subplotpars['bottom']=(1+speed*event.step)*self.subplotpars['bottom']
+                        self.figure.subplots_adjust(bottom=self.subplotpars['bottom'])
+                elif (event.y > tb and event.x > lb and event.x < rb):
+                    if (event.step < 0 or 
+                        (event.step > 0 and self.figure.subplotpars.top < 0.94)):
+                        self.subplotpars['top']=(1+speed*0.5*event.step)*self.subplotpars['top']
+                        self.figure.subplots_adjust(top=self.subplotpars['top'])
+
+                # Spacing
+                else:
+                    dir=None
+                    speed=0.05
+                    for checked_item in self.get_checked_items():
+                        x0, y0 = checked_item.data.axes.get_position().get_points()[0]
+                        x1, y1 = checked_item.data.axes.get_position().get_points()[1]
+                        if hasattr(checked_item.data, 'cbar') and checked_item.data.settings['colorbar'] == 'True':
+                            x1 = checked_item.data.cbar.ax.yaxis.label.get_position()[0]/width
+                        if x0*width < event.x < x1*width:
+                            dir = 'hspace'
+                            break
+                        elif y0*height < event.y < y1*height:
+                            dir = 'wspace'
+                            break
+                    if dir:
+                        if dir == 'wspace':
+                            self.subplotpars['wspace']=(1+speed*event.step)*self.subplotpars['wspace']
+                            self.figure.subplots_adjust(wspace=self.subplotpars['wspace'])
+                        elif dir == 'hspace':
+                            self.subplotpars['hspace']=(1+speed*event.step)*self.subplotpars['hspace']
+                            self.figure.subplots_adjust(hspace=self.subplotpars['hspace'])
+                    else:
+                        self.subplotpars['wspace']=(1+speed*event.step)*self.subplotpars['wspace']
+                        self.subplotpars['hspace']=(1+speed*event.step)*self.subplotpars['hspace']
+                        self.figure.subplots_adjust(wspace=self.subplotpars['wspace'],
+                                                    hspace=self.subplotpars['hspace'])
+                self.canvas.draw()
             
     def keyPressEvent(self, event): 
         # if event.key() == QtCore.Qt.Key_C and event.modifiers() == QtCore.Qt.ControlModifier:
@@ -3596,6 +3781,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def tight_layout(self):
         self.figure.tight_layout()
+        for key in ['left','right','top','bottom','wspace','hspace']:
+            self.subplotpars[key]=getattr(self.figure.subplotpars,key)
         self.canvas.draw()
 
     def log_error(self, error_message, show_popup=False):

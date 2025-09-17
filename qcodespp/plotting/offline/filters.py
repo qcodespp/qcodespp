@@ -209,7 +209,7 @@ def cut_y(data, method, bottom, width):
         data[-1] = np.hstack((part1,part3,part2))
     return data 
 
-def swap_xy(data, method, setting1, setting2):
+def swap_xy(data, method=None, setting1=None, setting2=None):
     if len(data) == 3:
         data[0], data[1], data[-1] = data[1].T, data[0].T, data[-1].T
     elif len(data) == 2:
@@ -241,7 +241,7 @@ def normalize(data, method, point_x, point_y):
     data[-1] = data[-1] / norm_value
     return data
 
-def subtract_average(data, method, setting1, setting2):
+def subtract_average(data, method, setting1=None, setting2=None):
     shape=np.shape(data[-1])
     if method == 'Z':
         average=np.average(data[-1])
@@ -257,7 +257,7 @@ def subtract_average(data, method, setting1, setting2):
             data[0][i] = data[0][i]-average
     return data
 
-def offset_line_by_line(data,method,index,setting2):
+def offset_line_by_line(data,method,index,setting2=None):
     index=int(index)
     if len(data) == 3:
         shape=np.shape(data[-1])
@@ -278,7 +278,7 @@ def offset_line_by_line(data,method,index,setting2):
 
     return data
 
-def subtract_ave_line_by_line(data,method,setting1,setting2):
+def subtract_ave_line_by_line(data,method,setting1=None,setting2=None):
     if len(data) == 3:
         shape=np.shape(data[-1])
         if method=='Z':
@@ -341,7 +341,7 @@ def absolute(data, method, setting1, setting2):
 #         data[axis[method]] *= value
 #     return data
 
-def multiply(data, method, setting1, setting2, array=None):
+def multiply(data, method, setting1, setting2=None, array=None):
     axis = {'X': 0, 'Y': 1, 'Z': 2}
     if array is not None:
         if len(data) == 3:
@@ -372,7 +372,7 @@ def multiply(data, method, setting1, setting2, array=None):
 #         data[axis[method]] /= float(setting1)
 #     return data
 
-def divide(data, method, setting1, setting2, array=None):
+def divide(data, method, setting1, setting2=None, array=None):
     axis = {'X': 0, 'Y': 1, 'Z': 2}
     if array is not None:
         if len(data) == 3:
@@ -413,7 +413,7 @@ def logarithm(data, method, setting1=10, setting2=None):
         data[-1] = function(np.abs(data[-1]))
     return data
 
-def power(data, method, setting1, setting2):
+def power(data, method, setting1, setting2=None):
     axis = {'X': 0, 'Y': 1, 'Z': 2}
     value=float(setting1)
     if len(data) == 3:
@@ -425,7 +425,7 @@ def power(data, method, setting1, setting2):
             data[axis[method]][j] = data[axis[method]][j]**value
     return data
 
-def root(data, method, setting1, setting2):
+def root(data, method, setting1, setting2=None):
     root = float(setting1)
     axis = {'X': 0, 'Y': 1, 'Z': 2}
     if root > 0:
@@ -468,7 +468,7 @@ def interpolate(data, method, n_x, n_y):
         data[1] = f(data[0])
     return data
 
-def sort(data, method, setting1, setting2):
+def sort(data, method, setting1=None, setting2=None):
     if len(data) == 3:
         if method == 'X':
             xsort,zsort=np.zeros_like(data[-1]),np.zeros_like(data[-1])
@@ -493,7 +493,7 @@ def add_slope(data, method, a_x, a_y):
         data[-1] += a_y*data[0]
     return data    
                 
-def subtract_trace(data, method, index, setting2):
+def subtract_trace(data, method, index, setting2=None):
     if len(data) == 3:
         index = int(float(index))
         if method == 'Hor':
@@ -502,7 +502,7 @@ def subtract_trace(data, method, index, setting2):
             data[-1] -= np.tile(data[-1][index,:], (len(data[-1][:,0]),1))
     return data
 
-def invert(data, method, setting1, setting2):
+def invert(data, method, setting1=None, setting2=None):
     axis = {'X': 0, 'Y': 1, 'Z': -1}
     data[axis[method]] = 1./data[axis[method]]
     return data

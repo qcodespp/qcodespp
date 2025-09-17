@@ -5,6 +5,7 @@ import sys
 from json import load as jsonload
 from json import dump as jsondump
 from csv import writer as csvwriter
+from qcodespp import data
 import qcodespp.plotting.offline.fits as fits
 from scipy.ndimage import map_coordinates
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -107,6 +108,8 @@ class LineCutWindow(QtWidgets.QWidget):
         self.linesize_box.setValue(self.parent.linecuts[self.orientation]['linesize'])
 
         # Plotting widgets
+        self.autoscale_checkbox = QtWidgets.QCheckBox('Lock axis limits')
+        self.autoscale_checkbox.setChecked(self.parent.linecuts[self.orientation]['lock_scaling'])
         self.reset_plot_limits_button = QtWidgets.QPushButton('Autoscale axes')
         self.plot_against_label = QtWidgets.QLabel('Plot against:')
         self.plot_against_box = QtWidgets.QComboBox() #For diagonal linecuts
@@ -194,6 +197,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.cuts_table.itemClicked.connect(self.item_clicked)
 
         self.reset_plot_limits_button.clicked.connect(self.autoscale_axes)
+        self.autoscale_checkbox.toggled.connect(self.toggle_lock_scaling)
         self.plot_against_box.currentIndexChanged.connect(self.update)
         if self.orientation == 'diagonal':
             self.left_button.clicked.connect(lambda: self.move_diagonal_line('left'))
@@ -238,6 +242,8 @@ class LineCutWindow(QtWidgets.QWidget):
         #                                                self.mouse_scroll_canvas)
         self.canvas.mpl_connect('button_press_event', self.mouse_click_canvas)
         self.canvas.mpl_connect('scroll_event', self.mouse_scroll_canvas)
+        self.canvas.mpl_connect('button_release_event', self.on_release)
+        self.canvas.mpl_connect('motion_notify_event', self.on_motion)
         self.navi_toolbar = NavigationToolbar(self.canvas, self)
     
     def init_layouts(self):
@@ -308,6 +314,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.bot_buttons_layout.addWidget(self.yscale_label)
         self.bot_buttons_layout.addWidget(self.yscale_box)
         self.bot_buttons_layout.addStretch()
+        self.bot_buttons_layout.addWidget(self.autoscale_checkbox)
         self.bot_buttons_layout.addWidget(self.reset_plot_limits_button)
         
         # Sub-layouts(s) in fitting box
@@ -1018,9 +1025,21 @@ class LineCutWindow(QtWidgets.QWidget):
                 for line in fit_lines:
                     if 'fit' in self.parent.linecuts[self.orientation]['lines'][line].keys():
                         self.draw_fits(line)
-
+            self.canvas.draw()
             self.parent.canvas.draw()
+            self.update_pick_radius()
             self.show()
+
+    def update_pick_radius(self):
+        # Define pick radius for the axes to be anywhere between the axis label and the axis spine.
+        ax=self.axes
+        xlabpos=ax.xaxis.label.get_position()[1]
+        ylabpos=ax.yaxis.label.get_position()[0]
+        windowex=ax.get_window_extent()
+        xrad=np.abs(windowex.y0-xlabpos)
+        yrad=np.abs(windowex.x0-ylabpos)
+        ax.xaxis.set_pickradius(xrad)
+        ax.yaxis.set_pickradius(yrad)
                
     def fit_class_changed(self):
         self.fit_box.currentIndexChanged.disconnect(self.fit_type_changed)
@@ -1305,6 +1324,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 break
 
         self.running = True
+        old_lims=[self.axes.get_xlim(), self.axes.get_ylim()] if hasattr(self,'axes') else None
         self.figure.clear()
 
         self.axes = self.figure.add_subplot(111)
@@ -1362,8 +1382,14 @@ class LineCutWindow(QtWidgets.QWidget):
         if self.parent.linecuts[self.orientation]['legend']:
             self.axes.legend()
         self.limits_edited()
-        self.canvas.draw()
-        self.parent.canvas.draw()
+        if self.parent.linecuts[self.orientation]['lock_scaling'] and old_lims is not None:
+            try:
+                self.axes.set_xlim(old_lims[0])
+                self.axes.set_ylim(old_lims[1])
+            except Exception as e:
+                pass
+        #self.canvas.draw()
+        #self.parent.canvas.draw()
               
     def draw_fits(self,line):
         try:
@@ -1389,6 +1415,9 @@ class LineCutWindow(QtWidgets.QWidget):
         except Exception as e:
             self.output_window.setText(f'Could not plot fit: {e}')
         self.canvas.draw()
+
+    def toggle_lock_scaling(self):
+        self.parent.linecuts[self.orientation]['lock_scaling'] = self.autoscale_checkbox.isChecked()
 
     def autoscale_axes(self):
         self.axes.autoscale()
@@ -1792,61 +1821,54 @@ class LineCutWindow(QtWidgets.QWidget):
             lines.append('\t'.join(row_items))
         clipboard = QtWidgets.QApplication.clipboard()
         clipboard.setText('\n'.join(lines))
-            
+    
+    def zoom_plot(self, event, axis):
+        scale=1.2
+        scale_factor = np.power(scale, -event.step)
+
+        x = event.x
+        y = event.y
+        #convert pixels to axes
+        tranP2A = self.axes.transAxes.inverted().transform
+        #convert axes to data limits
+        tranA2D= self.axes.transLimits.inverted().transform
+        #convert the scale (for log plots)
+        tranSclA2D = self.axes.transScale.inverted().transform
+        #x,y position of the mouse in range (0,1)
+        xa,ya = tranP2A((x,y))
+        newxlims=[xa - xa*scale_factor, xa + (1-xa)*scale_factor]
+        newylims=[ya - ya*scale_factor, ya + (1-ya)*scale_factor]
+        new_xlim0,new_ylim0 = tranSclA2D(tranA2D((newxlims[0],newxlims[0])))
+        new_xlim1,new_ylim1 = tranSclA2D(tranA2D((newylims[1],newylims[1])))
+        if axis=='x':
+            self.axes.set_xlim([new_xlim0, new_xlim1])
+        elif axis=='y':
+            self.axes.set_ylim([new_ylim0, new_ylim1])
+        else:
+            self.axes.set_xlim([new_xlim0, new_xlim1])
+            self.axes.set_ylim([new_ylim0, new_ylim1])
+
+        self.canvas.draw()
+        # Update toolbar so back/forward buttons work
+        self.canvas.toolbar.push_current()
+
     def mouse_scroll_canvas(self, event):
         if event.inaxes:
-
-            scale=1.2
-            scale_factor = np.power(scale, -event.step)
-
-            if any([scale != 'linear' for scale in [self.axes.get_xscale(), self.axes.get_yscale()]]):
-                x = event.x
-                y = event.y
-                #convert pixels to axes
-                tranP2A = event.inaxes.transAxes.inverted().transform
-                #convert axes to data limits
-                tranA2D= event.inaxes.transLimits.inverted().transform
-                #convert the scale (for log plots)
-                tranSclA2D = event.inaxes.transScale.inverted().transform
-                #x,y position of the mouse in range (0,1)
-                xa,ya = tranP2A((x,y))
-                newxlims=[xa - xa*scale_factor, xa + (1-xa)*scale_factor]
-                newylims=[ya - ya*scale_factor, ya + (1-ya)*scale_factor]
-                new_xlim0,new_ylim0 = tranSclA2D(tranA2D((newxlims[0],newxlims[0])))
-                new_xlim1,new_ylim1 = tranSclA2D(tranA2D((newylims[1],newylims[1])))
-                if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
-                    self.axes.set_xlim([new_xlim0, new_xlim1])
-                elif QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
-                    self.axes.set_ylim([new_ylim0, new_ylim1])
-                else:
-                    self.axes.set_xlim([new_xlim0, new_xlim1])
-                    self.axes.set_ylim([new_ylim0, new_ylim1])
+            if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
+                self.zoom_plot(event, axis='x')
+            elif QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
+                self.zoom_plot(event, axis='y')
             else:
-                #Old method. renders slightly faster, but doesn't work well with log scale.
-                xdata = event.xdata
-                ydata = event.ydata
-                x_left = xdata - event.inaxes.get_xlim()[0]
-                x_right = event.inaxes.get_xlim()[1] - xdata
-                y_top = ydata - event.inaxes.get_ylim()[0]
-                y_bottom = event.inaxes.get_ylim()[1] - ydata
-                newxlims=[xdata - x_left * scale_factor, xdata + x_right * scale_factor]
-                newylims=[ydata - y_top * scale_factor, ydata + y_bottom * scale_factor]
-                if QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
-                    self.axes.set_xlim(newxlims)
-                elif QtGui.QGuiApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
-                    self.axes.set_ylim(newylims)
-                else:
-                    self.axes.set_xlim(newxlims)
-                    self.axes.set_ylim(newylims)
+                self.zoom_plot(event, axis='both')
 
-            event.inaxes.figure.canvas.draw()
-            # Update toolbar so back/forward buttons work
-            fig = event.inaxes.get_figure()
-            fig.canvas.toolbar.push_current()
+        elif self.axes.xaxis.contains(event)[0]:
+            self.zoom_plot(event, axis='x')
+        elif self.axes.yaxis.contains(event)[0]:
+            self.zoom_plot(event, axis='y')
 
     def mouse_click_canvas(self, event):
-        if self.navi_toolbar.mode == '': # If not using the navigation toolbar tools
-            if event.inaxes and event.button == 1:
+        if event.inaxes and event.button == 1:
+            if self.navi_toolbar.mode == '': # If not using the navigation toolbar tools
                 current_row = self.cuts_table.currentRow()
                 # Get the x data for the linecut
                 x,y,z=self.get_line_data(int(self.cuts_table.item(current_row,0).text()))
@@ -1863,6 +1885,47 @@ class LineCutWindow(QtWidgets.QWidget):
                     else:
                         self.xmax_box.setText(str(x_value))
                 self.limits_edited()
+        
+        else:
+            axis=None
+            if self.axes.xaxis.contains(event)[0]:
+                axis='x'
+            elif self.axes.yaxis.contains(event)[0]:
+                axis='y'
+            if axis is not None and event.button == 1:
+                width, height = self.canvas.get_width_height()
+                bbox=self.axes.get_position().get_points()
+                x0, x1 = bbox[0][0]*width, bbox[1][0]*width
+                y0, y1 = bbox[0][1]*height, bbox[1][1]*height
+                if axis == 'x':
+                    min_0, max_0 = self.axes.get_xbound()
+                    pixels_per_unit = (x1 - x0) / (max_0 - min_0)
+                    axpress = event.x
+                elif axis == 'y':
+                    min_0, max_0 = self.axes.get_ybound()
+                    pixels_per_unit = (y1 - y0) / (max_0 - min_0)
+                    axpress = event.y
+                self.press = [axis,axpress,pixels_per_unit,min_0,max_0]
+
+    def on_motion(self, event):
+        if hasattr(self,'press') and self.press is not None and self.press[0] in ['x','y']:
+            axis=self.press[0]
+            axpress=self.press[1]
+            pixels_per_unit=self.press[2]
+            min_0=self.press[3]
+            max_0=self.press[4]
+            if axis == 'x':
+                dx = (event.x - axpress)/pixels_per_unit
+                self.axes.set_xlim(min_0 - dx, max_0 - dx)
+            elif axis == 'y':
+                dy = (event.y - axpress)/pixels_per_unit
+                self.axes.set_ylim(min_0 - dy, max_0 - dy)
+            self.canvas.draw()
+            self.canvas.toolbar.push_current()
+
+    def on_release(self, event):
+        self.press = None
+        self.canvas.draw()
 
     def save_fit_preset(self):
         preset_dict={}
