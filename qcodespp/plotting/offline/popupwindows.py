@@ -1908,7 +1908,7 @@ class LineCutWindow(QtWidgets.QWidget):
                 self.press = [axis,axpress,pixels_per_unit,min_0,max_0]
 
     def on_motion(self, event):
-        if hasattr(self,'press') and self.press != None and self.press[0] in ['x','y']:
+        if hasattr(self,'press') and self.press is not None and self.press[0] in ['x','y']:
             axis=self.press[0]
             axpress=self.press[1]
             pixels_per_unit=self.press[2]

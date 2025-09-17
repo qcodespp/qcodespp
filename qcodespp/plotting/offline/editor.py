@@ -3121,7 +3121,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.press = [axis,item,axpress,pixels_per_unit,min_0,max_0]
 
     def on_motion(self, event):
-        if hasattr(self,'press') and self.press != None:
+        if hasattr(self,'press') and self.press is not None:
             # if hasattr(self,'cbar_in_focus') and self.cbar_in_focus:
             #     try:
             #         ypress = self.press
