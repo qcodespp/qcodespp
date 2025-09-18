@@ -1025,13 +1025,8 @@ class QSwitches(Instrument):
         Connect the specified line to the specified tap AND disconnect ground.
 
         Args:
-<<<<<<< HEAD
-            line: the output line
-            tap: the input BNC tap
-=======
             line: The line to connect to the breakout. Specify either its integer value or its name.
             tap: The tap to connect the line to. Specify either its integer value or its name
->>>>>>> c65014386b1786e5da6c4ba84ebeab899ef91341
         '''
         self.close_relay(self._to_line(line), self._to_tap(tap))
         self.open_relay(self._to_line(line), 0)
