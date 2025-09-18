@@ -1,6 +1,6 @@
 from zhinst.ziPython import ziDAQServer
 from zhinst.utils import utils
-from qcodespp import Instrument
+from qcodespp import Instrument, MultiParameter
 from qcodes.validators import Numbers, Enum, Ints
 from qcodespp.data.data_array import DataArray
 from functools import partial
@@ -13,8 +13,6 @@ class ZIMFLI(Instrument):
     It has the most important functions for configuring outputs and reading off inputs to qcodes.
 
     Serial - the device serial number printed on the chassis used for connecting to the device
-
-    TODO: everything
 
     """
     scoperates = {
@@ -64,7 +62,7 @@ class ZIMFLI(Instrument):
     def print_scope_chaninputs(self):
         print(self.scopechaninputs)
 
-    def __init__(self, name, serial, server="local",digi=False,port=8004, **kwargs):
+    def __init__(self, name, serial, server="local", port=8004, **kwargs):
 
         self.LI = {
             "numSigouts": 1,   # number of signal outputs
@@ -91,7 +89,6 @@ class ZIMFLI(Instrument):
         super().__init__(name, **kwargs)
 
         self.serial = serial
-        self.digi = digi #Set to true if digi option installed.
 
         # Check if additional options installed
         self.options = self.daq.getString("/{}/features/options".format(self.serial))
@@ -229,13 +226,10 @@ class ZIMFLI(Instrument):
                                            },
                                vals=Ints(min_value=0, max_value=1))
 
-
-
-
         # Register sigouts
 
         """
-        TODO: switching on the 50 Ohm output impedance changes the available ranges on the sigout, so that will fuck up the user input value validator.
+        TODO: switching on the 50 Ohm output impedance changes the available ranges on the sigout.
         Need to figure out how to switch the validator when imp50 is toggled
         """
         for n in range(self.LI["numSigouts"]):
@@ -574,19 +568,19 @@ class ZIMFLI(Instrument):
                                 get_parser=self._scope_rate_parser,
                                 set_cmd=partial(self.daq.setInt,'/{}/scopes/{}/time'.format(self.serial,n)),
                                 set_parser=self._scope_setrate_parser,
-                                vals= Enum(60000000,30000000,15000000,7500000,3750000,1880000,936000,469000,
-                                            234000,117000,58600,29300,14600,7320,3660,1830,916))
+                                vals= Enum(*list(self.scope_rates.values())))
 
             if self.digi==True: #The following will only work for instruments with the DIGI option installed.
-                self.add_parameter(name='scope{}_data'.format(n),
-                                    get_cmd=self._getScope)
+                self.scope_data=MFLIScope('scope_data', self)
+                # self.add_parameter(name='scope{}_data'.format(n),
+                #                     get_cmd=self._getScope)
 
             self.add_parameter(name='scope{}_trigsource'.format(n),
                                 label='scope{}_trigsource'.format(n),
                                 get_cmd=partial(self.daq.getInt,'/{}/scopes/{}/trigchannel'.format(self.serial,n)),
                                 get_parser=self._scope_chaninput_parser,
                                 set_cmd=partial(self.daq.setInt,'/{}/scopes/{}/trigchannel'.format(self.serial,n)),
-                                vals= Enum(0,1,2,3,4,5,6,7,8,9,10,11,14,15,16,17,32,33,48,49,64,65))
+                                vals= Enum(*list(self.scopechaninputs.values())))
 
             for chan in range(2):
                 self.add_parameter(name='scope{}_ch{}_input'.format(n,chan+1),
@@ -594,7 +588,7 @@ class ZIMFLI(Instrument):
                                 get_cmd=partial(self.daq.getInt,'/{}/scopes/{}/channels/{}/inputselect'.format(self.serial,n,chan)),
                                 get_parser=self._scope_chaninput_parser,
                                 set_cmd=partial(self.daq.setInt,'/{}/scopes/{}/channels/{}/inputselect'.format(self.serial,n,chan)),
-                                vals= Enum(0,1,2,3,4,5,6,7,8,9,10,11,14,15,16,17,32,33,48,49,64,65))
+                                vals= Enum(*list(self.scopechaninputs.values())))
 
         self.fwrevision = partial(self.daq.getInt,'{}/system/fwrevision'.format(self.serial))()
         t = time.time() - (begin_time or self._t0)
@@ -638,7 +632,7 @@ class ZIMFLI(Instrument):
     def _getX(self,path):
         if self.daq.getInt(path.rpartition("/")[0]+"/enable") != 1:
             #print("Tried to get value of disabled channel " + path)
-            x = 0
+            x = None
         else:
             data = self.daq.getSample(path)
             x = float(data['x'])
@@ -648,7 +642,7 @@ class ZIMFLI(Instrument):
     def _getY(self,path):
         if self.daq.getInt(path.rpartition("/")[0]+"/enable") != 1:
             #print("Tried to get value of disabled channel " + path)
-            y = 0
+            y = None
         else:
             data = self.daq.getSample(path)
             y = float(data['y'])
@@ -658,7 +652,7 @@ class ZIMFLI(Instrument):
     def _getR(self,path):
         if self.daq.getInt(path.rpartition("/")[0]+"/enable") != 1:
             #print("Tried to get value of disabled channel " + path)
-            R = 0
+            R = None
         else:
             data = self.daq.getSample(path)
             x = float(data['x'])
@@ -670,7 +664,7 @@ class ZIMFLI(Instrument):
     def _getP(self,path):
         if self.daq.getInt(path.rpartition("/")[0]+"/enable") != 1:
             #print("Tried to get value of disabled channel " + path)
-            P = 0
+            P = None
         else:
             data = self.daq.getSample(path)
             P = float(data['phase'])
@@ -714,7 +708,7 @@ class ZIMFLI(Instrument):
     def _getScope(self):
         if self.daq.getInt('/{}/scopes/0/enable'.format(self.serial)) != 1:
             #print("Tried to get value of disabled channel /{}/scopes/0/".format(self.serial))
-            return 0
+            return None
 
         scope=self.daq.scopeModule()
 
@@ -777,3 +771,79 @@ class ZIMFLI(Instrument):
 
         else:
             return('No scope channels active')
+        
+class MFLIScope(MultiParameter):
+    """
+    Class to get scope data from MFLI as a single parameter
+    """
+    def __init__(self, name: str, instrument: ZIMFLI) -> None:
+        """
+        Args:
+            name: Name of the parameter
+            instrument: Instance of the ZIMFLI class
+        """
+        shapes=((1,),(1,),(1,))
+        units=('t','V','V')
+        names=('time','channel1','channel2')
+        super().__init__(name=name, instrument=instrument, names=names, shapes=shapes, units=units)
+
+    def get_raw(self):
+        if self.instrument.daq.getInt('/{}/scopes/0/enable'.format(self.instrument.serial)) != 1:
+        #print("Tried to get value of disabled channel /{}/scopes/0/".format(self.serial))
+            return None
+
+        scope=self.instrument.daq.scopeModule()
+
+        #At the moment assuming only one scope to simplify code. Not sure if possible to have more scopes with add-ons
+        scope.subscribe('/{}/scopes/0/wave'.format(self.instrument.serial))
+        scope.execute()
+        #Need to wait until data is returned after execute. But not obvious exactly how long this should be
+        #It's not just totalsamples/samplerate, seems to depend on communication time, which is always somewhat random
+        #Therefore just read the data until it includes the device serial; then the aquisition is definitely complete
+        read=scope.read()
+        while self.instrument.serial not in read:
+            read=scope.read()
+        data=read[self.instrument.serial]['scopes']['0']['wave'][0][0]
+
+        #At the moment assuming xaxis is time, need to change this if it's the FFT...
+        dt=data['dt']
+        totalsamples=data['totalsamples']
+        xdata=[-totalsamples*dt/2+dt*i for i in range(totalsamples)]
+
+        numchans=partial(self.instrument.daq.getInt,'/{}/scopes/0/channel'.format(self.instrument.serial))()
+
+        if numchans==3:
+            chan1input=partial(self.instrument.daq.getInt,'/{}/scopes/0/channels/0/inputselect'.format(self.instrument.serial))()
+            chan2input=partial(self.instrument.daq.getInt,'/{}/scopes/0/channels/1/inputselect'.format(self.instrument.serial))()
+            self.shapes=((totalsamples,),(totalsamples,),(totalsamples,))
+            if chan1input==1:
+                self.units=('t','A','V')
+            elif chan2input==1:
+                self.units=('t','V','A')
+            else:
+                self.units=('t','V','V')
+            ydata_ch1=data['wave'][0]
+            ydata_ch2=data['wave'][1]
+            return (xdata,ydata_ch1,ydata_ch2)
+        
+        elif numchans==2:
+            chan2input=partial(self.instrument.daq.getInt,'/{}/scopes/0/channels/1/inputselect'.format(self.instrument.serial))()
+            self.shapes=((totalsamples,),(totalsamples,))
+            self.names=('time','channel2')
+            if chan2input==1:
+                self.units=('t','A')
+            else:
+                self.units=('t','V')
+            ydata_ch2=data['wave'][0]
+            return (xdata,ydata_ch2)
+        
+        elif numchans==1:
+            chan1input=partial(self.instrument.daq.getInt,'/{}/scopes/0/channels/0/inputselect'.format(self.instrument.serial))()
+            self.shapes=((totalsamples,),(totalsamples,))
+            self.names=('time','channel1')
+            if chan1input ==1:
+                self.units=('t','A')
+            else:
+                self.units=('t','V')
+            ydata_ch1=data['wave'][0]
+            return (xdata,ydata_ch1)
