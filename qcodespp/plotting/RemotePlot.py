@@ -337,7 +337,7 @@ class Plot():
             args_list=[]
             for item in args:
                 args_list.append(self._find_array(item,data_set=data_set))
-            args=tuple(args_list)
+            args=args_list
 
         kwargs['xlabel'] = xlabel
         kwargs['ylabel'] = ylabel
@@ -421,7 +421,10 @@ class Plot():
                 if isinstance(arr, np.ndarray):
                     ndarr = arr
                 else:
-                    continue
+                    try:
+                        ndarr = np.array(arr)
+                    except:
+                        continue
 
                 if (~np.isnan(ndarr)).any():
                     arrays.append(ndarr)
