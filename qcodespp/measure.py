@@ -108,7 +108,7 @@ class Measure(Metadatable):
         Makes the DataArrays to hold the setpoints and measured parameters.
         """
         setpoint_arrays=[]
-        action_arrays=[]
+        param_arrays=[]
         arrays=[]
 
         if self.setpoints:
@@ -132,11 +132,14 @@ class Measure(Metadatable):
                 setpoint_arrays.append(setpoint_array)
             
         for name,value in self._raw_data.items():
-            action_shape=np.shape(value)
-            # Try to find the appropriate setpoint arrays for this action
-            action_setpoint_arrays=()
-            for i in range(np.shape(action_shape)[0]):
-                sub_shape = action_shape[:i+1] # Find arrays with appropriate shape for each dimension
+            array_shape=np.shape(value)
+            if array_shape==(): # if shape is (), make it (1,) to make a setpoint array also.
+                array_shape=(1,)
+                value=(value,)
+            # Try to find the appropriate setpoint arrays for this param
+            param_setpoint_arrays=()
+            for i in range(np.shape(array_shape)[0]):
+                sub_shape = array_shape[:i+1] # Find arrays with appropriate shape for each dimension
                                                 #e.g. (10, 20, 30) -> (10,), (10, 20), (10, 20, 30)
                 setpoint_array=False
                 for array in setpoint_arrays:
@@ -145,7 +148,7 @@ class Measure(Metadatable):
                         break
 
                 if not setpoint_array:
-                    # If no setpoint array found, create a dummy setpoint array for this action with the approrpriate dimension/shape.
+                    # If no setpoint array found, create a dummy setpoint array for this param with the approrpriate dimension/shape.
                     num_setpoint_arrays = len(setpoint_arrays)
                     init_array=np.arange(0,sub_shape[-1],1)
                     dummy_setpoints=np.tile(init_array,sub_shape[:-1]).reshape(sub_shape)
@@ -158,18 +161,17 @@ class Measure(Metadatable):
                     setpoint_array.init_data()
                     setpoint_arrays.append(setpoint_array)
 
-                action_setpoint_arrays=action_setpoint_arrays + (setpoint_array,)
-            action_array=DataArray(name=name, shape=action_shape, is_setpoint=False, set_arrays=action_setpoint_arrays)
-            action_array.init_data()
-            action_arrays.append(action_array)
-        arrays = setpoint_arrays + action_arrays
+                param_setpoint_arrays=param_setpoint_arrays + (setpoint_array,)
+            data_array=DataArray(name=name, preset_data=value, is_setpoint=False, set_arrays=param_setpoint_arrays)
+            param_arrays.append(data_array)
+        arrays = setpoint_arrays + param_arrays
 
         # A potential TODO here: I feel like that in general the setpoints and measurement arrays will be created in the 'right' order,
         # but maybe there are cases when this doesn't happen? If we run into such unintuitive cases, we could sort the arrays.
         # Eg at the moment it's ALL setpoints, then ALL measured params, but maybe it's more intuative to group the setpoints and measured params.
         return arrays
 
-    def _get_data_set(self):
+    def _make_data_set(self):
         """
         Construct the DataSetPP for this measurement.
         
@@ -240,7 +242,7 @@ class Measure(Metadatable):
         except _QcodesBreak:
             self.was_broken=True
 
-        data_set = self._get_data_set()
+        data_set = self._make_data_set()
         if publisher:
             data_set.publisher = publisher
 
@@ -266,7 +268,7 @@ class Measure(Metadatable):
     
     def _measure(self):
         """
-        Actually perform the measurement.
+        Perform the measurement: get all the parameters and store in a dict which will be used to fill a DataSetPP.
         """
         # TODO: At the moment there is none of the optimisations that (allegedly) exist in Loop,
         # such as trying to group gettable parameters that have the same source.
