@@ -132,7 +132,7 @@ class Measure(Metadatable):
                 setpoint_arrays.append(setpoint_array)
             
         for name,value in self._raw_data.items():
-            array_shape=np.shape(value)
+            array_shape=np.shape(value['values'])
             if array_shape==(): # if shape is (), make it (1,) to make a setpoint array also.
                 array_shape=(1,)
                 value=(value,)
@@ -162,7 +162,8 @@ class Measure(Metadatable):
                     setpoint_arrays.append(setpoint_array)
 
                 param_setpoint_arrays=param_setpoint_arrays + (setpoint_array,)
-            data_array=DataArray(name=name, preset_data=value, is_setpoint=False, set_arrays=param_setpoint_arrays)
+            data_array=DataArray(name=name, full_name=name, unit=value['unit'], preset_data=value['values'],
+                                is_setpoint=False, set_arrays=param_setpoint_arrays)
             param_arrays.append(data_array)
         arrays = setpoint_arrays + param_arrays
 
@@ -243,6 +244,7 @@ class Measure(Metadatable):
             self.was_broken=True
 
         data_set = self._make_data_set()
+
         if publisher:
             data_set.publisher = publisher
 
@@ -262,7 +264,7 @@ class Measure(Metadatable):
 
         if not quiet:
             print(repr(data_set))
-            print(datetime.now().strftime('acquired at %Y-%m-%d %H:%M:%S'))
+            print(datetime.now().strftime('Acquired at %Y-%m-%d %H:%M:%S'))
 
         return data_set
     
@@ -279,7 +281,7 @@ class Measure(Metadatable):
         if self.timer==False: # Useful in the Loop, so is included in station.measure() by default, but is completely useless here.
             self.actions = [action for action in self.actions if action.name != 'timer']
         for action in self.actions:
-            if hasattr(action, '_gettable') and action._gettable: # basically, is this any kind of gettable parameter.
+            if hasattr(action, '_gettable') and action._gettable: # don't try to measure a parameter without a get method.
                 params_to_measure.append(action)
 
         #param_ids, getters = zip(*((param.full_name, param.get) for param in params_to_measure))
@@ -293,12 +295,13 @@ class Measure(Metadatable):
         for param_out, param in zip(out, params_to_measure):
             if hasattr(param, 'names'): #MultiParameter
                 for i, name in enumerate(param.names):
-                    out_dict[name] = param_out[i]
+                    out_dict[name] = {'values':param_out[i],
+                                    'unit':param.units[i]}
             else:
-                out_dict[param.full_name] = param_out
+                out_dict[param.full_name] = {'values':param_out,
+                                            'unit':param.unit}
 
         return out_dict
-        #self.data_set.store(loop_indices='all', ids_values=out_dict)
 
     def snapshot_base(self, update=False):
         # TODO: Make sure the snapshot contains all the necessary information

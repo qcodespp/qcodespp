@@ -626,10 +626,7 @@ class DataSetPP(DelegateAttributes):
                 to insert into that array.
          """
         for array_id, value in ids_values.items():
-            if type(loop_indices) is tuple:
-                self.arrays[array_id][loop_indices] = value
-            elif loop_indices=='all': # from Measure
-                self.arrays[array_id][:] = value
+            self.arrays[array_id][loop_indices] = value
         self.last_store = time.time()
 
         if self.publisher is not None:
