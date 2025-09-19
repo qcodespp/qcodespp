@@ -135,7 +135,7 @@ class Measure(Metadatable):
             array_shape=np.shape(value['values'])
             if array_shape==(): # if shape is (), make it (1,) to make a setpoint array also.
                 array_shape=(1,)
-                value=(value,)
+                value['values']=(value['values'],)
             # Try to find the appropriate setpoint arrays for this param
             param_setpoint_arrays=()
             for i in range(np.shape(array_shape)[0]):
