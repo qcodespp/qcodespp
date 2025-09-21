@@ -15,17 +15,17 @@ from qcodespp.plotting.RemotePlot import live_plot
 
 class Measure(Metadatable):
     """
-    Class to create a ``DataSetPP`` from a single (non-looped) set of measured parameters.
+    Create a ``DataSetPP`` from a single (non-looped) set of measured parameters.
 
     ``Measure`` is used to measure a set of parameters at a single point in time.
     The typical use case is where the parameter(s)'s get function(s) return(s) an array, e.g. 
-    an oscilloscope trace, or a spectrum analyser trace.
-    At init, you can provide the parameters to measure and (optionally) setpoints. If no parameters are 
-    provided, the default station.measure() is used.
-    If no setpoints are provided, dummy setpoints are created for each dimension
-    found in the measured parameters (recommended, see below).
+    an oscilloscope trace, or a spectrum analyser trace. The array shape(s) do not need to be known.
+    The parameters to be measured are provided at init or therough station.set_measurement().
+    Optionally, setpoints may be provided, but this is usually not required nor recommended.
+    If no setpoints are provided, dummy setpoints are created for each dimension found in the 
+    measured parameters (recommended, see Args documentation below).
 
-    ``Measure.run()`` will execute the measurement, and return and save a ``DataSetPP``
+    ``Measure.run()`` executes the measurement, and returns and saves a ``DataSetPP``
 
     Examples:
         Measure two parameters:
@@ -69,17 +69,17 @@ class Measure(Metadatable):
 
         use_threads (Optional, bool): Use threading to parallelize getting parameters from instruments.
     
-        timer (Optional, bool, default False): The default station.measure() includes a timer parameter, which is
-            useful for Loops but essentially useless here. If you really want it, set timer=True.
+        use_timer (Optional, bool, default False): The default station.measure() includes a timer parameter, 
+            which is useful for Loops but essentially useless here. If you really want it, set use_timer=True.
     """
 
-    def __init__(self, *measure, setpoints=None, use_threads=False, station=None, name=None, timer=False):
+    def __init__(self, *measure, setpoints=None, use_threads=False, station=None, name=None, use_timer=False):
         super().__init__()
         self.station = station or Station.default
         self.use_threads = use_threads
         self.setpoints = setpoints
         self.name = name
-        self.timer = timer
+        self.use_timer = use_timer
         self.actions = measure
 
     def each(self, *actions):
@@ -104,13 +104,13 @@ class Measure(Metadatable):
         """
         return self.run(quiet=True, location=False, **kwargs)
     
-    def run(self, plot=None,name=None,use_threads=None, quiet=False, station=None,**kwargs):
+    def run(self, plot=None, name=None, use_threads=None, quiet=False, station=None,**kwargs):
         """
         Run the actions in this measurement and return their data as a DataSetPP
 
         Args:
-            plot: a list of parameters to plot. Provide the parameter, 
-                or parameter full name as a string.
+            plot (Optional[Sequence[Parameter,str]]): a list of parameters to plot. 
+                Provide the parameter, or parameter full_name as a string.
 
             name (Optional[str]): Filename, minus counter, date and time.
                 Overwrites any name provided at init.
@@ -145,7 +145,7 @@ class Measure(Metadatable):
             self.name = name
         station = station or self.station or Station.default
 
-        if self.timer==True:
+        if self.use_timer==True:
             station.timer.reset_clock()
 
         if use_threads is not None:
@@ -186,12 +186,12 @@ class Measure(Metadatable):
     
     def _construct_measure_dict(self):
         """
-        Construct a dict with all the parameters to measure, and whether they are setpoints or not.
+        Work out which meassurements need to be made, including the gettable setpoints, if provided.
         """
         params_to_measure={}
         if not self.actions:
             self.actions = self.station.measure()
-        if self.timer==False: # Useful in the Loop, so is included in station.measure() by default. Less useful here.
+        if self.use_timer==False: # Useful in the Loop, so is included in station.measure() by default. Less useful here.
             self.actions = [action for action in self.actions if action.name != 'timer']
         if self.setpoints:
             for action in self.setpoints:
@@ -204,7 +204,7 @@ class Measure(Metadatable):
     
     def _measure(self):
         """
-        Perform the measurement: get all the parameters and store in a dict which will be used to fill a DataSetPP.
+        Perform the measurement: get all the parameters and store in a dict which will be used to fill the DataSetPP.
         """
         # TODO: At the moment there is none of the optimisations that (allegedly) exist in Loop,
         # such as trying to group gettable parameters that have the same source.
@@ -222,26 +222,28 @@ class Measure(Metadatable):
             action=params_to_measure[param]['action']
             if isinstance(action, MultiParameter):
                 for i, name in enumerate(action.names):
+                    if action.labels is not None:
+                        label = action.labels[i]
+                    else:
+                        label = name
                     out_dict[name] = {'values':param_out[i],
                                     'unit':action.units[i],
+                                    'label':label,
                                     'is_setpoint': params_to_measure[param]['is_setpoint']}
             else:
                 out_dict[param] = {'values':param_out,
-                                            'unit':action.unit,
-                                            'is_setpoint': params_to_measure[param]['is_setpoint']}
+                                    'unit':action.unit,
+                                    'label':action.label,
+                                    'is_setpoint': params_to_measure[param]['is_setpoint']}
 
         return out_dict
 
     def _make_data_set(self,**kwargs):
         """
         Construct the DataSetPP for this measurement.
-        
-        In contrast to Loop, this should not be called directly, but only
-        when the user calls Measure.run()
         """
 
         self.data_set=new_data(name=self.name,**kwargs)
-
         setpoint_arrays=[]
 
         if self.setpoints:
@@ -265,46 +267,55 @@ class Measure(Metadatable):
         for name,value in self._raw_data.items():
             if value['is_setpoint']:
                 continue # Setpoints are already added above
+
             array_shape=np.shape(value['values'])
+
             if array_shape==(): # if shape is (), make it (1,) to make a setpoint array also.
                 array_shape=(1,)
                 value['values']=(value['values'],)
+
             # Try to find the appropriate setpoint arrays for this param
             param_setpoint_arrays=()
             for i in range(np.shape(array_shape)[0]):
-                sub_shape = array_shape[:i+1] # Find arrays with appropriate shape for each dimension
-                                                #e.g. (10, 20, 30) -> (10,), (10, 20), (10, 20, 30)
-                setpoint_array=False
+                # Find arrays with appropriate shape for each dimension
+                # e.g. (10, 20, 30) -> (10,), (10, 20), (10, 20, 30)
+                sub_shape = array_shape[:i+1] 
+                setpoint_array = False
                 for array in setpoint_arrays:
                     if array.shape == sub_shape:
-                        setpoint_array=array
+                        setpoint_array = array
                         break
 
                 if not setpoint_array:
-                    # If no setpoint array found, create a dummy setpoint array for this param with the approrpriate dimension/shape.
-                    num_setpoint_arrays = len(setpoint_arrays)
-                    init_array=np.arange(0,sub_shape[-1],1)
-                    dummy_setpoints=np.tile(init_array,sub_shape[:-1]).reshape(sub_shape)
-                    setpoint_array=DataArray(label='Setpoints',
-                                            unit='',
-                                            array_id=f'setpoints_{num_setpoint_arrays}',
-                                            name=f'setpoints_{num_setpoint_arrays}',
-                                            is_setpoint=True,
-                                            preset_data=dummy_setpoints)
+                    # If no setpoint array found, create a dummy setpoint array for this 
+                    # param with the approrpriate dimension/shape.
+                    init_array = np.arange(0, sub_shape[-1], 1)
+                    dummy_setpoints = np.tile(init_array, sub_shape[:-1]).reshape(sub_shape)
+                    setpoint_array = DataArray(label = 'Setpoints',
+                                            unit = '',
+                                            array_id = f'setpoints_{len(setpoint_arrays)}',
+                                            name = f'setpoints_{len(setpoint_arrays)}',
+                                            is_setpoint = True,
+                                            preset_data = dummy_setpoints)
                     setpoint_array.init_data()
                     setpoint_arrays.append(setpoint_array)
                     self.data_set.add_array(setpoint_array)
 
-                param_setpoint_arrays=param_setpoint_arrays + (setpoint_array,)
-            data_array=DataArray(name=name, unit=value['unit'], preset_data=value['values'],
-                                is_setpoint=False, set_arrays=param_setpoint_arrays)
+                param_setpoint_arrays = param_setpoint_arrays + (setpoint_array,)
+
+            # Make and add the array to the dataset.
+            data_array = DataArray(name = name,
+                                label = value['label'],
+                                unit = value['unit'],
+                                preset_data = value['values'],
+                                is_setpoint = False,
+                                set_arrays = param_setpoint_arrays)
             data_array.init_data()
             self.data_set.add_array(data_array)
 
         return self.data_set
 
     def snapshot_base(self, update=False):
-        # TODO: Make sure the snapshot contains all the necessary information
         return {
             '__class__': full_class(self),
             'actions': _actions_snapshot(self.actions, update)
