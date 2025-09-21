@@ -19,8 +19,9 @@ class Measure(Metadatable):
 
     ``Measure`` is used to measure a set of parameters at a single point in time.
     The typical use case is where the parameter(s)'s get function(s) return(s) an array, e.g. 
-    an oscilloscope trace, or a spectrum analyser trace. The array shape(s) do not need to be known.
-    The parameters to be measured are provided at init or therough station.set_measurement().
+    an oscilloscope trace, or a spectrum analyser trace. 
+    The array shape(s) do not need to be known and can change between measurements.
+    The parameters to be measured are provided at init or through station.set_measurement().
     Optionally, setpoints may be provided, but this is usually not required nor recommended.
     If no setpoints are provided, dummy setpoints are created for each dimension found in the 
     measured parameters (recommended, see Args documentation below).
