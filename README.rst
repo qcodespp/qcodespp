@@ -12,12 +12,12 @@ and running measurement loops.
 The qcodes++ package provides a user-friendly
 frontend to the solid backend of QCoDeS. If you have always wanted to run 
 your measurements using python but found QCoDeS too daunting, qcodes++ is 
-the package for you. qcodes++ features
+the package for you. qcodes++ features:
 
-* Simple yet powerful methods for taking data and running measurements
+* Simple yet powerful methods for running experiments and storing data
 * True live plotting featuring sub-second, point-by-point updates without performance impact
-* A feature-rich offline plotting/analysis tool for publication-quality figures
-* Text-based data
+* A feature-rich offline plotting/analysis tool for publication-quality figures, including curve fitting, making linecuts of 2D data, smoothing, taking derivatives and more
+* Text-based data storage for easy access and long-term stability
 * Improvements to core QCoDeS functionalities (e.g. Station, Parameters) to streamline data acquisition, protect (meta)data integrity and minimise user error
 * Improved drivers for certain instruments
 * and other user-friendliness improvements
