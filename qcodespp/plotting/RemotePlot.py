@@ -117,7 +117,7 @@ class Plot():
 
     def __init__(self, title=None, name=None):
         name = name or uuid4().hex
-        topic = 'qcodes++.Plot.'+name
+        topic = 'qcodespp.Plot.'+name
         self.topic = topic
         self.metadata = {}
         self.data_uuid = uuid4().hex
