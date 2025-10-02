@@ -9,7 +9,7 @@ import time
 from json import dump as json_dump
 from json import load as json_load
 from pyvisa.errors import VisaIOError
-from qcodes.utils import validators
+from qcodes.validators import Enum, Numbers
 from typing import NewType, Tuple, Sequence, List, Dict, Optional
 from packaging.version import Version, parse
 import abc
@@ -172,7 +172,7 @@ class QDac2ExternalTrigger(InstrumentChannel):
             set_cmd='outp:trig{0}:pol {1}'.format(external, '{}'),
             get_cmd=f'outp:trig{external}:pol?',
             get_parser=str,
-            vals=validators.Enum('INV', 'NORM')
+            vals=Enum('INV', 'NORM')
         )
         self.add_parameter(
             name='delay_s',
@@ -1190,7 +1190,7 @@ class QDac2Channel(InstrumentChannel):
             set_cmd=self._set_output_range, #'sour{1}:rang {0}'.format('{}', channum),
                                             #Since at current .volt needs to be set manually to zero after range change
             get_cmd=f'sour{channum}:rang?',
-            vals=validators.Enum('LOW', 'HIGH')
+            vals=Enum('LOW', 'HIGH')
         )
         self.add_parameter(
             name='output_low_range_minimum_V',
@@ -1227,7 +1227,7 @@ class QDac2Channel(InstrumentChannel):
             set_cmd='sour{1}:filt {0}'.format('{}', channum),
             get_cmd=f'sour{channum}:filt?',
             get_parser=str,
-            vals=validators.Enum('DC', 'MED', 'HIGH')
+            vals=Enum('DC', 'MED', 'HIGH')
         )
         self.add_parameter(
             name='volt',
@@ -1236,7 +1236,7 @@ class QDac2Channel(InstrumentChannel):
             set_cmd=self._set_fixed_voltage_immediately,
             get_cmd=f'sour{channum}:volt?',
             get_parser=float,
-            vals=validators.Numbers(-10.0, 10.0)
+            vals=Numbers(-10.0, 10.0)
         )
         self.add_parameter(
             name='dc_last_V',
@@ -1290,7 +1290,7 @@ class QDac2Channel(InstrumentChannel):
             label='curr_range',
             set_cmd='sens{1}:rang {0}'.format('{}', channum),
             get_cmd=f'sens{channum}:rang?',
-            vals=validators.Enum('LOW', 'HIGH')
+            vals=Enum('LOW', 'HIGH')
 
         )
         self.add_parameter(
@@ -1306,7 +1306,7 @@ class QDac2Channel(InstrumentChannel):
             label=f'DC mode',
             set_cmd='sour{1}:volt:mode {0}'.format('{}', channum),
             get_cmd=f'sour{channum}:volt:mode?',
-            vals=validators.Enum('FIX', 'LIST', 'SWEEP')
+            vals=Enum('FIX', 'LIST', 'SWEEP')
         )
         self.add_function(
             name='dc_initiate',

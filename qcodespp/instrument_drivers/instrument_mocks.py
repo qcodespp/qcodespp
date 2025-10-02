@@ -4,7 +4,7 @@ import logging
 
 import numpy as np
 
-from qcodes.instrument.base import Instrument
+from qcodes import Instrument
 from qcodes.validators import Numbers
 from qcodes.parameters import MultiParameter, Parameter, ArrayParameter
 from qcodes.instrument import InstrumentChannel, ChannelList
