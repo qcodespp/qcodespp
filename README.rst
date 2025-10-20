@@ -1,20 +1,16 @@
 qcodes++
 ===================================
 
-qcodes++ (aka qcodespp, qcpp, qc++) is a python package to run scientific experiments. qcodes++ is built on top of `QCoDeS <https://qcodes.github.io/Qcodes/>`__, both extending capabilities and preserving older features.
-
-QCoDeS is a Python-based data acquisition framework developed by the
-Copenhagen / Delft / Sydney / Microsoft quantum computing consortium.
-It contains a huge range of drivers for communicating with instruments,
+qcodes++ (aka qcodespp, qcpp, qc++) is a python package to run scientific experiments. qcodes++ is built on top of `QCoDeS <https://qcodes.github.io/Qcodes/>`__, both extending capabilities and preserving older features. QCoDeS contains a huge range of drivers for communicating with instruments,
 and a flexible - but complex - database-based method for collecting data
-and running measurement loops.
+and running experiments.
 
 The qcodes++ package provides a user-friendly
 frontend to the solid backend of QCoDeS. If you have always wanted to run 
 your measurements using python but found QCoDeS too daunting, qcodes++ is 
 the package for you. qcodes++ features:
 
-* Simple yet powerful methods for running experiments and storing data
+* Simple yet powerful methods for running experiments and collecting data
 * True live plotting featuring sub-second, point-by-point updates without performance impact
 * A feature-rich offline plotting/analysis tool for publication-quality figures, including curve fitting, making linecuts of 2D data, smoothing, taking derivatives and more
 * Text-based data storage for easy access and long-term stability
