@@ -2121,10 +2121,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             elif which == 'old':
                 filters = copy.deepcopy(self.old_filters)
             self.which_filters(current_item,filters=filters)
-
-            #self.show_current_filters() Now show_current_all below
-            #current_item.data.apply_all_filters() <<-- seems unnecessary; this will be done at update_plots on next call.
-
             if current_item.checkState():
                 self.update_plots(update_color_limits=True)
             self.reset_axlim_settings()
@@ -2689,7 +2685,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             elif which == 'all':
                 filters.clear()
             self.show_current_filters()
-            current_item.data.apply_all_filters()
+            current_item.data.apply_all_filters(filter_box_index=self.mixeddata_filter_box.currentIndex())
             self.update_plots(update_color_limits=True)
             current_item.data.reset_view_settings()
             current_item.data.reset_axlim_settings()
@@ -2731,7 +2727,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self, 'Open Filters File...', '', '*.npy')
             loaded_filters = list(np.load(filename[0], allow_pickle=True))
             filters += copy.deepcopy(loaded_filters)
-            current_item.data.apply_all_filters()
+            current_item.data.apply_all_filters(filter_box_index=self.mixeddata_filter_box.currentIndex())
             self.update_plots(update_color_limits=True)
             self.show_current_view_settings()
 

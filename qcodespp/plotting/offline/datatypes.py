@@ -707,7 +707,7 @@ class BaseClassData:
             
         return processed_data
         
-    def apply_all_filters(self, update_color_limits=True):
+    def apply_all_filters(self, update_color_limits=True, filter_box_index=None):
         if hasattr(self, 'sidebar1D'):
             for line in self.plotted_lines.keys():
                 filters = self.plotted_lines[line]['filters']
