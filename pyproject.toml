@@ -6,7 +6,7 @@ build-backend = 'flit_core.buildapi'
 [project]
 name = "qcodespp"
 version = '0.1.14'
-maintainers = [{name = "Damon Carrad", email = "damonc@dtu.dk"}]
+maintainers = [{name = "Damon Carrad", email = "djcarrad@gmail.com"}]
 description = "Package providing additional functions for QCoDeS"
 classifiers = [
     "Development Status :: 3 - Alpha",
