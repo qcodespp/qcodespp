@@ -259,7 +259,7 @@ class AttocubeAMC100(Instrument):
             from AMC_APIs.ACS import AttoException
         except ImportError as err:
             raise ImportError('This driver requires the AMC_APIs package installed as '
-                              'a package.') from err
+                              'a package, from https://github.com/djcarrad/AMC_APIs.') from err
         else:
             self._exception_type = AttoException
 
