@@ -290,6 +290,14 @@ class AttocubeAMC100(Instrument):
 
         self.connect_message()
 
+    def all_on(self) -> None:
+        for axis in self.axis_channels:
+            axis.output(True)
+
+    def all_off(self) -> None:
+        for axis in self.axis_channels:
+            axis.output(False)
+
     @property
     def exception_type(self) -> Exception:
         return self._exception_type
