@@ -15,52 +15,6 @@ class ZIMFLI(Instrument):
     Serial - the device serial number printed on the chassis used for connecting to the device
 
     """
-    scoperates = {
-            0: 60e6,
-            1: 30e6,
-            2: 15e6,
-            3: 7.5e6,
-            4: 3.75e6,
-            5: 1.88e6,
-            6: 936e3,
-            7: 469e3,
-            8: 234e3,
-            9: 117e3,
-            10: 58.6e3,
-            11: 29.3e3,
-            12: 14.6e3,
-            13: 7.32e3,
-            14: 3.66e3,
-            15: 1.83e3,
-            16: 916}
-    scopechaninputs = { #Note there are technically more options: Only including keys for those we have installed
-            '0': 'Signal input 1',
-            '1': 'Current input 1',
-            '2': 'Trigger input 1',
-            '3': 'Trigger input 2',
-            '4': 'Aux output 1',
-            '5': 'Aux output 2',
-            '6': 'Aux output 3',
-            '7': 'Aux output 4',
-            '8': 'Aux input 1',
-            '9': 'Aux input 2',
-            '10': 'Osc phase demod 2',
-            '11': 'Osc phase demod 4',
-            '14': 'Trigger output 1',
-            '15': 'Trigger output 2',
-            '16': 'Demod 1 X',
-            '17': 'Demod 2 X',
-            '32': 'Demod 1 Y',
-            '33': 'Demod 2 Y',
-            '48': 'Demod 1 R',
-            '49': 'Demod 2 R',
-            '64': 'Demod 1 theta',
-            '65': 'Demod 2 theta'}
-
-    def print_scope_rates(self):
-        print(self.scoperates)
-    def print_scope_chaninputs(self):
-        print(self.scopechaninputs)
 
     def __init__(self, name, serial, server="local", port=8004, **kwargs):
 
@@ -74,6 +28,53 @@ class ZIMFLI(Instrument):
             "numAUXins": 2,     # number of AUX inputs
             "numscopes": 1
         }
+
+        self.scoperates = {
+                0: 60e6,
+                1: 30e6,
+                2: 15e6,
+                3: 7.5e6,
+                4: 3.75e6,
+                5: 1.88e6,
+                6: 936e3,
+                7: 469e3,
+                8: 234e3,
+                9: 117e3,
+                10: 58.6e3,
+                11: 29.3e3,
+                12: 14.6e3,
+                13: 7.32e3,
+                14: 3.66e3,
+                15: 1.83e3,
+                16: 916}
+        self.scopechaninputs = { #Note there are technically more options: Only including keys for those we have installed
+                '0': 'Signal input 1',
+                '1': 'Current input 1',
+                '2': 'Trigger input 1',
+                '3': 'Trigger input 2',
+                '4': 'Aux output 1',
+                '5': 'Aux output 2',
+                '6': 'Aux output 3',
+                '7': 'Aux output 4',
+                '8': 'Aux input 1',
+                '9': 'Aux input 2',
+                '10': 'Osc phase demod 2',
+                '11': 'Osc phase demod 4',
+                '14': 'Trigger output 1',
+                '15': 'Trigger output 2',
+                '16': 'Demod 1 X',
+                '17': 'Demod 2 X',
+                '32': 'Demod 1 Y',
+                '33': 'Demod 2 Y',
+                '48': 'Demod 1 R',
+                '49': 'Demod 2 R',
+                '64': 'Demod 1 theta',
+                '65': 'Demod 2 theta'}
+
+        def print_scope_rates(self):
+            print(self.scoperates)
+        def print_scope_chaninputs(self):
+            print(self.scopechaninputs)
 
         begin_time=time.time()
         global daq
@@ -568,7 +569,7 @@ class ZIMFLI(Instrument):
                                 get_parser=self._scope_rate_parser,
                                 set_cmd=partial(self.daq.setInt,'/{}/scopes/{}/time'.format(self.serial,n)),
                                 set_parser=self._scope_setrate_parser,
-                                vals= Enum(*list(self.scope_rates.values())))
+                                vals= Enum(*list(self.scoperates.values())))
 
             if self.digi==True: #The following will only work for instruments with the DIGI option installed.
                 self.scope_data=MFLIScope('scope_data', self)
@@ -597,6 +598,14 @@ class ZIMFLI(Instrument):
 
     def get_idn(self):
         return self.serial
+
+    def set_scope_scaling(self,ch1_scale=1,ch2_scale=1,ch1_unit=None,ch2_unit=None):
+        self.scope_data._channel1_scale=ch1_scale
+        self.scope_data._channel2_scale=ch2_scale
+        if ch1_unit is not None:
+            self.scope_data._ch1_unit=ch1_unit
+        if ch2_unit is not None:
+            self.scope_data._ch2_unit=ch2_unit
 
     def _demod_unit(self,n):
         if partial(self.daq.getInt,'/{}/demods/{}/adcselect'.format(self.serial, n))()==1:
@@ -783,9 +792,14 @@ class MFLIScope(MultiParameter):
             instrument: Instance of the ZIMFLI class
         """
         shapes=((1,),(1,),(1,))
-        units=('t','V','V')
+        self._ch1_unit='V'
+        self._ch2_unit='V'
+        units=('s',self._ch1_unit,self._ch2_unit)
         names=('time','channel1','channel2')
         super().__init__(name=name, instrument=instrument, names=names, shapes=shapes, units=units)
+
+        self._channel1_scale=1
+        self._channel2_scale=1
 
     def get_raw(self):
         if self.instrument.daq.getInt('/{}/scopes/0/enable'.format(self.instrument.serial)) != 1:
@@ -816,34 +830,23 @@ class MFLIScope(MultiParameter):
             chan1input=partial(self.instrument.daq.getInt,'/{}/scopes/0/channels/0/inputselect'.format(self.instrument.serial))()
             chan2input=partial(self.instrument.daq.getInt,'/{}/scopes/0/channels/1/inputselect'.format(self.instrument.serial))()
             self.shapes=((totalsamples,),(totalsamples,),(totalsamples,))
-            if chan1input==1:
-                self.units=('t','A','V')
-            elif chan2input==1:
-                self.units=('t','V','A')
-            else:
-                self.units=('t','V','V')
-            ydata_ch1=data['wave'][0]
-            ydata_ch2=data['wave'][1]
+            self.units=('s',self._ch1_unit,self._ch2_unit)
+            ydata_ch1=data['wave'][0]*self._channel1_scale
+            ydata_ch2=data['wave'][1]*self._channel2_scale
             return (xdata,ydata_ch1,ydata_ch2)
         
         elif numchans==2:
             chan2input=partial(self.instrument.daq.getInt,'/{}/scopes/0/channels/1/inputselect'.format(self.instrument.serial))()
             self.shapes=((totalsamples,),(totalsamples,))
             self.names=('time','channel2')
-            if chan2input==1:
-                self.units=('t','A')
-            else:
-                self.units=('t','V')
-            ydata_ch2=data['wave'][0]
+            self.units=('s',self._ch2_unit)
+            ydata_ch2=data['wave'][0]*self._channel2_scale
             return (xdata,ydata_ch2)
         
         elif numchans==1:
             chan1input=partial(self.instrument.daq.getInt,'/{}/scopes/0/channels/0/inputselect'.format(self.instrument.serial))()
             self.shapes=((totalsamples,),(totalsamples,))
             self.names=('time','channel1')
-            if chan1input ==1:
-                self.units=('t','A')
-            else:
-                self.units=('t','V')
-            ydata_ch1=data['wave'][0]
+            self.units=('s',self._ch1_unit)
+            ydata_ch1=data['wave'][0]*self._channel1_scale
             return (xdata,ydata_ch1)
