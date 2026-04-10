@@ -102,7 +102,7 @@ def expand_channel_list(channel_list: str) -> str:
 def compress_channel_list(channel_list: str) -> str:
     return state_to_compressed_list(channel_list_to_state(channel_list))
 
-
+#test
 relay_lines = 24
 relays_per_line = 10
 
