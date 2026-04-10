@@ -17,7 +17,7 @@ def offline_plotting(folder=None,link_to_default=True,use_thread=True):
         folder (str): Path (inc relative) to a folder containing the data files to be plotted.
         link_to_default (bool): Link to the qcodespp default folder specified by qc.set_data_folder().
             Ignored if another folder is specified by folder.
-        use_thread (bool): Runs the application in a separate thread or not. Default is True.
+        use_thread (bool): Runs the application in a separate thread or not. Default is False.
             Threading may cause problems on some systems, e.g. macOS.
     """
 
@@ -37,7 +37,7 @@ def main(folder=None,link_to_default=True):
     '''
 
     from PyQt5 import QtWidgets
-    from qcodespp.plotting.offline.editor import Editor
+    from qcodespp.plotting.offline import Editor
 
     app = QtWidgets.QApplication(sys.argv)
     app.aboutToQuit.connect(app.deleteLater)
