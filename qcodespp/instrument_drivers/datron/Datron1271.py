@@ -13,13 +13,21 @@ class Datron1271(VisaInstrument):
     '''
     QCoDeS driver for the Datron 1271 8.5 digit multimeter
 
+    The Datron 1271 is an old instrument with a few quirks: namely that many of the parameters are not readable. 
+    Notable cases are the resolution, range, mode and delay. That means that if you don't set them through software, 
+    QCoDeS will not know these values. This matters for the driver in that the parameters 'volt', 'curr' and 'resistance', 
+    are only available if the mode is set to read them. You may therefore need to tell the software which mode you are 
+    using with soft_mode(mode), where mode is one of 'DCI, ACI, ACV, OHMS, TRUE_OHMS, HI_OHMS'
+
+    Not all functions are implemented or tested. Some functions do not work for unknown reasons.
+
     Args:
         name (str): qcodes name for this instrument instance
         address (str): VISA address
     '''
 
-    def __init__(self, name, address, **kwargs):
-        super().__init__(name, address, **kwargs)
+    def __init__(self, name, address, terminator='\n', **kwargs):
+        super().__init__(name, address, terminator=terminator, **kwargs)
 
         self._unit='V'
         self._label='Voltage'
@@ -35,12 +43,14 @@ class Datron1271(VisaInstrument):
                                      unit=self._unit,
                                      label=self._label,
                                      get_cmd='RDG?',
+                                     get_parser=float,
                                      docstring='Returns a reading immediately')
         
-        self.triggered_reading=self.add_parameter('triggered_reading',
+        self.trig_read=self.add_parameter('trig_read',
                                                   unit=self._unit,
                                                   label=self._label,
                                                   get_cmd='X?',
+                                                  get_parser=float,
                                                   docstring='Returns a reading after waiting for delay time to elapse')
         
         self.read_buffer=self.add_parameter('read_buffer',
@@ -76,18 +86,31 @@ class Datron1271(VisaInstrument):
 
         self.mode=self.add_parameter('mode',
                                      set_cmd=self._set_mode,
+                                     initial_value='DCV',
                                      docstring='Set measurement mode: ACI, ACV, DCI, DCV, OHMS, TRUE_OHMS, HI_OHMS',
                                      vals=Enum('ACI','ACV','DCI','DCV','OHMS','TRUE_OHMS', 'HI_OHMS'))
         
+        self.range=self.add_parameter('range',
+                                      set_cmd=self._set_range,
+                                      label='Range',
+                                      unit=self._unit,
+                                      docstring='Set the range. Cannot be read')
+        
+        self.filter=self.add_parameter('filter',
+                                   set_cmd=self._set_filter,
+                                   label='Filter cut-off',
+                                   unit='Hz',
+                                   docstring='Set the low-pass filter cutoff. Cannot be read.')
+        
         self.coupling=self.add_parameter('coupling',
                                          set_cmd='{}',
-                                         doc_string='Set coupling: DCCP, ACCP',
+                                         docstring='Set coupling: DCCP, ACCP',
                                          vals=Enum('DCCP','ACCP'))
         
         self.offset=self.add_parameter('offset',
                                        unit=self._unit,
                                        label='Offset',
-                                       set_cmd='C {}',
+                                       set_cmd=self._set_offset,
                                        get_cmd='C?',
                                        vals=Numbers())
         
@@ -99,7 +122,6 @@ class Datron1271(VisaInstrument):
                                         get_cmd='M?',
                                         vals=Numbers(),
                                         docstring='Set the multiplier scaling readings. Setting 1 turns off multiplier')
-        
         
         self.divisor=self.add_parameter('divisor',
                                         unit=self._unit,
@@ -145,9 +167,6 @@ class Datron1271(VisaInstrument):
                                               get_cmd='*OPT?')
         
         self.connect_message()
-        print('The Datron1271 cannot tell the computer which mode it is in. This driver assumes DCV on init.\n'
-              'If necessary, tell the software which mode you are using with soft_mode(mode), where mode is one of\n'
-              'DCI, ACI, ACV, OHMS, TRUE_OHMS, HI_OHMS')
         
     def reset(self):
         self.write('RST')
@@ -200,7 +219,7 @@ class Datron1271(VisaInstrument):
             self.volt=self.add_parameter('volt',
                                         unit='V',
                                         label='Voltage',
-                                        get_cmd=partial(self._trg,'volt'),
+                                        get_cmd=partial(self._rdg,'volt'),
                                         get_parser=float,
                                         docstring=('Returns the voltage, if mode is DCV or ACV'))
 
@@ -210,7 +229,7 @@ class Datron1271(VisaInstrument):
             self.curr=self.add_parameter('curr',
                                      unit='A',
                                      label='Current',
-                                     get_cmd=partial(self._trg,'curr'),
+                                     get_cmd=partial(self._rdg,'curr'),
                                      get_parser=float,
                                      docstring=('Returns the current, if mode is DCI or ACI'))
 
@@ -220,7 +239,7 @@ class Datron1271(VisaInstrument):
             self.resistance=self.add_parameter('resistance',
                                            unit='Ohm',
                                            label='Resistance',
-                                           get_cmd=partial(self._trg,'resistance'),
+                                           get_cmd=partial(self._rdg,'resistance'),
                                            get_parser=float,
                                            docstring='Returns resistance, if mode is OHMS, TRUE_OHMS or HI_OHMS')
             
@@ -232,6 +251,16 @@ class Datron1271(VisaInstrument):
                                          get_parser=float,
                                          docstring='Measured frequency of the AC signal')
 
+    def _set_range(self,val):
+        if 'V' in self.mode.cache():
+            allowed=[1000,100,10,1,0.1,'auto']
+            if val not in allowed:
+                raise ValueError(f'{val} not in allowed ranges: '+', '.join([str(al) for al in allowed]))
+            elif val == 'auto':
+                self.write('AUTO')
+            else:
+                self.write(f'{self.mode.cache()} {val}')
+
     def _set_res(self,val):
         if self.mode.cache() in ['ACV','HI_OHMS']:
             if val not in [5,6]:
@@ -241,6 +270,18 @@ class Datron1271(VisaInstrument):
             if val not in [5,6,7,8]:
                 raise ValueError('resolution must be one of 5, 6, 7, 8')
             self.write(f'RESL{val}')
+
+    def _set_filter(self,val):
+        if 'AC' in self.mode.cache():
+            raise ValueError('Cannot use filter in AC mode')
+        values=[1000,360,100,40,10,1,0]
+        if val not in values:
+            raise ValueError(f'Filter cannot be set to {val}. Use one of '+', '.join([str(value) for value in values]))
+        elif val==0:
+            self.write('FILT_OFF')
+        else:
+            self.write(f'FILT{val}HZ')
+            self.write('FILT_ON')
     
     def _set_averaging(self,num):
         if num==0:
@@ -249,20 +290,25 @@ class Datron1271(VisaInstrument):
             self.write(f'AVE BLOC_{num}')
 
     def _set_multiplier(self,val):
+        self.write(f'M {val}')
         if val==1:
-            self.write(f'M {val}')
             self.write('MUL_M OFF')
         else:
-            self.write(f'M {val}')
             self.write('MUL_M ON')
 
     def _set_divisor(self,val):
+        self.write(f'Z {val}')
         if val==1:
-            self.write(f'Z {val}')
             self.write('DIV_Z OFF')
         else:
-            self.write(f'Z {val}')
             self.write('DIV_Z ON')
+
+    def _set_offset(self,val):
+        self.write(f'C {val}')
+        if val==0:
+            self.write('SUB_C OFF')
+        else:
+            self.write('SUB_C ON')
 
     def _rdg(self,param_type=None):
         '''
@@ -271,7 +317,7 @@ class Datron1271(VisaInstrument):
         optiondict={'volt':['DCV','ACV'],
                     'curr':['DCI','ACI'],
                     'resistance':['OHMS','TRUE_OHMS','HI_OHMS']}
-        if self.mode.cache() not in optiondict(param_type):
+        if self.mode.cache() not in optiondict[param_type]:
             log.warning(f'Cannot use {param_type} in {self.mode.cache()} mode')
             return None
         
