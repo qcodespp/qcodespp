@@ -1750,7 +1750,7 @@ class Arrangement_Context:
         self._correction = np.identity(self.shape)
 
         #Load current calibrations into memory
-        self.loc_folder=os.path.dirname(__file__)
+        self.loc_folder=os.path.dirname(__file__)+'/qdac_calibrations'
 
         self.curr_fit_params_high={}
         self.curr_fit_params_low={}
@@ -2558,7 +2558,7 @@ class QDac2(VisaInstrument):
             channels.append(channel)
 
             #Load current calibrations into memory
-            loc_folder=os.path.dirname(__file__)
+            loc_folder=os.path.dirname(__file__)+'/qdac_calibrations'
 
             for curr_range in ['low','high']:
                 try:
@@ -2649,7 +2649,9 @@ class QDac2(VisaInstrument):
         Before running the calibration, remove all loads from the outputs.
         '''
 
-        loc_folder=os.path.dirname(__file__)
+        loc_folder=os.path.dirname(__file__)+'/qdac_calibrations'
+        if os.path.exists(loc_folder)==False:
+            os.makedirs(loc_folder,exist_ok=True)
         if datafolder==0:
             if platform.system()=='Windows':
                 datafolder='C:/Users/'+os.getlogin()+'/AppData/Local/qcodespp/qdac_calibrations'
