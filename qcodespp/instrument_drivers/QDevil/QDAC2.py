@@ -2562,7 +2562,7 @@ class QDac2(VisaInstrument):
 
             for curr_range in ['low','high']:
                 try:
-                    with open(loc_folder+'\\'+self._parent.serial+f'fit_params_{curr_range}_latest.json','r') as f:
+                    with open(loc_folder+'\\'+self.serial+f'fit_params_{curr_range}_latest.json','r') as f:
                         setattr(channel,f'loaded_data_{curr_range}',json_load(f)[f'{i:02}'])
                         setattr(channel,f'calibration_date_{curr_range}',getattr(channel,f'loaded_data_{curr_range}')['calibration_date'])
                         setattr(channel,f'fit_params_{curr_range}',getattr(channel,f'loaded_data_{curr_range}')['fit_params'])

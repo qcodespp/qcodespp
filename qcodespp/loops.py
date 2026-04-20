@@ -124,7 +124,11 @@ def loop1d(sweep_parameter,
     """
 
     if measure:
-        Station.default.set_measurement(*measure)
+        if Station.default is not None:
+            Station.default.set_measurement(*measure)
+        else:
+            raise RuntimeError('No Station is declared; declare a station with station=qc.Station(add_varibales=globals()) before running measurements')
+        
     loop=Loop(_parse_sweep_type(sweep_parameter, sweep_type)(start,stop,num=num), delay).each(*Station.default.measure())
 
     start_text, stop_text, unit_text = _filename_text(start, stop, sweep_parameter)
@@ -207,7 +211,10 @@ def loop2d(sweep_parameter,
     """
 
     if measure:
-        Station.default.set_measurement(*measure)
+        if Station.default is not None:
+            Station.default.set_measurement(*measure)
+        else:
+            raise RuntimeError('No Station is declared; declare a station with station=qc.Station(add_varibales=globals()) before running measurements')
 
     loop=Loop(_parse_sweep_type(sweep_parameter, sweep_type)(start,stop,num=num), delay).each(*Station.default.measure())
 
@@ -296,7 +303,10 @@ def loop2dUD(sweep_parameter,
     """
 
     if measure:
-        Station.default.set_measurement(*measure)
+        if Station.default is not None:
+            Station.default.set_measurement(*measure)
+        else:
+            raise RuntimeError('No Station is declared; declare a station with station=qc.Station(add_varibales=globals()) before running measurements')
 
     loop=Loop(_parse_sweep_type(sweep_parameter, sweep_type)(start,stop,num=num), delay).each(*Station.default.measure())
 
