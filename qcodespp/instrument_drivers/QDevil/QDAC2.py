@@ -1,7 +1,6 @@
 import numpy as np
 import itertools
 import uuid
-import warnings
 from time import sleep as sleep_s
 from qcodes.parameters.cache import _Cache
 from qcodes import InstrumentChannel, ChannelList, VisaInstrument, MultiParameter
@@ -18,6 +17,9 @@ import platform
 import tkinter as tk
 import threading
 from tqdm import tqdm
+
+import logging
+log = logging.getLogger(__name__)
 
 # Version 1.2.0
 #
@@ -1321,27 +1323,6 @@ class QDac2Channel(InstrumentChannel):
             call_cmd=f'sour{channum}:all:abor'
         )
 
-        #Load current calibrations into memory
-        self.loc_folder=os.path.dirname(__file__)
-
-        try:
-            with open(self.loc_folder+'\\'+self._parent.serial+'fit_params_low_latest.json','r') as f:
-                self.loaded_data_low=json_load(f)[str(self._channum).zfill(2)]
-                self.calibration_date_low=self.loaded_data_low['calibration_date']
-                self.fit_params_low=self.loaded_data_low['fit_params']
-            f.close()
-        except:
-            warnings.warn(f'Calibration for channel {self._channum} low current range not found. Current measurement via curr() will not work.\nRun calibrate_currents() to calibrate the currents now.\nYou can use curr_ucal but it will be highly inaccurate for large resistive loads.')
-        try:
-            with open(self.loc_folder+'\\'+self._parent.serial+'fit_params_high_latest.json','r') as f:
-                self.loaded_data_high=json_load(f)[str(self._channum).zfill(2)]
-                self.calibration_date_high=self.loaded_data_high['calibration_date']
-                self.fit_params_high=self.loaded_data_high['fit_params']
-            f.close()
-        except:
-            warnings.warn(f'Calibration for channel {self._channum} high current range not found. Current measurement via curr() will not work.\nRun calibrate_currents() to calibrate the currents now.\nYou can use curr_ucal but it will be highly inaccurate for large resistive loads.')
-
-        #Read volt and curr_range to ensure these are populated for get_latest. Needed for _get_calibrated_current
         self._init_volt=self.volt()
         self._init_curr_range=self.curr_range()
 
@@ -1349,14 +1330,17 @@ class QDac2Channel(InstrumentChannel):
         curr_raw=comma_sequence_to_single_float(val)
         volt = self.volt.get_latest()
 
-        if self.curr_range.get_latest()=='LOW':
-            fitindex=np.shape(self.fit_params_low)[0]
-            value=curr_raw-sum(self.fit_params_low[i]*volt**(fitindex-1-i) for i in range(fitindex))
-        else:
-            fitindex=np.shape(self.fit_params_high)[0]
-            value=curr_raw-sum(self.fit_params_high[i]*volt**(fitindex-1-i) for i in range(fitindex))
+        try:
+            if self.curr_range.get_latest()=='LOW':
+                fitindex=np.shape(self.fit_params_low)[0]
+                value=curr_raw-sum(self.fit_params_low[i]*volt**(fitindex-1-i) for i in range(fitindex))
+            else:
+                fitindex=np.shape(self.fit_params_high)[0]
+                value=curr_raw-sum(self.fit_params_high[i]*volt**(fitindex-1-i) for i in range(fitindex))
 
-        return value
+            return value
+        except:
+            return val
     @property
     def number(self) -> int:
         """Channel number"""
@@ -1781,7 +1765,7 @@ class Arrangement_Context:
                     self.curr_fit_params_low[f'ch{channum}_fit_params_low']=self.loaded_data_low[str(channum).zfill(2)]['fit_params']
             f.close()
         except:
-            warnings.warn(f'Calibration files for low current range not found.\nRun calibrate_currents() to calibrate the currents now.\nYou can use curr_ucal but it will be highly inaccurate for large resistive loads.')
+            log.warning(f'Calibration files for low current range not found.\nRun calibrate_currents() to calibrate the currents now.\nYou can use curr_ucal but it will be highly inaccurate for large resistive loads.')
         try:
             with open(self.loc_folder+'/'+self._qdac.serial+'fit_params_high_latest.json','r') as f:
                 self.loaded_data_high=json_load(f)
@@ -1790,7 +1774,7 @@ class Arrangement_Context:
                     self.curr_fit_params_high[f'ch{channum}_fit_params_high']=self.loaded_data_high[str(channum).zfill(2)]['fit_params']
             f.close()
         except:
-            warnings.warn(f'Calibration files for high current range not found.\nRun calibrate_currents() to calibrate the currents now.\nYou can use curr_ucal but it will be highly inaccurate for large resistive loads.')
+            log.warning(f'Calibration files for high current range not found.\nRun calibrate_currents() to calibrate the currents now.\nYou can use curr_ucal but it will be highly inaccurate for large resistive loads.')
 
         for channum in self.channel_numbers:
             self.init_voltages[f'{channum}_init_volt']=self._qdac.channel(channum).volt()
@@ -2565,11 +2549,35 @@ class QDac2(VisaInstrument):
     def _set_up_channels(self) -> None:
         channels = ChannelList(self, 'Channels', QDac2Channel,
                                snapshotable=False)
+        
+        fails={'high':[],'low':[]}
         for i in range(1, 24 + 1):
             name = f'ch{i:02}'
             channel = QDac2Channel(self, name, i)
             self.add_submodule(name, channel)
             channels.append(channel)
+
+            #Load current calibrations into memory
+            loc_folder=os.path.dirname(__file__)
+
+            for curr_range in ['low','high']:
+                try:
+                    with open(loc_folder+'\\'+self._parent.serial+f'fit_params_{curr_range}_latest.json','r') as f:
+                        setattr(channel,f'loaded_data_{curr_range}',json_load(f)[f'{i:02}'])
+                        setattr(channel,f'calibration_date_{curr_range}',getattr(channel,f'loaded_data_{curr_range}')['calibration_date'])
+                        setattr(channel,f'fit_params_{curr_range}',getattr(channel,f'loaded_data_{curr_range}')['fit_params'])
+                    f.close()
+                except:
+                    fails[curr_range].append(i)
+        
+        for curr_range in ['low','high']:
+            if len(fails[curr_range])>0:
+                chans_string=', '.join([str(ch) for ch in fails[curr_range]])
+                log.warning(f'\nCalibration for channel(s) {chans_string} \nin the {curr_range} current range could not be loaded.')
+
+        if len(fails['low'])>0 or len(fails['high'])>0:
+            log.warning(f'Run {self.name}.calibrate_currents() to calibrate the currents now.')
+
         channels.lock()
         self.add_submodule('channels', channels)
 
@@ -2633,11 +2641,13 @@ class QDac2(VisaInstrument):
             print('ch'+str(channel_num).zfill(2)+': '+str(self.channel(channel_num).parameters[parameter]()))
 
     def calibrate_currents(self,channel_list=0,lowcurrent=True,highcurrent=True,nplc=2,numdatapoints=1001,fitindex=10,update_latest=True,datafolder=0):
-    
-        #This procedure calibrates the open circuit current of a QDevil QDac-II. 
-        #Due to common mode error, each channel measures a unique, voltage dependent current in open circuit
-        #The calibration procedure measures the uncalibrated I vs V for each channel and corrects for it when using curr().
-        #Before running the calibration, remove all loads from the outputs.
+        '''
+        Calibrate the open circuit current of a QDevil QDac-II. 
+
+        Due to common mode error, each channel measures a unique, voltage dependent current in open circuit. 
+        The calibration procedure measures the uncalibrated I vs V for each channel and corrects for it when using curr(). 
+        Before running the calibration, remove all loads from the outputs.
+        '''
 
         loc_folder=os.path.dirname(__file__)
         if datafolder==0:
@@ -3210,7 +3220,9 @@ class QDac2(VisaInstrument):
 
         root.mainloop()
 
-        
+    def GUI(self):
+        self.openControlPanel()
+
     def openControlPanel(self):
         if not self._gui_open:
             if not self._snapped:
