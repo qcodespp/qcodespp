@@ -2167,9 +2167,10 @@ class Arrangement_Context:
 
 class MultiCurrents_Context(MultiParameter):
     # Class to simplify the definition of measurements of multiple currents
-    def __init__(self,qdac:'QDac2',chans,name='qdac_currents'):
+    def __init__(self,qdac:'QDac2',chans,name='qdac_currents',cal=True):
         self._chans=chans
         self._qdac=qdac
+        self.cal=cal
         names=[]
         shapes=[]
         labels=[]
@@ -2193,7 +2194,9 @@ class MultiCurrents_Context(MultiParameter):
         self.units = tuple(units)
 
     def get_raw(self):
-        return(tuple(self.arrangement.currents_A()))
+        if self.cal:
+            return(tuple(self.arrangement.currents_A()))
+        return(tuple(self.arrangement.currents_A_ucal()))
 
 def forward_and_back(start: float, end: float, steps: int):
     forward = np.linspace(start, end, steps)
@@ -2697,14 +2700,15 @@ class QDac2(VisaInstrument):
             measure_array=np.zeros((np.shape(channel_list)[0]+1,numdatapoints))
             measure_array[0,:]=setpoints
             wait_time=self.channel(channel_list[0]).measurement_aperture_s()*2 #Ensures the measurement doesn't run faster than the aperture
+            currents=MultiCurrents_Context(self,[int(chan) for chan in channel_list],cal=False)
             for j in tqdm(range(numdatapoints), bar_format='{l_bar}{bar}{r_bar}. Estimated finish time: {eta}'):
                 st=time.time()
                 self.set_multiple_voltages(setpoints[j],channel_list)
                 elap=time.time()-st
                 if elap<wait_time: #Skips waiting for aperture if it already took longer to set all the voltages
                     time.sleep(wait_time-elap)
-                for i, param in enumerate([self.channel(channel).curr_ucal for channel in channel_list]):
-                    measure_array[i+1,j]=param()
+                for i, param in enumerate(list(currents())):
+                    measure_array[i+1,j]=param
 
             self.set_multiple_voltages(0,channel_list)
 
@@ -3228,7 +3232,7 @@ class QDac2(VisaInstrument):
     def openControlPanel(self):
         if not self._gui_open:
             if not self._snapped:
-                print('Updating snapshot...')
+                print('Updating snapshot, this may take some time...')
                 self.snapshot(update = True)
                 self._snapped = True
                 print('Opening control panel...')
@@ -3236,6 +3240,6 @@ class QDac2(VisaInstrument):
             self.gui_thread = threading.Thread(target = self._createControlPanel)
             self.gui_thread.start()
             self._gui_open = True
-            print('Control panel opened.')
+            print('Control panel opened. It may have opened behind another window')
         else:
             raise RuntimeError("GUI already open. If it's not, set qdac._gui_open = False. This may have been a result of the GUI crashing.")
