@@ -1135,7 +1135,7 @@ class QDac2Channel(InstrumentChannel):
             label='PLC',
             set_cmd='sens{1}:nplc {0}'.format('{}', channum),
             get_cmd=f'sens{channum}:nplc?',
-            get_parser=int
+            get_parser=self._nplc_parser
         )
         self.add_parameter(
             name='measurement_delay_s',
@@ -1325,6 +1325,9 @@ class QDac2Channel(InstrumentChannel):
 
         self._init_volt=self.volt()
         self._init_curr_range=self.curr_range()
+
+    def _nplc_parser(self,val) -> int:
+        return round(float(val))
 
     def _get_calibrated_current(self,val) -> float:
         curr_raw=comma_sequence_to_single_float(val)
@@ -2794,8 +2797,7 @@ class QDac2(VisaInstrument):
 
     def _createControlPanel(self):
 
-        # for n in range(24):
-        #     qdac.channel(n+1).curr()
+        lfreq=float(self.ask("SYST:LFR?"))
 
         root = tk.Tk()
         root.title(f"QDac-II {self.serial} control")
@@ -2871,8 +2873,10 @@ class QDac2(VisaInstrument):
         ## Set the integration time of the current measurement for all channels
         def setAllMeasAperture(event):
             aperture = allMeasApertureValue.get()
-            nplc = round(aperture * 50)
+            nplc = round(aperture * lfreq)
             self.set_multiple_channels("measurement_nplc", nplc)
+            for key in outAmpGetters.keys():
+                outAmpGetters[key].aper=aperture
             root.focus()
         
         allMeasApertureFrame = tk.Frame(allControlsFrame)
@@ -2971,11 +2975,7 @@ class QDac2(VisaInstrument):
 
 
         ## Set the output voltage of a channel
-
-        def setVoltageEvent(event):
-            setVoltage() 
-
-        def setVoltage():
+        def setVoltage(event=None):
             self.channel(selectedOut.get()).volt(voltOutValue.get())
             root.focus()
 
@@ -3005,15 +3005,16 @@ class QDac2(VisaInstrument):
         voltOutSweepButton = tk.Button(voltOutFrame, text = "Sweep", command = sweepVoltage)
         voltOutSweepButton.pack(side = "left", anchor = "w", padx = 2)
 
-        voltOutEntry.bind("<Return>", setVoltageEvent)
+        voltOutEntry.bind("<Return>", setVoltage)
 
 
 
         ## Set the integration time of the current measurement
-        def setMeasAperture():
+        def setMeasAperture(event=None):
             aperture = measApertureValue.get()
-            nplc = round(aperture * 50)
+            nplc = round(aperture * lfreq)
             self.channel(selectedOut.get()).measurement_nplc(nplc)
+            outAmpGetters[f"out{selectedOut.get()}"].aper=aperture
             root.focus()
         
         measApertureFrame = tk.Frame(optionsFrame)
@@ -3030,8 +3031,6 @@ class QDac2(VisaInstrument):
         measApertureUnitLabel.pack(side = "left", anchor = "w")
 
         measApertureEntry.bind("<Return>", setMeasAperture)
-
-
 
 
         ## Set current range option on selected output
@@ -3093,15 +3092,13 @@ class QDac2(VisaInstrument):
         outputFilterSelect = tk.OptionMenu(outputFilterFrame, outputFilter, *filterVals, command = lambda fltr: setOutputFilter(outputFilter.get()))
         outputFilterSelect.pack(side = "left", anchor = "w")
 
-    
-
 
         ## Update the options panel with the selected output parameters
         def outSelect(out):
             selectedOut.set(out)
             selectedOutStr.set(f"Out{selectedOut.get()}")
             voltOutValue.set(self.channel(selectedOut.get()).volt.cache())
-            measApertureValue.set(self.channel(selectedOut.get()).measurement_nplc.cache()/50)
+            measApertureValue.set(self.channel(selectedOut.get()).measurement_nplc.cache()/lfreq)
             currRange.set(self.channel(selectedOut.get()).curr_range.cache())
             outputRange.set(self.channel(selectedOut.get()).output_range.cache())
             outputFilter.set(self.channel(selectedOut.get()).output_filter.cache())
@@ -3111,8 +3108,6 @@ class QDac2(VisaInstrument):
             elif outputRange.get() == "LOW":
                 outputRangeInfoVar.set(u"\u00B1" + "2 V")
 
-
-        
 
         #################################
         ## Create the output menu
@@ -3134,7 +3129,22 @@ class QDac2(VisaInstrument):
 
         outAmpGetters = {}
 
+        class AmpGetter:
+            # Class to return the current of a qdac channel at minimum after one aperture time has elapsed.
+            def __init__(self,channel):
+                self.channel=channel #A full blown qdac channel reference, not just a number
+                self.last_read=time.time()
+                self.aper=self.channel.measurement_aperture_s()
+                self.cache=self.channel.curr()
 
+            def get(self):
+                if time.time()-self.last_read>self.aper:
+                    self.last_read=time.time()
+                    val=self.channel.curr()
+                    self.cache=val
+                    return val
+                else:
+                    return self.cache
         
         for out in range(24):
             
@@ -3153,9 +3163,9 @@ class QDac2(VisaInstrument):
 
             outEnables[f"out{out+1}"] = tk.IntVar()
             outEnables[f"out{out+1}"].set(0)
-            outCheckButtons[f"out{out+1}"] = tk.Checkbutton(outCurrFrames[f"out{out+1}"], variable = outEnables[f"out{out+1}"])
+            outCheckButtons[f"out{out+1}"] = tk.Checkbutton(outCurrFrames[f"out{out+1}"], variable = outEnables[f"out{out+1}"], command = lambda o=out+1: outSelect(o))
 
-            outAmpGetters[f"out{out+1}"] = _Cache(self.channel(out+1).curr,1) # Only update current every second
+            outAmpGetters[f"out{out+1}"] = AmpGetter(self.channel(out+1))
 
             outCheckButtons[f"out{out+1}"].pack(side = "left", anchor = "w")
             outAmpsLabels[f"out{out+1}"].pack(side = "left", anchor = "w")
@@ -3164,7 +3174,6 @@ class QDac2(VisaInstrument):
             outButtons[f"out{out+1}"].pack()
             outVoltsLabels[f"out{out+1}"].pack()
             outCurrFrames[f"out{out+1}"].pack()
-            
 
         for row in range(3):
             for col in range(8):
@@ -3197,7 +3206,7 @@ class QDac2(VisaInstrument):
                 voltOutValue.set(self.channel(selectedOut.get()).volt.cache())
 
             if root.focus_get() != measApertureEntry:    
-                measApertureValue.set(self.channel(selectedOut.get()).measurement_nplc.cache()/50)
+                measApertureValue.set(self.channel(selectedOut.get()).measurement_nplc.cache()/lfreq)
 
             currRange.set(self.channel(selectedOut.get()).curr_range.cache())
             outputRange.set(self.channel(selectedOut.get()).output_range.cache())
@@ -3212,7 +3221,7 @@ class QDac2(VisaInstrument):
             for out in range(24):
                 outVolts[f"out{out+1}"].set(f"V: {self.channel(out+1).volt.cache():.6g} V")
                 if outEnables[f"out{out+1}"].get() == 1:
-                    outAmps[f'out{out+1}'].set(f'I: {outAmpGetters[f'out{out+1}']():.6g} A')
+                    outAmps[f'out{out+1}'].set(f'I: {outAmpGetters[f'out{out+1}'].get():.6g} A')
                 else:
                     outAmps[f"out{out+1}"].set(f"I: {self.channel(out+1).curr.cache():.6g} A")
 
@@ -3222,7 +3231,7 @@ class QDac2(VisaInstrument):
 
         root.mainloop()
 
-    def GUI(self):
+    def gui(self):
         self.openControlPanel()
 
     def openControlPanel(self):
