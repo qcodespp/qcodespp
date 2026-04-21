@@ -2225,7 +2225,8 @@ class QDac2(VisaInstrument):
         self._gui_open = False
         self._snapped = False
         if len(self._calibration_message)>0:
-            log.warning(f'Warning while initialising QDac serial {self.serial}:\n{self._calibration_message}')
+            log.warning(f'Warning while initialising QDac serial {self.serial}:\n{self._calibration_message}'
+                        f'Run {self.name}.calibrate_currents() to calibrate.')
 
 
     def n_channels(self) -> int:
@@ -2555,7 +2556,7 @@ class QDac2(VisaInstrument):
             self.add_submodule(name, channel)
             channels.append(channel)
 
-            #Load current calibrations into memory
+            # Load current calibrations into memory
             loc_folder=os.path.dirname(__file__)+'/qdac_calibrations'
 
             for curr_range in ['low','high']:
@@ -2574,10 +2575,7 @@ class QDac2(VisaInstrument):
         for curr_range in ['low','high']:
             if len(fails[curr_range])>0:
                 chans_string=', '.join([str(ch) for ch in fails[curr_range]])
-                self._calibration_message+=f'Calibration files for the {curr_range} current range could not be loaded for channel(s):\n{chans_string}\n'
-
-        if len(fails['low'])>0 or len(fails['high'])>0:
-            self._calibration_message+=f'Run {self.name}.calibrate_currents() to calibrate.\n'
+                self._calibration_message+=f'Calibration files for the {curr_range} current range could not be loaded for channel(s):\n   {chans_string}\n'
 
         channels.lock()
         self.add_submodule('channels', channels)
