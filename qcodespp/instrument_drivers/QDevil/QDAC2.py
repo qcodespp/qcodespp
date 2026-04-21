@@ -1084,7 +1084,7 @@ class Measurement_Context(_Channel_Context):
         return int(self._ask_channel('sens{0}:data:poin?'))
 
     def available_A(self) -> Sequence[float]:
-        """Retrieve current measurements
+        """Retrieve current measurements, without software calibration.
 
         The available measurements will be removed from measurement queue.
 
@@ -1098,7 +1098,7 @@ class Measurement_Context(_Channel_Context):
             self._ask_channel('sens{0}:data:rem?'))
 
     def peek_A(self) -> float:
-        """Peek at the first available current measurement
+        """Peek at the first available current measurement, without software calibration.
 
         Returns:
             float: current in Amperes
@@ -1348,7 +1348,7 @@ class QDac2Channel(InstrumentChannel):
         return self._channum
 
     def clear_measurements(self) -> Sequence[float]:
-        """Retrieve current measurements
+        """Retrieve current measurements, without software calibration.
 
         The available measurements will be removed from measurement queue.
 
@@ -1366,7 +1366,7 @@ class QDac2Channel(InstrumentChannel):
                     aperture_s: Optional[float] = None,
                     nplc: Optional[int] = None
                     ) -> Measurement_Context:
-        """Set up a sequence of current measurements
+        """Set up a sequence of current measurements, without software calibration.
 
         Args:
             delay_s (float, optional): Seconds to delay the actual measurement after trigger (default 0)
@@ -1925,13 +1925,38 @@ class Arrangement_Context:
         channels_str = ints_to_comma_separated_list(self.channel_numbers)
         return f'(@{channels_str})'
 
-    def currents_A(self) -> Sequence[float]:
+    def currents_A_fast(self) -> Sequence[float]:
         """Measure currents on all contacts using calibration, if loaded. Otherwise non-calibrated values returned.
          
         Note: Assumes nplc and curr_range set properly previously.
 
         """
         channels_suffix = self._all_channels_as_suffix()
+        currents = self._qdac.ask(f'read? {channels_suffix}')
+        currents_raw=comma_sequence_to_list_of_floats(currents)
+        
+        cal_currents=[self._cal_single_curr(channel,current_raw) for channel,current_raw in zip(self.channel_numbers,currents_raw)]
+
+        return cal_currents
+    
+    def currents_A(self, nplc: int = 1, current_range: str = "low") -> Sequence[float]:
+        """Measure currents on all contacts ensuring after waiting for aperture time.
+
+        Note: Sets range and nplc manually. Communication takes quite a long time.
+
+        Args:
+            nplc (int, optional): Number of powerline cycles to average over
+            current_range (str, optional): Current range (default low)
+        """
+        channels_suffix = self._all_channels_as_suffix()
+        self._qdac.write(f'sens:rang {current_range},{channels_suffix}')
+        self._qdac.write(f'sens:nplc {nplc},{channels_suffix}')
+        # Discard first reading because of possible output-capacitor effects, etc
+        slowest_line_freq_Hz = 50
+        sleep_s(1 / slowest_line_freq_Hz)
+        self._qdac.ask(f'read? {channels_suffix}')
+        # Then make a proper reading
+        sleep_s((nplc + 1) / slowest_line_freq_Hz)
         currents = self._qdac.ask(f'read? {channels_suffix}')
         currents_raw=comma_sequence_to_list_of_floats(currents)
         
@@ -2166,7 +2191,7 @@ class MultiCurrents_Context(MultiParameter):
     def __init__(self,qdac:'QDac2',chans,name='qdac_currents',cal=True):
         self._chans=chans
         self._qdac=qdac
-        self.cal=cal
+        self.cal=cal #False only to get initial calibration.
         names=[]
         shapes=[]
         labels=[]
@@ -2191,8 +2216,8 @@ class MultiCurrents_Context(MultiParameter):
 
     def get_raw(self):
         if self.cal:
-            return(tuple(self.arrangement.currents_A()))
-        return(tuple(self.arrangement.currents_A_ucal_fast()))
+            return(tuple(self.arrangement.currents_A_fast()))
+        return(tuple(self.arrangement.currents_A_ucal_fast())) #Mainly used to get the initial calibration.
 
 def forward_and_back(start: float, end: float, steps: int):
     forward = np.linspace(start, end, steps)
@@ -2424,7 +2449,7 @@ class QDac2(VisaInstrument):
                                    internal_triggers)
 
     def multi_currents(self,channel_list=[i+1 for i in range(24)],name='qdac_currents'):
-        return MultiCurrents_Context(self,chans=channel_list,name='qdac_currents')
+        return MultiCurrents_Context(self,chans=channel_list,name=name)
 
     # -----------------------------------------------------------------------
     # Instrument-wide functions
@@ -2561,7 +2586,6 @@ class QDac2(VisaInstrument):
 
             # Load current calibrations into memory
             loc_folder=os.path.dirname(__file__)+'/qdac_calibrations'
-
             for curr_range in ['low','high']:
                 try:
                     with open(loc_folder+'/'+self.serial+f'fit_params_{curr_range}_latest.json','r') as f:
@@ -2615,7 +2639,6 @@ class QDac2(VisaInstrument):
         raise ValueError(
             f'Instrument name "{name}" is incompatible with QCoDeS parameter '
             'generation (no spaces, punctuation, prepended numbers, etc)')
-
 
     def print_all_voltages(self):
         for i in range(24):
