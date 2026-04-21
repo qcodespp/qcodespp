@@ -3194,7 +3194,30 @@ class QDac2(VisaInstrument):
 
         root.protocol("WM_DELETE_WINDOW", windowClose)
 
+        # To make Merlin happy
+        def convertExpToSI(size):
+            if (abs(size) >= 1):
+                if (abs(size) > 1e+31):
+                    return "{:.3e}".format(size)
+                else:
+                    for x in [' ', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y', 'R', 'Q']:
+                        if abs(size) < 1000.0:
+                            y = "%.6g %s" % (size, x)
+                            return y
+                        size /= 1000.0
 
+            if (abs(size) < 1):
+                if (abs(size) < 1e-31):
+                    return "{:.3e}".format(size)
+                elif (abs(size) > 0.001):
+                    return "%0.6g " % size
+                else:
+                    for x in [' ', 'm', 'u', 'n', 'p', 'f', 'a', 'z', 'y', 'r', 'q']:
+                        if abs(size) > 1:
+                            y = "%0.6g %s" % (size, x)
+                            return y
+
+                        size /= 0.001
         #################################
         ## Main update loop
         #################################
@@ -3221,9 +3244,9 @@ class QDac2(VisaInstrument):
             for out in range(24):
                 outVolts[f"out{out+1}"].set(f"V: {self.channel(out+1).volt.cache():.6g} V")
                 if outEnables[f"out{out+1}"].get() == 1:
-                    outAmps[f'out{out+1}'].set(f'I: {outAmpGetters[f'out{out+1}'].get():.6g} A')
+                    outAmps[f'out{out+1}'].set(f'I: {convertExpToSI(outAmpGetters[f'out{out+1}'].get())}A')
                 else:
-                    outAmps[f"out{out+1}"].set(f"I: {self.channel(out+1).curr.cache():.6g} A")
+                    outAmps[f"out{out+1}"].set(f"I: {convertExpToSI(self.channel(out+1).curr.cache())}A")
 
                 root.after(0, root.update())
 
