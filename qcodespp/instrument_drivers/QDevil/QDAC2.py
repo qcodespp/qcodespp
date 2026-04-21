@@ -1331,16 +1331,14 @@ class QDac2Channel(InstrumentChannel):
         volt = self.volt.get_latest()
 
         try:
-            if self.curr_range.get_latest()=='LOW':
-                fitindex=np.shape(self.fit_params_low)[0]
-                value=curr_raw-sum(self.fit_params_low[i]*volt**(fitindex-1-i) for i in range(fitindex))
-            else:
-                fitindex=np.shape(self.fit_params_high)[0]
-                value=curr_raw-sum(self.fit_params_high[i]*volt**(fitindex-1-i) for i in range(fitindex))
-
-            return value
+            curr_range = self.curr_range.get_latest().swapcase()
+            fit_params = getattr(self,f'fit_params_{curr_range}')
+            fit_index = np.shape(fit_params)[0]
+            return curr_raw-sum(fit_params[i]*volt**(fit_index-1-i) for i in range(fit_index))
         except:
+            # Should never come to this; there should _always_ be a fit_params (even if it's just [0]). But just in case, feed the uncalibrated value
             return val
+        
     @property
     def number(self) -> int:
         """Channel number"""
@@ -1752,29 +1750,8 @@ class Arrangement_Context:
         #Load current calibrations into memory
         self.loc_folder=os.path.dirname(__file__)+'/qdac_calibrations'
 
-        self.curr_fit_params_high={}
-        self.curr_fit_params_low={}
         self.init_voltages={}
         self.init_curr_ranges={}
-
-        try:
-            with open(self.loc_folder+'/'+self._qdac.serial+'fit_params_low_latest.json','r') as f:
-                self.loaded_data_low=json_load(f)
-                for channum in self.channel_numbers:
-                    self.curr_fit_params_low[f'ch{channum}_calibration_date_low']=self.loaded_data_low[str(channum).zfill(2)]['calibration_date']
-                    self.curr_fit_params_low[f'ch{channum}_fit_params_low']=self.loaded_data_low[str(channum).zfill(2)]['fit_params']
-            f.close()
-        except:
-            log.warning(f'Calibration files for low current range not found.\nRun calibrate_currents() to calibrate the currents now.\nYou can use curr_ucal but it will be highly inaccurate for large resistive loads.')
-        try:
-            with open(self.loc_folder+'/'+self._qdac.serial+'fit_params_high_latest.json','r') as f:
-                self.loaded_data_high=json_load(f)
-                for channum in self.channel_numbers:
-                    self.curr_fit_params_high[f'ch{channum}_calibration_date_high']=self.loaded_data_high[str(channum).zfill(2)]['calibration_date']
-                    self.curr_fit_params_high[f'ch{channum}_fit_params_high']=self.loaded_data_high[str(channum).zfill(2)]['fit_params']
-            f.close()
-        except:
-            log.warning(f'Calibration files for high current range not found.\nRun calibrate_currents() to calibrate the currents now.\nYou can use curr_ucal but it will be highly inaccurate for large resistive loads.')
 
         for channum in self.channel_numbers:
             self.init_voltages[f'{channum}_init_volt']=self._qdac.channel(channum).volt()
@@ -1946,28 +1923,44 @@ class Arrangement_Context:
         return f'(@{channels_str})'
 
     def currents_A(self) -> Sequence[float]:
-        """Measure currents on all contacts using calibration. Note: Assumes nplc and curr_range set properly previously.
+        """Measure currents on all contacts using calibration, if loaded. Otherwise non-calibrated values returned.
+         
+        Note: Assumes nplc and curr_range set properly previously.
 
         """
         channels_suffix = self._all_channels_as_suffix()
         currents = self._qdac.ask(f'read? {channels_suffix}')
         currents_raw=comma_sequence_to_list_of_floats(currents)
         
-        calibrated_currents=[]
+        cal_currents=[self._cal_single_curr(channel,current_raw) for channel,current_raw in zip(self.channel_numbers,currents_raw)]
 
-        for k,channel in enumerate(self.channel_numbers):
-            volt = self._qdac.channel(channel).volt.get_latest()
-            if self._qdac.channel(channel).curr_range.get_latest()=='LOW':
-                fitindex=np.shape(self.curr_fit_params_low[f'ch{channel}_fit_params_low'])[0]
-                calibrated_currents.append(currents_raw[k]-sum(self.curr_fit_params_low[f'ch{channel}_fit_params_low'][i]*volt**(fitindex-1-i) for i in range(fitindex)))
-            else:
-                fitindex=np.shape(self.curr_fit_params_high[f'ch{channel}_fit_params_high'])[0]
-                calibrated_currents.append(currents_raw[k]-sum(self.curr_fit_params_high[f'ch{channel}_fit_params_high'][i]*volt**(fitindex-1-i) for i in range(fitindex)))
-        return calibrated_currents
+        return cal_currents
+    
+    def _cal_single_curr(self,channel,curr_raw):
+            chan = self._qdac.channel(channel)
+            volt = chan.volt.get_latest()
+            curr_range = chan.curr_range.get_latest().swapcase()
+            fit_params = getattr(chan,f'fit_params_{curr_range}')
+            fit_index = np.shape(fit_params)[0]
+            return curr_raw-sum(fit_params[i]*volt**(fit_index-1-i) for i in range(fit_index))
+    
+    def currents_A_ucal_fast(self) -> Sequence[float]:
+        """Measure currents on all contacts. Note: uncalibrated current! Large error if high resistive load
 
+        Note: Assumes nplc and curr_range set properly previously.
+
+        Args:
+            nplc (int, optional): Number of powerline cycles to average over
+            current_range (str, optional): Current range (default low)
+        """
+        channels_suffix = self._all_channels_as_suffix()
+        currents = self._qdac.ask(f'read? {channels_suffix}')
+        return comma_sequence_to_list_of_floats(currents)
 
     def currents_A_ucal(self, nplc: int = 1, current_range: str = "low") -> Sequence[float]:
         """Measure currents on all contacts. Note: uncalibrated current! Large error if high resistive load
+
+        Note: Sets range and nplc manually. Communication takes quite a long time.
 
         Args:
             nplc (int, optional): Number of powerline cycles to average over
@@ -2196,7 +2189,7 @@ class MultiCurrents_Context(MultiParameter):
     def get_raw(self):
         if self.cal:
             return(tuple(self.arrangement.currents_A()))
-        return(tuple(self.arrangement.currents_A_ucal()))
+        return(tuple(self.arrangement.currents_A_ucal_fast()))
 
 def forward_and_back(start: float, end: float, steps: int):
     forward = np.linspace(start, end, steps)
@@ -2215,7 +2208,7 @@ class QDac2(VisaInstrument):
             address (str): Visa identification string
             **kwargs: additional argument to the Visa driver
         """
-
+        self._calibration_message=''
         self._check_instrument_name(name)
         super().__init__(name, address, terminator='\n', **kwargs)
         self._set_up_serial()
@@ -2231,6 +2224,8 @@ class QDac2(VisaInstrument):
         self._set_up_manual_triggers()
         self._gui_open = False
         self._snapped = False
+        if len(self._calibration_message)>0:
+            log.warning(f'Warning while initialising QDac serial {self.serial}:\n{self._calibration_message}')
 
 
     def n_channels(self) -> int:
@@ -2572,14 +2567,17 @@ class QDac2(VisaInstrument):
                     f.close()
                 except:
                     fails[curr_range].append(i)
-        
+                    setattr(channel,f'loaded_data_{curr_range}',[0])
+                    setattr(channel,f'calibration_date_{curr_range}','0000-00-00')
+                    setattr(channel,f'fit_params_{curr_range}',[0])
+    
         for curr_range in ['low','high']:
             if len(fails[curr_range])>0:
                 chans_string=', '.join([str(ch) for ch in fails[curr_range]])
-                log.warning(f'\nCalibration for channel(s) {chans_string} \nin the {curr_range} current range could not be loaded.')
+                self._calibration_message+=f'Calibration files for the {curr_range} current range could not be loaded for channel(s):\n{chans_string}\n'
 
         if len(fails['low'])>0 or len(fails['high'])>0:
-            log.warning(f'Run {self.name}.calibrate_currents() to calibrate the currents now.')
+            self._calibration_message+=f'Run {self.name}.calibrate_currents() to calibrate.\n'
 
         channels.lock()
         self.add_submodule('channels', channels)
