@@ -159,8 +159,8 @@ class Datron1271(VisaInstrument):
                                           vals=Enum(50,60))
 
         self.protected_store=self.add_parameter('protected_store',
-                                                get_cmd='*PUD',
-                                                set_cmd='*PUD? {}',
+                                                get_cmd='*PUD?',
+                                                set_cmd='*PUD {}',
                                                 get_parser=str)
         
         self.option_config=self.add_parameter('option_config',
