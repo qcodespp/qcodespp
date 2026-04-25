@@ -194,7 +194,7 @@ class qcodesppData(BaseClassData):
                             # This is for even higher dimenstions or just weird stuff.
             return ValueError(f"Higher dimensional data is not supported.\n"
                                "Manually decompose the data into 1D or 2D datasets and load those instead.")
-
+        
         # Get the required X, Y (and Z) data from the data_dict.
         column_data = self.get_column_data(line=linefrompopup)
 
@@ -291,10 +291,11 @@ class qcodesppData(BaseClassData):
             # underway with changing multiple columns, and have not yet selected all the correct data types.
             arraynames=[Xdataname, Ydataname, Zdataname]
             for i,name in enumerate(arraynames):
-                if name == self.all_parameter_names[0]:
-                    column_data[i] = np.repeat(column_data[i], self.dims[1]).reshape(self.dims)
                 if column_data[i].shape != self.dims:
-                    return ValueError("Cannot plot data: shapes of\n"
+                    try: # For the case that the xdata is 1D and needs to be reshaped to match the zdata shape for plotting.
+                        column_data[i] = np.repeat(column_data[i], self.dims[1]).reshape(self.dims)
+                    except Exception:
+                        return ValueError("Cannot plot data: shapes of\n"
                                      f"{column_data[0].shape}, {column_data[1].shape}, {column_data[2].shape}\n"
                                      f"do not match.")
 
