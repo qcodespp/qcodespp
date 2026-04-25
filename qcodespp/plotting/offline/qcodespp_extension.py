@@ -292,12 +292,21 @@ class qcodesppData(BaseClassData):
             arraynames=[Xdataname, Ydataname, Zdataname]
             for i,name in enumerate(arraynames):
                 if column_data[i].shape != self.dims:
-                    try: # For the case that the xdata is 1D and needs to be reshaped to match the zdata shape for plotting.
-                        column_data[i] = np.repeat(column_data[i], self.dims[1]).reshape(self.dims)
-                    except Exception:
-                        return ValueError("Cannot plot data: shapes of\n"
+                    errortext=("Cannot plot data: shapes of\n"
                                      f"{column_data[0].shape}, {column_data[1].shape}, {column_data[2].shape}\n"
                                      f"do not match.")
+                    try:
+                        if column_data[i].shape == (self.dims[0],):# For the case that the xdata is 1D and needs to be reshaped to match the zdata shape for plotting.
+                            column_data[i] = np.repeat(column_data[i], self.dims[1]).reshape(self.dims)
+                        elif column_data[i].shape == (self.dims[1],): # For the case that the ydata is 1D and needs to be reshaped to match the zdata shape for plotting.
+                            column_data[i] = np.repeat(column_data[i], self.dims[0]).reshape(self.dims)
+                        elif column_data[i].shape == (self.dims[1], self.dims[0]): # Array is transposed
+                            column_data[i] = column_data[i].T
+                        else:
+                            return ValueError(errortext)
+                    except Exception:
+                        return ValueError(errortext)
+
 
             self.settings['default_histlabel'] = self.settings['default_clabel']
             self.settings['default_fftxlabel'] = f'1/{self.settings['default_xlabel']}'
