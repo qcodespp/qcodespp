@@ -223,6 +223,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         self.error_log={}
 
+        self.banned_files=[]
+
         if folder:
             print(f'Linking to {folder}... This may take some time.')
             try:
@@ -490,126 +492,130 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self, 'Open File', '', 'Data Files (*.dat *.npy *.csv *.json)')
         if filepaths:
             for i,filepath in enumerate(filepaths):
-                try:
-                    if filepath == 'internal_data': # Should only happen when loading a session, therefore rely on attr_dicts
-                        item=DataItem(InternalData(self.canvas, 
-                                                    attr_dicts[i]['loaded_data'],
-                                                    attr_dicts[i]['label'],
-                                                    attr_dicts[i]['all_parameter_names'],
-                                                    attr_dicts[i]['dim']))
-                        
-                    elif filepath == 'mixed_internal_data': # Should only happen when loading a session, therefore rely on attr_dicts
-                        type_dictionary={'qcodesppData': qcodesppData,
-                                            'BaseClassData': BaseClassData,
-                                            'InternalData': InternalData}
-                        for key in type_dictionary.keys():
-                            if key in attr_dicts[i]['dataset1d_type']:
-                                dataset1d_type = type_dictionary[key]
-                            if key in attr_dicts[i]['dataset2d_type']:
-                                dataset2d_type = type_dictionary[key]
-                        label_name = attr_dicts[i]['label']
-                        kwargs={}
-                        if dataset1d_type in [qcodesppData,BaseClassData]:
-                            kwargs['dataset1d_filepath'] = attr_dicts[i]['dataset1d_filepath']
-                        elif dataset1d_type == InternalData:
-                            kwargs['dataset1d_loaded_data'] = attr_dicts[i]['dataset1d_loaded_data']
-                            kwargs['dataset1d_label'] = attr_dicts[i]['dataset1d_label']
-                            kwargs['dataset1d_all_parameter_names'] = attr_dicts[i]['dataset1d_all_parameter_names']
-                            kwargs['dataset1d_dim']= attr_dicts[i]['dataset1d_dim']
-                        if dataset2d_type in [qcodesppData,BaseClassData]:
-                            kwargs['dataset2d_filepath'] = attr_dicts[i]['dataset2d_filepath']
-                        elif dataset2d_type == InternalData:
-                            kwargs['dataset2d_loaded_data'] = attr_dicts[i]['dataset2d_loaded_data']
-                            kwargs['dataset2d_label'] = attr_dicts[i]['dataset2d_label']
-                            kwargs['dataset2d_all_parameter_names'] = attr_dicts[i]['dataset2d_all_parameter_names']
-                            kwargs['dataset2d_dim']= attr_dicts[i]['dataset2d_dim']
-                        item=DataItem(MixedInternalData(self.canvas,label_name,dataset2d_type,dataset1d_type,**kwargs))
-
-                    else:
-                        item=self.load_data_item(filepath)
-
-                    if isinstance(item, Exception):
-                        self.log_error(str(item))
-                        minilog.append(str(item))
-                        continue
-
-                    item.filepath=filepath
-                    self.file_list.addItem(item)
-                    if attr_dicts: #then a previous session is being loaded
-                        for attr,value in attr_dicts[i].items():
-                            if attr not in ['filename','checkState','duplicate','is_current_item',
-                                            'view_settings',
-                                            'extra_cols','dataset1d_type','dataset2d_type',
-                                            'dataset1d_plotted_lines','dataset2d_linecuts']:
-                                setattr(item.data,attr,value)
-
-                            elif attr=='is_current_item' and value:
-                                item_to_set_current=item
-
-                            elif attr=='extra_cols':
-                                if not hasattr(item.data,'data_dict'):
-                                    item.data.data_dict = {}
-                                if not hasattr(item.data,'extra_cols'):
-                                    item.data.extra_cols = []
-                                if isinstance(item.data, qcodesppData) and not hasattr(item.data,'channels'):
-                                    item.data.channels = {}
-
-                                for colname in value:
-                                    item.data.extra_cols.append(colname)
-                                    item.data.data_dict[colname] = value[colname]['data']
-                                    if isinstance(item.data, qcodesppData):
-                                        item.data.channels[colname] = value[colname]['channel']
-                                    elif isinstance(item.data,InternalData):
-                                        item.data.all_parameter_names.append(colname)
+                if filepath not in self.banned_files:
+                    try:
+                        if filepath == 'internal_data': # Should only happen when loading a session, therefore rely on attr_dicts
+                            item=DataItem(InternalData(self.canvas, 
+                                                        attr_dicts[i]['loaded_data'],
+                                                        attr_dicts[i]['label'],
+                                                        attr_dicts[i]['all_parameter_names'],
+                                                        attr_dicts[i]['dim']))
                             
-                            elif attr=='checkState':
-                                item.setCheckState(value)
-                                if value==2:
-                                    self.file_checked(item)
-                                    overrideautocheck=True #If any item is checked, override autochecking. 
-                                    # But if NONE of them are checked, let autocheck do its thing.
-                                    
-                                    # The below is kind of dumb... but for anything at all to work, 1D data has to be inited by
-                                    # actually plotting _something_ when file_checked is called, which makes a sidebar1D with the default params plotted.
-                                    # If this sidebar1D exists, we need to delete it and make the proper one at reload_plotted_lines.
-                                    if hasattr(item.data,'sidebar1D'):
-                                        item.data.sidebar1D.hide()
-                                        del item.data.sidebar1D
+                        elif filepath == 'mixed_internal_data': # Should only happen when loading a session, therefore rely on attr_dicts
+                            type_dictionary={'qcodesppData': qcodesppData,
+                                                'BaseClassData': BaseClassData,
+                                                'InternalData': InternalData}
+                            for key in type_dictionary.keys():
+                                if key in attr_dicts[i]['dataset1d_type']:
+                                    dataset1d_type = type_dictionary[key]
+                                if key in attr_dicts[i]['dataset2d_type']:
+                                    dataset2d_type = type_dictionary[key]
+                            label_name = attr_dicts[i]['label']
+                            kwargs={}
+                            if dataset1d_type in [qcodesppData,BaseClassData]:
+                                kwargs['dataset1d_filepath'] = attr_dicts[i]['dataset1d_filepath']
+                            elif dataset1d_type == InternalData:
+                                kwargs['dataset1d_loaded_data'] = attr_dicts[i]['dataset1d_loaded_data']
+                                kwargs['dataset1d_label'] = attr_dicts[i]['dataset1d_label']
+                                kwargs['dataset1d_all_parameter_names'] = attr_dicts[i]['dataset1d_all_parameter_names']
+                                kwargs['dataset1d_dim']= attr_dicts[i]['dataset1d_dim']
+                            if dataset2d_type in [qcodesppData,BaseClassData]:
+                                kwargs['dataset2d_filepath'] = attr_dicts[i]['dataset2d_filepath']
+                            elif dataset2d_type == InternalData:
+                                kwargs['dataset2d_loaded_data'] = attr_dicts[i]['dataset2d_loaded_data']
+                                kwargs['dataset2d_label'] = attr_dicts[i]['dataset2d_label']
+                                kwargs['dataset2d_all_parameter_names'] = attr_dicts[i]['dataset2d_all_parameter_names']
+                                kwargs['dataset2d_dim']= attr_dicts[i]['dataset2d_dim']
+                            item=DataItem(MixedInternalData(self.canvas,label_name,dataset2d_type,dataset1d_type,**kwargs))
+
+                        else:
+                            item=self.load_data_item(filepath)
+
+                        if isinstance(item, Exception):
+                            self.log_error(str(item))
+                            minilog.append(str(item))
+                            self.banned_files.append(filepath)
+                            continue
+
+                        item.filepath=filepath
+                        self.file_list.addItem(item)
+                        if attr_dicts: #then a previous session is being loaded
+                            for attr,value in attr_dicts[i].items():
+                                if attr not in ['filename','checkState','duplicate','is_current_item',
+                                                'view_settings',
+                                                'extra_cols','dataset1d_type','dataset2d_type',
+                                                'dataset1d_plotted_lines','dataset2d_linecuts']:
+                                    setattr(item.data,attr,value)
+
+                                elif attr=='is_current_item' and value:
+                                    item_to_set_current=item
+
+                                elif attr=='extra_cols':
+                                    if not hasattr(item.data,'data_dict'):
+                                        item.data.data_dict = {}
+                                    if not hasattr(item.data,'extra_cols'):
+                                        item.data.extra_cols = []
+                                    if isinstance(item.data, qcodesppData) and not hasattr(item.data,'channels'):
+                                        item.data.channels = {}
+
+                                    for colname in value:
+                                        item.data.extra_cols.append(colname)
+                                        item.data.data_dict[colname] = value[colname]['data']
+                                        if isinstance(item.data, qcodesppData):
+                                            item.data.channels[colname] = value[colname]['channel']
+                                        elif isinstance(item.data,InternalData):
+                                            item.data.all_parameter_names.append(colname)
+                                
+                                elif attr=='checkState':
+                                    item.setCheckState(value)
+                                    if value==2:
+                                        self.file_checked(item)
+                                        overrideautocheck=True #If any item is checked, override autochecking. 
+                                        # But if NONE of them are checked, let autocheck do its thing.
+                                        
+                                        # The below is kind of dumb... but for anything at all to work, 1D data has to be inited by
+                                        # actually plotting _something_ when file_checked is called, which makes a sidebar1D with the default params plotted.
+                                        # If this sidebar1D exists, we need to delete it and make the proper one at reload_plotted_lines.
+                                        if hasattr(item.data,'sidebar1D'):
+                                            item.data.sidebar1D.hide()
+                                            del item.data.sidebar1D
+                                
+                                elif attr=='duplicate':
+                                    item.duplicate = value
+                                    if item.duplicate and 'label' in attr_dicts[i]:
+                                        item.setText(attr_dicts[i]['label'])
+
+                                elif attr=='dataset1d_plotted_lines':
+                                    item.data.dataset1d.plotted_lines= value
+                                    self.reload_plotted_lines(item.data.dataset1d,item)
+
+                                elif attr=='dataset2d_linecuts':
+                                    item.data.dataset2d.linecuts = value
+                                    self.reload_linecuts(item.data.dataset2d,item.checkState())
+
+                                if attr=='linecuts':
+                                    self.reload_linecuts(item.data,item.checkState())
+
+                                if attr=='plotted_lines':
+                                    self.reload_plotted_lines(item.data,item)
+
+                            if 'processed_data' in attr_dicts[i]: # If the data had been plotted we need to force load it here
+                                                                    # otherwise the data will be in some weird state.
+                                item.data.prepare_data_for_plot(reload_data=True,reload_from_file=True)
                             
-                            elif attr=='duplicate':
-                                item.duplicate = value
-                                if item.duplicate and 'label' in attr_dicts[i]:
-                                    item.setText(attr_dicts[i]['label'])
+                            if 'view_settings' in attr_dicts[i]:
+                                item.data.view_settings = attr_dicts[i]['view_settings']
 
-                            elif attr=='dataset1d_plotted_lines':
-                                item.data.dataset1d.plotted_lines= value
-                                self.reload_plotted_lines(item.data.dataset1d,item)
+                        else:
+                            for setting in ['titlesize','labelsize','ticksize']:
+                                if hasattr(item.data,'settings'):
+                                    item.data.settings[setting]=self.global_text_size
 
-                            elif attr=='dataset2d_linecuts':
-                                item.data.dataset2d.linecuts = value
-                                self.reload_linecuts(item.data.dataset2d,item.checkState())
-
-                            if attr=='linecuts':
-                                self.reload_linecuts(item.data,item.checkState())
-
-                            if attr=='plotted_lines':
-                                self.reload_plotted_lines(item.data,item)
-
-                        if 'processed_data' in attr_dicts[i]: # If the data had been plotted we need to force load it here
-                                                                # otherwise the data will be in some weird state.
-                            item.data.prepare_data_for_plot(reload_data=True,reload_from_file=True)
-                        
-                        if 'view_settings' in attr_dicts[i]:
-                            item.data.view_settings = attr_dicts[i]['view_settings']
-
-                    else:
-                        for setting in ['titlesize','labelsize','ticksize']:
-                            if hasattr(item.data,'settings'):
-                                item.data.settings[setting]=self.global_text_size
-
-                except Exception as e:
-                    self.log_error(f'Failed to open {filepath}:\n{type(e).__name__}: {e}')
-                    minilog.append(f'Failed to open {filepath}:\n{type(e).__name__}: {e}')
+                    except Exception as e:
+                        self.log_error(f'Failed to open {filepath}:\n{type(e).__name__}: {e}')
+                        minilog.append(f'Failed to open {filepath}:\n{type(e).__name__}: {e}')
+                        self.banned_files.append(filepath)
+                        print(self.banned_files)
 
             if self.file_list.count() > 0:
                 if item_to_set_current:
@@ -626,6 +632,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.file_list.itemClicked.connect(self.file_clicked)
         if len(minilog) > 0:
             error_message = 'The following errors occurred while opening files:\n\n' + '\n\n'.join(minilog)
+            error_message += '\n\nThese files will not be loaded again until program restart'
             self.ew = ErrorWindow(error_message)
 
     def reload_plotted_lines(self,data,item):
