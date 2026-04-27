@@ -324,5 +324,5 @@ class Datron1271(VisaInstrument):
         return self.ask('RDG?')
 
     def _read_buffer(self):
-        self.write(f'BLOCK {int(self.buffer_size.cache())}')
+        #self.write(f'BLOCK {int(self.buffer_size.cache())}')
         return self.ask(f'BLOCK? 0,{int(self.buffer_size.cache())}')
