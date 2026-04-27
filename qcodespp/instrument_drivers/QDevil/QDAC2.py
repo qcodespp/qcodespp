@@ -2824,11 +2824,11 @@ class QDac2(VisaInstrument):
 
         root = tk.Tk()
         root.title(f"QDac-II {self.serial} control")
-        root.geometry("1200x550")
+        root.geometry("1150x475")
 
 
         controlFrame = tk.Frame(root)
-        controlFrame.pack(padx = 20, pady = 5, side = "bottom", anchor = "n")
+        controlFrame.pack(padx = 5, pady = 5, side = "bottom", anchor = "n")
 
 
         #################################
@@ -2836,7 +2836,7 @@ class QDac2(VisaInstrument):
         #################################
 
         allControlsFrame = tk.Frame(controlFrame, highlightbackground = "black", highlightthickness = 1)
-        allControlsFrame.pack(padx = 20, pady = 20, side = "right", anchor = "e")
+        allControlsFrame.pack(padx = 5, pady = 5, side = "right", anchor = "e")
 
 
         allControlsLabel = tk.Label(allControlsFrame, text = "All Channels", font = ("TkDefaultFont", 12, "bold"))
@@ -3177,12 +3177,12 @@ class QDac2(VisaInstrument):
 
             outVolts[f"out{out+1}"] = tk.StringVar()
             outVolts[f"out{out+1}"].set(f"V: - V")
-            outVoltsLabels[f"out{out+1}"] = tk.Label(outFrames[f"out{out+1}"], textvariable = outVolts[f"out{out+1}"], width = 15, anchor = "n", justify = "center")
+            outVoltsLabels[f"out{out+1}"] = tk.Label(outFrames[f"out{out+1}"], textvariable = outVolts[f"out{out+1}"], width = 10, anchor = "n", justify = "center")
 
             outCurrFrames[f"out{out+1}"] = tk.Frame(outFrames[f"out{out+1}"])
             outAmps[f"out{out+1}"] = tk.StringVar()
             outAmps[f"out{out+1}"].set(f"I: - uA")
-            outAmpsLabels[f"out{out+1}"] = tk.Label(outCurrFrames[f"out{out+1}"], textvariable = outAmps[f"out{out+1}"], width = 15, anchor = "n", justify = "left")
+            outAmpsLabels[f"out{out+1}"] = tk.Label(outCurrFrames[f"out{out+1}"], textvariable = outAmps[f"out{out+1}"], width = 10, anchor = "n", justify = "left")
 
             outEnables[f"out{out+1}"] = tk.IntVar()
             outEnables[f"out{out+1}"].set(0)
