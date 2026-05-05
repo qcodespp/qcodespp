@@ -2674,6 +2674,8 @@ class QDac2(VisaInstrument):
         Before running the calibration, remove all loads from the outputs.
         '''
 
+        self._calibration_running=True # The gui can get confused during the calibration procedure.
+
         loc_folder=os.path.dirname(__file__)+'/qdac_calibrations'
         if os.path.exists(loc_folder)==False:
             os.makedirs(loc_folder,exist_ok=True)
@@ -2817,6 +2819,8 @@ class QDac2(VisaInstrument):
         self._set_up_channels()
 
         print('Calibration complete at: '+time.asctime())
+
+        self._calibration_running=False
 
     def _createControlPanel(self):
 
@@ -3246,33 +3250,37 @@ class QDac2(VisaInstrument):
         #################################
 
         while self._gui_open:
+            try:
+                # Update options frame
+                if root.focus_get() != voltOutEntry:
+                    voltOutValue.set(self.channel(selectedOut.get()).volt.cache())
 
-            # Update options frame
-            if root.focus_get() != voltOutEntry:
-                voltOutValue.set(self.channel(selectedOut.get()).volt.cache())
+                if root.focus_get() != measApertureEntry:    
+                    measApertureValue.set(float(self.channel(selectedOut.get()).measurement_nplc.cache())/lfreq)
 
-            if root.focus_get() != measApertureEntry:    
-                measApertureValue.set(self.channel(selectedOut.get()).measurement_nplc.cache()/lfreq)
+                currRange.set(self.channel(selectedOut.get()).curr_range.cache())
+                outputRange.set(self.channel(selectedOut.get()).output_range.cache())
+                outputFilter.set(self.channel(selectedOut.get()).output_filter.cache())
 
-            currRange.set(self.channel(selectedOut.get()).curr_range.cache())
-            outputRange.set(self.channel(selectedOut.get()).output_range.cache())
-            outputFilter.set(self.channel(selectedOut.get()).output_filter.cache())
+                if outputRange.get() == "HIGH":
+                    outputRangeInfoVar.set(u"\u00B1" + "10 V")
+                elif outputRange.get() == "LOW":
+                    outputRangeInfoVar.set(u"\u00B1" + "2 V")
+                
+                # Update output frame
+                for out in range(24):
+                    outVolts[f"out{out+1}"].set(f"V: {self.channel(out+1).volt.cache():.6g} V")
+                    if outEnables[f"out{out+1}"].get() == 1:
+                        outAmps[f'out{out+1}'].set(f'I: {convertExpToSI(outAmpGetters[f'out{out+1}'].get())}A')
+                    else:
+                        outAmps[f"out{out+1}"].set(f"I: {convertExpToSI(self.channel(out+1).curr.cache())}A")
 
-            if outputRange.get() == "HIGH":
-                outputRangeInfoVar.set(u"\u00B1" + "10 V")
-            elif outputRange.get() == "LOW":
-                outputRangeInfoVar.set(u"\u00B1" + "2 V")
-            
-            # Update output frame
-            for out in range(24):
-                outVolts[f"out{out+1}"].set(f"V: {self.channel(out+1).volt.cache():.6g} V")
-                if outEnables[f"out{out+1}"].get() == 1:
-                    outAmps[f'out{out+1}'].set(f'I: {convertExpToSI(outAmpGetters[f'out{out+1}'].get())}A')
-                else:
-                    outAmps[f"out{out+1}"].set(f"I: {convertExpToSI(self.channel(out+1).curr.cache())}A")
-
-                root.after(0, root.update())
-
+                    root.after(0, root.update())
+            except Exception as e:
+                if hasattr(self,'_calibration_running') and self._calibration_running:
+                    pass
+                print(f'{e.__class__.__name__}: {e}')
+                pass
 
 
         root.mainloop()
