@@ -2828,7 +2828,7 @@ class QDac2(VisaInstrument):
 
         root = tk.Tk()
         root.title(f"QDac-II {self.serial} control")
-        root.geometry("1150x475")
+        root.geometry("1150x525")
 
 
         controlFrame = tk.Frame(root)
@@ -3209,7 +3209,10 @@ class QDac2(VisaInstrument):
     
         outButtons["out1"].invoke() ## This just defaults the selected output to out 1 so I don't have to have initial values
 
-
+        calFrame = tk.Frame(root, bd = 3, highlightbackground = "black", highlightthickness = 1)
+        calFrame.pack(pady = 5)
+        calButton = tk.Button(calFrame, text = f"Calibrate Currents", command = self.calibrate_currents)
+        calButton.pack(side='bottom',anchor='n')
 
         #################################
         ## Handle window closing. Kill thread and allow opening a new controlpanel without having to restart kernel
