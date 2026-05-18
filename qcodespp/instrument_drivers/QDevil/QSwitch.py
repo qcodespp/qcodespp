@@ -29,7 +29,7 @@ def _line_tap_split(input: str) -> Tuple[int, int]:
     return int(pair[0]), int(pair[1])
 
 
-def channel_list_to_state(channel_list: str, from_currently=False) -> State:
+def channel_list_to_state(channel_list: str) -> State:
     outer = re.match(r'\(@([0-9,:! ]*)\)', channel_list)
     result: List[Tuple[int, int]] = []
     if len(channel_list)==0:
@@ -38,23 +38,20 @@ def channel_list_to_state(channel_list: str, from_currently=False) -> State:
         raise ValueError(f'Expected channel list, got {channel_list}')
     sequences = outer[1].split(',')
     for sequence in sequences:
-        if not from_currently:
-            limits = sequence.split(':')
-            if limits == ['']:
-                raise ValueError(f'Expected channel sequence, got {limits}')
-            line_start, tap_start = _line_tap_split(limits[0])
-            line_stop, tap_stop = line_start, tap_start
-            if len(limits) == 2:
-                line_stop, tap_stop = _line_tap_split(limits[1])
-            if len(limits) > 2:
-                raise ValueError(f'Expected channel sequence, got {limits}')
-            if tap_start != tap_stop:
-                raise ValueError(
-                    f'Expected same breakout in sequence, got {limits}')
-            for line in range(line_start, line_stop+1):
-                result.append((line, tap_start))
-        else:
-            result=None
+        limits = sequence.split(':')
+        if limits == ['']:
+            raise ValueError(f'Expected channel sequence, got {limits}')
+        line_start, tap_start = _line_tap_split(limits[0])
+        line_stop, tap_stop = line_start, tap_start
+        if len(limits) == 2:
+            line_stop, tap_stop = _line_tap_split(limits[1])
+        if len(limits) > 2:
+            raise ValueError(f'Expected channel sequence, got {limits}')
+        if tap_start != tap_stop:
+            raise ValueError(
+                f'Expected same breakout in sequence, got {limits}')
+        for line in range(line_start, line_stop+1):
+            result.append((line, tap_start))
     return result
 
 
@@ -344,7 +341,7 @@ class QSwitch(Instrument):
                 e.g. [(1, 0), (2, 1)]
         '''
         relays=self._convert_many_to_int(relays)
-        currently = channel_list_to_state(self._state, from_currently=True)
+        currently = channel_list_to_state(self._state)
         union = list(itertools.chain(currently, relays))
         self._effectuate(union)
 
@@ -367,7 +364,7 @@ class QSwitch(Instrument):
                 e.g. [(1, 0), (2, 1)]
         '''
         relays=self._convert_many_to_int(relays)
-        currently = frozenset(channel_list_to_state(self._state, from_currently=True))
+        currently = frozenset(channel_list_to_state(self._state))
         subtraction = frozenset(relays)
         self._effectuate(list(currently - subtraction))
 
@@ -698,7 +695,7 @@ class QSwitch(Instrument):
         self._effectuate(channel_list_to_state(channel_list))
 
     def _effectuate(self, state: State) -> None:
-        currently = channel_list_to_state(self._state, from_currently=True)
+        currently = channel_list_to_state(self._state)
         positive, negative, total = _state_diff(currently, state)
         if positive:
             self.write(f'clos {state_to_compressed_list(positive)}')
