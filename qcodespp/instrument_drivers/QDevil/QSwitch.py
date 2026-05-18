@@ -53,7 +53,8 @@ def channel_list_to_state(channel_list: str, from_currently=False) -> State:
                     f'Expected same breakout in sequence, got {limits}')
             for line in range(line_start, line_stop+1):
                 result.append((line, tap_start))
-        else result=None
+        else:
+            result=None
     return result
 
 
