@@ -39,8 +39,8 @@ def channel_list_to_state(channel_list: str) -> State:
     sequences = outer[1].split(',')
     for sequence in sequences:
         limits = sequence.split(':')
-        if limits == ['']:
-            raise ValueError(f'Expected channel sequence, got {limits}')
+        # if limits == ['']: # Commenting this out since it's a totally valid sequence, i.e. floating
+        #     raise ValueError(f'Expected channel sequence, got {limits}')
         line_start, tap_start = _line_tap_split(limits[0])
         line_stop, tap_stop = line_start, tap_start
         if len(limits) == 2:
