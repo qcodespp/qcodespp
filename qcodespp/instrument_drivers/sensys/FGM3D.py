@@ -21,9 +21,12 @@ class FGM3D(Instrument):
     Args:
         name (str): qcodes name for this instrument instance
         address (str): COM port identifier of the virtual COM port pair
+        baudrate (int): match the baudrate in the GUI
+        unit (str): Units as selected in the GUI
+        timeout (float): timeout for collecting a measurement
     '''
 
-    def __init__(self, name, address, baudrate=115200, unit='T', terminator='\r\n', timeout=5, **kwargs):
+    def __init__(self, name, address, baudrate=115200, unit='T', timeout=5, **kwargs):
 
         self.ind_dict={'x':0,
             'y':1,
@@ -31,11 +34,12 @@ class FGM3D(Instrument):
             'r':3}
         
         super().__init__(name, **kwargs)
-        self.terminator=terminator
+        self.terminator='\r\n'
         self.address=address
         self.unit=unit
         self.timeout=timeout
-        self.ser=serial.Serial(address, baudrate=baudrate)
+        self.baudrate=baudrate
+        self.ser=serial.Serial(self.address, baudrate=self.baudrate, timeout=self.timeout)
 
         for axis in ['x','y','z','r']:
             self.add_parameter(axis,
@@ -46,6 +50,16 @@ class FGM3D(Instrument):
         self.add_parameter(name='data',
                            unit=self.unit,
                            parameter_class=FGM3D_Parameter)
+        
+        t=time.time() - self._t0
+        print(f'Connected to: {self.get_idn()} on {self.address} in {t:.2g}s')
+
+    def reset(self):
+        '''
+        Close and reopen the serial stream
+        '''
+        self.ser.close()
+        self.ser=serial.Serial(self.address, baudrate=self.baudrate, timeout=self.timeout)
 
     def get_idn(self):
         return "Sensys FGM3D"
@@ -65,11 +79,11 @@ class FGM3D(Instrument):
         return self.get_data()[self.ind_dict[axis]]
         
 class FGM3D_Parameter(MultiParameter):
-    def __init__(self,name,unit,instrument):
+    def __init__(self,name,unit,instrument,**kwargs):
         names=['Bx','By','Bz','Br']
         shapes=((),(),(),())
         units=[unit for i in range(4)]
-        super().__init__(name=name,names=names,shapes=shapes,units=units,instrument=instrument)
+        super().__init__(name=name,names=names,shapes=shapes,units=units,instrument=instrument,**kwargs)
     
     def get_raw(self):
         return self.instrument.get_data()
