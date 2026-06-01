@@ -16,7 +16,7 @@ class FGM3D(Instrument):
     port pair using e.g. https://freevirtualserialports.com/. Specify the first port in the GUI, and 
     the second port in this driver.
 
-    The units are also not known a priori; if using Gauss, specify this during init.
+    The units cannot be read from the instrument; if using Gauss, specify this during init.
 
     Args:
         name (str): qcodes name for this instrument instance

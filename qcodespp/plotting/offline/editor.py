@@ -615,7 +615,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         self.log_error(f'Failed to open {filepath}:\n{type(e).__name__}: {e}')
                         minilog.append(f'Failed to open {filepath}:\n{type(e).__name__}: {e}')
                         self.banned_files.append(filepath)
-                        print(self.banned_files)
 
             if self.file_list.count() > 0:
                 if item_to_set_current:
@@ -1029,7 +1028,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         ret = msg_box.exec_()
         if ret != QtWidgets.QMessageBox.Ok:
             return
-
         # Then prompt to load the session
         if filepath is None:
             session_filepath, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open Session', '', 'Inspectra Gadget session (*.igs)')
