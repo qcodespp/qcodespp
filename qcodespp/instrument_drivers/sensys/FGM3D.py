@@ -2,6 +2,7 @@ import logging
 import time
 from functools import partial
 import serial
+import numpy as np
 
 from qcodes import Instrument, MultiParameter
 
@@ -26,7 +27,7 @@ class FGM3D(Instrument):
         timeout (float): timeout for collecting a measurement
     '''
 
-    def __init__(self, name, address, baudrate=115200, unit='T', timeout=5, **kwargs):
+    def __init__(self, name, address, baudrate=400000, unit='T', timeout=2, **kwargs):
 
         self.ind_dict={'x':0,
             'y':1,
@@ -42,12 +43,12 @@ class FGM3D(Instrument):
         self.ser=serial.Serial(self.address, baudrate=self.baudrate, timeout=self.timeout)
 
         for axis in ['x','y','z','r']:
-            self.add_parameter(axis,
+            setattr(self, axis, self.add_parameter(axis,
                                   label=f'B{axis}',
                                   unit=self.unit,
-                                  get_cmd=partial(self._get_cmpt,axis))
+                                  get_cmd=partial(self._get_cmpt,axis)))
             
-        self.add_parameter(name='data',
+        self.data = self.add_parameter(name='data',
                            unit=self.unit,
                            parameter_class=FGM3D_Parameter)
         
@@ -61,10 +62,16 @@ class FGM3D(Instrument):
         self.ser.close()
         self.ser=serial.Serial(self.address, baudrate=self.baudrate, timeout=self.timeout)
 
+    def close(self):
+        """Disconnect and irreversibly tear down the instrument."""
+        if getattr(self, 'ser', None):
+            self.ser.close()
+        super().close()
+
     def get_idn(self):
         return "Sensys FGM3D"
     
-    def get_data(self):
+    def _get_data(self):
         start=time.time()
         while time.time()-start<self.timeout:
             try:
@@ -75,8 +82,23 @@ class FGM3D(Instrument):
                 0
         return TimeoutError(f'Data could not be returned before timeout = {self.timeout}s')
     
+    def get_all_data(self):
+        '''Get all data currently in the serial buffer. Returns a list of tuples (t,x,y,z,r)'''
+        start=time.time()
+        while time.time()-start<self.timeout:
+            try:
+                raw_data=self.ser.read_all().decode().split(self.terminator)
+                data=np.array([line.split(';') for line in raw_data[:-1]],dtype=float)
+                # for line in raw_data[:-1]:
+                #     t,x,y,z,r=line.split(';')
+                #     data.append((float(t),float(x),float(y),float(z),float(r)))
+                return data
+            except:
+                0
+        return TimeoutError(f'Data could not be returned before timeout = {self.timeout}s')
+    
     def _get_cmpt(self,axis):
-        return self.get_data()[self.ind_dict[axis]]
+        return self._get_data()[self.ind_dict[axis]]
         
 class FGM3D_Parameter(MultiParameter):
     def __init__(self,name,unit,instrument,**kwargs):
@@ -86,5 +108,5 @@ class FGM3D_Parameter(MultiParameter):
         super().__init__(name=name,names=names,shapes=shapes,units=units,instrument=instrument,**kwargs)
     
     def get_raw(self):
-        return self.instrument.get_data()
+        return self.instrument._get_data()
                         
