@@ -40,7 +40,9 @@ class MidpointNormalize(Normalize):
 
 class NavigationToolbarMod(NavigationToolbar):
     #without save button
-    NavigationToolbar.toolitems = (
+    def __init__(self, canvas, parent):
+        super().__init__(canvas, parent)
+NavigationToolbarMod.toolitems = (
         ('Home', 'Reset original view', 'home', 'home'),
         ('Back', 'Back to previous view', 'back', 'back'),
         ('Forward', 'Forward to next view', 'forward', 'forward'),

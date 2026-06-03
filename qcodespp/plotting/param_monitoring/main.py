@@ -1,7 +1,7 @@
 import threading
 import sys
 
-def param_monitor(params, interval=200, maxlen=500, use_thread=True):
+def param_monitor(*params, interval=200, maxlen=500, use_thread=True):
     """	
     Entry point for qcodespp parameter monitoring. 
     Args:
@@ -14,15 +14,15 @@ def param_monitor(params, interval=200, maxlen=500, use_thread=True):
 
     if use_thread:# and sys.platform != 'darwin': #This way of threading may not work on macOS.
         try:
-            plot_thread = threading.Thread(target = main, args=(params, interval, maxlen))
+            plot_thread = threading.Thread(target = main, args=(*params,), kwargs={'interval': interval, 'maxlen': maxlen})
             plot_thread.start()
         except Exception as e:
             print(f"Error running monitor_window using threading: {e}\n"
                   "Try monitor_window(use_thread=False)")
     else:
-        main(params, interval, maxlen)
+        main(*params, interval=interval, maxlen=maxlen)
 
-def main(params, interval=200, maxlen=500):
+def main(*params, interval=200, maxlen=500):
     '''
     Initializes the monitor_window Qt application and opens the monitor window.
     '''
@@ -34,7 +34,7 @@ def main(params, interval=200, maxlen=500):
     app.aboutToQuit.connect(app.deleteLater)
     app.lastWindowClosed.connect(app.quit)
     
-    monitor_window = MonitorWindow(params=params, interval=interval, maxlen=maxlen)
+    monitor_window = MonitorWindow(*params, interval=interval, maxlen=maxlen)
     monitor_window.show()
     app.exec_()
 

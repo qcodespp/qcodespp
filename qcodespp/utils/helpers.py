@@ -616,3 +616,27 @@ def partial_with_docstring(func, docstring, **kwargs):
     inner.__doc__ = docstring
 
     return inner
+
+def convertExpToSI(size):
+    if (abs(size) >= 1):
+        if (abs(size) > 1e+31):
+            return "{:.3e}".format(size)
+        else:
+            for x in [' ', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y', 'R', 'Q']:
+                if abs(size) < 1000.0:
+                    y = "%.6g %s" % (size, x)
+                    return y
+                size /= 1000.0
+
+    if (abs(size) < 1):
+        if (abs(size) < 1e-31):
+            return "{:.3e}".format(size)
+        # elif (abs(size) > 0.001):
+        #     return "%0.6g " % size
+        else:
+            for x in [' ', 'm', 'u', 'n', 'p', 'f', 'a', 'z', 'y', 'r', 'q']:
+                if abs(size) > 1:
+                    y = "%0.6g %s" % (size, x)
+                    return y
+
+                size /= 0.001
