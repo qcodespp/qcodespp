@@ -235,56 +235,72 @@ class MonitorWindow(QMainWindow):
 
         data_set = self._make_data_set(location=file_path)
 
-        if station is not None:
-            data_set.add_metadata({'station': station.snapshot()})
+        try:
 
-        ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        data_set.add_metadata({'measurement': {
-            'ts': ts,
-        }})
+            if station is not None:
+                data_set.add_metadata({'station': station.snapshot()})
 
-        data_set.save_metadata()
+            ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            data_set.add_metadata({'measurement': {
+                'ts': ts,
+            }})
 
-        data_set.finalize()
+            data_set.save_metadata()
+
+            data_set.finalize()
+
+        except Exception as e:
+            print(f'Error while saving data: {e.__class__.__name__}: {e}')
+
+        self.fig.savefig(data_set.location+".png", transparent=True,
+                                    bbox_inches='tight')
 
     def _make_data_set(self,location,**kwargs):
         """
         Construct the DataSetPP for this measurement.
         """
-        old_provider = DataSetPP.location_provider or None
-        old_default = DataSetPP.default_folder or None
+        try:
+            old_provider = DataSetPP.location_provider or None
+            old_default = DataSetPP.default_folder or None
 
-        name=location.split('/')[-1].split('.')[0]
+            name=location.split('/')[-1].split('.')[0]
 
-        data_folder=location.split(name)[0].strip('/')
+            data_folder=location.split(name)[0].strip('/')
 
-        set_data_folder(data_folder)
+            set_data_folder(data_folder)
 
-        data_set=new_data(name=name,**kwargs)
-        time_array = DataArray(label = 'Time',
-                        unit = 's',
-                        array_id = 'time',
-                        name = 'time',
-                        is_setpoint = True,
-                        preset_data = self.times)
-        time_array.init_data()
-        data_set.add_array(time_array)
-        for name,value in self.data.items():
-            # Make and add the array to the dataset.
-            data_array = DataArray(name = name,
-                                label = self.param_dict[name]['label'],
-                                unit = self.param_dict[name]['unit'],
-                                preset_data = value,
-                                is_setpoint = False,
-                                set_arrays = (time_array,))
-            data_array.init_data()
-            data_set.add_array(data_array)
+            data_set=new_data(name=name,**kwargs)
+            time_array = DataArray(label = 'Time',
+                            unit = 's',
+                            array_id = 'time',
+                            name = 'time',
+                            is_setpoint = True,
+                            preset_data = self.times)
+            time_array.init_data()
+            data_set.add_array(time_array)
+            for name,value in self.data.items():
+                # Make and add the array to the dataset.
+                if name in data_set.arrays:
+                    id=name+'_1'
+                else:
+                    id=name
+                data_array = DataArray(name = id,
+                                    array_id = id,
+                                    label = self.param_dict[name]['label'],
+                                    unit = self.param_dict[name]['unit'],
+                                    preset_data = value,
+                                    is_setpoint = False,
+                                    set_arrays = (time_array,))
+                data_array.init_data()
+                data_set.add_array(data_array)
 
-        # Restore the old location provider and default folder if they existed.
-        if old_provider is not None:
-            DataSetPP.location_provider = old_provider
-        if old_default is not None:
-            DataSetPP.default_folder = old_default
+            # Restore the old location provider and default folder if they existed.
+            if old_provider is not None:
+                DataSetPP.location_provider = old_provider
+            if old_default is not None:
+                DataSetPP.default_folder = old_default
+        except Exception as e:
+            print(f'Error while creating data set: {e.__class__.__name__}: {e}')
 
         return data_set
     
