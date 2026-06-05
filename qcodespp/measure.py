@@ -194,7 +194,7 @@ class Measure(Metadatable):
             self.actions = self.station.measure()
         if self.use_timer==False: # Useful in the Loop, so is included in station.measure() by default. Less useful here.
             self.actions = [action for action in self.actions if action.name != 'timer']
-        if self.setpoints:
+        if self.setpoints is not None:
             for action in self.setpoints:
                 if hasattr(action, '_gettable') and action._gettable: # don't try to measure a parameter without a get method.
                     params_to_measure[action.full_name] = {'action': action, 'is_setpoint': True}
