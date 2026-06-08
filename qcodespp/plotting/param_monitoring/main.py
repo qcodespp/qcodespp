@@ -22,7 +22,7 @@ def param_monitor(*params, interval=200, maxlen=500, use_thread=True):
     else:
         main(*params, interval=interval, maxlen=maxlen)
 
-def main(*params, interval=200, maxlen=500):
+def main(*params, interval=0.2, maxlen=500):
     '''
     Initializes the monitor_window Qt application and opens the monitor window.
     '''
