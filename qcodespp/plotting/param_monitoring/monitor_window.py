@@ -23,7 +23,7 @@ from qcodespp.utils.helpers import convertExpToSI
 
 
 class MonitorWindow(QMainWindow):
-    def __init__(self, *params, interval=0.2, maxlen=500, start=True):
+    def __init__(self, *params, interval=0.2, maxlen=500, start=True, ylabel=None, yunit=None):
         """
         params:   list of QCoDeS parameters to monitor
         interval: update interval in s
@@ -36,6 +36,8 @@ class MonitorWindow(QMainWindow):
         self.t0 = time.time()
         self.t0_cache=0
         self.maxlen = maxlen
+        self.ylabel = ylabel
+        self.yunit = yunit
         self.times = [] #deque(maxlen=maxlen)
         self.param_dict = self._make_param_dict()
         self.data = {key: [] for key in self.param_dict.keys()} #{param.name: deque(maxlen=maxlen) for param in params}
@@ -112,7 +114,13 @@ class MonitorWindow(QMainWindow):
             for i, name in enumerate(self.param_dict.keys())
         }
         self.ax.set_xlabel('Time (s)')
-        self.ax.set_ylabel('Param value(s) (arb units)')
+        if self.ylabel is not None:
+            if self.yunit is not None:
+                self.ax.set_ylabel(f'{self.ylabel} ({self.yunit})')
+            else:
+                self.ax.set_ylabel(self.ylabel)
+        else:
+            self.ax.set_ylabel('Param value(s) (arb units)')
         self.ax.legend()
 
         bottom_layout = QVBoxLayout()
