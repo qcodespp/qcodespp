@@ -1,12 +1,12 @@
 import threading
 import sys
 
-def param_monitor(*params, interval=200, maxlen=500, use_thread=True):
+def param_monitor(*params, interval=0.2, maxlen=500, use_thread=True):
     """	
     Entry point for qcodespp parameter monitoring. 
     Args:
         params (list): List of QCoDeS parameters to monitor.
-        interval (int): Update interval in ms.
+        interval (int): Update interval in seconds.
         maxlen (int): Number of points to keep in the rolling window.
         use_thread (bool): Runs the application in a separate thread or not. Default is False.
             Threading may cause problems on some systems, e.g. macOS.

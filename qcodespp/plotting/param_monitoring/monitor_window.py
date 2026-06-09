@@ -202,12 +202,15 @@ class MonitorWindow(QMainWindow):
         self.btn_stop.setEnabled(False)
 
     def _update(self,maxlen=None):
+        try:
+            for key, val in self._measure().items():
+                self.data[key].append(val)
+        except Exception as e:
+            return
+        
         if maxlen is not None:
             self.maxlen = maxlen
         self.times.append(time.time() - self.t0)
-
-        for key, val in self._measure().items():
-            self.data[key].append(val)
 
         t = deque(self.times, maxlen=self.maxlen)
         for name, line in self.lines.items():
