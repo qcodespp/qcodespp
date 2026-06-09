@@ -364,7 +364,7 @@ class qcodesppData(BaseClassData):
     def init_plotted_lines(self):
         self.plotted_lines = {0: {'checkstate': 2,
                         'X data': self.independent_parameter_names[0],
-                        'Y data': self.dependent_parameter_names[1],
+                        'Y data': self.dependent_parameter_names[0],
                         'Bins': 100,
                         'Xerr': 0,
                         'Yerr': 0,

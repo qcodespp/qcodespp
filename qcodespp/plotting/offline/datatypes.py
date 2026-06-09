@@ -490,7 +490,6 @@ class BaseClassData:
                             self.sidebar1D.running = True
                             self.sidebar1D.append_trace_to_table(0)
                         self.sidebar1D.update()
-
                         # This is horrible, but I need to get rid of these. Ideally I would re-write the extension so they're
                         # not used at all in the 1D case. Will try later.
                         if 'X data' in self.settings.keys():

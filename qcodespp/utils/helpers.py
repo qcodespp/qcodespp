@@ -640,3 +640,30 @@ def convertExpToSI(size):
                     return y
 
                 size /= 0.001
+
+def pyplotconvertExpToSI(axlims):
+    size=max(abs(axlims[0]), abs(axlims[1]))
+    if (abs(size) >= 1):
+        if (abs(size) > 1e+31):
+            return "{:.3e}".format(size)
+        else:
+            size_dict={' ':1, 'K':1e3, 'M':1e6, 'G':1e9, 'T':1e12, 
+                       'P':1e15, 'E':1e18, 'Z':1e21, 'Y':1e24, 'R':1e27, 'Q':1e30}
+            for prefix, factor in size_dict.items():
+                if abs(size) < 1000.0:
+                    return prefix, factor
+                size /= 1000.0
+
+    if (abs(size) < 1):
+        if (abs(size) < 1e-31):
+            return "{:.3e}".format(size)
+        # elif (abs(size) > 0.001):
+        #     return "%0.6g " % size
+        else:
+            size_dict={' ':1, 'm':1e-3, 'u':1e-6, 'n':1e-9, 'p':1e-12, 
+                       'f':1e-15, 'a':1e-18, 'z':1e-21, 'y':1e-24, 'r':1e-27, 'q':1e-30}
+            for prefix, factor in size_dict.items():
+                if abs(size) > 1:
+                    return prefix, factor
+
+                size /= 0.001
