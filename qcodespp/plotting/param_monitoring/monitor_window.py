@@ -419,7 +419,7 @@ class MonitorWindow(QMainWindow):
         for name, s in self.stats.items():
             label = self.param_dict[name]['label']
             unit = self.param_dict[name]['unit']
-            parts.append(f'{label}: avg = {s["avg"]:.6g} {unit},  std = {s["std"]:.6g} {unit}')
+            parts.append(f'{label}: avg = {convertExpToSI(s["avg"])}{unit},  std = {convertExpToSI(s["std"])}{unit}')
         self.stats_label.setText('\n'.join(parts))
 
     def _save_stats_csv(self):
