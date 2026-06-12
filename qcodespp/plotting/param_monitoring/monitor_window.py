@@ -387,7 +387,6 @@ class MonitorWindow(QMainWindow):
                 if not any(l is None for l in limits):
                     self._show_averages(limits)
 
-
     def _on_release(self, event):
         if event.button == 3 and self.press is not None:
             limits=[self.press[0], event.xdata]
