@@ -12,10 +12,11 @@ class FGM3D(Instrument):
     '''
     QCoDeS driver to capture data stream from a Sensys FGM3D TD digitzer application
 
-    The driver does not communicate directly with the instrument; it is only capable of reading 
-    the data stream sent from the 'Live Streaming' section of the GUI. You must set up a virtual COM 
-    port pair using e.g. https://freevirtualserialports.com/. Specify the first port in the GUI, and 
-    the second port in this driver.
+    The driver does not communicate directly with the instrument; it is only capable of 
+    reading the data stream sent from the 'Live Streaming' section of the GUI. You must
+    set up a virtual COM port pair using e.g. com0com. Enable 'use Ports class', 'emulate 
+    baud rate', 'enable buffer overrun' and 'enable exclusive mode'. Specify the first 
+    port in the GUI, and the second port in this driver.
 
     The units cannot be read from the instrument; if using Gauss, specify this during init.
 
