@@ -143,6 +143,8 @@ class BlueFors(Instrument):
                 docstring=f"Control for the PID of the {heater_name} heater",
             )
 
+        self.connect_message()
+
     def get_historical_temperature(
         self,
         ip: str,
@@ -303,3 +305,11 @@ class BlueFors(Instrument):
             json=data,
             timeout=self.timeout,
         )
+
+    def get_idn(self):
+        return {
+            "vendor": "BlueFors",
+            "model": "Cryostat",
+            "serial": "N/A",
+            "firmware": "N/A",
+        }
