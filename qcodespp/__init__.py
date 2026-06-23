@@ -67,7 +67,8 @@ from qcodespp.plotting.offline.main import offline_plotting
 from qcodespp.plotting.param_monitoring.main import param_monitor
 from qcodespp.plotting.analysis_tools import colorplot, colored_traces, load_2d_json, export_2d_to_IG
 
-from qcodespp.data.data_set import new_data, load_data, load_data_num, load_data_nums, set_data_format, set_data_folder, DataSetPP
+from qcodespp.data.data_set import (new_data, load_data, load_data_num, load_data_nums, find_data_nums, load_data_folder,
+                                    set_data_format, set_data_folder, DataSetPP)
 DataSetPP.default_dataset=None
 
 
