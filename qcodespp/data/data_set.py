@@ -190,6 +190,30 @@ def load_data_nums(listofnumbers, datafolder="data",delimiter='_',leadingzeros=3
 
     return data
 
+def find_data_nums(datafolder="data",delimiter='_'):
+    """
+    Finds all qcodespp DataSetPPs in the specified folder by counter number.
+
+    Args:
+        datafolder (str, optional): the folder to load from. Default is the
+            current live DataSetPP.
+            Note that the full path to or physical location of the data is a
+            combination of io + location. the default ``DiskIO`` sets the base
+            directory, which this location is a relative path inside.
+        delimiter (str, optional): The character after the number. Almost always
+            underscore but may be specified if necessary.
+
+    Returns:
+        list: A list of all found dataset numbers.
+    """
+    return [int(path.split('#')[1].split(delimiter)[0]) for path in glob.glob(f'{datafolder}/#*/')]
+
+def load_data_folder(folder, include_metadata=True, remove_incomplete=True):
+    '''
+    Load all DataSetPPs from a specified folder.
+    '''
+    return load_data_nums(find_data_nums(folder, delimiter='_'), datafolder=folder, include_metadata=include_metadata, remove_incomplete=remove_incomplete)
+
 def set_data_format(fmt='data/#{counter}_{name}_{date}_{time}'):
     """
     Set the default format for storing DataSetPPs. See qcodespp.data.location for more information.
