@@ -208,11 +208,13 @@ def find_data_nums(datafolder="data",delimiter='_'):
     """
     return [int(path.split('#')[1].split(delimiter)[0]) for path in glob.glob(f'{datafolder}/#*/')]
 
-def load_data_folder(folder, include_metadata=True, remove_incomplete=True):
+def load_data_folder(folder, delimiter='_', leadingzeros=3, include_metadata=True, remove_incomplete=True):
     '''
     Load all DataSetPPs from a specified folder.
     '''
-    return load_data_nums(find_data_nums(folder, delimiter='_'), datafolder=folder, include_metadata=include_metadata, remove_incomplete=remove_incomplete)
+    return load_data_nums(find_data_nums(folder, delimiter=delimiter), datafolder=folder, 
+                          delimiter=delimiter, leadingzeros=leadingzeros, 
+                          include_metadata=include_metadata, remove_incomplete=remove_incomplete)
 
 def set_data_format(fmt='data/#{counter}_{name}_{date}_{time}'):
     """
