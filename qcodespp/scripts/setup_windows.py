@@ -14,8 +14,14 @@ def is_windows():
 
 
 def find_python_executable():
-    """Find the Python executable being used."""
+    """Find the windowed (no-console) Python executable for GUI launch."""
     return sys.executable
+
+def find_pythonw_executable():
+    """Find the windowed (no-console) Python executable for GUI launch."""
+    exe = Path(sys.executable)
+    pythonw = exe.with_name("pythonw.exe")
+    return str(pythonw) if pythonw.exists() else str(exe)
 
 
 def create_shortcut_script():
@@ -81,6 +87,7 @@ def create_windows_shortcuts(path=None):
     # Create the launcher script
     launcher_path = create_shortcut_script()
     python_exe = find_python_executable()
+    pythonw_exe = find_pythonw_executable()
     
     # Desktop shortcut
     desktop = winshell.desktop()
@@ -92,7 +99,7 @@ def create_windows_shortcuts(path=None):
         
         shell = Dispatch('WScript.Shell')
         shortcut = shell.CreateShortCut(desktop_shortcut)
-        shortcut.Targetpath = python_exe
+        shortcut.Targetpath = pythonw_exe
         shortcut.Arguments = f'"{launcher_path}"'
         shortcut.WorkingDirectory = path
         # Set icon to iconGadget.ico in qcodespp/plotting/offline
@@ -119,7 +126,7 @@ def create_windows_shortcuts(path=None):
         start_menu_shortcut = os.path.join(qcodespp_folder, "qcodes++ Offline Plotting.lnk")
         
         shortcut = shell.CreateShortCut(start_menu_shortcut)
-        shortcut.Targetpath = python_exe
+        shortcut.Targetpath = pythonw_exe
         shortcut.Arguments = f'"{launcher_path}"'
         shortcut.WorkingDirectory = path
         # Set icon to iconGadget.ico in qcodespp/plotting/offline
