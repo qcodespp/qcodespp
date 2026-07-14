@@ -179,38 +179,40 @@ class BaseClassData:
             return ValueError(f'File type of {self.filepath} not recognized. See documentation for supported types.')
 
         if success:
-
-            self.settings['X data'] = self.all_parameter_names[0]
-            self.settings['Y data'] = self.all_parameter_names[1]
-            self.settings['xlabel'] = self.all_parameter_names[0]
-            self.settings['ylabel'] = self.all_parameter_names[1]
-            self.settings['default_xlabel'] = self.all_parameter_names[0]
-            self.settings['default_ylabel'] = self.all_parameter_names[1]
-            self.settings['default_fftxlabel'] = f'1/{self.all_parameter_names[0]}'
-
             if self.data_dict[self.all_parameter_names[0]][1] == self.data_dict[self.all_parameter_names[0]][0] and len(self.all_parameter_names) > 2:
-                self.settings['Z data'] = self.all_parameter_names[2]
-                self.settings['clabel'] = self.all_parameter_names[2]
-                self.settings['default_clabel'] = self.all_parameter_names[2]
-                self.settings['default_histlabel'] = self.all_parameter_names[2]
-                self.settings['default_fftylabel'] = f'1/{self.all_parameter_names[1]}'
                 self.dim=3
             else:
                 self.dim=2
-                self.settings['default_histlabel'] = self.all_parameter_names[1]
-
-            self.settings_menu_options = {'X data': self.all_parameter_names,
-                                    'Y data': self.all_parameter_names,
-                                    'Z data': self.all_parameter_names}
-            negparamnames=[f'-{name}' for name in self.all_parameter_names]
-            allnames=np.hstack((self.all_parameter_names,negparamnames))
-            self.filter_menu_options = {'Multiply': allnames,
-                                        'Divide': allnames,
-                                        'Add/Subtract': allnames}
+            self.set_names()
 
         else:
             return ValueError(f'Could not load data from {self.filepath}. File may be empty or not formatted correctly.')
         
+    def set_names(self):
+        self.settings['X data'] = self.all_parameter_names[0]
+        self.settings['Y data'] = self.all_parameter_names[1]
+        self.settings['xlabel'] = self.all_parameter_names[0]
+        self.settings['ylabel'] = self.all_parameter_names[1]
+        self.settings['default_xlabel'] = self.all_parameter_names[0]
+        self.settings['default_ylabel'] = self.all_parameter_names[1]
+        self.settings['default_fftxlabel'] = f'1/{self.all_parameter_names[0]}'
+        if self.dim==3:
+            self.settings['Z data'] = self.all_parameter_names[2]
+            self.settings['clabel'] = self.all_parameter_names[2]
+            self.settings['default_clabel'] = self.all_parameter_names[2]
+            self.settings['default_histlabel'] = self.all_parameter_names[2]
+            self.settings['default_fftylabel'] = f'1/{self.all_parameter_names[1]}'
+        elif self.dim==2:
+            self.settings['default_histlabel'] = self.all_parameter_names[1]
+
+        self.settings_menu_options = {'X data': self.all_parameter_names,
+                                'Y data': self.all_parameter_names,
+                                'Z data': self.all_parameter_names}
+        negparamnames=[f'-{name}' for name in self.all_parameter_names]
+        allnames=np.hstack((self.all_parameter_names,negparamnames))
+        self.filter_menu_options = {'Multiply': allnames,
+                                    'Divide': allnames,
+                                    'Add/Subtract': allnames}
     def get_column_data(self,line=None):
         if line is not None:
             names = [self.plotted_lines[line]['X data'],
@@ -778,22 +780,7 @@ class InternalData(BaseClassData):
     def prepare_dataset(self):
         # prepare_dataset usually loads the data; here we have already loaded it, just need to set the names.
 
-        self.settings['X data'] = self.all_parameter_names[0]
-        self.settings['Y data'] = self.all_parameter_names[1]
-        self.settings['xlabel'] = self.all_parameter_names[0]
-        self.settings['ylabel'] = self.all_parameter_names[1]
-        if self.dim==3:
-            self.settings['Z data'] = self.all_parameter_names[2]
-            self.settings['clabel'] = self.all_parameter_names[2]
-
-        self.settings_menu_options = {'X data': self.all_parameter_names,
-                                'Y data': self.all_parameter_names,
-                                'Z data': self.all_parameter_names}
-        negparamnames=[f'-{name}' for name in self.all_parameter_names]
-        allnames=np.hstack((self.all_parameter_names,negparamnames))
-        self.filter_menu_options = {'Multiply': allnames,
-                                    'Divide': allnames,
-                                    'Add/Subtract': allnames}
+        self.set_names()
         
     def load_and_reshape_data(self,reload=False,reload_from_file=False,linefrompopup=None):
         # For combined files, the data is already loaded and reshaped.
