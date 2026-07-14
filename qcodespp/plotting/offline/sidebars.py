@@ -37,6 +37,7 @@ class Sidebar1D(QtWidgets.QWidget):
     def init_widgets(self):
         # Widgets in trace list box
         self.add_trace_button = QtWidgets.QPushButton('Add')
+        self.add_all_traces_button = QtWidgets.QPushButton('Add all')
         self.remove_trace_button = QtWidgets.QPushButton('Remove')
         self.clear_traces_button = QtWidgets.QPushButton('Clear list')
 
@@ -97,7 +98,8 @@ class Sidebar1D(QtWidgets.QWidget):
         self.load_preset_button = QtWidgets.QPushButton('Load fit preset')
 
     def init_connections(self):
-        self.add_trace_button.clicked.connect(self.add_trace_manually)
+        self.add_trace_button.clicked.connect(lambda: self.add_trace_manually(ycol=1))
+        self.add_all_traces_button.clicked.connect(lambda: self.plot_all_1ddata(start_index=1))
         self.remove_trace_button.clicked.connect(lambda: self.remove_trace('selected'))
         self.clear_traces_button.clicked.connect(lambda: self.remove_trace('all'))
         self.duplicate_trace_button.clicked.connect(self.duplicate_trace)
@@ -131,6 +133,7 @@ class Sidebar1D(QtWidgets.QWidget):
 
         # Populating
         self.table_buttons_layout_top.addWidget(self.add_trace_button)
+        self.table_buttons_layout_top.addWidget(self.add_all_traces_button)
         self.table_buttons_layout_top.addWidget(self.remove_trace_button)
         self.table_buttons_layout_top.addWidget(self.clear_traces_button)
         self.table_buttons_layout_top.addStretch()
@@ -304,7 +307,7 @@ class Sidebar1D(QtWidgets.QWidget):
         except Exception as e:
             self.editor_window.log_error(f'Cannot duplicate data:\n{type(e).__name__}: {e}', show_popup=True)
 
-    def add_trace_manually(self): # When 'add' button pressed
+    def add_trace_manually(self,ycol=1): # When 'add' button pressed
         try:
             max_index=np.max(list(self.parent.plotted_lines.keys()))
         except ValueError:
@@ -312,7 +315,7 @@ class Sidebar1D(QtWidgets.QWidget):
         try:
             line={'checkstate': 2,
                 'X data': self.parent.all_parameter_names[0],
-                'Y data': self.parent.all_parameter_names[1],
+                'Y data': self.parent.all_parameter_names[ycol],
                 'Bins': 100,
                 'Xerr':0,
                 'Yerr':0,
@@ -329,6 +332,13 @@ class Sidebar1D(QtWidgets.QWidget):
         except Exception as e:
             self.editor_window.log_error(f'Cannot add data:\n{type(e).__name__}: {e}', show_popup=True)
         self.editor_window.update_plots(update_data=False)
+
+    def plot_all_1ddata(self,start_index=1):
+        """
+        Plot all 1D data curves
+        """
+        for i in range(start_index, len(self.parent.all_parameter_names)):
+            self.add_trace_manually(ycol=i)
 
     def append_trace_to_table(self,index):
         row = self.trace_table.rowCount()
@@ -558,10 +568,9 @@ class Sidebar1D(QtWidgets.QWidget):
 
         elif column in [0,8,9,10]:
             menu = QtWidgets.QMenu(self)
-            check_all_action = menu.addAction("Check all")
-            uncheck_all_action = menu.addAction("Uncheck all")
 
             if column==0:
+                remove_action = menu.addAction("Remove")
                 check_all_action = menu.addAction("Check all")
                 uncheck_all_action = menu.addAction("Uncheck all")
 
@@ -582,6 +591,8 @@ class Sidebar1D(QtWidgets.QWidget):
                 self.change_all_checkstate(column, QtCore.Qt.Checked)
             elif action == uncheck_all_action:
                 self.change_all_checkstate(column, QtCore.Qt.Unchecked)
+            elif action == remove_action:
+                self.remove_trace('selected')
             self.trace_table.itemChanged.connect(self.trace_table_edited)
             self.editor_window.update_plots(update_data=False)
 

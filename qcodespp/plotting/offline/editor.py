@@ -37,6 +37,8 @@ except ModuleNotFoundError:
 import matplotlib.style as mplstyle
 mplstyle.use('fast')
 
+import queue
+
 from lmfit.model import save_modelresult, load_modelresult
 
 import qcodespp.plotting.offline.design as design
@@ -176,7 +178,7 @@ SETTINGS_MENU_OPTIONS['columns'] = ['0,1,2','0,1,3','0,2,3','1,2,4']
 AXIS_SCALING_OPTIONS = ['linear', 'log', 'symlog', 'logit']
 
 class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
-    def __init__(self,folder=None,link_to_default=True):
+    def __init__(self, folder=None, link_to_default=True, external_handle=None):
         super().__init__()
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setWindowTitle('InSpectra Gadget')
@@ -240,6 +242,30 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 pass
 
         self.setAcceptDrops(True)
+
+        if external_handle is not None:
+            self._external_queue = external_handle._queue
+            self._poll_timer = QtCore.QTimer()
+            self._poll_timer.timeout.connect(self._poll_external_queue)
+            self._poll_timer.start(50)  # ms
+
+    def _poll_external_queue(self):
+        while True:
+            try:
+                msg = self._external_queue.get_nowait()
+                self._process_external_message(msg)
+            except queue.Empty:
+                break
+
+    def _process_external_message(self, msg):
+        if msg[0] == 'plot1D':
+            action, arrays, names, label, plot_all = msg
+            item = DataItem(InternalData(self.canvas, arrays, label, names, dimension=2))
+            item.filepath = 'internal_data'
+            self.add_internal_data(item)
+            if plot_all:
+                item.data.sidebar1D.plot_all_1ddata(start_index=2)
+                item.data.sidebar1D.apply_colormap()
 
     def init_plot_settings(self):
         self.settings_table.setColumnCount(2)
