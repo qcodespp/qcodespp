@@ -1939,6 +1939,30 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.show_current_plot_settings()
         self.canvas.draw()
     
+    def open_plot_settings_menu(self):
+        row = self.settings_table.currentRow()
+        column = self.settings_table.currentColumn()
+        if column == 1:
+            setting_name = self.settings_table.item(row, 0).text()
+            menu = QtWidgets.QMenu(self)
+            settings = SETTINGS_MENU_OPTIONS.copy()
+            current_item = self.file_list.currentItem()
+            if current_item and hasattr(current_item.data, 'settings_menu_options'):
+                settings.update(current_item.data.settings_menu_options)
+            if setting_name in settings.keys():
+                if setting_name in ['xlabel','ylabel','clabel']:
+                    action = QtWidgets.QAction(current_item.data.settings[f'default_{setting_name}'], self)
+                    menu.addAction(action)
+                for entry in settings[setting_name]:
+                    action = QtWidgets.QAction(entry, self)
+                    menu.addAction(action)
+                menu.triggered[QtWidgets.QAction].connect(self.replace_plot_setting)
+                menu.popup(QtGui.QCursor.pos())
+
+    def replace_plot_setting(self, signal):
+        item = self.settings_table.currentItem()
+        item.setText(signal.text())
+    
     def plot_setting_edited(self,setting_item=None,setting_name=None):
         current_item = self.file_list.currentItem()
         if current_item:
@@ -2476,30 +2500,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
             except Exception as e:
                 self.log_error(f'Could not combine data:\n{type(e).__name__}: {e}', show_popup=True)
-
-    def open_plot_settings_menu(self):
-        row = self.settings_table.currentRow()
-        column = self.settings_table.currentColumn()
-        if column == 1:
-            setting_name = self.settings_table.item(row, 0).text()
-            menu = QtWidgets.QMenu(self)
-            settings = SETTINGS_MENU_OPTIONS.copy()
-            current_item = self.file_list.currentItem()
-            if current_item and hasattr(current_item.data, 'settings_menu_options'):
-                settings.update(current_item.data.settings_menu_options)
-            if setting_name in settings.keys():
-                if setting_name in ['xlabel','ylabel','clabel']:
-                    action = QtWidgets.QAction(current_item.data.settings[f'default_{setting_name}'], self)
-                    menu.addAction(action)
-                for entry in settings[setting_name]:
-                    action = QtWidgets.QAction(entry, self)
-                    menu.addAction(action)
-                menu.triggered[QtWidgets.QAction].connect(self.replace_plot_setting)
-                menu.popup(QtGui.QCursor.pos())
-
-    def replace_plot_setting(self, signal):
-        item = self.settings_table.currentItem()
-        item.setText(signal.text())
 
     def which_filters(self,item,filters=None,filt=None):
         # This function works out which filters should be addressed based on the datatype (e.g. belonging to 1D line or 2D dataset)
