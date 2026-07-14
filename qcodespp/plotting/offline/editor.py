@@ -266,6 +266,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if plot_all:
                 item.data.sidebar1D.plot_all_1ddata(start_index=2)
                 item.data.sidebar1D.apply_colormap()
+        elif msg[0] == 'plot2D':
+            action, export_data, names, label = msg
+            item = DataItem(InternalData(self.canvas, export_data, label, names, dimension=3))
+            item.filepath = 'internal_data'
+            self.add_internal_data(item)
 
     def init_plot_settings(self):
         self.settings_table.setColumnCount(2)

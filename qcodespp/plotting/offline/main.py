@@ -1,6 +1,7 @@
 import queue
 import threading
 import sys
+import numpy as np
 
 DARK_THEME = True
 
@@ -33,7 +34,6 @@ class PlotHandler:
             label (str): Name shown in the file list.
             names (list[str]): Axis/column names. Defaults to ``['x','y1','y2',...]``.
         """
-        import numpy as np
         if len(arrays) == 0:
             raise ValueError("At least one array must be provided.")
 
@@ -51,6 +51,37 @@ class PlotHandler:
 
         self._queue.put(('plot1D', list(arrays), list(names), label, plot_all))
 
+    def plot2D(self, x, y, z, label='External data', names=None):
+        """Send arrays to the Editor to be plotted as a new 2D data item.
+
+        Args:
+            x (array-like): x-axis values.
+            y (array-like): y-axis values.
+            z (array-like): z-axis values.
+            label (str): Name shown in the file list.
+            names (list[str]): Axis/column names. Defaults to ``['x','y','z']``.
+        """
+        shape = np.shape(z)
+        if len(shape) != 2:
+            raise ValueError('z must be a 2D array-like')
+        if np.shape(x) != shape and np.shape(x) != (shape[0],):
+            raise ValueError('x must be a 1D array-like with length matching z\'s first dimension, '
+                            'or a 2D array-like with shape matching z\'s')
+        if np.shape(y) != shape and np.shape(y) != (shape[1],):
+            raise ValueError('y must be a 1D array-like with length matching z\'s second dimension, '
+                            'or a 2D array-like with shape matching z\'s')
+        
+        if len(np.shape(x)) == 1:
+            x = np.tile(x[:, np.newaxis], (1, shape[1]))
+        if len(np.shape(y)) == 1:
+            y = np.tile(y[np.newaxis, :], (shape[0], 1))
+
+        if names is None:
+            names = ['x', 'y', 'z']
+        elif len(names) != 3:
+            raise ValueError(f"Length of names ({len(names)}) must be 3 for 2D data.")
+
+        self._queue.put(('plot2D', [x, y, z], names, label))
 
 def offline_plotting(folder=None, link_to_default=True, use_thread=True):
     """
