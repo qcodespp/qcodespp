@@ -19,6 +19,10 @@ class qcodesppData(BaseClassData):
         self.settings["title"] = '#'+self.label
         self.DEFAULT_PLOT_SETTINGS['title']= '#'+self.label
 
+        # remove settings that are not needed for qcodespp data
+        del self.settings['transpose']
+        del self.settings['delimiter']
+
         self.independent_parameter_names = []
         self.dependent_parameter_names = []
         self.all_parameter_names = []
@@ -72,6 +76,9 @@ class qcodesppData(BaseClassData):
             self.dim = 3
         else:
             self.dim = 2
+            for settingname in ['Z data', 'clabel', 'cmap levels', 'colorbar']:
+                if settingname in self.settings.keys():
+                    del self.settings[settingname]
 
         # Check if the data is finished, and if not, remove NaNs from the _end_ of the data.
         if not self.loaded_data.fraction_complete()==1:
@@ -230,7 +237,7 @@ class qcodesppData(BaseClassData):
             else:
                 self.raw_data = None
                 
-            self.settings['columns'] = ','.join([str(i) for i in columns]) # Legacy. Don't want to yet remove for fear of breaking. Will one day.
+            self.columns = ','.join([str(i) for i in columns]) # Legacy. Don't want to yet remove for fear of breaking. Will one day.
 
     def get_column_data(self, line=None):
         if line is not None:

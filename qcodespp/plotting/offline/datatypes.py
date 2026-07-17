@@ -14,7 +14,7 @@ class DataItem(QtWidgets.QListWidgetItem):
         super().__init__()
         self.data = data
         
-        self.setFlags(self.flags() | QtCore.Qt.ItemIsUserCheckable)
+        self.setFlags(self.flags() | QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEditable)
         self.setCheckState(QtCore.Qt.Unchecked)
         self.setText(self.data.label)
 
@@ -40,7 +40,6 @@ class BaseClassData:
     DEFAULT_PLOT_SETTINGS['dpi'] = '300'
     DEFAULT_PLOT_SETTINGS['transparent'] = 'True'
     DEFAULT_PLOT_SETTINGS['shading'] = 'auto'
-    DEFAULT_PLOT_SETTINGS['columns'] = '0,1,2'
     
     # Set default view settings
     DEFAULT_VIEW_SETTINGS = {}
@@ -73,6 +72,7 @@ class BaseClassData:
         
         self.settings = self.DEFAULT_PLOT_SETTINGS.copy()
         self.settings['title'] = self.label
+        self.columns = '0,1'
         self.view_settings = self.DEFAULT_VIEW_SETTINGS.copy()
         self.axlim_settings = self.DEFAULT_AXLIM_SETTINGS.copy()
         self.filters = []
@@ -204,6 +204,9 @@ class BaseClassData:
             self.settings['default_fftylabel'] = f'1/{self.all_parameter_names[1]}'
         elif self.dim==2:
             self.settings['default_histlabel'] = self.all_parameter_names[1]
+            for settingname in ['Z data', 'clabel', 'cmap levels', 'colorbar']:
+                if settingname in self.settings.keys():
+                    del self.settings[settingname]
 
         self.settings_menu_options = {'X data': self.all_parameter_names,
                                 'Y data': self.all_parameter_names,
@@ -238,7 +241,7 @@ class BaseClassData:
         return column_data
     
     def get_columns(self):
-        return [int(col) for col in self.settings['columns'].split(',')]
+        return [int(col) for col in self.columns.split(',')]
     
     def load_and_reshape_data(self,reload_data=False,reload_from_file=False,linefrompopup=None):
         if reload_from_file or self.loaded_data is None:
@@ -301,7 +304,7 @@ class BaseClassData:
                 else: # if first sweep is not finished -> set duplicate x-columns to +1 and -1 of actual value
                     self.raw_data[columns[0]][0,:] = unique_values[0]-1
                     self.raw_data[columns[0]][1,:] = unique_values[0]+1
-            self.settings['columns'] = ','.join([str(i) for i in columns])
+            self.columns = ','.join([str(i) for i in columns])
 
     def shape_single_array(self,array): # Needed to reshape arrays of 2D data that do not get added to raw_data
         if self.dim == 2: # i.e. do nothing.
@@ -504,7 +507,7 @@ class BaseClassData:
                         if self.view_settings['Reverse']:
                             cmap_str += '_r'
                         cmap = cm.get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
-                        cmap.set_bad(self.settings['maskcolor'])
+                        cmap.with_extremes(bad=self.settings['maskcolor'])
 
                         norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
                                                 vmax=self.view_settings['Maximum'], 
@@ -613,7 +616,7 @@ class BaseClassData:
         else:
             self.axes.set_title(self.settings['title'], 
                                 size=self.settings['titlesize'],wrap=True)
-        if self.settings['colorbar'] == 'True' and len(self.get_columns()) == 3:
+        if len(self.get_columns()) == 3 and self.settings['colorbar'] == 'True':
             self.cbar.ax.set_ylabel(self.settings['clabel'], fontsize=self.settings['labelsize'], 
                                  labelpad=10, rotation=270)
             self.cbar.ax.tick_params(labelsize=self.settings['ticksize'], 
@@ -676,7 +679,7 @@ class BaseClassData:
         if self.view_settings['Reverse']:
             cmap_str += '_r'
         cmap = cm.get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
-        cmap.set_bad(self.settings['maskcolor'])
+        cmap.with_extremes(bad=self.settings['maskcolor'])
         if len(self.get_columns()) == 3:
             self.image.set_cmap(cmap)
         else:
@@ -786,7 +789,7 @@ class InternalData(BaseClassData):
         # For combined files, the data is already loaded and reshaped.
         # Just need to set the raw_data
         self.raw_data = self.get_column_data(linefrompopup)
-        self.settings['columns'] = ','.join([str(i) for i in range(self.dim)])
+        self.columns = ','.join([str(i) for i in range(self.dim)])
     
     def get_column_data(self,line=None):
         if line is not None:
@@ -909,7 +912,7 @@ class MixedInternalData(BaseClassData):
                 if self.dataset2d.view_settings['Reverse']:
                     cmap_str += '_r'
                 cmap = cm.get_cmap(cmap_str, lut=int(self.dataset2d.settings['cmap levels']))
-                cmap.set_bad(self.dataset2d.settings['maskcolor'])
+                cmap.with_extremes(bad=self.dataset2d.settings['maskcolor'])
 
                 norm = MidpointNormalize(vmin=self.dataset2d.view_settings['Minimum'], 
                                             vmax=self.dataset2d.view_settings['Maximum'], 

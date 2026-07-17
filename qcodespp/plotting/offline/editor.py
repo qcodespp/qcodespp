@@ -26,6 +26,7 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib import rcParams
 from matplotlib import colormaps as cm
+from matplotlib.colors import is_color_like
 from cycler import cycler
 from collections import OrderedDict
 try:
@@ -173,7 +174,6 @@ SETTINGS_MENU_OPTIONS['rasterized'] = ['True','False']
 SETTINGS_MENU_OPTIONS['dpi'] = ['figure','300']
 SETTINGS_MENU_OPTIONS['transparent'] = ['True', 'False']
 SETTINGS_MENU_OPTIONS['shading'] = ['auto', 'flat', 'gouraud', 'nearest']
-SETTINGS_MENU_OPTIONS['columns'] = ['0,1,2','0,1,3','0,2,3','1,2,4']
 
 AXIS_SCALING_OPTIONS = ['linear', 'log', 'symlog', 'logit']
 
@@ -385,7 +385,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.action_filters.triggered.connect(self.save_filters)
         self.action_save_session.triggered.connect(self.save_session)
         self.action_save_session_as.triggered.connect(lambda: self.save_session(save_as=True))
-        self.action_restore_session.triggered.connect(self.load_session)
+        self.action_restore_session.triggered.connect(lambda: self.load_session())
         self.action_combine_files.triggered.connect(self.combine_plots)
         self.action_duplicate_file.triggered.connect(self.duplicate_item)
         self.action_export_data_columns.triggered.connect(lambda: self.export_processed_data('all'))
@@ -410,6 +410,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.down_file_button.clicked.connect(lambda: self.move_file('down'))
         self.file_list.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.file_list.customContextMenuRequested.connect(self.open_item_menu)
+        self.file_list.setEditTriggers(QtWidgets.QAbstractItemView.EditKeyPressed)
+        self.delete_file_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Delete), self.file_list)
+        self.delete_file_shortcut.setContext(QtCore.Qt.WidgetShortcut)
+        self.delete_file_shortcut.activated.connect(lambda: self.remove_files('current'))
         self.actionOnline_help.triggered.connect(lambda: href_open('https://qcodespp.github.io/offline_plotting.html'))
         self.actionError_log.triggered.connect(self.open_error_log)
 
@@ -435,7 +439,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.save_session_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+S"),self)
         self.save_session_shortcut.activated.connect(self.save_session)
         self.load_session_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+R"),self)
-        self.load_session_shortcut.activated.connect(self.load_session)
+        self.load_session_shortcut.activated.connect(lambda: self.load_session())
         self.horizontal_linecut_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+H"), self)
         self.horizontal_linecut_shortcut.activated.connect(lambda: self.make_linecut_window('horizontal'))
         self.vertical_linecut_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+V"), self)
@@ -637,6 +641,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             if 'view_settings' in attr_dicts[i]:
                                 item.data.view_settings = attr_dicts[i]['view_settings']
 
+                            item.setText(item.data.label)  # keep text in sync after attribute restore
+
                         else:
                             for setting in ['titlesize','labelsize','ticksize']:
                                 if hasattr(item.data,'settings'):
@@ -716,13 +722,32 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.file_list.itemChanged.connect(self.file_checked)
 
     def remove_files(self, which='current'):
+        update_plots = False
         if self.file_list.count() > 0:
+
             if which == 'current':
                 items = [self.file_list.currentItem()]
             elif which == 'all':
                 items = [self.file_list.item(n) for n in range(self.file_list.count())]
             elif which == 'unchecked':
                 items = self.get_unchecked_items()
+            else:
+                items = []
+
+            items = [item for item in items if item is not None]
+            if len(items) == 0:
+                return
+
+            confirm = QtWidgets.QMessageBox.question(
+                self,
+                'Confirm Delete',
+                'Are you sure you want to delete the selected file(s)?\nAll data/analysis will be lost.',
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                QtWidgets.QMessageBox.No,
+            )
+            if confirm != QtWidgets.QMessageBox.Yes:
+                return
+
             update_plots = any([item.checkState() == 2 for item in items]) # only update plots if any of the items are checked
             for item in items:
                 if hasattr(item.data,'sidebar1D'):
@@ -1060,7 +1085,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if ret != QtWidgets.QMessageBox.Ok:
             return
         # Then prompt to load the session
-        if filepath is None:
+        if filepath in [None, '', False]:
             session_filepath, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open Session', '', 'Inspectra Gadget session (*.igs)')
         else:
             session_filepath = filepath
@@ -1340,6 +1365,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.log_error('No processed data to export', show_popup=True)
                
     def file_checked(self, item):
+        if item.text() != item.data.label:
+            item.data.label = item.text()
+            self.update_plots()
+            return
         if item.checkState() == 2:
             self.file_list.setCurrentItem(item)
             self.show_or_hide_mixeddata_widgets()
@@ -1837,14 +1866,31 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for key, value in old_settings.items():
                 if key not in preferred_order:
                     settings[key] = value
+            data_dropdown_keys = {'X data', 'Y data', 'Z data'}
+            static_dropdown_keys = {'transpose', 'minorticks', 'rasterized', 'transparent', 'shading'}
             for key, value in list(settings.items()):
                 row = self.settings_table.rowCount()
                 self.settings_table.insertRow(row)
                 property_item = QtWidgets.QTableWidgetItem(key)
-                property_item.setFlags(QtCore.Qt.ItemIsSelectable | 
+                property_item.setFlags(QtCore.Qt.ItemIsSelectable |
                                        QtCore.Qt.ItemIsEnabled)
                 self.settings_table.setItem(row, 0, property_item)
-                self.settings_table.setItem(row, 1, QtWidgets.QTableWidgetItem(value))
+                options = None
+                if key in data_dropdown_keys:
+                    menu_opts = getattr(current_item.data, 'settings_menu_options', {})
+                    if key in menu_opts:
+                        options = [str(o) for o in menu_opts[key]]
+                elif key in static_dropdown_keys and key in SETTINGS_MENU_OPTIONS:
+                    options = [str(o) for o in SETTINGS_MENU_OPTIONS[key]]
+                if options is not None:
+                    combo = NoScrollQComboBox()
+                    combo.addItems(options)
+                    combo.setCurrentText(str(value))
+                    combo.currentTextChanged.connect(
+                        lambda _, k=key: self.plot_setting_edited(setting_name=k))
+                    self.settings_table.setCellWidget(row, 1, combo)
+                else:
+                    self.settings_table.setItem(row, 1, QtWidgets.QTableWidgetItem(value))
             self.settings_table.itemChanged.connect(self.plot_setting_edited)
             
     def show_current_view_settings(self):
@@ -1967,10 +2013,14 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current_item = self.file_list.currentItem()
         if current_item:
             current_item.data.old_settings = current_item.data.settings.copy()
-            if setting_name is None:
+            if not setting_name:
                 setting_name = self.settings_table.item(setting_item.row(), 0).text()
             for row in range(self.settings_table.rowCount()):
-                value = self.settings_table.item(row, 1).text()
+                widget = self.settings_table.cellWidget(row, 1)
+                if widget is not None and not isinstance(widget, QtWidgets.QLineEdit):
+                    value = widget.currentText()
+                else:
+                    value = self.settings_table.item(row, 1).text()
                 name = self.settings_table.item(row, 0).text()
                 current_item.data.settings[name] = value
             self.settings_table.clearFocus()
@@ -1991,6 +2041,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     current_item.data.label_locks[axis] = True
                     self.update_plots()
                 elif setting_name == 'maskcolor' or setting_name == 'cmap levels':
+                    if setting_name == 'maskcolor':
+                        self.log_error(f'Applying maskcolor: {current_item.data.settings["maskcolor"]}', show_popup=True)
+                        maskcolor = current_item.data.settings.get('maskcolor', '')
+                        if not is_color_like(maskcolor):
+                            self.log_error(f'"{maskcolor}" is not a valid matplotlib color', show_popup=True)
+                            raise ValueError(f'"{maskcolor}" is not a valid matplotlib color')
                     current_item.data.apply_colormap()
                 elif setting_name in ['rasterized', 'colorbar', 'minorticks','shading']:
                     self.update_plots()
@@ -2219,8 +2275,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             checked_items = self.get_checked_items()
             menu = QtWidgets.QMenu(self)
             menu.addAction('Duplicate (Ctrl+D)')
+            menu.addAction('Rename (F2)')
             menu.addSeparator()
-            actions = ['Remove file','Check all','Uncheck all','Clear list','Remove unchecked']
+            actions = ['Remove file (Del)','Check all','Uncheck all','Clear list','Remove unchecked']
             for entry in actions:
                 action = QtWidgets.QAction(entry, self)
                 menu.addAction(action)
@@ -2236,7 +2293,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if current_item:
             if signal.text() == 'Duplicate (Ctrl+D)':
                 self.duplicate_item()
-            elif signal.text() == 'Remove file':
+            elif signal.text() == 'Rename (F2)':
+                self.file_list.editItem(current_item)
+            elif signal.text() == 'Remove file (Del)':
                 self.remove_files(which='current')
             elif signal.text() == 'Check all':
                 self.file_list.itemChanged.disconnect(self.file_checked)
@@ -3828,6 +3887,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.elw = ErrorLogWindow(self.error_log)
 
     def closeEvent(self, event):
+        self.raise_()
+        self.activateWindow()
         reply = QtWidgets.QMessageBox.question(
             self,
             "Save Session?",
