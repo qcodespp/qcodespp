@@ -15,7 +15,7 @@ import matplotlib.style as mplstyle
 from qcodespp.plotting.offline.popupwindows import ErrorWindow
 mplstyle.use('fast')
 
-from qcodespp.plotting.offline.helpers import cmaps
+from qcodespp.plotting.offline.helpers import cmaps, NoScrollQComboBox
 
 class Sidebar1D(QtWidgets.QWidget):
     def __init__(self, parent, editor_window=None):
@@ -340,6 +340,70 @@ class Sidebar1D(QtWidgets.QWidget):
         for i in range(start_index, len(self.parent.all_parameter_names)):
             self.add_trace_manually(ycol=i)
 
+    def _trace_data_changed(self, line_index, key, text, reload_data=True):
+        self.parent.plotted_lines[line_index][key] = text
+        if reload_data:
+            try:
+                self.parent.prepare_data_for_plot(reload_data=True, reload_from_file=False, linefrompopup=line_index)
+                self.parent.plotted_lines[line_index]['processed_data'] = [self.parent.processed_data[0],
+                                                                            self.parent.processed_data[1]]
+                self.editor_window.show_current_plot_settings()
+            except Exception as e:
+                self.editor_window.log_error(f'Error changing plotted data:\n{type(e).__name__}: {e}', show_popup=True)
+        self.editor_window.update_plots(update_data=False)
+
+    def _make_data_combo(self, line_index, key):
+        combo = NoScrollQComboBox()
+        combo.addItems(self.parent.all_parameter_names)
+        combo.setCurrentText(str(self.parent.plotted_lines[line_index][key]))
+        combo.currentTextChanged.connect(
+            lambda text, idx=line_index, k=key: self._trace_data_changed(idx, k, text))
+        return combo
+
+    def _make_editable_combo(self, line_index, key, items, reload_data=True, default=None):
+        combo = NoScrollQComboBox()
+        combo.setEditable(True)
+        combo.addItems(items)
+        combo.setCurrentText(str(self.parent.plotted_lines[line_index][key]))
+        combo.activated[str].connect(
+            lambda text, idx=line_index, k=key, rd=reload_data: self._trace_data_changed(idx, k, text, rd))
+        def on_editing_finished(c=combo, idx=line_index, k=key, rd=reload_data, dflt=default):
+            text = c.currentText()
+            if dflt is not None and text.strip() == '':
+                c.lineEdit().blockSignals(True)
+                c.setCurrentText(dflt)
+                c.lineEdit().blockSignals(False)
+                text = dflt
+            self._trace_data_changed(idx, k, text, rd)
+        combo.lineEdit().editingFinished.connect(on_editing_finished)
+        return combo
+
+    def _make_style_combo(self, line_index):
+        styles = ['-', '--', '-.', ':','.','o','v','^','<','>','8','s','p','*','h','H','D','d','P','X']
+        return self._make_editable_combo(line_index, 'linestyle', styles, reload_data=False, default='-')
+
+    def _make_err_combo(self, line_index, key):
+        return self._make_editable_combo(line_index, key, ['0'] + self.parent.all_parameter_names, default='0')
+
+    def _combo_for_column(self, line_idx, col, saved_text=None):
+        if col == 1 and self.parent.plot_type != 'Histogram':
+            combo = self._make_data_combo(line_idx, 'X data')
+        elif col == 2:
+            combo = self._make_data_combo(line_idx, 'Y data')
+        elif col == 3:
+            combo = self._make_style_combo(line_idx)
+        elif col == 6:
+            combo = self._make_err_combo(line_idx, 'Xerr')
+        elif col == 7:
+            combo = self._make_err_combo(line_idx, 'Yerr')
+        else:
+            return None
+        if saved_text is not None:
+            combo.blockSignals(True)
+            combo.setCurrentText(saved_text)
+            combo.blockSignals(False)
+        return combo
+
     def append_trace_to_table(self,index):
         row = self.trace_table.rowCount()
         line=self.parent.plotted_lines[index]
@@ -353,17 +417,13 @@ class Sidebar1D(QtWidgets.QWidget):
             v.setSectionResizeMode(rownum, QtWidgets.QHeaderView.ResizeToContents)
 
         linetrace_item = QtWidgets.QTableWidgetItem(str(index))
-        linetrace_item.setFlags(QtCore.Qt.ItemIsSelectable | 
-                                 QtCore.Qt.ItemIsEnabled | 
+        linetrace_item.setFlags(QtCore.Qt.ItemIsSelectable |
+                                 QtCore.Qt.ItemIsEnabled |
                                  QtCore.Qt.ItemIsUserCheckable)
         linetrace_item.setText(str(index))
         linetrace_item.setCheckState(line['checkstate'])
 
-        Xdata_item = QtWidgets.QTableWidgetItem(line['X data'])
         bins_item = QtWidgets.QTableWidgetItem(str(line['Bins']))
-        Ydata_item = QtWidgets.QTableWidgetItem(line['Y data'])
-
-        style_item = QtWidgets.QTableWidgetItem(line['linestyle'])
 
         color_box = QtWidgets.QTableWidgetItem('')
         if type(line['linecolor'])==str:
@@ -398,20 +458,17 @@ class Sidebar1D(QtWidgets.QWidget):
                             QtCore.Qt.ItemIsUserCheckable)
             plot_uncertainty_item.setCheckState(line['fit']['fit_uncertainty_checkstate'])
         
-        Xerr_item = QtWidgets.QTableWidgetItem(str(line['Xerr']))
-        Yerr_item = QtWidgets.QTableWidgetItem(str(line['Yerr']))
-
         self.trace_table.setItem(row,0,linetrace_item)
         if self.parent.plot_type == 'Histogram':
             self.trace_table.setItem(row,1,bins_item)
         else:
-            self.trace_table.setItem(row,1,Xdata_item)
-        self.trace_table.setItem(row,2,Ydata_item)
-        self.trace_table.setItem(row,3,style_item)
+            self.trace_table.setCellWidget(row,1,self._make_data_combo(index,'X data'))
+        self.trace_table.setCellWidget(row,2,self._make_data_combo(index,'Y data'))
+        self.trace_table.setCellWidget(row,3,self._make_style_combo(index))
         self.trace_table.setItem(row,4,color_box)
         self.trace_table.setItem(row,5,width_item)
-        self.trace_table.setItem(row,6,Xerr_item)
-        self.trace_table.setItem(row,7,Yerr_item)
+        self.trace_table.setCellWidget(row,6,self._make_err_combo(index,'Xerr'))
+        self.trace_table.setCellWidget(row,7,self._make_err_combo(index,'Yerr'))
         self.trace_table.setItem(row,8,plot_fit_item)
         self.trace_table.setItem(row,9,plot_components_item)
         self.trace_table.setItem(row,10,plot_uncertainty_item)
@@ -427,9 +484,9 @@ class Sidebar1D(QtWidgets.QWidget):
         line = int(self.trace_table.item(current_row,0).text())
 
         if self.parent.plot_type == 'Histogram':
-            edit_dict={1:'Bins',2:'Y data',3:'linestyle',5:'linewidth',6:'Xerr',7:'Yerr'}
+            edit_dict={1:'Bins',5:'linewidth'}
         else:
-            edit_dict={1:'X data',2:'Y data',3:'linestyle',5:'linewidth',6:'Xerr',7:'Yerr'}
+            edit_dict={5:'linewidth'}
 
         if current_col in edit_dict.keys():
             self.parent.plotted_lines[line][edit_dict[current_col]] = current_item.text()
@@ -444,8 +501,8 @@ class Sidebar1D(QtWidgets.QWidget):
         elif current_col == 0: # It's the checkstate for the linetrace.
             self.parent.plotted_lines[line]['checkstate'] = current_item.checkState()
 
-        # If the X or Y data is changed, we need to update the processed data.
-        if current_col in [1,2,6,7]:
+        # If Bins changed (Histogram col 1), reload processed data.
+        if current_col == 1 and self.parent.plot_type == 'Histogram':
             try:
                 self.parent.prepare_data_for_plot(reload_data=True,reload_from_file=False,linefrompopup=line)
                 self.parent.plotted_lines[line]['processed_data'] = [self.parent.processed_data[0],
@@ -482,12 +539,23 @@ class Sidebar1D(QtWidgets.QWidget):
                 delta=1
             if delta in [-1,1]:
                 current_col = self.trace_table.currentColumn()
+                saved_widget_texts = {}
+                for c in range(self.trace_table.columnCount()):
+                    w = self.trace_table.cellWidget(current_row, c)
+                    if w is not None:
+                        saved_widget_texts[c] = w.currentText()
                 items = [self.trace_table.takeItem(current_row, c) for c in range(self.trace_table.columnCount())]
                 self.trace_table.removeRow(current_row)
                 new_row = current_row + delta
                 self.trace_table.insertRow(new_row)
                 for i, item in enumerate(items):
                     self.trace_table.setItem(new_row, i, item)
+                if items[0] is not None:
+                    line_idx = int(items[0].text())
+                    for col, saved_text in saved_widget_texts.items():
+                        combo = self._combo_for_column(line_idx, col, saved_text)
+                        if combo is not None:
+                            self.trace_table.setCellWidget(new_row, col, combo)
                 if current_col >= 0:
                     self.trace_table.setCurrentCell(new_row, current_col)
 
@@ -547,25 +615,6 @@ class Sidebar1D(QtWidgets.QWidget):
                         self.trace_table.setCurrentItem(self.trace_table.item(row,0)) # Otherwise the cell stays blue since it's selected.
                         self.editor_window.update_plots(update_data=False)
         
-        elif column in [1,2,6,7]:
-            menu = QtWidgets.QMenu(self)
-            for entry in self.parent.all_parameter_names:
-                action = QtWidgets.QAction(entry, self)
-                menu.addAction(action)
-            menu.triggered[QtWidgets.QAction].connect(self.replace_table_entry)
-            menu.popup(QtGui.QCursor.pos())
-            #self.update()
-            
-        elif column==3:
-            menu = QtWidgets.QMenu(self)
-            styles=['-', '--', '-.', ':','.','o','v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd', 'P', 'X']
-            for entry in styles:
-                action = QtWidgets.QAction(entry, self)
-                menu.addAction(action)
-            menu.triggered[QtWidgets.QAction].connect(self.replace_table_entry)
-            menu.popup(QtGui.QCursor.pos())
-            #self.update()
-
         elif column in [0,8,9,10]:
             menu = QtWidgets.QMenu(self)
 

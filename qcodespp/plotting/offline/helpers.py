@@ -80,6 +80,16 @@ class NoScrollQComboBox(QtWidgets.QComboBox):
     def wheelEvent(self, *args, **kwargs):
         if self.hasFocus():
             return QtWidgets.QComboBox.wheelEvent(self, *args, **kwargs)
+
+    def showPopup(self):
+        if self.isEditable() and self.lineEdit() is not None:
+            self.lineEdit().blockSignals(True)
+        super().showPopup()
+
+    def hidePopup(self):
+        super().hidePopup()
+        if self.isEditable() and self.lineEdit() is not None:
+            self.lineEdit().blockSignals(False)
         
 class DraggablePoint:
     lock = None #  only one can be animated at a time

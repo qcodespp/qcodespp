@@ -1867,7 +1867,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if key not in preferred_order:
                     settings[key] = value
             data_dropdown_keys = {'X data', 'Y data', 'Z data'}
-            static_dropdown_keys = {'transpose', 'minorticks', 'rasterized', 'transparent', 'shading'}
+            static_dropdown_keys = {'transpose', 'minorticks', 'rasterized', 'transparent', 'shading', 'colorbar'}
+            editable_dropdown_keys = {'xlabel', 'ylabel', 'clabel', 'maskcolor', 'cmap levels',
+                                      'titlesize', 'labelsize', 'ticksize'}
             for key, value in list(settings.items()):
                 row = self.settings_table.rowCount()
                 self.settings_table.insertRow(row)
@@ -1876,18 +1878,30 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                        QtCore.Qt.ItemIsEnabled)
                 self.settings_table.setItem(row, 0, property_item)
                 options = None
+                editable = False
                 if key in data_dropdown_keys:
                     menu_opts = getattr(current_item.data, 'settings_menu_options', {})
                     if key in menu_opts:
                         options = [str(o) for o in menu_opts[key]]
                 elif key in static_dropdown_keys and key in SETTINGS_MENU_OPTIONS:
                     options = [str(o) for o in SETTINGS_MENU_OPTIONS[key]]
+                elif key in editable_dropdown_keys and key in SETTINGS_MENU_OPTIONS:
+                    options = [str(o) for o in SETTINGS_MENU_OPTIONS[key]]
+                    editable = True
                 if options is not None:
                     combo = NoScrollQComboBox()
+                    if editable:
+                        combo.setEditable(True)
                     combo.addItems(options)
                     combo.setCurrentText(str(value))
-                    combo.currentTextChanged.connect(
-                        lambda _, k=key: self.plot_setting_edited(setting_name=k))
+                    if editable:
+                        combo.activated[str].connect(
+                            lambda text, k=key: self.plot_setting_edited(setting_name=k))
+                        combo.lineEdit().editingFinished.connect(
+                            lambda k=key: self.plot_setting_edited(setting_name=k))
+                    else:
+                        combo.currentTextChanged.connect(
+                            lambda _, k=key: self.plot_setting_edited(setting_name=k))
                     self.settings_table.setCellWidget(row, 1, combo)
                 else:
                     self.settings_table.setItem(row, 1, QtWidgets.QTableWidgetItem(value))
