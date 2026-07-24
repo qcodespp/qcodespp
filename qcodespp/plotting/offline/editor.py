@@ -52,6 +52,7 @@ from qcodespp.plotting.offline.helpers import (cmaps, NavigationToolbarMod,
 from qcodespp.plotting.offline.filters import Filter
 from qcodespp.plotting.offline.datatypes import DataItem, BaseClassData, NumpyData, InternalData, MixedInternalData
 from qcodespp.plotting.offline.qcodespp_extension import qcodesppData
+from qcodespp.plotting.offline.touchstone_extension import TouchstoneData
 from qcodespp.plotting.offline.fits import load_lmfit_modelresult_s
 
 from qcodespp.data.data_set import DataSetPP
@@ -176,6 +177,13 @@ SETTINGS_MENU_OPTIONS['transparent'] = ['True', 'False']
 SETTINGS_MENU_OPTIONS['shading'] = ['auto', 'flat', 'gouraud', 'nearest']
 
 AXIS_SCALING_OPTIONS = ['linear', 'log', 'symlog', 'logit']
+
+TOUCHSTONE_EXTENSIONS = ['.s1p', '.s2p', '.s3p', '.s4p', '.s5p', '.s6p', '.s7p', '.s8p']
+ALLOWED_DATA_FILETYPES = ['.dat', '.json', *TOUCHSTONE_EXTENSIONS]
+ALLOWED_SESSION_FILETYPES = ['.npy', '.igs']
+ALLOWED_FILE_EXTENSIONS = ALLOWED_DATA_FILETYPES + ALLOWED_SESSION_FILETYPES
+
+EXCLUDE_FILENAMES = ['snapshot.json']
 
 class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def __init__(self, folder=None, link_to_default=True, external_handle=None):
@@ -508,6 +516,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 error_type = type(e)
                 return error_type(f'Failed to add qcodes++ dataset {filepath}: {error_type.__name__} {e}')
 
+        elif extension in TOUCHSTONE_EXTENSIONS: # Touchstone files
+            try:
+                item = DataItem(TouchstoneData(filepath, self.canvas))
+                return item
+            except Exception as e:
+                error_type = type(e)
+                return error_type(f'Failed to add Touchstone dataset {filepath}: {error_type.__name__} {e}')
         else: # bare column-based data file
             try:
                 item = DataItem(BaseClassData(filepath, self.canvas))
@@ -719,7 +734,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if not already_disconnected:
             self.file_list.itemChanged.connect(self.file_checked)
 
-    def remove_files(self, which='current'):
+    def remove_files(self, which='current', suppress_warning=False):
         update_plots = False
         if self.file_list.count() > 0:
 
@@ -736,12 +751,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if len(items) == 0:
                 return
 
-            confirm = QtWidgets.QMessageBox.question(
-                self,
-                'Confirm Delete',
-                'Are you sure you want to delete the selected file(s)?\nAll data/analysis will be lost.',
-                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                QtWidgets.QMessageBox.No,
+            if not suppress_warning:
+                confirm = QtWidgets.QMessageBox.question(
+                    self,
+                    'Confirm Delete',
+                    'Are you sure you want to delete the selected file(s)?\nAll data/analysis will be lost.',
+                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                    QtWidgets.QMessageBox.No,
             )
             if confirm != QtWidgets.QMessageBox.Yes:
                 return
@@ -788,6 +804,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if update_canvas:
                     self.update_plots()
 
+    def check_file_loadable(self, filename, file_extension):
+        if file_extension in ALLOWED_DATA_FILETYPES and filename+file_extension not in EXCLUDE_FILENAMES:
+            return True
+        return False
+
     def open_files_from_folder(self, rootdir=None):
         if not rootdir:
             rootdir = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory to Open")
@@ -796,7 +817,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for subdir, dirs, files in os.walk(rootdir):
                 for file in files:
                     filename, file_extension = os.path.splitext(file)
-                    if file_extension in ['.dat', '.json'] and filename != 'snapshot':
+                    if self.check_file_loadable(filename, file_extension):
                         already_loaded=self.check_already_loaded(subdir,[file[1] for file in filepaths])
                         if not already_loaded:
                             filepath = os.path.join(subdir, file)
@@ -830,7 +851,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for subdir, dirs, files in os.walk(self.linked_folder):
                 for file in files:
                     filename, file_extension = os.path.splitext(file)
-                    if file_extension in ['.dat', '.json'] and filename != 'snapshot':
+                    if self.check_file_loadable(filename, file_extension):
                         already_loaded=self.check_already_loaded(subdir,[file[1] for file in new_files])
                         if not already_loaded:
                             filepath = os.path.join(subdir, file)
@@ -1098,7 +1119,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.log_error(f'Error removing temporary files before loading session:\n{type(error).__name__}: {error}')
 
             if self.file_list.count() > 0:
-                self.remove_files('all')
+                self.remove_files('all',suppress_warning=True)
             
             try:
                 # Extract the tarball to a temporary directory
@@ -1838,7 +1859,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     for lineedit in lineedits[which]:
                         lineedit.show()
 
-                if isinstance(current_item.data, qcodesppData):
+                if isinstance(current_item.data, (qcodesppData, TouchstoneData)):
                     self.metadata_button.show()
                 else:
                     self.metadata_button.hide()
@@ -3468,22 +3489,16 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     
     def enter_move_tester(self,urls):
         for url in urls:
-            if not (url.toLocalFile().endswith('.dat') or url.toLocalFile().endswith('.npy')
-                    or url.toLocalFile().endswith('.txt') or url.toLocalFile().endswith('.igs')
-                    or url.toLocalFile().endswith('.json')
-                    or os.path.isdir(url.toLocalFile())):
-                return False
-            else:
+            if url.isLocalFile():
                 continue
+            elif not any([url.toString().endswith(ext) for ext in ALLOWED_FILE_EXTENSIONS]):
+                return False
         return True
 
     def drop_files_tester(self, urls):
         for url in urls:
-            if not (url.toLocalFile().endswith('.dat') or url.toLocalFile().endswith('.npy') \
-                    or url.toLocalFile().endswith('.txt') or url.toLocalFile().endswith('.json')):
+            if not any([url.toString().endswith(ext) for ext in ALLOWED_DATA_FILETYPES]):
                 return False
-            else:
-                continue
         return True
     
     def drop_folders_tester(self, urls):
