@@ -5,7 +5,8 @@ import copy
 from websockets.typing import Data
 
 from qcodespp.plotting.offline.datatypes import BaseClassData
-from qcodespp.plotting.offline.editor import TOUCHSTONE_EXTENSIONS
+
+TOUCHSTONE_EXTENSIONS = ['.s1p', '.s2p', '.s3p', '.s4p', '.s5p', '.s6p', '.s7p', '.s8p']
 
 PARAMETERS = ['S', 'Y', 'Z', 'H', 'G']
 
@@ -44,17 +45,23 @@ class TouchstoneData(BaseClassData):
 
         self.meta={'comment_lines': [], 'keyword_lines': {}}
         
+    def load_and_reshape_data(self,reload_data=False,reload_from_file=False,linefrompopup=None):
+        if reload_from_file or self.loaded_data is None:
+            error=self.prepare_dataset()
+            if error:
+                return error
+        column_data = self.get_column_data(linefrompopup)
+        self.raw_data = column_data.T
+
     def prepare_dataset(self):
         # Loads the data from file and prepares a data_dict, where the arrays are stored identified by 
         # either their header column names, or by their column number if no header is present.
         # These names are then sent to various parts of the GUI.
 
         success = self.load_touchstone_data()
+
         if success:
-            if self.data_dict[self.all_parameter_names[0]][1] == self.data_dict[self.all_parameter_names[0]][0] and len(self.all_parameter_names) > 2:
-                self.dim=3
-            else:
-                self.dim=2
+            self.dim=2 #always true for touchstone files
             self.set_names()
 
         else:
@@ -89,8 +96,7 @@ class TouchstoneData(BaseClassData):
 
             # Store the data in self.data_dict
             self.all_parameter_names = self.create_labels()
-            self.data_dict = {self.all_parameter_names[i]: (data_array[:, i],) for i in range(data_array.shape[1])}
-
+            self.data_dict = {self.all_parameter_names[i]: data_array[:, i] for i in range(data_array.shape[1])}
             return True
 
         except Exception as e:
@@ -163,10 +169,3 @@ class TouchstoneData(BaseClassData):
                     label = f'{self.parameter_type}{j+1}{i+1} ({self.format_type[k]})'
                     labels.append(label)
         return labels
-
-    @staticmethod
-    def find_next_line_starting_with(lines, start_index, prefix):
-        for idx in range(start_index, len(lines)):
-            if lines[idx].lstrip().startswith(prefix):
-                return idx
-        return None

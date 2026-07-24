@@ -216,6 +216,7 @@ class BaseClassData:
         self.filter_menu_options = {'Multiply': allnames,
                                     'Divide': allnames,
                                     'Add/Subtract': allnames}
+
     def get_column_data(self,line=None):
         if line is not None:
             names = [self.plotted_lines[line]['X data'],
@@ -440,7 +441,7 @@ class BaseClassData:
             if error:
                 return error
             update_color_limits = True
-        if self.raw_data:
+        if self.raw_data is not None:
             self.copy_raw_to_processed_data(linefrompopup)
             if hasattr(self,'plot_type') and self.plot_type not in ['X,Y','X,Y,Z',None]:
                 self.reshape_for_plot_type(linefrompopup)

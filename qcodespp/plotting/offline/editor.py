@@ -52,7 +52,7 @@ from qcodespp.plotting.offline.helpers import (cmaps, NavigationToolbarMod,
 from qcodespp.plotting.offline.filters import Filter
 from qcodespp.plotting.offline.datatypes import DataItem, BaseClassData, NumpyData, InternalData, MixedInternalData
 from qcodespp.plotting.offline.qcodespp_extension import qcodesppData
-from qcodespp.plotting.offline.touchstone_extension import TouchstoneData
+from qcodespp.plotting.offline.touchstone_extension import TouchstoneData, TOUCHSTONE_EXTENSIONS
 from qcodespp.plotting.offline.fits import load_lmfit_modelresult_s
 
 from qcodespp.data.data_set import DataSetPP
@@ -178,7 +178,6 @@ SETTINGS_MENU_OPTIONS['shading'] = ['auto', 'flat', 'gouraud', 'nearest']
 
 AXIS_SCALING_OPTIONS = ['linear', 'log', 'symlog', 'logit']
 
-TOUCHSTONE_EXTENSIONS = ['.s1p', '.s2p', '.s3p', '.s4p', '.s5p', '.s6p', '.s7p', '.s8p']
 ALLOWED_DATA_FILETYPES = ['.dat', '.json', *TOUCHSTONE_EXTENSIONS]
 ALLOWED_SESSION_FILETYPES = ['.npy', '.igs']
 ALLOWED_FILE_EXTENSIONS = ALLOWED_DATA_FILETYPES + ALLOWED_SESSION_FILETYPES
@@ -1532,7 +1531,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             message = item.data.prepare_data_for_plot(reload_data=True, reload_from_file=True)
             # Three possibilities: no message = everything is good.
             # If the message is a list, it's qcodesppData that has been decomposed into multiple DataItems.
-            # If the message is something else, it's an error message.
+            # If the message is something else, it's an error message
             if message is not None:
                 try:
                     self.file_list.itemChanged.disconnect(self.file_checked)
