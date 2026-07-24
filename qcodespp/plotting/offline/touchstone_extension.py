@@ -30,6 +30,29 @@ KEYWORDS = ['Version',
             'Noise Data',
             'End']
 
+def convert_RI_to_MA(real, imag):
+    # Convert Real and Imaginary parts to Magnitude and Phase.
+    magnitude = np.sqrt(real**2 + imag**2)
+    phase = np.arctan2(imag, real) * (180 / np.pi)  # Convert to degrees
+    return magnitude, phase
+
+def convert_MA_to_RI(magnitude, phase):
+    # Convert Magnitude and Phase to Real and Imaginary parts.
+    phase_rad = np.radians(phase)  # Convert degrees to radians
+    real = magnitude * np.cos(phase_rad)
+    imag = magnitude * np.sin(phase_rad)
+    return real, imag
+
+def convert_DB_to_MA(db, phase):
+    # Convert Decibels and Phase to Magnitude and Phase.
+    magnitude = 10 ** (db / 20)
+    return magnitude, phase
+
+def convert_MA_to_DB(magnitude, phase):
+    # Convert Magnitude and Phase to Decibels and Phase.
+    db = 20 * np.log10(magnitude)
+    return db, phase
+
 class TouchstoneData(BaseClassData):
 
     def __init__(self, filepath, canvas):
@@ -41,7 +64,11 @@ class TouchstoneData(BaseClassData):
         self.parameter_type = 'S'
         self.frequency_unit = 'GHz'
         self.format_type = 'DB'
+        self.format_units = FORMATS[self.format_type]
         self.impedance = 50
+        self.options_decoded = False
+        #self.ports = [f'{self.parameter_type}{j+1}{i+1}' for i in range(self.num_ports) for j in range(self.num_ports)]
+        self.ports = []
 
         self.meta={'comment_lines': [], 'keyword_lines': {}}
         
@@ -81,8 +108,9 @@ class TouchstoneData(BaseClassData):
                 line = line.strip()
                 if line.startswith('!'):
                     self.meta['comment_lines'].append(line)
-                elif line.startswith('#'):
+                elif line.startswith('#') and not self.options_decoded: # since touchstone specifies only the first option line is to be read.
                     self.decode_options(line)
+                    self.options_decoded = True
                 elif line.startswith('['):
                     self.decode_keyword(lines[i:])
                 elif line:  # Non-empty line
@@ -92,11 +120,14 @@ class TouchstoneData(BaseClassData):
                 return False  # No data found
 
             # Convert data lines to numpy array
-            data_array = np.array([list(map(float, line.split())) for line in data_lines])
+            self.loaded_data = np.array([list(map(float, line.split())) for line in data_lines])
 
             # Store the data in self.data_dict
-            self.all_parameter_names = self.create_labels()
-            self.data_dict = {self.all_parameter_names[i]: data_array[:, i] for i in range(data_array.shape[1])}
+            labels = self.create_labels()
+            self.data_dict = {labels[i]: self.loaded_data[:, i] for i in range(self.loaded_data.shape[1])}
+            for port in self.ports:
+                self.add_conversions(port)
+            self.all_parameter_names = list(self.data_dict.keys())
             return True
 
         except Exception as e:
@@ -111,7 +142,8 @@ class TouchstoneData(BaseClassData):
             elif part.upper() in UNITS:
                 self.frequency_unit = part.upper()
             elif part.upper() in FORMATS:
-                self.format_type = FORMATS[part.upper()]
+                self.format_type = part.upper()
+                self.format_units = FORMATS[self.format_type]
             else:
                 try:
                     self.impedance = float(part)
@@ -148,8 +180,9 @@ class TouchstoneData(BaseClassData):
         if 'Two-Port Data Order' in self.meta['keyword_lines'] and self.meta['keyword_lines']['Two-Port Data Order'][0] == '12_21': #otherwise it's the default 11_22 handled below
             for i in range(self.num_ports):
                 for j in range(self.num_ports):
+                    self.ports.append(f'{self.parameter_type}{i+1}{j+1}')
                     for k in range(2):
-                        label = f'{self.parameter_type}{i+1}{j+1} ({self.format_type[k]})'
+                        label = f'{self.parameter_type}{i+1}{j+1} ({self.format_units[k]})'
                         labels.append(label)
             return labels
         
@@ -158,14 +191,44 @@ class TouchstoneData(BaseClassData):
                 params = line.split(':')[-1] if line.split(':')[-1]!= '' else line.split(':')[-2]
                 param_order = params.strip().upper().replace(',', '').split()
                 for param in param_order:
+                    self.ports.append(param)
                     for k in range(2):
-                        label = f'{param} ({self.format_type[k]})'
+                        label = f'{param} ({self.format_units[k]})'
                         labels.append(label)
                 return labels
 
         for i in range(self.num_ports): #default order
             for j in range(self.num_ports):
+                self.ports.append(f'{self.parameter_type}{j+1}{i+1}')
                 for k in range(2):
-                    label = f'{self.parameter_type}{j+1}{i+1} ({self.format_type[k]})'
+                    label = f'{self.parameter_type}{j+1}{i+1} ({self.format_units[k]})'
                     labels.append(label)
         return labels
+    
+    def add_conversions(self, port):
+        try:
+            if self.format_type == 'DB':
+                mag, phase = convert_DB_to_MA(self.data_dict[f'{port} ({self.format_units[0]})'],
+                                            self.data_dict[f'{port} ({self.format_units[1]})'])
+                self.data_dict[f'{port} (Magnitude)'] = mag
+                real, imag = convert_MA_to_RI(mag, phase)
+                self.data_dict[f'{port} (Real)'] = real
+                self.data_dict[f'{port} (Imaginary)'] = imag
+            elif self.format_type == 'MA':
+                mag = self.data_dict[f'{port} ({self.format_units[0]})']
+                phase = self.data_dict[f'{port} ({self.format_units[1]})']
+                real, imag = convert_MA_to_RI(mag, phase)
+                self.data_dict[f'{port} (Real)'] = real
+                self.data_dict[f'{port} (Imaginary)'] = imag
+                db, _ = convert_MA_to_DB(mag, phase)
+                self.data_dict[f'{port} (Decibels)'] = db
+            elif self.format_type == 'RI':
+                real = self.data_dict[f'{port} ({self.format_units[0]})']
+                imag = self.data_dict[f'{port} ({self.format_units[1]})']
+                mag, phase = convert_RI_to_MA(real, imag)
+                self.data_dict[f'{port} (Magnitude)'] = mag
+                self.data_dict[f'{port} (Phase)'] = phase
+                db, _ = convert_MA_to_DB(mag, phase)
+                self.data_dict[f'{port} (Decibels)'] = db
+        except Exception as e:
+            print(f'Error occurred while adding conversions: {e.__class__.__name__}: {e}')
