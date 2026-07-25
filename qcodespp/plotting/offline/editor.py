@@ -2460,6 +2460,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     any([len(original_item.data.linecuts[orientation]['lines'])>0 for orientation in ['horizontal','vertical','diagonal']])):
                     self.paste_linecuts(new_item)
 
+                if new_plot_button:
+                    new_item.data.reset_axlim_settings()
+
             except Exception as e:
                 self.log_error(f'Error duplicating item:\n{type(e).__name__}: {e}', show_popup=True)
 
