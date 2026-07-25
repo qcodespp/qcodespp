@@ -137,12 +137,12 @@ class TouchstoneData(BaseClassData):
         # Decode the options line in the Touchstone file and set the corresponding attributes.
         parts = line[1:].strip().split()
         for part in parts:
-            if part.upper() in PARAMETERS:
-                self.parameter_type = part.upper()
-            elif part.upper() in UNITS:
-                self.frequency_unit = part.upper()
-            elif part.upper() in FORMATS:
-                self.format_type = part.upper()
+            if part in PARAMETERS:
+                self.parameter_type = part
+            elif part in UNITS:
+                self.frequency_unit = part
+            elif part in FORMATS:
+                self.format_type = part
                 self.format_units = FORMATS[self.format_type]
             else:
                 try:
