@@ -1964,6 +1964,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def show_current_axlim_settings(self):
         current_item = self.file_list.currentItem()
         if current_item:
+            self.xmin_line_edit.editingFinished.disconnect()
+            self.xmax_line_edit.editingFinished.disconnect()
+            self.ymin_line_edit.editingFinished.disconnect()
+            self.ymax_line_edit.editingFinished.disconnect()
             axlim_settings = current_item.data.axlim_settings
             if axlim_settings['Xmin'] is None:
                 self.xmin_line_edit.setText('')
@@ -1981,6 +1985,10 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.ymax_line_edit.setText('')
             else:
                 self.ymax_line_edit.setText(f'{axlim_settings["Ymax"]:.5g}')
+            self.xmin_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Xmin'))
+            self.xmax_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Xmax'))
+            self.ymin_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Ymin'))
+            self.ymax_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Ymax'))
 
     def show_current_axscale_settings(self):
         current_item = self.file_list.currentItem()
@@ -3301,11 +3309,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 fig.canvas.toolbar.push_current()
 
             elif self.press == ['toolbar']:
-                item=self.plot_in_focus[0]
-                if item:
-                    data=item.data
-                    data.populate_axlim_settings()
-                    self.show_current_axlim_settings()
+                self.update_axlim_settings()
 
 
         else:
@@ -3333,17 +3337,20 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.canvas.setCursor(QtCore.Qt.ArrowCursor)
 
     def on_release(self, event):
-        if hasattr(self,'press') and self.press == ['toolbar']:
-            item=self.plot_in_focus[0]
-            if item:
-                data=item.data
-                data.populate_axlim_settings()
-                self.show_current_axlim_settings()
-        self.press = None
         if hasattr(self,'hax_marker'):
             self.hax_marker.remove()
             del self.hax_marker
         self.canvas.draw()
+        if hasattr(self,'press') and self.press == ['toolbar']:
+            self.update_axlim_settings()
+        self.press = None
+
+    def update_axlim_settings(self):
+        item=self.plot_in_focus[0]
+        if item:
+            data=item.data
+            data.populate_axlim_settings()
+            self.show_current_axlim_settings()
 
     def on_pick(self,event):
         # Use this exclusively for the cbar's histogram, since it's not possible to access it in any other way.
