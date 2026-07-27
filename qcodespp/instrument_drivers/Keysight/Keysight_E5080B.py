@@ -13,7 +13,9 @@ class E5080B_Trace(InstrumentChannel):
     def __init__(self, parent: VisaInstrument, name: str, trace_num: int) -> None:
         super().__init__(parent, name)
         self.trace_num = trace_num
+        #incomplete and possibly dangerous to use in general
         #Most of this assumes TDR is on, but a trace doesn't have to be TDR...
+        
         """TDR AND GATING"""
         self.tdr_active: Parameter = self.add_parameter(
             "tdr_active",
