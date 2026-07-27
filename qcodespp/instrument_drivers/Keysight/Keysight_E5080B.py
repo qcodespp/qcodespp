@@ -3,9 +3,50 @@ from typing import Any
 
 import numpy as np
 from qcodes import validators as vals
-from qcodes import VisaInstrument
+from qcodes import VisaInstrument, InstrumentChannel
 from qcodes.parameters import Parameter, create_on_off_val_mapping
 from qcodes.validators import Enum, Numbers
+
+
+class E5080B_Trace(InstrumentChannel):
+
+    def __init__(self, parent: VisaInstrument, name: str, trace_num: int) -> None:
+        super().__init__(parent, name)
+        self.trace_num = trace_num
+
+        """TDR AND GATING"""
+        self.tdr_active: Parameter = self.add_parameter(
+            "tdr_active",
+            label="TDR Active",
+            get_cmd="CALC:MEAS{}:TRAN:TIME:STAT?".format(self.trace_num),
+            set_cmd="CALC:MEAS{}:TRAN:TIME:STAT {}".format(self.trace_num, "{}"),
+            val_mapping=create_on_off_val_mapping(on_val=1, off_val=0),
+        )
+        self.gating_active: Parameter = self.add_parameter(
+            "gating_active",
+            label="Gating Active",
+            get_cmd="CALC:MEAS{}:FILT:TIME:STAT?".format(self.trace_num),
+            set_cmd="CALC:MEAS{}:FILT:TIME:STAT {}".format(self.trace_num, "{}"),
+            val_mapping=create_on_off_val_mapping(on_val=1, off_val=0),
+        )
+
+        self.gate_start: Parameter = self.add_parameter(
+            "gate_start",
+            label="Gate Start",
+            unit="s",
+            get_cmd="CALC:MEAS{}:FILT:TIME:STAR?".format(self.trace_num),
+            set_cmd="CALC:MEAS{}:FILT:TIME:STAR {}".format(self.trace_num, "{}"),
+            get_parser=float,
+        )
+
+        self.gate_stop: Parameter = self.add_parameter(
+            "gate_stop",
+            label="Gate Stop",
+            unit="s",
+            get_cmd="CALC:MEAS{}:FILT:TIME:STOP?".format(self.trace_num),
+            set_cmd="CALC:MEAS{}:FILT:TIME:STOP {}".format(self.trace_num, "{}"),
+            get_parser=float,
+        )
 
 
 class Keysight_E5080B(VisaInstrument):
@@ -20,6 +61,17 @@ class Keysight_E5080B(VisaInstrument):
         # Setting frequency range
         min_freq = 100e3
         max_freq = 53e9
+
+        self.traces = [self.add_submodule(f"trace{i+1}", E5080B_Trace(self, f"trace{i+1}", i+1)) for i in range(2)]
+
+        # Set the units for returning S-parameters
+        self.snp_format: Parameter = self.add_parameter(
+            "snp_format",
+            label="SNP Format",
+            get_cmd="MMEM:STOR:TRAC:FORM:SNP?",
+            set_cmd="MMEM:STOR:TRAC:FORM:SNP {}",
+            vals=Enum("RI", "MA", "DB", "AUTO"),
+        )
 
         # Sets the start frequency of the analyzer.
         self.start_freq: Parameter = self.add_parameter(
@@ -290,6 +342,7 @@ class Keysight_E5080B(VisaInstrument):
             get_cmd="STAT:OPER:COND?",
             get_parser=int,
         )
+
         """Status Operation"""
 
         # Clear averages
@@ -316,12 +369,17 @@ class Keysight_E5080B(VisaInstrument):
         raw= np.array(self.ask("CALC:MEAS:DATA:SDAT?").split(','), dtype=float)
         return [raw[::2],raw[1::2]]
 
-    def get_frequencies(self):
-        """return freqpoints"""
+    def get_x(self,trace=1):
+        """return x axis values from specified trace"""
         #self.format_data("REAL,64")  # recommended to avoid frequency rounding errors
         self.format_data("ASCii,0")
-        return np.array(self.ask("CALC:MEAS:X?").split(','), dtype=float)
+        return np.array(self.ask(f"CALC:MEAS{trace}:X:VAL?").split(','), dtype=float)
     
+    def get_y(self,trace=1):
+        """Retrieve y data from specified trace"""
+        self.format_data("ASCii,0")  # recommended to avoid binary data parsing errors
+        return np.array(self.ask(f'CALC:MEAS{trace}:DATA:FDATA?').split(','), dtype=float)
+
     def get_snp(self,n=2):
         """return all S-parameters for n ports"""
         self.format_data("ASCii,0")  # recommended to avoid binary data parsing errors
