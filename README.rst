@@ -48,4 +48,4 @@ See `License <https://github.com/QCoDeS/Qcodes/tree/master/LICENSE.rst>`__.
 Contact and contributing
 ==================================================
 
-Issue reporting, feedback and contributions are more than welcome! The best way to raise an issue is through the GitHub issue tracker, and the best way to contribute is by forking the repository and submitting a pull request (see the relevant GitHub documentation for how to do this). This package is largely maintained by Damon Carrad. If you have a question but not a GitHub account, you can contact me at damonc@dtu.dk.
+Issue reporting, feedback and contributions are more than welcome! The best way to raise an issue is through the GitHub issue tracker, and the best way to contribute is by forking the repository and submitting a pull request (see the relevant GitHub documentation for how to do this).
