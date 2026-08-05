@@ -456,6 +456,9 @@ class LineCutWindow(QtWidgets.QWidget):
             fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
             self.output_window.setText('Information about selected fit type:\n'+
                                    fit_function['description'])
+            
+        if self.cuts_table.currentColumn() == 4:  # Color column
+            self.choose_color(item, row)
 
     def get_checked_items(self, return_indices = False, cuts_or_fits='cuts'):
         # Note this is a bit different to the main window, where the entire item is returned.
@@ -914,30 +917,26 @@ class LineCutWindow(QtWidgets.QWidget):
             elif column == 7:
                 self.parent.linecuts[self.orientation]['lines'][linecut]['fit']['fit_uncertainty_checkstate'] = checkstate
         self.update()
+
+    def choose_color(self,item,row):
+        color = QtWidgets.QColorDialog.getColor()
+        if color.isValid():
+            item.setBackground(color)
+            linecut=int(self.cuts_table.item(self.cuts_table.currentRow(),0).text())
+            self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor'] = color.name()
+            self.cuts_table.setCurrentItem(self.cuts_table.item(row,0)) # Otherwise the cell stays blue since it's selected.
+            if 'draggable_points' in self.parent.linecuts[self.orientation]['lines'][linecut].keys():
+                self.update_draggable_points(linecut,replot=True)
+            self.update()
         
     def open_cuts_table_menu(self,position):
         item=self.cuts_table.currentItem()
         column=self.cuts_table.currentColumn()
         row=self.cuts_table.currentRow()
         if column==4:
-            # Choose colour
-            menu = QtWidgets.QMenu(self)
-            color_action = menu.addAction("Choose Color")
+            if item:
+                self.choose_color(item,row)
 
-            # Show the menu at the cursor position
-            action = menu.exec_(self.cuts_table.viewport().mapToGlobal(position))
-
-            if action == color_action:
-                if item:
-                    color = QtWidgets.QColorDialog.getColor()
-                    if color.isValid():
-                        item.setBackground(color)
-                        linecut=int(self.cuts_table.item(self.cuts_table.currentRow(),0).text())
-                        self.parent.linecuts[self.orientation]['lines'][linecut]['linecolor'] = color.name()
-                        self.cuts_table.setCurrentItem(self.cuts_table.item(row,0)) # Otherwise the cell stays blue since it's selected.
-                        if 'draggable_points' in self.parent.linecuts[self.orientation]['lines'][linecut].keys():
-                            self.update_draggable_points(linecut,replot=True)
-                        self.update()
         
         elif column in [0,5,6,7]:
             menu = QtWidgets.QMenu(self)
