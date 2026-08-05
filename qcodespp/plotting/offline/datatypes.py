@@ -34,6 +34,7 @@ class BaseClassData:
     DEFAULT_PLOT_SETTINGS['spinewidth'] = '1'
     DEFAULT_PLOT_SETTINGS['colorbar'] = 'True'
     DEFAULT_PLOT_SETTINGS['minorticks'] = 'False'
+    DEFAULT_PLOT_SETTINGS['grid'] = 'off'
     DEFAULT_PLOT_SETTINGS['maskcolor'] = 'black'
     DEFAULT_PLOT_SETTINGS['cmap levels'] = '128'
     DEFAULT_PLOT_SETTINGS['rasterized'] = 'True'
@@ -610,6 +611,13 @@ class BaseClassData:
         self.axes.tick_params(labelsize=self.settings['ticksize'], 
                               width=float(self.settings['spinewidth']), 
                               color=rcParams['axes.edgecolor'])
+        if self.settings['grid'] in ['both', 'x', 'y']:
+            if self.settings['minorticks'] == 'True':
+                self.axes.grid(axis=self.settings['grid'], which='both')
+            else:
+                self.axes.grid(axis=self.settings['grid'], which='major')
+        elif self.settings['grid'] == 'off':
+            self.axes.grid(False)
         if self.settings['minorticks'] == 'True':
             self.axes.minorticks_on()
         if self.settings['title'] == '<label>':

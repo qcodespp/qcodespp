@@ -169,6 +169,7 @@ SETTINGS_MENU_OPTIONS['labelsize'] = FONT_SIZES
 SETTINGS_MENU_OPTIONS['ticksize'] = FONT_SIZES
 SETTINGS_MENU_OPTIONS['colorbar'] = ['True', 'False']
 SETTINGS_MENU_OPTIONS['minorticks'] = ['True','False']
+SETTINGS_MENU_OPTIONS['grid'] = ['x','y','both','off']
 SETTINGS_MENU_OPTIONS['maskcolor'] = ['black','white']
 SETTINGS_MENU_OPTIONS['cmap levels'] = ['128','256','512','1024']
 SETTINGS_MENU_OPTIONS['rasterized'] = ['True','False']
@@ -1885,7 +1886,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if key not in preferred_order:
                     settings[key] = value
             data_dropdown_keys = {'X data', 'Y data', 'Z data'}
-            static_dropdown_keys = {'transpose', 'minorticks', 'rasterized', 'transparent', 'shading', 'colorbar'}
+            static_dropdown_keys = {'transpose', 'minorticks', 'grid', 'rasterized', 'transparent', 'shading', 'colorbar'}
             editable_dropdown_keys = {'xlabel', 'ylabel', 'clabel', 'maskcolor', 'cmap levels',
                                       'titlesize', 'labelsize', 'ticksize'}
             for key, value in list(settings.items()):
