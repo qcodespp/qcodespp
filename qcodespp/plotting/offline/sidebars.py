@@ -271,6 +271,9 @@ class Sidebar1D(QtWidgets.QWidget):
             fit_function=fits.functions[self.fit_class_box.currentText()][self.fit_box.currentText()]
             self.output_window.setText('Information about selected fit type:\n'+
                                    fit_function['description'])
+
+        if self.trace_table.currentColumn() == 4:  # Color column
+            self.choose_color(item, row)
             
         # ... and the filters.
         self.editor_window.show_current_filters()
@@ -593,27 +596,30 @@ class Sidebar1D(QtWidgets.QWidget):
         self.colormap_box.clear()
         self.colormap_box.addItems(cmaps[self.colormap_type_box.currentText()])
 
+    def choose_color(self, item, row):
+        color = QtWidgets.QColorDialog.getColor()
+        if color.isValid():
+            item.setBackground(color)
+            linetrace=int(self.trace_table.item(self.trace_table.currentRow(),0).text())
+            self.parent.plotted_lines[linetrace]['linecolor'] = color.name()
+            self.trace_table.setCurrentItem(self.trace_table.item(row,0)) # Otherwise the cell stays blue since it's selected.
+            self.editor_window.update_plots(update_data=False)
+
     def open_trace_table_menu(self,position):
         item=self.trace_table.currentItem()
         column=self.trace_table.currentColumn()
         row=self.trace_table.currentRow()
         if column==4:
-            # Choose colour
-            menu = QtWidgets.QMenu(self)
-            color_action = menu.addAction("Choose Color")
+            # # Choose colour
+            # menu = QtWidgets.QMenu(self)
+            # color_action = menu.addAction("Choose Color")
 
-            # Show the menu at the cursor position
-            action = menu.exec_(self.trace_table.viewport().mapToGlobal(position))
+            # # Show the menu at the cursor position
+            # action = menu.exec_(self.trace_table.viewport().mapToGlobal(position))
 
-            if action == color_action:
-                if item:
-                    color = QtWidgets.QColorDialog.getColor()
-                    if color.isValid():
-                        item.setBackground(color)
-                        linetrace=int(self.trace_table.item(self.trace_table.currentRow(),0).text())
-                        self.parent.plotted_lines[linetrace]['linecolor'] = color.name()
-                        self.trace_table.setCurrentItem(self.trace_table.item(row,0)) # Otherwise the cell stays blue since it's selected.
-                        self.editor_window.update_plots(update_data=False)
+            # if action == color_action:
+            if item:
+                self.choose_color(item, row)
         
         elif column in [0,8,9,10]:
             menu = QtWidgets.QMenu(self)
