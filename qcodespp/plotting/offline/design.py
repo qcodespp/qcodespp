@@ -808,7 +808,7 @@ class Ui_MainWindow(object):
         self.clear_files_button.setText(_translate("MainWindow", "Clear list"))
         self.refresh_file_button.setText(_translate("MainWindow", "Refresh"))
         self.delete_files_button.setText(_translate("MainWindow", "Remove file"))
-        self.settings_box.setTitle(_translate("MainWindow", "Settings For Selected File: right-click for options"))
+        self.settings_box.setTitle(_translate("MainWindow", "Settings For Selected File/Plot"))
         self.copy_settings_button.setText(_translate("MainWindow", "Copy Settings"))
         self.paste_settings_button.setText(_translate("MainWindow", "Paste Settings"))
         self.reset_settings_button.setText(_translate("MainWindow", "Reset Settings"))

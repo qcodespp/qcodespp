@@ -193,7 +193,7 @@
          </sizepolicy>
         </property>
         <property name="title">
-         <string>Settings For Selected File: right-click for options</string>
+         <string>Settings For Selected File/Plot</string>
         </property>
         <layout class="QGridLayout" name="gridLayout_4">
          <item row="0" column="0">
