@@ -278,7 +278,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             action, export_data, names, label = msg
             item = DataItem(InternalData(self.canvas, export_data, label, names, dimension=3))
             item.filepath = 'internal_data'
-            self.add_internal_data(item)
+            self.add_internal_data(item)            
 
     def init_plot_settings(self):
         self.settings_table.setColumnCount(2)
@@ -1253,6 +1253,48 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
  
         return resolved_files, unresolved_files
 
+    def make_export_data_dict(self, item):
+        data_dict = {}
+        try:
+            if hasattr(item.data,'processed_data'):
+                if item.data.dim==3:
+                    labels={'xlabel':'X',
+                            'ylabel':'Y',
+                            'clabel':'Z'}
+                    data_dict['shape']=list(np.shape(item.data.processed_data[2]))
+                    for i,label in enumerate(labels.keys()):
+                        if item.data.settings[label] != '' and item.data.settings[label] not in data_dict.keys():
+                            data_dict[item.data.settings[label]]=item.data.processed_data[i].flatten().tolist()
+                        elif item.data.settings[label] == '':
+                            data_dict[labels[label]]=item.data.processed_data[i].flatten().tolist()
+                        else:
+                            data_dict[f'{item.data.settings[label]}_1']=item.data.processed_data[i].flatten().tolist()
+
+                elif item.data.dim == 2:
+                    for line in item.data.plotted_lines.keys():
+                        if item.data.plotted_lines[line]['checkstate']:
+                            if item.data.plot_type == 'Histogram':
+                                headers=[f'{line}_{item.data.plotted_lines[line]["Y data"]}_bins',
+                                        f'{line}_{item.data.plotted_lines[line]["Y data"]}_counts',
+                                        f'{line}_{item.data.plotted_lines[line]["Y data"]}_bins_fit']
+                            else:
+                                headers=[f'{line}_{item.data.plotted_lines[line]["X data"]}',
+                                        f'{line}_{item.data.plotted_lines[line]["Y data"]}',
+                                        f'{line}_{item.data.plotted_lines[line]["X data"]}_fit']
+                            data_dict[headers[0]]=item.data.plotted_lines[line]['processed_data'][0].tolist()
+                            data_dict[headers[1]]=item.data.plotted_lines[line]['processed_data'][1].tolist()
+                            if 'fit' in item.data.plotted_lines[line].keys() and item.data.plotted_lines[line]['fit']['fit_checkstate']:
+                                data_dict[headers[2]]=item.data.plotted_lines[line]['fit']['xdata'].tolist()
+                                fit_result=item.data.plotted_lines[line]['fit']['fit_result']
+                                data_dict[f'{line}_{item.data.plotted_lines[line]["Y data"]}'+'_fit']=fit_result.best_fit.tolist()
+                                data_dict[f'{line}_{item.data.plotted_lines[line]["Y data"]}'+'_fit_error']=fit_result.eval_uncertainty().tolist()
+                                fit_components=fit_result.eval_components()
+                                for component in fit_components:
+                                    data_dict[f'{line}_{item.data.plotted_lines[line]["Y data"]}'+'_'+component]=fit_components[component].tolist()
+            return data_dict
+        except Exception as e:
+            return e
+
     def export_processed_data(self, which='all'):
         current_item = self.file_list.currentItem()
         if current_item:
@@ -1296,47 +1338,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 self.log_error(f'Error saving processed data as .dat:\n{type(e).__name__}: {e}', show_popup=True)
 
                     else:
-                        data={}
-                        try:
-                            if current_item.data.dim==3:
-                                labels={'xlabel':'X',
-                                        'ylabel':'Y',
-                                        'clabel':'Z'}
-                                for i,label in enumerate(labels.keys()):
-                                    if current_item.data.settings[label] != '' and current_item.data.settings[label] not in data.keys():
-                                        data[current_item.data.settings[label]]=current_item.data.processed_data[i].flatten().tolist()
-                                    elif current_item.data.settings[label] == '':
-                                        data[labels[label]]=current_item.data.processed_data[i].flatten().tolist()
-                                    else:
-                                        data[f'{current_item.data.settings[label]}_1']=current_item.data.processed_data[i].flatten().tolist()
+                        data=self.make_export_data_dict(current_item)
+                        if isinstance(data, Exception):
+                            self.log_error(f'Error processing data for export:\n{type(data).__name__}: {data}', show_popup=True)
 
-                            elif current_item.data.dim == 2:
-                                for line in current_item.data.plotted_lines.keys():
-                                    if current_item.data.plotted_lines[line]['checkstate']:
-                                        if current_item.data.plot_type == 'Histogram':
-                                            headers=[f'{line}_{current_item.data.plotted_lines[line]['Y data']}_bins',
-                                                    f'{line}_{current_item.data.plotted_lines[line]['Y data']}_counts',
-                                                    f'{line}_{current_item.data.plotted_lines[line]['Y data']}_bins_fit']
-                                        else:
-                                            headers=[f'{line}_{current_item.data.plotted_lines[line]['X data']}',
-                                                    f'{line}_{current_item.data.plotted_lines[line]['Y data']}',
-                                                    f'{line}_{current_item.data.plotted_lines[line]['X data']}_fit']
-                                        data[headers[0]]=current_item.data.plotted_lines[line]['processed_data'][0].tolist()
-                                        data[headers[1]]=current_item.data.plotted_lines[line]['processed_data'][1].tolist()
-                                        if 'fit' in current_item.data.plotted_lines[line].keys() and current_item.data.plotted_lines[line]['fit']['fit_checkstate']:
-                                            data[headers[2]]=current_item.data.plotted_lines[line]['fit']['xdata'].tolist()
-                                            fit_result=current_item.data.plotted_lines[line]['fit']['fit_result']
-                                            data[f'{line}_{current_item.data.plotted_lines[line]['Y data']}'+'_fit']=fit_result.best_fit.tolist()
-                                            data[f'{line}_{current_item.data.plotted_lines[line]['Y data']}'+'_fit_error']=fit_result.eval_uncertainty().tolist()
-                                            fit_components=fit_result.eval_components()
-                                            for component in fit_components:
-                                                data[f'{line}_{current_item.data.plotted_lines[line]['Y data']}'+'_'+component]=fit_components[component].tolist()
-                        except Exception as e:
-                            self.log_error(f'Error processing data for export:\n{type(e).__name__}: {e}', show_popup=True)
-
-                        if '.json' in ext:
+                        elif '.json' in ext:
                             try:
-                                data['shape']=list(np.shape(current_item.data.processed_data[2]))
                                 with open(filepath, 'w') as json_file:
                                     jsondump(data, json_file,ensure_ascii=False, indent=4)
                             except Exception as e:
