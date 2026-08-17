@@ -647,7 +647,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 if attr=='plotted_lines':
                                     self.reload_plotted_lines(item.data,item)
 
-                            if 'processed_data' in attr_dicts[i]: # If the data had been plotted we need to force load it here
+                            if 'processed_data' in attr_dicts[i] and not item.filepath=='internal_data': # If the data had been plotted we need to force load it here
                                                                     # otherwise the data will be in some weird state.
                                 item.data.prepare_data_for_plot(reload_data=True,reload_from_file=True)
                             
@@ -759,8 +759,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
                     QtWidgets.QMessageBox.No,
             )
-            if confirm != QtWidgets.QMessageBox.Yes:
-                return
+                if confirm != QtWidgets.QMessageBox.Yes:
+                    return
 
             update_plots = any([item.checkState() == 2 for item in items]) # only update plots if any of the items are checked
             for item in items:

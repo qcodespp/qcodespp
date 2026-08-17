@@ -611,13 +611,12 @@ class BaseClassData:
         self.axes.tick_params(labelsize=self.settings['ticksize'], 
                               width=float(self.settings['spinewidth']), 
                               color=rcParams['axes.edgecolor'])
+        self.axes.grid(False)
         if self.settings['grid'] in ['both', 'x', 'y']:
             if self.settings['minorticks'] == 'True':
                 self.axes.grid(axis=self.settings['grid'], which='both')
             else:
                 self.axes.grid(axis=self.settings['grid'], which='major')
-        elif self.settings['grid'] == 'off':
-            self.axes.grid(False)
         if self.settings['minorticks'] == 'True':
             self.axes.minorticks_on()
         if self.settings['title'] == '<label>':
@@ -786,7 +785,6 @@ class InternalData(BaseClassData):
         self.label = label_name
         self.dim = dimension
         self.settings['title'] = self.label
-
         self.prepare_dataset()
 
     def prepare_dataset(self):
