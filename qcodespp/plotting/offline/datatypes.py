@@ -89,6 +89,12 @@ class BaseClassData:
             except Exception:
                 self.creation_time = None
 
+    def check_settings(self):
+        # As the software updates, new settings may be added. This function checks if any are missing and adds them with default values.
+        for setting in self.DEFAULT_PLOT_SETTINGS.keys():
+            if setting not in self.settings.keys():
+                self.settings[setting] = self.DEFAULT_PLOT_SETTINGS[setting]
+
     def load_dat(self):
         try:
             self.loaded_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'])

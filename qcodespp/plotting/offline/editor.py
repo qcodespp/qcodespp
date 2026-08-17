@@ -594,6 +594,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                                 'extra_cols','dataset1d_type','dataset2d_type',
                                                 'dataset1d_plotted_lines','dataset2d_linecuts']:
                                     setattr(item.data,attr,value)
+                                    if attr == 'settings':
+                                        item.data.check_settings()
 
                                 elif attr=='is_current_item' and value:
                                     item_to_set_current=item
