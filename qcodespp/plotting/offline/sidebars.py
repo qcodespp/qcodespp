@@ -226,7 +226,7 @@ class Sidebar1D(QtWidgets.QWidget):
         self.setLayout(self.main_layout)
 
     def init_trace_table(self):
-        headerlabels=['#','X data','Y data','style','color', 'width',
+        headerlabels=['#','X data','Y data','style','color','width','label',
                       'Xerr','Yerr','show fit','show fit cmpts','show fit err']
         self.trace_table.setColumnCount(len(headerlabels))
         self.trace_table.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked)
@@ -247,10 +247,10 @@ class Sidebar1D(QtWidgets.QWidget):
         self.trace_table.setRowCount(0)
         self.trace_table.clear()
         if self.parent.plot_type == 'Histogram':
-            self.trace_table.setHorizontalHeaderLabels(['#','Bins','Data','style','color', 'width',
+            self.trace_table.setHorizontalHeaderLabels(['#','Bins','Data','style','color','width','label',
                                                         'Xerr','Yerr','show fit','show fit cmpts','show fit err'])
         else:
-            self.trace_table.setHorizontalHeaderLabels(['#','X data','Y data','style','color', 'width',
+            self.trace_table.setHorizontalHeaderLabels(['#','X data','Y data','style','color','width','label',
                                                         'Xerr','Yerr','show fit','show fit cmpts','show fit err'])
         for line in self.parent.plotted_lines.keys():
             self.append_trace_to_table(line)
@@ -284,7 +284,7 @@ class Sidebar1D(QtWidgets.QWidget):
         if traces_or_fits == 'traces':
             column = 0
         elif traces_or_fits == 'fits':
-            column = 8
+            column = 9
         indices = [index for index in range(self.trace_table.rowCount()) 
                    if self.trace_table.item(index,column).checkState() == 2 or 
                    self.trace_table.item(index,column).checkState()== QtCore.Qt.Checked]
@@ -319,6 +319,7 @@ class Sidebar1D(QtWidgets.QWidget):
             line={'checkstate': 2,
                 'X data': self.parent.all_parameter_names[0],
                 'Y data': self.parent.all_parameter_names[ycol],
+                'label': self.parent.all_parameter_names[ycol],
                 'Bins': 100,
                 'Xerr':0,
                 'Yerr':0,
@@ -395,9 +396,9 @@ class Sidebar1D(QtWidgets.QWidget):
             combo = self._make_data_combo(line_idx, 'Y data')
         elif col == 3:
             combo = self._make_style_combo(line_idx)
-        elif col == 6:
-            combo = self._make_err_combo(line_idx, 'Xerr')
         elif col == 7:
+            combo = self._make_err_combo(line_idx, 'Xerr')
+        elif col == 8:
             combo = self._make_err_combo(line_idx, 'Yerr')
         else:
             return None
@@ -470,11 +471,12 @@ class Sidebar1D(QtWidgets.QWidget):
         self.trace_table.setCellWidget(row,3,self._make_style_combo(index))
         self.trace_table.setItem(row,4,color_box)
         self.trace_table.setItem(row,5,width_item)
-        self.trace_table.setCellWidget(row,6,self._make_err_combo(index,'Xerr'))
-        self.trace_table.setCellWidget(row,7,self._make_err_combo(index,'Yerr'))
-        self.trace_table.setItem(row,8,plot_fit_item)
-        self.trace_table.setItem(row,9,plot_components_item)
-        self.trace_table.setItem(row,10,plot_uncertainty_item)
+        self.trace_table.setItem(row,6,QtWidgets.QTableWidgetItem(line.get('label', line['Y data'])))
+        self.trace_table.setCellWidget(row,7,self._make_err_combo(index,'Xerr'))
+        self.trace_table.setCellWidget(row,8,self._make_err_combo(index,'Yerr'))
+        self.trace_table.setItem(row,9,plot_fit_item)
+        self.trace_table.setItem(row,10,plot_components_item)
+        self.trace_table.setItem(row,11,plot_uncertainty_item)
 
         self.trace_table.itemChanged.connect(self.trace_table_edited)
         self.trace_table.setCurrentCell(row,0)
@@ -487,18 +489,18 @@ class Sidebar1D(QtWidgets.QWidget):
         line = int(self.trace_table.item(current_row,0).text())
 
         if self.parent.plot_type == 'Histogram':
-            edit_dict={1:'Bins',5:'linewidth'}
+            edit_dict={1:'Bins',5:'linewidth',6:'label'}
         else:
-            edit_dict={5:'linewidth'}
+            edit_dict={5:'linewidth',6:'label'}
 
         if current_col in edit_dict.keys():
             self.parent.plotted_lines[line][edit_dict[current_col]] = current_item.text()
 
-        elif current_col == 8:
-            self.parent.plotted_lines[line]['fit']['fit_checkstate'] = current_item.checkState()
         elif current_col == 9:
-            self.parent.plotted_lines[line]['fit']['fit_components_checkstate'] = current_item.checkState()
+            self.parent.plotted_lines[line]['fit']['fit_checkstate'] = current_item.checkState()
         elif current_col == 10:
+            self.parent.plotted_lines[line]['fit']['fit_components_checkstate'] = current_item.checkState()
+        elif current_col == 11:
             self.parent.plotted_lines[line]['fit']['fit_uncertainty_checkstate'] = current_item.checkState()
 
         elif current_col == 0: # It's the checkstate for the linetrace.
@@ -621,7 +623,7 @@ class Sidebar1D(QtWidgets.QWidget):
             if item:
                 self.choose_color(item, row)
         
-        elif column in [0,8,9,10]:
+        elif column in [0,9,10,11]:
             menu = QtWidgets.QMenu(self)
 
             if column==0:
@@ -629,14 +631,14 @@ class Sidebar1D(QtWidgets.QWidget):
                 check_all_action = menu.addAction("Check all")
                 uncheck_all_action = menu.addAction("Uncheck all")
 
-            elif column==8:
+            elif column==9:
                 check_all_action = menu.addAction("Show all fits")
                 uncheck_all_action = menu.addAction("Hide all fits")
 
-            elif column==9:
+            elif column==10:
                 check_all_action = menu.addAction("Show all fit components")
                 uncheck_all_action = menu.addAction("Hide all fit components")
-            elif column==10:
+            elif column==11:
                 check_all_action = menu.addAction("Show all fit errors")
                 uncheck_all_action = menu.addAction("Hide all fit errors")
 
@@ -658,11 +660,11 @@ class Sidebar1D(QtWidgets.QWidget):
             linetrace=int(self.trace_table.item(row,0).text())
             if column==0:
                 self.parent.plotted_lines[linetrace]['checkstate'] = item.checkState()
-            elif column==8:
-                self.parent.plotted_lines[linetrace]['fit']['fit_checkstate'] = item.checkState()
             elif column==9:
-                self.parent.plotted_lines[linetrace]['fit']['fit_components_checkstate'] = item.checkState()
+                self.parent.plotted_lines[linetrace]['fit']['fit_checkstate'] = item.checkState()
             elif column==10:
+                self.parent.plotted_lines[linetrace]['fit']['fit_components_checkstate'] = item.checkState()
+            elif column==11:
                 self.parent.plotted_lines[linetrace]['fit']['fit_uncertainty_checkstate'] = item.checkState()
 
     def replace_table_entry(self, signal):
@@ -852,21 +854,21 @@ class Sidebar1D(QtWidgets.QWidget):
                                         QtCore.Qt.ItemIsEnabled | 
                                         QtCore.Qt.ItemIsUserCheckable)
                     plot_fit_item.setCheckState(QtCore.Qt.Checked)
-                    self.trace_table.setItem(current_row,8,plot_fit_item)
+                    self.trace_table.setItem(current_row,9,plot_fit_item)
 
                     plot_components_item = QtWidgets.QTableWidgetItem('')
                     plot_components_item.setFlags(QtCore.Qt.ItemIsSelectable |
-                                        QtCore.Qt.ItemIsEnabled | 
+                                        QtCore.Qt.ItemIsEnabled |
                                         QtCore.Qt.ItemIsUserCheckable)
                     plot_components_item.setCheckState(QtCore.Qt.Unchecked)
-                    self.trace_table.setItem(current_row,9,plot_components_item)
+                    self.trace_table.setItem(current_row,10,plot_components_item)
 
                     plot_uncertainty_item = QtWidgets.QTableWidgetItem('')
                     plot_uncertainty_item.setFlags(QtCore.Qt.ItemIsSelectable |
-                                        QtCore.Qt.ItemIsEnabled | 
+                                        QtCore.Qt.ItemIsEnabled |
                                         QtCore.Qt.ItemIsUserCheckable)
                     plot_uncertainty_item.setCheckState(QtCore.Qt.Checked)
-                    self.trace_table.setItem(current_row,10,plot_uncertainty_item)
+                    self.trace_table.setItem(current_row,11,plot_uncertainty_item)
                     self.trace_table.itemChanged.connect(self.trace_table_edited)
                     success=True
 
@@ -1022,7 +1024,7 @@ class Sidebar1D(QtWidgets.QWidget):
                                         markersize=self.parent.plotted_lines[line]['linewidth'],
                                         color=self.parent.plotted_lines[line]['linecolor'],
                                         drawstyle=drawstyle,
-                                        label=self.parent.plotted_lines[line]['Y data'])
+                                        label=self.parent.plotted_lines[line].get('label', self.parent.plotted_lines[line]['Y data']))
 
                     if self.parent.plotted_lines[line]['Xerr'] not in [0,'0'] or self.parent.plotted_lines[line]['Yerr'] not in [0,'0']:
                         self.process_uncertainties(line,x,y)
@@ -1144,9 +1146,9 @@ class Sidebar1D(QtWidgets.QWidget):
 
         if 'fit' in self.parent.plotted_lines[line].keys():
             self.parent.plotted_lines[line].pop('fit')
-            self.trace_table.setItem(row,8,QtWidgets.QTableWidgetItem(''))
             self.trace_table.setItem(row,9,QtWidgets.QTableWidgetItem(''))
             self.trace_table.setItem(row,10,QtWidgets.QTableWidgetItem(''))
+            self.trace_table.setItem(row,11,QtWidgets.QTableWidgetItem(''))
             if manual:
                 self.editor_window.update_plots(update_data=False)
 

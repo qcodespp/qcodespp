@@ -460,6 +460,7 @@ class BaseClassData:
         self.plotted_lines = {0: {'checkstate': 2,
                         'X data': self.all_parameter_names[0],
                         'Y data': self.all_parameter_names[1],
+                        'label': self.all_parameter_names[1],
                         'Bins': 100,
                         'Xerr': 0,
                         'Yerr': 0,

@@ -2115,11 +2115,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.paste_axlim_settings(which='old')
 
     def reset_axlim_settings(self):
-        current_item = self.file_list.currentItem()
-        if current_item:
-            current_item.data.reset_axlim_settings()
-            self.show_current_axlim_settings()
-            self.canvas.draw()
+        if not self.lock_axlim_checkbox.isChecked():
+            current_item = self.file_list.currentItem()
+            if current_item:
+                current_item.data.reset_axlim_settings()
+                self.show_current_axlim_settings()
+                self.canvas.draw()
 
     def axis_scaling_changed(self):
         current_item = self.file_list.currentItem()
