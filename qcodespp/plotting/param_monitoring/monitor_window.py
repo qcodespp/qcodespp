@@ -292,9 +292,9 @@ class MonitorWindow(QMainWindow):
                 self._copy_canvas()
                 self.figure.suptitle('')
                 self.canvas.draw()
-            except Exception as exc:
+            except Exception as e:
                 #QMessageBox.critical(self, "Save Error", f"Could not create qcodes++ file:\n{exc}")
-                print(f"Error creating qcodes++ file: {exc.__class__.__name__}: {exc}")
+                print(f"Error creating qcodes++ file: {e.__class__.__name__}: {e}")
             # Restore the old location provider and default folder if they existed.
             if old_provider is not None:
                 DataSetPP.location_provider = old_provider
