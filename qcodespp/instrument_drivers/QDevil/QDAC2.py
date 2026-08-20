@@ -2275,16 +2275,9 @@ class QDac2(VisaInstrument):
         self.subnet_mask = self.add_parameter('subnet_mask',
                                               get_cmd='syst:comm:lan:smas?',
                                               set_cmd='syst:comm:lan:smas {}')
-        self.lan_timeout = self.add_parameter('lan_timeout',
-                                              get_cmd='syst:comm:lan:tim?',
-                                              set_cmd='syst:comm:lan:tim {}')
 
     def update_lan(self):
         self.write('syst:comm:lan:upd')
-        sleep_s(2)
-
-    def restart_lan(self):
-        self.write('syst:comm:lan:rest')
         sleep_s(2)
 
     def n_channels(self) -> int:

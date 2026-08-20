@@ -188,11 +188,36 @@ class QSwitch(Instrument):
         )
         self._add_monitor_pseudo_parameters()
 
+        self.dhcp = self.add_parameter('dhcp', get_cmd='syst:comm:lan:dhcp?',
+                                       set_cmd='syst:comm:lan:dhcp {}',
+                                       vals = Enum(0, 1))
+        self.hostname = self.add_parameter('hostname',
+                                           get_cmd='syst:comm:lan:host?',
+                                           set_cmd='syst:comm:lan:host {}')
+        self.mac_address = self.add_parameter('mac_address',
+                                              get_cmd='syst:comm:lan:mac?')
+        self.ip_address = self.add_parameter('ip_address',
+                                            get_cmd='syst:comm:lan:ipad?',
+                                            set_cmd='syst:comm:lan:ipad "{}"')
+        self.gateway = self.add_parameter('gateway',
+                                          get_cmd='syst:comm:lan:gat?',
+                                          set_cmd='syst:comm:lan:gat "{}"')
+        self.subnet_mask = self.add_parameter('subnet_mask',
+                                              get_cmd='syst:comm:lan:smas?',
+                                              set_cmd='syst:comm:lan:smas {}')
+        self.lan_timeout = self.add_parameter('lan_timeout',
+                                              get_cmd='syst:comm:lan:tim?',
+                                              set_cmd='syst:comm:lan:tim {}')
+
         self.locked_relays = []  # list of relays that are not reset when calling the soft_reset command
 
     # -----------------------------------------------------------------------
     # Instrument-wide functions
     # -----------------------------------------------------------------------
+
+    def restart_lan(self):
+        self.write('syst:comm:lan:rest')
+        sleep_s(2)
 
     def reset(self) -> None:
         self._write('*rst')
