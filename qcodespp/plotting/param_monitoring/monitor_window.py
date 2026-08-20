@@ -38,7 +38,7 @@ class MonitorWindow(QMainWindow):
         self.times = [] #deque(maxlen=maxlen)
         self.param_dict = self._make_param_dict()
         self.data = {key: [] for key in self.param_dict.keys()} #{param.name: deque(maxlen=maxlen) for param in params}
-
+        self.prev_save_path = ''
         self.station = station
         self._build_ui()
 
@@ -265,7 +265,7 @@ class MonitorWindow(QMainWindow):
         filepath, _ = QFileDialog.getSaveFileName(
             self,
             'Save monitor data',
-            '',
+            self.prev_save_path,
             'All Files (*)'
         )
         if not filepath:
@@ -276,6 +276,7 @@ class MonitorWindow(QMainWindow):
             old_provider = DataSetPP.location_provider or None
             old_default = DataSetPP.default_folder or None
             filename=filepath.split('/')[-1].split('.')[0]
+            self.prev_save_path = filepath
             set_data_folder('/'.join(filepath.split('/')[:-1]))
             station = station or self.station or Station.default or None
             try:
@@ -283,8 +284,14 @@ class MonitorWindow(QMainWindow):
                 data_param = ParamCache(name="data_param", window=self)
                 measure = Measure(data_param, setpoints=[time_param],station=station)
                 data_set=measure.run(name=filename,station=station,quiet=True)
-                self.fig.savefig(data_set.location+".png", transparent=True,
+                title=f'{data_set.location.split("/")[-1]}'
+                self.figure.suptitle(title, fontsize=12)
+                self.canvas.draw()
+                self.figure.savefig(data_set.location+".png", dpi=600,
                                     bbox_inches='tight')
+                self._copy_canvas()
+                self.figure.suptitle('')
+                self.canvas.draw()
             except Exception as exc:
                 #QMessageBox.critical(self, "Save Error", f"Could not create qcodes++ file:\n{exc}")
                 print(f"Error creating qcodes++ file: {exc.__class__.__name__}: {exc}")
@@ -299,7 +306,7 @@ class MonitorWindow(QMainWindow):
 
     def _copy_canvas(self):
         buf = BytesIO()
-        self.fig.savefig(buf, dpi=600, bbox_inches='tight')
+        self.figure.savefig(buf, dpi=600, bbox_inches='tight')
         QApplication.clipboard().setImage(QImage.fromData(buf.getvalue()))
         buf.close()
 
