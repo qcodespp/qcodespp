@@ -699,6 +699,8 @@ class QSwitch(Instrument):
         try:
             return self._line_names[name]
         except KeyError:
+            if isinstance(name,float):
+                return int(name)
             raise ValueError(f'Unknown line "{name}"')
 
     def _to_tap(self, name: Union[str,int]) -> int:
@@ -707,6 +709,8 @@ class QSwitch(Instrument):
         try:
             return self._tap_names[name]
         except KeyError:
+            if isinstance(name,float):
+                return int(name)
             raise ValueError(f'Unknown tap "{name}"')
 
     def _get_state(self) -> str:
