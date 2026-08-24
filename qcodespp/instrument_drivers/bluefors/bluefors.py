@@ -1,4 +1,4 @@
-from qcodes import Instrument
+from qcodes.instrument import Instrument
 import pandas as pd
 import numpy as np
 

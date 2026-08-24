@@ -4,7 +4,8 @@ from functools import partial
 import serial
 import numpy as np
 
-from qcodes import Instrument, MultiParameter
+from qcodes.instrument import Instrument
+from qcodes.parameters import MultiParameter
 
 log = logging.getLogger(__name__)
 

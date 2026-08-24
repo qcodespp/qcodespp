@@ -1,7 +1,7 @@
 from functools import partial
 from typing import Optional, Union
 
-from qcodes import VisaInstrument, InstrumentChannel
+from qcodes.instrument import VisaInstrument, InstrumentChannel
 from qcodes.validators import Numbers, Bool, Enum, Ints
 
 def float_round(val):

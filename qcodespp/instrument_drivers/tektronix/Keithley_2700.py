@@ -25,7 +25,7 @@
 import logging
 from functools import partial
 
-from qcodes import VisaInstrument
+from qcodes.instrument import VisaInstrument
 from qcodes.validators import Strings as StringValidator
 from qcodes.validators import Ints as IntsValidator
 from qcodes.validators import Numbers as NumbersValidator

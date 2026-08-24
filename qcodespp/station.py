@@ -18,8 +18,8 @@ from qcodespp.parameters import Parameter
 from qcodespp.actions import BreakIf
 from qcodes.parameters import ParameterBase , ElapsedTimeParameter
 
-from qcodes import Station as QStation
-from qcodes import Instrument
+from qcodes.station import Station as QStation
+from qcodes.instrument import Instrument
 from qcodespp.actions import _actions_snapshot
 from numpy import mean
 

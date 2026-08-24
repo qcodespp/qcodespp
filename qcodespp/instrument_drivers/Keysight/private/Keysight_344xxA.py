@@ -6,7 +6,7 @@ import logging
 
 from qcodes.parameters import ArrayParameter
 import qcodes.validators as vals
-from qcodes import VisaInstrument
+from qcodes.instrument import VisaInstrument
 from pyvisa import VisaIOError
 
 log = logging.getLogger(__name__)

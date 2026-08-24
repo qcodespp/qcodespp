@@ -17,7 +17,7 @@ import time
 import numpy as np
 
 from qcodes.validators import Numbers, Enum
-from qcodes import VisaInstrument
+from qcodes.instrument import VisaInstrument
 import pyvisa.constants as vi_const
 
 

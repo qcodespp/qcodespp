@@ -1,7 +1,7 @@
 import time
 
 
-from qcodes import Instrument
+from qcodes.instrument import Instrument
 from qcodes.validators import Numbers, Ints, Enum
 from qcodes.parameters import SweepFixedValues
 
@@ -15,7 +15,7 @@ from PyDAQmx.DAQmxConstants import *
 from PyDAQmx import Task, int32, DAQmxStartTask
 from ctypes import byref
 
-from qcodes import MultiParameter
+from qcodes.parameters import MultiParameter
 
 import warnings
 

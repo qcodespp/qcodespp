@@ -102,7 +102,7 @@ def colorplot(x,y,z,figsize=0,cmap=0,labels=0,xlim=0,ylim=0,zlim=0,xmajor=0,
     
     return (fig,ax1,cax)
 
-def colored_traces(x,y, offset=0,figsize=0, cmap=0, labels=0, xlim=0, ylim=0,style='-',
+def colored_traces(x,y, offset=0,figsize=0, cmap=0, labels=0, trace_labels=0,xlim=0, ylim=0,style='-',
                     xmajor=0, xminor=0, ymajor=0, yminor=0, font_size=0, label_size=0):
     """
     Plot a series of 1D traces where the lines are colored according to a matplotlib colormap.
@@ -160,7 +160,11 @@ def colored_traces(x,y, offset=0,figsize=0, cmap=0, labels=0, xlim=0, ylim=0,sty
     
     colors= plt.get_cmap(cmap)(np.linspace(0.1,0.9, np.shape(y)[0]))
     for i in range(np.shape(y)[0]):
-        ax1.plot(x[i], y[i]+offset*i, style,color=colors[i])
+        if trace_labels!=0:
+            ax1.plot(x[i], y[i]+offset*i, style,color=colors[i],label=trace_labels[i])
+            ax1.legend(fontsize=label_size)
+        else:
+            ax1.plot(x[i], y[i]+offset*i, style,color=colors[i])
 
     ax1.set_xlabel(labels[0], fontsize=font_size, labelpad=10)
     ax1.set_ylabel(labels[1], fontsize=font_size, labelpad=10)

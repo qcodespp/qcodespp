@@ -5,7 +5,7 @@ Exists in qcodes++ solely to support an old Oxford MercuryiPS. All new drivers s
 """
 import serial
 
-from qcodes import Instrument
+from qcodes.instrument import Instrument
 
 
 class SerialInstrument(Instrument):
