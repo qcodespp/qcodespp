@@ -7,38 +7,34 @@ from qcodes.instrument import VisaInstrument, InstrumentChannel
 from qcodes.parameters import Parameter, create_on_off_val_mapping
 from qcodes.validators import Enum, Numbers
 
-class Keysight_E5063A(VisaInstrument):
+# Setting frequency range
+MIN_FREQ = 100e3
+MAX_FREQ = 18e9
+
+class Keysight_E5063A_Channel(InstrumentChannel):
     """
-    Qcodes driver for the Keysight E5063A Vector Network Analyzer.
+    Qcodes driver for the Keysight E5063A Vector Network Analyzer channel.
     Not tested 14/09/2026. Simply constructed from the manual.
     """
 
-    def __init__(self, name: str, address: str, **kwargs: Any) -> None:
-        time.sleep(5)  # Required sleep to ensure the instruments can start being queried
-        super().__init__(name, address, terminator="\n", **kwargs)
+    def __init__(self, parent: VisaInstrument, name: str, channel_number: int) -> None:
+        super().__init__(parent, name)
+        self.channel_number = channel_number
 
-        # Setting frequency range
-        min_freq = 100e3
-        max_freq = 18e9
-
-        # Set the units for returning S-parameters
-        self.snp_format: Parameter = self.add_parameter(
-            "snp_format",
-            label="SNP Format",
-            get_cmd="MMEM:STOR:SNP:FORM?",
-            set_cmd="MMEM:STOR:SNP:FORM {}",
-            vals=Enum("RI", "MA", "DB", "AUTO"),
-        )
+        for trace_number in range(1, 5):  # 4 traces per channel
+            trace_name = f"tr{trace_number}"
+            trace = Keysight_E5063A_Trace(self, trace_name, channel_number, trace_number)
+            self.add_submodule(trace_name, trace)        
 
         # Sets the start frequency of the analyzer.
         self.start_freq: Parameter = self.add_parameter(
             "start_freq",
             label="Start Frequency",
-            get_cmd="SENS:FREQ:STAR?",
+            get_cmd=f"SENS{channel_number}:FREQ:STAR?",
             get_parser=float,
-            set_cmd="SENS:FREQ:STAR {}",
+            set_cmd=f"SENS{channel_number}:FREQ:STAR {{}}",
             unit="Hz",
-            vals=Numbers(min_value=min_freq, max_value=max_freq),
+            vals=Numbers(min_value=MIN_FREQ, max_value=MAX_FREQ),
         )
         """Parameter start_freq"""
 
@@ -46,11 +42,11 @@ class Keysight_E5063A(VisaInstrument):
         self.stop_freq: Parameter = self.add_parameter(
             "stop_freq",
             label="Stop Frequency",
-            get_cmd="SENS:FREQ:STOP?",
+            get_cmd=f"SENS{channel_number}:FREQ:STOP?",
             get_parser=float,
-            set_cmd="SENS:FREQ:STOP {}",
+            set_cmd=f"SENS{channel_number}:FREQ:STOP {{}}",
             unit="Hz",
-            vals=Numbers(min_value=min_freq, max_value=max_freq),
+            vals=Numbers(min_value=MIN_FREQ, max_value=MAX_FREQ),
         )
         """Parameter stop_freq"""
 
@@ -58,11 +54,11 @@ class Keysight_E5063A(VisaInstrument):
         self.center_freq: Parameter = self.add_parameter(
             "center_freq",
             label="Center Frequency",
-            get_cmd="SENS:FREQ:CENT?",
+            get_cmd=f"SENS{channel_number}:FREQ:CENT?",
             get_parser=float,
-            set_cmd="SENS:FREQ:CENT {}",
+            set_cmd=f"SENS{channel_number}:FREQ:CENT {{}}",
             unit="Hz",
-            vals=Numbers(min_value=min_freq, max_value=max_freq),
+            vals=Numbers(min_value=MIN_FREQ, max_value=MAX_FREQ),
         )
         """Parameter center_freq"""
 
@@ -70,9 +66,9 @@ class Keysight_E5063A(VisaInstrument):
         self.span: Parameter = self.add_parameter(
             "span",
             label="Frequency Span",
-            get_cmd="SENS:FREQ:SPAN?",
+            get_cmd=f"SENS{channel_number}:FREQ:SPAN?",
             get_parser=float,
-            set_cmd="SENS:FREQ:SPAN {}",
+            set_cmd=f"SENS{channel_number}:FREQ:SPAN {{}}",
             unit="Hz",
         )
         """Parameter span"""
@@ -81,21 +77,55 @@ class Keysight_E5063A(VisaInstrument):
         self.points: Parameter = self.add_parameter(
             "points",
             label="Points",
-            get_cmd="SENS:SWE:POIN?",
+            get_cmd=f"SENS{channel_number}:SWE:POIN?",
             get_parser=int,
-            set_cmd="SENS:SWE:POIN {}",
+            set_cmd=f"SENS{channel_number}:SWE:POIN {{}}",
             unit="",
             vals=Numbers(min_value=1, max_value=100003),
         )
         """Parameter points"""
+
+        self.x: Parameter = self.add_parameter(
+            "x",
+            get_cmd=self._get_x,
+            label="X Data",
+            unit="",
+        )
+
+        self.freq: Parameter = self.add_parameter(
+            "freq",
+            get_cmd=self._get_freq,
+            label="Frequency",
+            unit="Hz",
+        )
+
+        # Set the units for returning S-parameters
+        self.snp_format: Parameter = self.add_parameter(
+            "snp_format",
+            label="SNP Format",
+            get_cmd=self._get_snp_format,
+            set_cmd=self._set_snp_format,
+            vals=Enum("RI", "MA", "DB", "AUTO"),
+        )
+        """Parameter snp_format"""
+
+        self.data_format: Parameter = self.add_parameter(
+            "data_format",
+            label="Data Format",
+            get_cmd=f"CALC{channel_number}:FORM",
+            set_cmd=f"CALC{channel_number}:FORM {{}}",
+            vals=Enum("MLOG", "PHAS", "GDEL", "SLIN", "SLOG", "SCOM", "SMIT", "SADM", "PLIN", 
+                      "PLOG", "POL", "MLIN", "SWR", "REAL", "IMAG", "UPH", "PPH"),
+        )
+        """Parameter data_format"""
 
         # Sets the RF power output level.
         self.source_power: Parameter = self.add_parameter(
             "source_power",
             label="source_power",
             unit="dBm",
-            get_cmd="SOUR:POW?",
-            set_cmd="SOUR:POW {}",
+            get_cmd=f"SOUR{channel_number}:POW?",
+            set_cmd=f"SOUR{channel_number}:POW {{}}",
             get_parser=float,
             vals=Numbers(min_value=-100, max_value=20),
         )
@@ -106,8 +136,8 @@ class Keysight_E5063A(VisaInstrument):
             "if_bandwidth",
             label="if_bandwidth",
             unit="Hz",
-            get_cmd="SENS:BWID?",
-            set_cmd="SENS:BWID {}",
+            get_cmd=f"SENS{channel_number}:BWID?",
+            set_cmd=f"SENS{channel_number}:BWID {{}}",
             get_parser=float,
             vals=Numbers(min_value=1, max_value=15e6),
         )
@@ -117,13 +147,201 @@ class Keysight_E5063A(VisaInstrument):
         self.sweep_type: Parameter = self.add_parameter(
             "sweep_type",
             label="Type",
-            get_cmd="SENS:SWE:TYPE?",
-            set_cmd="SENS:SWE:TYPE {}",
+            get_cmd=f"SENS{channel_number}:SWE:TYPE?",
+            set_cmd=f"SENS{channel_number}:SWE:TYPE {{}}",
             vals=Enum("LIN", "LOG", "SEGM"),
         )
         """Parameter sweep_type"""
 
-        # Sets the source of the sweep trigger signal. Default is IMMediate.
+        # Sets the time the analyzer takes to complete one sweep.
+        self.sweep_time: Parameter = self.add_parameter(
+            "sweep_time",
+            label="sweep_time",
+            unit="s",
+            get_parser=float,
+            get_cmd=f"SENS{channel_number}:SWE:TIME?",
+            set_cmd=f"SENS{channel_number}:SWE:TIME {{}}",
+        )
+        """Parameter sweep_time"""
+
+        # Turns the automatic sweep time function ON or OFF.
+        self.sweep_time_auto: Parameter = self.add_parameter(
+            "sweep_time_auto",
+            label="sweep_time_auto",
+            get_parser=float,
+            get_cmd=f"SENS{channel_number}:SWE:TIME:AUTO?",
+            set_cmd=f"SENS{channel_number}:SWE:TIME:AUTO {{}}",
+            val_mapping=create_on_off_val_mapping(on_val=1, off_val=0),
+        )
+        """Parameter sweep_time_auto"""
+
+        # Turns trace averaging ON or OFF. Default OFF
+        self.averages_enabled: Parameter = self.add_parameter(
+            "averages_enabled",
+            label="Averages Enabled",
+            get_cmd=f"SENS{channel_number}:AVER?",
+            set_cmd=f"SENS{channel_number}:AVER {{}}",
+            val_mapping=create_on_off_val_mapping(on_val="1", off_val="0"),
+        )
+        """Parameter averages_enabled"""
+
+        # Sets the number of measurements to combine for an average. Must also set SENS:AVER[:STATe] ON
+        self.averages_count: Parameter = self.add_parameter(
+            "averages_count",
+            label="Averages Count",
+            get_cmd=f"SENS{channel_number}:AVER:COUN?",
+            get_parser=int,
+            set_cmd=f"SENS{channel_number}:AVER:COUN {{}}",
+            vals=Numbers(min_value=1, max_value=999),
+        )
+        """Parameter averages count"""
+
+        # Clear averages
+        # Clears and restarts averaging of the measurement data. Does NOT apply to point averaging.
+        self.add_function("clear_averages", call_cmd="SENS:AVER:CLE")
+
+        self.cal_kit: Parameter = self.add_parameter(
+            "cal_kit",
+            get_cmd=f'SENS{channel_number}:CORR:COLL:CKIT?',
+            set_cmd=f'SENS{channel_number}:CORR:COLL:CKIT {{}}',
+            label="Calibration Kit",
+            vals=vals.Ints(1, 30),
+        )
+
+        self.cal_type: Parameter = self.add_parameter(
+            "cal_type",
+            get_cmd=f'SENS{channel_number}:CORR:COLL:METH:TYPE?',
+            set_cmd=f'SENS{channel_number}:CORR:COLL:METH:TYPE {{}}',
+            label="Calibration Type",
+            vals=vals.Enum("ERES", "OPEN", "SHOR", "SOLT1", "SOLT2", "THRU", "TRL2"),
+        )
+
+        self.applied_cal_type: Parameter = self.add_parameter(
+            "applied_cal_type",
+            get_cmd=f'SENS{channel_number}:CORR:TYPE?',
+            label="Applied Calibration Type",
+        )
+
+        self.cal_status: Parameter = self.add_parameter(
+            "cal_status",
+            get_cmd=f'SENS{channel_number}:CORR:STAT?',
+            label="Calibration Status",
+            set_cmd=f'SENS{channel_number}:CORR:STAT {{}}',
+            val_mapping=create_on_off_val_mapping(on_val="1", off_val="0"),
+        )
+
+        def coll_cal_data(self,cal_type,*port):
+            """Perform a calibration on the specified port."""
+            chan = self.channel_number
+            if cal_type == "THRU":
+                self.write(f'SENS{chan}:CORR:COLL:{cal_type} {port[0]},{port[1]}')
+            else:
+                self.write(f'SENS{chan}:CORR:COLL:{cal_type} {port[0]}')
+            while self.ask('*OPC?') != '1':
+                time.sleep(0.1)
+
+        def save_cal(self):
+            self.write(f'SENS{self.channel_number}:CORR:COLL:SAVE')
+
+    def _set_cal_type(self, value):
+        """Set the calibration type."""
+        chan = self.channel_number
+        self.write(f'SENS{chan}:CORR:COLL:METH:TYPE {value}')
+
+    def _get_x(self):
+        """return x axis values"""
+        chan = self.channel_number
+        return np.array(self.ask(f"CALC{chan}:DATA:XAX?").split(','), dtype=float)
+
+    def _get_freq(self):
+        """Get the frequency values."""
+        chan = self.channel_number
+        return np.array(self.ask(f"SENS{chan}:FREQ:DATA?").split(','), dtype=float)
+
+    def _get_snp_format(self):
+        """Get the S-parameter format."""
+        self.parent.set_active_channel(self.channel_number)
+        return self.ask("MMEM:STOR:SNP:FORM?")
+
+    def _set_snp_format(self, value):
+        """Set the S-parameter format."""
+        if value not in ["RI", "MA", "DB", "AUTO"]:
+            raise ValueError("S-parameter format must be one of: RI, MA, DB, AUTO.")
+        self.parent.set_active_channel(self.channel_number)
+        self.write(f"MMEM:STOR:SNP:FORM {value}")
+
+class Keysight_E5063A_Trace(InstrumentChannel):
+    """
+    Qcodes driver for the Keysight E5063A Vector Network Analyzer trace.
+    Not tested 14/09/2026. Simply constructed from the manual.
+    """
+
+    def __init__(self, parent: VisaInstrument, name: str, channel_number: int, trace_number: int) -> None:
+        super().__init__(parent, name)
+        self.channel_number = channel_number
+        self.trace_number = trace_number
+
+        self.data_format: Parameter = self.add_parameter(
+            "data_format",
+            label="Data Format",
+            get_cmd=f"CALC{channel_number}:TRAC{trace_number}:FORM",
+            set_cmd=f"CALC{channel_number}:TRAC{trace_number}:FORM {{}}",
+            vals=Enum("MLOG", "PHAS", "GDEL", "SLIN", "SLOG", "SCOM", "SMIT", "SADM", "PLIN", 
+                      "PLOG", "POL", "MLIN", "SWR", "REAL", "IMAG", "UPH", "PPH"),
+        )
+        """Parameter data_format"""
+
+        self.param_type: Parameter = self.add_parameter(
+            "param_type",
+            label="Parameter Type",
+            get_cmd=f"CALC{channel_number}:PAR{trace_number}:DEF?",
+            set_cmd=f"CALC{channel_number}:PAR{trace_number}:DEF {{}}",
+            vals=Enum("S11", "S12", "S21", "S22"),
+        )
+
+        self.data: Parameter = self.add_parameter(
+            "data",
+            get_cmd=self._get_data,
+            label=self.param_type(),
+            unit=self.parent.snp_format(),
+        )
+
+        self.y: Parameter = self.add_parameter(
+            "y",
+            get_cmd=self._get_y,
+            label="Y Data",
+            unit="",
+        )
+
+    def _get_data(self):
+        """Retrieve the complex measurement data for this trace."""
+        chan = self.channel_number
+        trace = self.trace_number
+        raw= np.array(self.ask(f"CALC{chan}:TRAC{trace}:DATA:SDAT?").split(','), dtype=float)
+        return [raw[::2],raw[1::2]]
+
+    def _get_y(self):
+        """Retrieve y data from this trace"""
+        chan = self.channel_number
+        trace = self.trace_number
+        return np.array(self.ask(f'CALC{chan}:TRAC{trace}:DATA:FDATA?').split(','), dtype=float)
+
+class Keysight_E5063A(VisaInstrument):
+    """
+    Qcodes driver for the Keysight E5063A Vector Network Analyzer.
+    Not tested 14/09/2026. Simply constructed from the manual.
+    """
+
+    def __init__(self, name: str, address: str, **kwargs: Any) -> None:
+        time.sleep(5)  # Required sleep to ensure the instruments can start being queried
+        super().__init__(name, address, terminator="\n", **kwargs)
+
+        for channel_number in range(1, 5):  # 4 channels
+            channel_name = f"ch{channel_number}"
+            channel = Keysight_E5063A_Channel(self, channel_name, channel_number)
+            self.add_submodule(channel_name, channel)
+
+                    # Sets the source of the sweep trigger signal. Default is IMMediate.
         self.trigger_source: Parameter = self.add_parameter(
             "trigger_source",
             label="Trigger Source",
@@ -142,49 +360,6 @@ class Keysight_E5063A(VisaInstrument):
             vals=Enum("POS", "NEG"),
         )
         """Trigger Slope"""
-
-        # Sets the time the analyzer takes to complete one sweep.
-        self.sweep_time: Parameter = self.add_parameter(
-            "sweep_time",
-            label="sweep_time",
-            unit="s",
-            get_parser=float,
-            get_cmd="SENS:SWE:TIME?",
-            set_cmd="SENS:SWE:TIME {}",
-        )
-        """Parameter sweep_time"""
-
-        # Turns the automatic sweep time function ON or OFF.
-        self.sweep_time_auto: Parameter = self.add_parameter(
-            "sweep_time_auto",
-            label="sweep_time_auto",
-            get_parser=float,
-            get_cmd="SENS:SWE:TIME:AUTO?",
-            set_cmd="SENS:SWE:TIME:AUTO {}",
-            val_mapping=create_on_off_val_mapping(on_val=1, off_val=0),
-        )
-        """Parameter sweep_time_auto"""
-
-        # Turns trace averaging ON or OFF. Default OFF
-        self.averages_enabled: Parameter = self.add_parameter(
-            "averages_enabled",
-            label="Averages Enabled",
-            get_cmd="SENS:AVER?",
-            set_cmd="SENS:AVER {}",
-            val_mapping=create_on_off_val_mapping(on_val="1", off_val="0"),
-        )
-        """Parameter averages_enabled"""
-
-        # Sets the number of measurements to combine for an average. Must also set SENS:AVER[:STATe] ON
-        self.averages_count: Parameter = self.add_parameter(
-            "averages_count",
-            label="Averages Count",
-            get_cmd="SENS:AVER:COUN?",
-            get_parser=int,
-            set_cmd="SENS:AVER:COUN {:d}",
-            vals=Numbers(min_value=1, max_value=999),
-        )
-        """Parameter averages count"""
 
         # Sets the data format for transferring measurement data and frequency data. Default is ASCii,0.
         self.format_data: Parameter = self.add_parameter(
@@ -229,10 +404,6 @@ class Keysight_E5063A(VisaInstrument):
 
         """Status Operation"""
 
-        # Clear averages
-        # Clears and restarts averaging of the measurement data. Does NOT apply to point averaging.
-        self.add_function("clear_averages", call_cmd="SENS:AVER:CLE")
-
         # Clear Status
         # Clears the instrument status byte by emptying the error queue and clearing all event registers. Also cancels any preceding *OPC command or query.
         self.add_function("cls", call_cmd="*CLS")
@@ -244,6 +415,12 @@ class Keysight_E5063A(VisaInstrument):
         # System Reset
         # Deletes all traces, measurements, and windows.
         self.add_function("system_reset", call_cmd="SYST:PRES")
+
+    def set_active_channel(self, channel_number: int):
+        """Set the active channel for the instrument."""
+        if channel_number not in [1, 2, 3, 4]:
+            raise ValueError("Channel number must be between 1 and 4.")
+        self.write(f"DISP:WIND{channel_number}:ACT")
 
     def get_data(self, chan=1, trace=1):
         """Retrieve the complex measurement data for a specified channel and trace."""
@@ -259,7 +436,7 @@ class Keysight_E5063A(VisaInstrument):
     
     def get_y(self,chan=1, trace=1):
         """Retrieve y data from specified trace"""
-        self.format_data("ASCii,0")  # recommended to avoid binary data parsing errors
+        self.format_data("ASCii")  # recommended to avoid binary data parsing errors
         return np.array(self.ask(f'CALC{chan}:TRAC{trace}:DATA:FDATA?').split(','), dtype=float)
 
     # def get_snp(self,n=2):
