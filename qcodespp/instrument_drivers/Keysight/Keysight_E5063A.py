@@ -4,27 +4,194 @@ from typing import Any
 import numpy as np
 from qcodes import validators as vals
 from qcodes.instrument import VisaInstrument, InstrumentChannel
-from qcodes.parameters import Parameter, create_on_off_val_mapping
+from qcodes.parameters import Parameter, MultiParameter, create_on_off_val_mapping
 from qcodes.validators import Enum, Numbers
 
 # Setting frequency range
 MIN_FREQ = 100e3
 MAX_FREQ = 18e9
 
+DATA_FORMATS = {"MLOG": {"names": ["mag", "phase"], 
+                         "labels": ["Log Magnitude", "Phase"], 
+                         "units": ["dB", "deg"]},
+                "PHAS": {"names": ["phase", "null"],
+                         "labels": ["Phase",""],
+                         "units": ["deg",""]},
+                "GDEL": {"names": ["group_delay", "null"],
+                        "labels": ["Group Delay",""],
+                        "units": ["s",""]},
+                "SLIN": {"names": ["mag", "phase"],
+                        "labels": ["Linear Magnitude", "Phase"], 
+                        "units": ["", "deg"]},
+                "SLOG": {"names": ["mag", "phase"],
+                         "labels": ["Log Magnitude", "Phase"], 
+                         "units": ["dB", "deg"]},
+                "SCOM": {"names": ["real", "imag"],
+                         "labels": ["Real Part", "Imaginary Part"], 
+                         "units": ["", ""]},
+                "SMIT": {"names": ["smith_real", "smith_imag"],
+                         "labels": ["Smith Chart Real Part", "Smith Chart Imaginary Part"], 
+                          "units": ["", ""]},
+                "SADM": {"names": ["admittance_real", "admittance_imag"],
+                         "labels": ["Admittance Real Part", "Admittance Imaginary Part"], 
+                          "units": ["S", "S"]},
+                "PLIN": {"names": ["mag", "phase"],
+                         "labels": ["Linear Magnitude", "Phase"], 
+                          "units": ["", "deg"]},
+                "PLOG": {"names": ["mag", "phase"],
+                         "labels": ["Log Magnitude", "Phase"], 
+                          "units": ["dB", "deg"]},
+                "POL": {"names": ["mag", "phase"],
+                        "labels": ["Polar Magnitude", "Polar Phase"], 
+                        "units": ["", "deg"]},
+                "MLIN": {"names": ["mag", "phase"],
+                         "labels": ["Linear Magnitude", "Phase"], 
+                         "units": ["", "deg"]},
+                "SWR": {"names": ["swr", "null"],
+                        "labels": ["Standing Wave Ratio",""],
+                        "units": ["",""]},
+                "REAL": {"names": ["real", "null"],
+                         "labels": ["Real Part",""],
+                         "units": ["",""]},
+                "IMAG": {"names": ["imag", "null"],
+                         "labels": ["Imaginary Part",""],
+                         "units": ["",""]},
+                "UPH": {"names": ["unwrapped_phase", "null"],
+                        "labels": ["Unwrapped Phase",""],
+                        "units": ["deg",""]},
+                "PPH": {"names": ["phase", "null"],
+                        "labels": ["Phase",""],
+                        "units": ["deg",""]}}
+
+class Keysight_E5063A_Data(MultiParameter):
+    """
+    Return two column trace data from the Keysight E5063A Vector Network Analyzer.
+
+    sdata: Returns the corrected S-parameter data for the trace.
+    smem: Returns the corrected S-parameter data for the trace from memory.
+    fdata: Returns the corrected and formatted S-parameter data for the trace.
+    fmem: Returns the corrected and formatted S-parameter data for the trace from memory.
+
+    See https://helpfiles.keysight.com/csg/e5063a/programming/remote_control/reading-writing_measurement_data/internal_data_processing.htm
+    """
+
+    def __init__(self, 
+                name: str,
+                trace: Keysight_E5063A_Trace,
+                data_type: str,
+                **kwargs) -> None:
+
+        self.trace = trace
+        self.data_type = data_type
+        self.shapes = ((),())
+        self.unit=''
+
+        self.set_names_labels_units()
+
+        kwargs={
+            'names': self.names,
+            'labels': self.labels,
+            'units': self.units,
+            'shapes': self.shapes,
+            **kwargs
+        }
+        super().__init__(name, **kwargs)
+
+    def get_raw(self):
+        """Retrieve the complex measurement data for this trace."""
+        chan = self.trace.channel_number
+        trace = self.trace.trace_number
+        raw= np.array(self.trace.ask(f"CALC{chan}:TRAC{trace}:DATA:{self.data_type}?").split(','), dtype=float)
+        return [raw[::2],raw[1::2]]
+
+    def set_names_labels_units(self):
+        param_type=self.trace.param_type()
+        if self.data_type in ["SDAT","SMEM"]:
+            self.names = [f"{param_type}_real", f"{param_type}_imag"]
+            self.labels = [f"{param_type} Real Part", f"{param_type} Imaginary Part"]
+            self.units = ["", ""]
+        else:
+            data_format = self.trace.data_format()
+            self.labels = [f"{param_type} {label}" for label in DATA_FORMATS[data_format]["labels"]]
+            self.names = [f"{param_type}_{name}" for name in DATA_FORMATS[data_format]["names"]]
+            self.units = DATA_FORMATS[data_format]["units"]
+
+class Keysight_E5063A_Trace(InstrumentChannel):
+    """
+    A trace in a channel of the Keysight E5063A Vector Network Analyzer.
+    """
+
+    def __init__(self, parent: VisaInstrument, name: str, channel_number: int, trace_number: int) -> None:
+        super().__init__(parent, name)
+        self.channel_number = channel_number
+        self.trace_number = trace_number
+
+        self.data_format: Parameter = self.add_parameter(
+            "data_format",
+            label="Data Format",
+            get_cmd=f"CALC{channel_number}:TRAC{trace_number}:FORM?",
+            set_cmd=self._set_data_format,
+            vals=Enum(*list(DATA_FORMATS.keys())),
+        )
+        """Parameter data_format"""
+
+        self.param_type: Parameter = self.add_parameter(
+            "param_type",
+            label="Parameter Type",
+            get_cmd=f"CALC{channel_number}:PAR{trace_number}:DEF?",
+            set_cmd=self._set_param_type,
+            vals=Enum("S11", "S12", "S21", "S22"),
+        )
+
+        self.sdata: Parameter = self.add_parameter(
+            "sdata",
+            parameter_class=Keysight_E5063A_Data,
+            trace=self,
+            data_type="SDAT",
+        )
+
+        self.smem: Parameter = self.add_parameter(
+            "smem",
+            parameter_class=Keysight_E5063A_Data,
+            trace=self,
+            data_type="SMEM",
+        )
+
+        self.fdata: Parameter = self.add_parameter(
+            "fdata",
+            parameter_class=Keysight_E5063A_Data,
+            trace=self,
+            data_type="FDAT",
+        )
+
+        self.fmem: Parameter = self.add_parameter(
+            "fmem",
+            parameter_class=Keysight_E5063A_Data,
+            trace=self,
+            data_type="FMEM",
+        )
+
+    def _set_data_format(self, value):
+        """Set the data format for this trace."""
+        self.write(f"CALC{self.channel_number}:TRAC{self.trace_number}:FORM {value}")
+        for param in [self.sdata, self.smem, self.fdata, self.fmem]:
+            param.set_names_labels_units()
+
+    def _set_param_type(self, value):
+        """Set the parameter type for this trace."""
+        self.write(f"CALC{self.channel_number}:PAR{self.trace_number}:DEF {value}")
+        for param in [self.sdata, self.smem, self.fdata, self.fmem]:
+            param.set_names_labels_units()
+    
 class Keysight_E5063A_Channel(InstrumentChannel):
     """
-    Qcodes driver for the Keysight E5063A Vector Network Analyzer channel.
-    Not tested 14/09/2026. Simply constructed from the manual.
+    A channel of the Keysight E5063A Vector Network Analyzer.
     """
 
     def __init__(self, parent: VisaInstrument, name: str, channel_number: int) -> None:
         super().__init__(parent, name)
         self.channel_number = channel_number
 
-        for trace_number in range(1, 5):  # 4 traces per channel
-            trace_name = f"tr{trace_number}"
-            trace = Keysight_E5063A_Trace(self, trace_name, channel_number, trace_number)
-            self.add_submodule(trace_name, trace)        
 
         # Sets the start frequency of the analyzer.
         self.start_freq: Parameter = self.add_parameter(
@@ -112,10 +279,9 @@ class Keysight_E5063A_Channel(InstrumentChannel):
         self.data_format: Parameter = self.add_parameter(
             "data_format",
             label="Data Format",
-            get_cmd=f"CALC{channel_number}:FORM",
-            set_cmd=f"CALC{channel_number}:FORM {{}}",
-            vals=Enum("MLOG", "PHAS", "GDEL", "SLIN", "SLOG", "SCOM", "SMIT", "SADM", "PLIN", 
-                      "PLOG", "POL", "MLIN", "SWR", "REAL", "IMAG", "UPH", "PPH"),
+            get_cmd=f"CALC{channel_number}:FORM?",
+            set_cmd=self._set_data_format,
+            vals=Enum(*list(DATA_FORMATS.keys())),
         )
         """Parameter data_format"""
 
@@ -230,18 +396,23 @@ class Keysight_E5063A_Channel(InstrumentChannel):
             val_mapping=create_on_off_val_mapping(on_val="1", off_val="0"),
         )
 
-        def coll_cal_data(self,cal_type,*port):
-            """Perform a calibration on the specified port."""
-            chan = self.channel_number
-            if cal_type == "THRU":
-                self.write(f'SENS{chan}:CORR:COLL:{cal_type} {port[0]},{port[1]}')
-            else:
-                self.write(f'SENS{chan}:CORR:COLL:{cal_type} {port[0]}')
-            while self.ask('*OPC?') != '1':
-                time.sleep(0.1)
+        for trace_number in range(1, 5):  # 4 traces per channel
+            trace_name = f"tr{trace_number}"
+            trace = Keysight_E5063A_Trace(self, trace_name, channel_number, trace_number)
+            self.add_submodule(trace_name, trace)
 
-        def save_cal(self):
-            self.write(f'SENS{self.channel_number}:CORR:COLL:SAVE')
+    def coll_cal_data(self,cal_type,*port):
+        """Perform a calibration on the specified port."""
+        chan = self.channel_number
+        if cal_type in ["THRU", "ISOL"]:
+            self.write(f'SENS{chan}:CORR:COLL:{cal_type} {port[0]},{port[1]}')
+        else:
+            self.write(f'SENS{chan}:CORR:COLL:{cal_type} {port[0]}')
+        # while self.ask('*OPC?') != '+1':
+        #     time.sleep(0.1)
+
+    def save_cal(self):
+        self.write(f'SENS{self.channel_number}:CORR:COLL:SAVE')
 
     def _set_cal_type(self, value):
         """Set the calibration type."""
@@ -270,61 +441,13 @@ class Keysight_E5063A_Channel(InstrumentChannel):
         self.parent.set_active_channel(self.channel_number)
         self.write(f"MMEM:STOR:SNP:FORM {value}")
 
-class Keysight_E5063A_Trace(InstrumentChannel):
-    """
-    Qcodes driver for the Keysight E5063A Vector Network Analyzer trace.
-    Not tested 14/09/2026. Simply constructed from the manual.
-    """
-
-    def __init__(self, parent: VisaInstrument, name: str, channel_number: int, trace_number: int) -> None:
-        super().__init__(parent, name)
-        self.channel_number = channel_number
-        self.trace_number = trace_number
-
-        self.data_format: Parameter = self.add_parameter(
-            "data_format",
-            label="Data Format",
-            get_cmd=f"CALC{channel_number}:TRAC{trace_number}:FORM",
-            set_cmd=f"CALC{channel_number}:TRAC{trace_number}:FORM {{}}",
-            vals=Enum("MLOG", "PHAS", "GDEL", "SLIN", "SLOG", "SCOM", "SMIT", "SADM", "PLIN", 
-                      "PLOG", "POL", "MLIN", "SWR", "REAL", "IMAG", "UPH", "PPH"),
-        )
-        """Parameter data_format"""
-
-        self.param_type: Parameter = self.add_parameter(
-            "param_type",
-            label="Parameter Type",
-            get_cmd=f"CALC{channel_number}:PAR{trace_number}:DEF?",
-            set_cmd=f"CALC{channel_number}:PAR{trace_number}:DEF {{}}",
-            vals=Enum("S11", "S12", "S21", "S22"),
-        )
-
-        self.data: Parameter = self.add_parameter(
-            "data",
-            get_cmd=self._get_data,
-            label=self.param_type(),
-            unit=self.parent.snp_format(),
-        )
-
-        self.y: Parameter = self.add_parameter(
-            "y",
-            get_cmd=self._get_y,
-            label="Y Data",
-            unit="",
-        )
-
-    def _get_data(self):
-        """Retrieve the complex measurement data for this trace."""
-        chan = self.channel_number
-        trace = self.trace_number
-        raw= np.array(self.ask(f"CALC{chan}:TRAC{trace}:DATA:SDAT?").split(','), dtype=float)
-        return [raw[::2],raw[1::2]]
-
-    def _get_y(self):
-        """Retrieve y data from this trace"""
-        chan = self.channel_number
-        trace = self.trace_number
-        return np.array(self.ask(f'CALC{chan}:TRAC{trace}:DATA:FDATA?').split(','), dtype=float)
+    def _set_data_format(self, value):
+        """Set the data format for this channel."""
+        self.write(f"CALC{self.channel_number}:FORM {value}")
+        for trace_number in range(1, 5):
+            trace = getattr(self, f"tr{trace_number}")
+            for param in [trace.sdata, trace.smem, trace.fdata, trace.fmem]:
+                param.set_names_labels_units()
 
 class Keysight_E5063A(VisaInstrument):
     """
