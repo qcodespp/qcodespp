@@ -396,10 +396,12 @@ class Keysight_E5063A_Channel(InstrumentChannel):
             val_mapping=create_on_off_val_mapping(on_val="1", off_val="0"),
         )
 
+        self.traces={}
         for trace_number in range(1, 5):  # 4 traces per channel
             trace_name = f"tr{trace_number}"
             trace = Keysight_E5063A_Trace(self, trace_name, channel_number, trace_number)
             self.add_submodule(trace_name, trace)
+            self.traces[trace_number] = trace
 
     def coll_cal_data(self,cal_type,*port):
         """Perform a calibration on the specified port."""
@@ -458,11 +460,6 @@ class Keysight_E5063A(VisaInstrument):
     def __init__(self, name: str, address: str, **kwargs: Any) -> None:
         time.sleep(5)  # Required sleep to ensure the instruments can start being queried
         super().__init__(name, address, terminator="\n", **kwargs)
-
-        for channel_number in range(1, 5):  # 4 channels
-            channel_name = f"ch{channel_number}"
-            channel = Keysight_E5063A_Channel(self, channel_name, channel_number)
-            self.add_submodule(channel_name, channel)
 
                     # Sets the source of the sweep trigger signal. Default is IMMediate.
         self.trigger_source: Parameter = self.add_parameter(
@@ -524,8 +521,14 @@ class Keysight_E5063A(VisaInstrument):
             get_cmd="STAT:OPER:COND?",
             get_parser=int,
         )
-
         """Status Operation"""
+
+        self.channels={}
+        for channel_number in range(1, 5):  # 4 channels
+            channel_name = f"ch{channel_number}"
+            channel = Keysight_E5063A_Channel(self, channel_name, channel_number)
+            self.add_submodule(channel_name, channel)
+            self.channels[channel_number] = channel
 
         # Clear Status
         # Clears the instrument status byte by emptying the error queue and clearing all event registers. Also cancels any preceding *OPC command or query.
