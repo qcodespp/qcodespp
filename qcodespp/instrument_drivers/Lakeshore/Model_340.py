@@ -1,7 +1,7 @@
 import numpy as np
 from typing import cast
 
-from qcodes import VisaInstrument, InstrumentChannel, ChannelList
+from qcodes.instrument import VisaInstrument, InstrumentChannel, ChannelList
 from qcodes.validators import Enum, Numbers
 from qcodes.parameters import GroupParameter, Group
 

@@ -3,7 +3,7 @@ from typing import Any
 
 import numpy as np
 from qcodes import validators as vals
-from qcodes import VisaInstrument, InstrumentChannel
+from qcodes.instrument import VisaInstrument, InstrumentChannel
 from qcodes.parameters import Parameter, create_on_off_val_mapping
 from qcodes.validators import Enum, Numbers
 

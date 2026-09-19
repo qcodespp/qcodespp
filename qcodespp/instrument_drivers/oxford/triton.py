@@ -4,7 +4,7 @@ from functools import partial
 import logging
 from traceback import format_exc
 
-from qcodes import IPInstrument
+from qcodes.instrument import IPInstrument
 from qcodes.validators import Enum, Ints
 
 from time import sleep

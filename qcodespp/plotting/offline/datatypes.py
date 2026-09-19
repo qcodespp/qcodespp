@@ -92,6 +92,12 @@ class BaseClassData:
             except Exception:
                 self.creation_time = None
 
+    def check_settings(self):
+        # As the software updates, new settings may be added. This function checks if any are missing and adds them with default values.
+        for setting in self.DEFAULT_PLOT_SETTINGS.keys():
+            if setting not in self.settings.keys():
+                self.settings[setting] = self.DEFAULT_PLOT_SETTINGS[setting]
+
     def load_dat(self):
         try:
             self.loaded_data = np.genfromtxt(self.filepath, delimiter=self.settings['delimiter'])
@@ -457,6 +463,7 @@ class BaseClassData:
         self.plotted_lines = {0: {'checkstate': 2,
                         'X data': self.all_parameter_names[0],
                         'Y data': self.all_parameter_names[1],
+                        'label': self.all_parameter_names[1],
                         'Bins': 100,
                         'Xerr': 0,
                         'Yerr': 0,
@@ -614,13 +621,12 @@ class BaseClassData:
         self.axes.tick_params(labelsize=self.settings['ticksize'], 
                               width=float(self.settings['spinewidth']), 
                               color=rcParams['axes.edgecolor'])
+        self.axes.grid(False)
         if self.settings['grid'] in ['both', 'x', 'y']:
             if self.settings['minorticks'] == 'True':
                 self.axes.grid(axis=self.settings['grid'], which='both')
             else:
                 self.axes.grid(axis=self.settings['grid'], which='major')
-        elif self.settings['grid'] == 'off':
-            self.axes.grid(False)
         if self.settings['minorticks'] == 'True':
             self.axes.minorticks_on()
         if self.settings['title'] == '<label>':
@@ -789,7 +795,6 @@ class InternalData(BaseClassData):
         self.label = label_name
         self.dim = dimension
         self.settings['title'] = self.label
-
         self.prepare_dataset()
 
     def prepare_dataset(self):

@@ -1,7 +1,7 @@
-import qcodespp as qc
+from qcodespp import MultiParameter
 import numpy as np
 
-class ZISampleParam(qc.MultiParameter):
+class ZISampleParam(MultiParameter):
     """
     MultiParameter containing various parts of a ZI lockin sample reading.
     
@@ -100,7 +100,7 @@ class ZISampleParam(qc.MultiParameter):
                 to_return.append(sam[suffix][0])
         return tuple(to_return)
 
-class R4ptParam(qc.MultiParameter):
+class R4ptParam(MultiParameter):
     """
     MultiParameter to return current, voltage and resistance based on two ZI lockin readings.
     

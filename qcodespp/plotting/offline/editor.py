@@ -597,6 +597,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                                 'extra_cols','dataset1d_type','dataset2d_type',
                                                 'dataset1d_plotted_lines','dataset2d_linecuts']:
                                     setattr(item.data,attr,value)
+                                    if attr == 'settings':
+                                        item.data.check_settings()
 
                                 elif attr=='is_current_item' and value:
                                     item_to_set_current=item
@@ -650,7 +652,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 if attr=='plotted_lines':
                                     self.reload_plotted_lines(item.data,item)
 
-                            if 'processed_data' in attr_dicts[i]: # If the data had been plotted we need to force load it here
+                            if 'processed_data' in attr_dicts[i] and not item.filepath=='internal_data': # If the data had been plotted we need to force load it here
                                                                     # otherwise the data will be in some weird state.
                                 item.data.prepare_data_for_plot(reload_data=True,reload_from_file=True)
                             
@@ -762,8 +764,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
                     QtWidgets.QMessageBox.No,
             )
-            if confirm != QtWidgets.QMessageBox.Yes:
-                return
+                if confirm != QtWidgets.QMessageBox.Yes:
+                    return
 
             update_plots = any([item.checkState() == 2 for item in items]) # only update plots if any of the items are checked
             for item in items:
@@ -2120,11 +2122,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.paste_axlim_settings(which='old')
 
     def reset_axlim_settings(self):
-        current_item = self.file_list.currentItem()
-        if current_item:
-            current_item.data.reset_axlim_settings()
-            self.show_current_axlim_settings()
-            self.canvas.draw()
+        if not self.lock_axlim_checkbox.isChecked():
+            current_item = self.file_list.currentItem()
+            if current_item:
+                current_item.data.reset_axlim_settings()
+                self.show_current_axlim_settings()
+                self.canvas.draw()
 
     def axis_scaling_changed(self):
         current_item = self.file_list.currentItem()

@@ -3,7 +3,8 @@ import itertools
 import uuid
 from time import sleep as sleep_s
 from qcodes.parameters.cache import _Cache
-from qcodes import InstrumentChannel, ChannelList, VisaInstrument, MultiParameter
+from qcodes.instrument import InstrumentChannel, ChannelList, VisaInstrument
+from qcodes.parameters import MultiParameter
 import time
 from json import dump as json_dump
 from json import load as json_load
@@ -2239,6 +2240,7 @@ class QDac2(VisaInstrument):
         self._calibration_message=''
         self._check_instrument_name(name)
         super().__init__(name, address, terminator='\n', **kwargs)
+        self._set_up_global_params()
         self._set_up_serial()
         self._set_up_debug_settings()
         self.serial=self.IDN()['serial']
@@ -2256,6 +2258,28 @@ class QDac2(VisaInstrument):
             log.warning(f'Warning while initialising QDac serial {self.serial}:\n{self._calibration_message}'
                         f'Run {self.name}.calibrate_currents() to calibrate.')
 
+    def _set_up_global_params(self) -> None:
+        self.dhcp = self.add_parameter('dhcp', get_cmd='syst:comm:lan:dhcp?',
+                                       set_cmd='syst:comm:lan:dhcp {}',
+                                       vals = Enum(0, 1))
+        self.hostname = self.add_parameter('hostname',
+                                           get_cmd='syst:comm:lan:host?',
+                                           set_cmd='syst:comm:lan:host {}')
+        self.mac_address = self.add_parameter('mac_address',
+                                              get_cmd='syst:comm:lan:mac?')
+        self.ip_address = self.add_parameter('ip_address',
+                                            get_cmd='syst:comm:lan:ipad?',
+                                            set_cmd='syst:comm:lan:ipad {}')
+        self.gateway = self.add_parameter('gateway',
+                                          get_cmd='syst:comm:lan:gat?',
+                                          set_cmd='syst:comm:lan:gat {}')
+        self.subnet_mask = self.add_parameter('subnet_mask',
+                                              get_cmd='syst:comm:lan:smas?',
+                                              set_cmd='syst:comm:lan:smas {}')
+
+    def update_lan(self):
+        self.write('syst:comm:lan:upd')
+        sleep_s(2)
 
     def n_channels(self) -> int:
         """

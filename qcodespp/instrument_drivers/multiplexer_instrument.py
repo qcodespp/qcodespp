@@ -1,6 +1,7 @@
 from qcodespp import param_move
 import numpy as np
-from qcodes import validators, Instrument, InstrumentChannel
+from qcodes import validators
+from qcodes.instrument import Instrument, InstrumentChannel
 
 class MultiplexerChannel(InstrumentChannel):
     """Used to automatically add gates/channels in a Multiplexer to itself"""

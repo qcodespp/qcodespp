@@ -3,7 +3,7 @@ import time
 from functools import partial
 from numpy import average
 
-from qcodes import VisaInstrument
+from qcodes.instrument import VisaInstrument
 from qcodes.validators import Enum, Bool, Arrays, Strings, Ints, Numbers
 from qcodes.parameters import create_on_off_val_mapping
 

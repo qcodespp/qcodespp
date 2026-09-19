@@ -11,7 +11,7 @@ import numpy as np
 import collections
 
 from .serial import SerialInstrument
-from qcodes import MultiParameter
+from qcodes.parameters import MultiParameter
 
 
 class MercuryiPSArray(MultiParameter):
