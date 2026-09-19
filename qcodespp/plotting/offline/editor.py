@@ -1978,21 +1978,22 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current_item = self.file_list.currentItem()
         if current_item:
             axlim_settings = current_item.data.axlim_settings
-            for line_edit, setting in zip([self.xmin_line_edit, self.xmax_line_edit, 
-                                           self.ymin_line_edit, self.ymax_line_edit, 
-                                           self.xscale_line_edit, self.yscale_line_edit],
-                                          ['Xmin', 'Xmax', 'Ymin', 'Ymax', 'Xfactor', 'Yfactor']):
-                line_edit.editingFinished.disconnect()
-                if axlim_settings[setting] is None:
+            # setText() does not emit editingFinished, so the connections made in
+            # init_connections() can simply stay in place. Disconnecting here would
+            # destroy the slot that is currently running whenever this is called from
+            # axlim_setting_edited()/axis_scale_edited(), which segfaults PyQt.
+            for line_edit, setting in zip([self.xmin_line_edit, self.xmax_line_edit,
+                                           self.ymin_line_edit, self.ymax_line_edit,
+                                           self.xscale_line_edit, self.yscale_line_edit,
+                                           self.zscale_line_edit],
+                                          ['Xmin', 'Xmax', 'Ymin', 'Ymax',
+                                           'Xfactor', 'Yfactor', 'Zfactor']):
+                value = axlim_settings.get(setting)  # .get: sessions saved before
+                if value is None:                    # the factors existed lack them
                     line_edit.setText('')
                 else:
-                    line_edit.setText(f'{axlim_settings[setting]:.5g}')
-            self.xmin_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Xmin'))
-            self.xmax_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Xmax'))
-            self.ymin_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Ymin'))
-            self.ymax_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Ymax'))
-            self.xscale_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Xfactor'))
-            self.yscale_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Yfactor'))
+                    line_edit.setText(f'{value:.5g}')
+
     def show_current_axscale_settings(self):
         current_item = self.file_list.currentItem()
         if current_item:
@@ -2077,37 +2078,45 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.paste_plot_settings(which='old')
 
     def axis_scale_edited(self, axis):
-        print('ok')
-        # current_item = self.file_list.currentItem()
-        # axlim_settings = current_item.data.axlim_settings
-        # current_item.data.old_axlim_settings = axlim_settings.copy()
-        # if current_item:
-        #     try:
-        #         print(2)
-        #         time.sleep(5)
-        #         text_box = getattr(self, f'{axis.lower()}scale_line_edit')
-        #         scale_key = f'{axis}factor'
-
-        #         new_value = float(text_box.text().strip().lower())
-                
-        #         axlim_settings[scale_key] = new_value
-        #         print(3)
-        #         time.sleep(5)
-        #         text_box.clearFocus()
-        #         self.update_plots()
-        #         print(4)
-        #     except Exception as e:
-        #         self.log_error(f'Invalid axis scale:\n{type(e).__name__}: {e}', show_popup=True)
-        #         self.paste_axlim_settings(which='old')
+        # The error popup below steals focus, which makes the line edit emit
+        # editingFinished a second time; guard against re-entering.
+        if getattr(self, '_axlim_edit_busy', False):
+            return
+        current_item = self.file_list.currentItem()
+        if not current_item:
+            return
+        self._axlim_edit_busy = True
+        try:
+            axlim_settings = current_item.data.axlim_settings
+            current_item.data.old_axlim_settings = axlim_settings.copy()
+            text_box = getattr(self, f'{axis.lower()}scale_line_edit')
+            try:
+                text = text_box.text().strip()
+                new_value = 1.0 if text == '' else float(text)
+                if new_value == 0:
+                    raise ValueError('Axis scale factor cannot be zero')
+                axlim_settings[f'{axis}factor'] = new_value
+                self.show_current_axlim_settings()
+                text_box.clearFocus()
+                self.update_plots()
+            except Exception as e:
+                self.log_error(f'Invalid axis scale:\n{type(e).__name__}: {e}', show_popup=True)
+                self.paste_axlim_settings(which='old')
+        finally:
+            self._axlim_edit_busy = False
 
     def axlim_setting_edited(self, edited_setting):
+        if getattr(self, '_axlim_edit_busy', False):
+            return
         current_item = self.file_list.currentItem()
-        axlim_settings = current_item.data.axlim_settings
-        current_item.data.old_axlim_settings = axlim_settings.copy()
-        if current_item:
+        if not current_item:
+            return
+        self._axlim_edit_busy = True
+        try:
+            axlim_settings = current_item.data.axlim_settings
+            current_item.data.old_axlim_settings = axlim_settings.copy()
+            text_box = getattr(self, f'{edited_setting.lower()}_line_edit')
             try:
-                text_box = getattr(self, f'{edited_setting.lower()}_line_edit')
-
                 if text_box.text() == '':
                     new_value=None
                 else:
@@ -2120,6 +2129,8 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             except Exception as e:
                 self.log_error(f'Invalid axis limit:\n{type(e).__name__}: {e}', show_popup=True)
                 self.paste_axlim_settings(which='old')
+        finally:
+            self._axlim_edit_busy = False
 
     def reset_axlim_settings(self):
         if not self.lock_axlim_checkbox.isChecked():
