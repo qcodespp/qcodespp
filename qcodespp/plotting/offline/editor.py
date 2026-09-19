@@ -342,8 +342,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.reset_settings_button.clicked.connect(lambda: self.paste_plot_settings('default'))
         self.filters_combobox.currentIndexChanged.connect(self.filters_box_changed)
         self.mixeddata_filter_box.currentIndexChanged.connect(self.mixeddata_filterbox_changed)
-        self.xaxis_combobox.currentIndexChanged.connect(self.axis_scaling_changed)
-        self.yaxis_combobox.currentIndexChanged.connect(self.axis_scaling_changed)
         self.delete_filters_button.clicked.connect(lambda: self.remove_filters('current'))
         self.clear_filters_button.clicked.connect(lambda: self.remove_filters('all'))
         self.copy_filters_button.clicked.connect(self.copy_filters)
@@ -362,6 +360,11 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.colormap_box.currentIndexChanged.connect(self.colormap_edited)
         self.cbar_hist_checkbox.clicked.connect(lambda: self.view_setting_edited('CBarHist'))
         self.reverse_colors_box.clicked.connect(self.colormap_edited)
+        self.xaxis_combobox.currentIndexChanged.connect(self.axis_scaling_changed)
+        self.yaxis_combobox.currentIndexChanged.connect(self.axis_scaling_changed)
+        self.xscale_line_edit.editingFinished.connect(lambda: self.axis_scale_edited('X'))
+        self.yscale_line_edit.editingFinished.connect(lambda: self.axis_scale_edited('Y'))
+        self.zscale_line_edit.editingFinished.connect(lambda: self.axis_scale_edited('Z'))
         self.xmin_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Xmin'))
         self.xmax_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Xmax'))
         self.ymin_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Ymin'))
@@ -1972,32 +1975,22 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def show_current_axlim_settings(self):
         current_item = self.file_list.currentItem()
         if current_item:
-            self.xmin_line_edit.editingFinished.disconnect()
-            self.xmax_line_edit.editingFinished.disconnect()
-            self.ymin_line_edit.editingFinished.disconnect()
-            self.ymax_line_edit.editingFinished.disconnect()
             axlim_settings = current_item.data.axlim_settings
-            if axlim_settings['Xmin'] is None:
-                self.xmin_line_edit.setText('')
-            else:
-                self.xmin_line_edit.setText(f'{axlim_settings["Xmin"]:.5g}')
-            if axlim_settings['Xmax'] is None:
-                self.xmax_line_edit.setText('')
-            else:
-                self.xmax_line_edit.setText(f'{axlim_settings["Xmax"]:.5g}')
-            if axlim_settings['Ymin'] is None:
-                self.ymin_line_edit.setText('')
-            else:
-                self.ymin_line_edit.setText(f'{axlim_settings["Ymin"]:.5g}')
-            if axlim_settings['Ymax'] is None:
-                self.ymax_line_edit.setText('')
-            else:
-                self.ymax_line_edit.setText(f'{axlim_settings["Ymax"]:.5g}')
+            for line_edit, setting in zip([self.xmin_line_edit, self.xmax_line_edit, 
+                                           self.ymin_line_edit, self.ymax_line_edit, 
+                                           self.xscale_line_edit, self.yscale_line_edit],
+                                          ['Xmin', 'Xmax', 'Ymin', 'Ymax', 'Xfactor', 'Yfactor']):
+                line_edit.editingFinished.disconnect()
+                if axlim_settings[setting] is None:
+                    line_edit.setText('')
+                else:
+                    line_edit.setText(f'{axlim_settings[setting]:.5g}')
             self.xmin_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Xmin'))
             self.xmax_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Xmax'))
             self.ymin_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Ymin'))
             self.ymax_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Ymax'))
-
+            self.xscale_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Xfactor'))
+            self.yscale_line_edit.editingFinished.connect(lambda: self.axlim_setting_edited('Yfactor'))
     def show_current_axscale_settings(self):
         current_item = self.file_list.currentItem()
         if current_item:
@@ -2081,30 +2074,44 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.log_error(f'Invalid value of plot setting:\n{type(e).__name__}: {e}', show_popup=True)
                 self.paste_plot_settings(which='old')
 
+    def axis_scale_edited(self, axis):
+        print('ok')
+        # current_item = self.file_list.currentItem()
+        # axlim_settings = current_item.data.axlim_settings
+        # current_item.data.old_axlim_settings = axlim_settings.copy()
+        # if current_item:
+        #     try:
+        #         print(2)
+        #         time.sleep(5)
+        #         text_box = getattr(self, f'{axis.lower()}scale_line_edit')
+        #         scale_key = f'{axis}factor'
+
+        #         new_value = float(text_box.text().strip().lower())
+                
+        #         axlim_settings[scale_key] = new_value
+        #         print(3)
+        #         time.sleep(5)
+        #         text_box.clearFocus()
+        #         self.update_plots()
+        #         print(4)
+        #     except Exception as e:
+        #         self.log_error(f'Invalid axis scale:\n{type(e).__name__}: {e}', show_popup=True)
+        #         self.paste_axlim_settings(which='old')
+
     def axlim_setting_edited(self, edited_setting):
         current_item = self.file_list.currentItem()
         axlim_settings = current_item.data.axlim_settings
         current_item.data.old_axlim_settings = axlim_settings.copy()
         if current_item:
             try:
-                if edited_setting == 'Xmin':
-                    text_box = self.xmin_line_edit
-                elif edited_setting == 'Xmax':
-                    text_box = self.xmax_line_edit
-                elif edited_setting == 'Ymin':
-                    text_box = self.ymin_line_edit
-                else:
-                    text_box = self.ymax_line_edit
+                text_box = getattr(self, f'{edited_setting.lower()}_line_edit')
 
                 if text_box.text() == '':
                     new_value=None
                 else:
                     new_value = float(text_box.text())
                 axlim_settings[edited_setting] = new_value
-                if new_value is None:
-                    text_box.setText('')
-                else:
-                    text_box.setText(f'{new_value:.4g}')
+                self.show_current_axlim_settings()
                 text_box.clearFocus()
                 current_item.data.apply_axlim_settings()
                 self.canvas.draw()

@@ -62,6 +62,9 @@ class BaseClassData:
     DEFAULT_AXLIM_SETTINGS['Ymax'] = None
     DEFAULT_AXLIM_SETTINGS['Xscale'] = 'linear'
     DEFAULT_AXLIM_SETTINGS['Yscale'] = 'linear'
+    DEFAULT_AXLIM_SETTINGS['Xfactor'] = 1.0
+    DEFAULT_AXLIM_SETTINGS['Yfactor'] = 1.0
+    DEFAULT_AXLIM_SETTINGS['Zfactor'] = 1.0
     
     def __init__(self, filepath, canvas):
         self.filepath = filepath
@@ -515,8 +518,8 @@ class BaseClassData:
                                                 vmax=self.view_settings['Maximum'], 
                                                 midpoint=self.view_settings['Midpoint'])
                         
-                        self.image = self.axes.pcolormesh(self.processed_data[0], 
-                                                        self.processed_data[1], 
+                        self.image = self.axes.pcolormesh(self.processed_data[0]*self.axlim_settings['Xfactor'], 
+                                                        self.processed_data[1]*self.axlim_settings['Yfactor'], 
                                                         self.processed_data[2], 
                                                         shading=self.settings['shading'], 
                                                         norm=norm, cmap=cmap,
@@ -926,8 +929,8 @@ class MixedInternalData(BaseClassData):
                 norm = MidpointNormalize(vmin=self.dataset2d.view_settings['Minimum'], 
                                             vmax=self.dataset2d.view_settings['Maximum'], 
                                             midpoint=self.dataset2d.view_settings['Midpoint'])
-                self.image = self.axes.pcolormesh(self.dataset2d.processed_data[0], 
-                                                    self.dataset2d.processed_data[1], 
+                self.image = self.axes.pcolormesh(self.dataset2d.processed_data[0]*self.axlim_settings['Xfactor'], 
+                                                    self.dataset2d.processed_data[1]*self.axlim_settings['Yfactor'], 
                                                     self.dataset2d.processed_data[2], 
                                                     shading=self.dataset2d.settings['shading'], 
                                                     norm=norm, cmap=cmap,

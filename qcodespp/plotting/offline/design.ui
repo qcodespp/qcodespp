@@ -812,6 +812,35 @@
          <widget class="QComboBox" name="xaxis_combobox"/>
         </item>
         <item>
+         <widget class="QLabel" name="xscale_label">
+          <property name="text">
+           <string>Scale</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="xscale_line_edit">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>70</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>80</width>
+            <height>16777215</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QLabel" name="xmin_label">
           <property name="text">
            <string>Min</string>
@@ -884,6 +913,35 @@
         </item>
         <item>
          <widget class="QComboBox" name="yaxis_combobox"/>
+        </item>
+        <item>
+         <widget class="QLabel" name="yscale_label">
+          <property name="text">
+           <string>Scale</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="yscale_line_edit">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>70</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>80</width>
+            <height>16777215</height>
+           </size>
+          </property>
+         </widget>
         </item>
         <item>
          <widget class="QLabel" name="ymin_label">
@@ -986,8 +1044,15 @@
        </layout>
       </item>
       <item>
-       <layout class="QGridLayout" name="view_layout" rowstretch="0" columnstretch="0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0" columnminimumwidth="0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0">
-        <item row="0" column="3">
+       <layout class="QGridLayout" name="view_layout" rowstretch="0" columnstretch="0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0" columnminimumwidth="0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0">
+        <item row="0" column="2">
+         <widget class="QLabel" name="zscale_label">
+          <property name="text">
+           <string>Scale</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="5">
          <widget class="QLineEdit" name="min_line_edit">
           <property name="enabled">
            <bool>true</bool>
@@ -1015,7 +1080,7 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="5">
+        <item row="0" column="7">
          <widget class="QLineEdit" name="mid_line_edit">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -1040,7 +1105,47 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="7">
+        <item row="0" column="10">
+         <widget class="QCheckBox" name="lock_checkbox">
+          <property name="text">
+           <string>Lock</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="6">
+         <widget class="QCheckBox" name="mid_checkbox">
+          <property name="text">
+           <string>Mid</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="8">
+         <widget class="QLabel" name="max_label">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>Max</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="4">
+         <widget class="QLabel" name="min_label">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>Min</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="9">
          <widget class="QLineEdit" name="max_line_edit">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -1065,67 +1170,7 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="4">
-         <widget class="QCheckBox" name="mid_checkbox">
-          <property name="text">
-           <string>Mid</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="2">
-         <widget class="QLabel" name="min_label">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="text">
-           <string>Min</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="8">
-         <widget class="QCheckBox" name="lock_checkbox">
-          <property name="text">
-           <string>Lock</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="6">
-         <widget class="QLabel" name="max_label">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="text">
-           <string>Max</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="11">
-         <widget class="QCheckBox" name="reverse_colors_box">
-          <property name="text">
-           <string>Reverse</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="9">
-         <widget class="QComboBox" name="colormap_type_box">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="sizeAdjustPolicy">
-           <enum>QComboBox::AdjustToContentsOnFirstShow</enum>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="10">
+        <item row="0" column="12">
          <widget class="QComboBox" name="colormap_box">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -1138,6 +1183,13 @@
           </property>
          </widget>
         </item>
+        <item row="0" column="13">
+         <widget class="QCheckBox" name="reverse_colors_box">
+          <property name="text">
+           <string>Reverse</string>
+          </property>
+         </widget>
+        </item>
         <item row="0" column="1">
          <widget class="QLabel" name="colorbar_label">
           <property name="text">
@@ -1145,17 +1197,40 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="15">
+        <item row="0" column="17">
          <widget class="QPushButton" name="paste_view_button">
           <property name="text">
            <string>Paste cbar</string>
           </property>
          </widget>
         </item>
-        <item row="0" column="13">
-         <widget class="QPushButton" name="copy_view_button">
+        <item row="0" column="11">
+         <widget class="QComboBox" name="colormap_type_box">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="sizeAdjustPolicy">
+           <enum>QComboBox::AdjustToContentsOnFirstShow</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="16">
+         <widget class="QPushButton" name="reset_limits_button">
           <property name="text">
-           <string>Copy cbar</string>
+           <string>Reset cbar</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="14">
+         <widget class="QCheckBox" name="cbar_hist_checkbox">
+          <property name="text">
+           <string>Histogram</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
@@ -1172,20 +1247,32 @@
           </property>
          </spacer>
         </item>
-        <item row="0" column="14">
-         <widget class="QPushButton" name="reset_limits_button">
+        <item row="0" column="15">
+         <widget class="QPushButton" name="copy_view_button">
           <property name="text">
-           <string>Reset cbar</string>
+           <string>Copy cbar</string>
           </property>
          </widget>
         </item>
-        <item row="0" column="12">
-         <widget class="QCheckBox" name="cbar_hist_checkbox">
-          <property name="text">
-           <string>Histogram</string>
+        <item row="0" column="3">
+         <widget class="QLineEdit" name="zscale_line_edit">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
           </property>
-          <property name="checked">
-           <bool>true</bool>
+          <property name="minimumSize">
+           <size>
+            <width>70</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>80</width>
+            <height>16777215</height>
+           </size>
           </property>
          </widget>
         </item>

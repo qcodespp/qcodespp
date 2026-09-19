@@ -1016,7 +1016,7 @@ class Sidebar1D(QtWidgets.QWidget):
                         self.parent.settings['ylabel'] = 'Amplitude (a.u.)'
                         self.parent.settings['xlabel'] = 'Frequency'
                     #self.parent.image = 
-                    self.parent.axes.plot(x, y,
+                    self.parent.axes.plot(x*self.parent.axlim_settings['Xfactor'], y*self.parent.axlim_settings['Yfactor'],
                                         self.parent.plotted_lines[line]['linestyle'],
                                         linewidth=self.parent.plotted_lines[line]['linewidth'],
                                         markersize=self.parent.plotted_lines[line]['linewidth'],
