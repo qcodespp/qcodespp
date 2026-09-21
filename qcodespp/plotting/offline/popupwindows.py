@@ -13,7 +13,7 @@ from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationTo
 from matplotlib.figure import Figure
 from matplotlib.widgets import Cursor
 from matplotlib import rcParams
-from matplotlib import colormaps as cm
+from matplotlib.pyplot import get_cmap
 import numpy as np
 from lmfit.model import save_modelresult
 
@@ -725,7 +725,7 @@ class LineCutWindow(QtWidgets.QWidget):
         except ValueError:
             max_index=-1
         try:
-            selected_colormap = cm.get_cmap(self.colormap_box.currentText())
+            selected_colormap = get_cmap(self.colormap_box.currentText())
             if self.orientation == 'horizontal':
                 line_colors = selected_colormap(np.linspace(0.1,0.9,len(self.parent.processed_data[1][0,:])))
                 self.parent.linecuts[self.orientation]['lines'][int(max_index+1)]={'data_index':data_index, 
@@ -861,7 +861,7 @@ class LineCutWindow(QtWidgets.QWidget):
         # Apply the colormap to the selected lines in the cuts table.
         # The colormap is applied to the linecut number, not the index.
         self.cuts_table.itemChanged.disconnect(self.cuts_table_edited)
-        selected_colormap = cm.get_cmap(self.colormap_box.currentText())
+        selected_colormap = get_cmap(self.colormap_box.currentText())
         applymethod = self.apply_colormap_to_box.currentText()
 
         if applymethod == 'All by order':
@@ -1405,9 +1405,9 @@ class LineCutWindow(QtWidgets.QWidget):
             if self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_components_checkstate']==QtCore.Qt.Checked:
                 fit_components=fit_result.eval_components()
                 if self.colormap_box.currentText() == 'viridis':
-                    selected_colormap = cm.get_cmap('plasma')
+                    selected_colormap = get_cmap('plasma')
                 elif self.colormap_box.currentText() == 'plasma':
-                    selected_colormap = cm.get_cmap('viridis')
+                    selected_colormap = get_cmap('viridis')
                 line_colors = selected_colormap(np.linspace(0.1,0.9,len(fit_components.keys())))
                 for i,key in enumerate(fit_components.keys()):
                     self.axes.plot(x_forfit, fit_components[key]+offset, '--', color=line_colors[i],alpha=0.75, linewidth=1.5)

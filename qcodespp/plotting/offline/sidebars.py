@@ -6,7 +6,7 @@ import copy
 
 import qcodespp.plotting.offline.fits as fits
 
-from matplotlib import colormaps as cm
+from matplotlib.pyplot import get_cmap
 import numpy as np
 from lmfit.model import save_modelresult
 
@@ -571,7 +571,7 @@ class Sidebar1D(QtWidgets.QWidget):
     def apply_colormap(self):
         # Apply the colormap to the selected lines in the traces table.
         self.trace_table.itemChanged.disconnect(self.trace_table_edited)
-        selected_colormap = cm.get_cmap(self.colormap_box.currentText())
+        selected_colormap = get_cmap(self.colormap_box.currentText())
         applymethod = self.apply_colormap_to_box.currentText()
 
         if applymethod == 'All':
@@ -1049,9 +1049,9 @@ class Sidebar1D(QtWidgets.QWidget):
             if self.parent.plotted_lines[line]['fit']['fit_components_checkstate'] == QtCore.Qt.Checked:
                 fit_components=fit_result.eval_components()
                 if self.colormap_box.currentText() == 'viridis':
-                    selected_colormap = cm.get_cmap('plasma')
+                    selected_colormap = get_cmap('plasma')
                 elif self.colormap_box.currentText() == 'plasma':
-                    selected_colormap = cm.get_cmap('viridis')
+                    selected_colormap = get_cmap('viridis')
                 line_colors = selected_colormap(np.linspace(0.1,0.9,len(fit_components.keys())))
                 for i,key in enumerate(fit_components.keys()):
                     self.parent.axes.plot(x_forfit, fit_components[key]*self.parent.axlim_settings['Yfactor'], 

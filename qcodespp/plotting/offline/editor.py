@@ -25,7 +25,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib import rcParams
-from matplotlib import colormaps as cm
+from matplotlib.pyplot import get_cmap
 from matplotlib.colors import is_color_like
 from cycler import cycler
 from collections import OrderedDict
@@ -2901,9 +2901,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
             if data.linecuts[orientation]['linecut_window']==None:
                 if self.colormap_box.currentText() == 'viridis':
-                    selected_colormap = cm.get_cmap('plasma')
+                    selected_colormap = get_cmap('plasma')
                 else:
-                    selected_colormap = cm.get_cmap('viridis')
+                    selected_colormap = get_cmap('viridis')
                 data.linecuts[orientation]['linecut_window'] = LineCutWindow(data,orientation=orientation,
                                                                                 init_cmap=selected_colormap.name,
                                                                                 editor_window=self)
@@ -3132,9 +3132,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                             index_y = np.argmin(np.abs(data.processed_data[1][0,:]-y))
                             data.selected_indices = [int(index_x), int(index_y)]
                             if self.colormap_box.currentText() == 'viridis':
-                                selected_colormap = cm.get_cmap('plasma')
+                                selected_colormap = get_cmap('plasma')
                             else:
-                                selected_colormap = cm.get_cmap('viridis')
+                                selected_colormap = get_cmap('viridis')
                             #Make entry to store linecuts in
                             if not hasattr(data,'linecuts'):
                                 self.init_linecuts(data)
@@ -3455,9 +3455,9 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 index_x_mid= np.argmin(np.abs(data.processed_data[0][:,0]-x_mid))
                 index_y_mid= np.argmin(np.abs(data.processed_data[1][0,:]-y_mid))
                 if self.colormap_box.currentText() == 'viridis':
-                    selected_colormap = cm.get_cmap('plasma')
+                    selected_colormap = get_cmap('plasma')
                 else:
-                    selected_colormap = cm.get_cmap('viridis')
+                    selected_colormap = get_cmap('viridis')
                 line_colors = selected_colormap(np.linspace(0.1,0.9,len(data.processed_data[1][0,:])))
                 try:
                     max_index=np.max(list(data.linecuts[orientation]['lines'].keys()))
