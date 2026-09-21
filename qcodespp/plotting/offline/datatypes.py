@@ -475,12 +475,15 @@ class BaseClassData:
                         'filters': []}}
         
     def add_cbar_hist(self):
+        zdat=self.processed_data[-1]*self.axlim_settings['Zfactor']
         self.hax=self.cbar.ax.inset_axes([-1.05, 0, 1, 1],picker=True)
-        counts, self.cbar_hist_bins = np.histogram(self.processed_data[-1],bins=int(self.settings['cmap levels']),
-                                                   range=(np.nanmin(self.processed_data[-1]), np.nanmax(self.processed_data[-1])))
+        counts, self.cbar_hist_bins = np.histogram(zdat,bins=int(self.settings['cmap levels']),
+                                                   range=(np.nanmin(zdat), np.nanmax(zdat)))
         midpoints = self.cbar_hist_bins[:-1] + np.diff(self.cbar_hist_bins)/2
         self.hax.fill_between(-counts, midpoints,0,color='mediumslateblue')
-        self.haxfill=self.hax.fill_betweenx(np.linspace(self.view_settings['Minimum'], self.view_settings['Maximum'], 100), 
+        self.haxfill=self.hax.fill_betweenx(np.linspace(self.view_settings['Minimum']*self.axlim_settings['Zfactor'],
+                                                        self.view_settings['Maximum']*self.axlim_settings['Zfactor'], 
+                                                        100), 
                                                         self.hax.get_xlim()[0], 
                                                         color='blue', alpha=0.2)
 
@@ -521,13 +524,13 @@ class BaseClassData:
                         cmap = cm.get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
                         cmap.with_extremes(bad=self.settings['maskcolor'])
 
-                        norm = MidpointNormalize(vmin=self.view_settings['Minimum'], 
-                                                vmax=self.view_settings['Maximum'], 
-                                                midpoint=self.view_settings['Midpoint'])
+                        norm = MidpointNormalize(vmin=self.view_settings['Minimum']*self.axlim_settings['Zfactor'], 
+                                                vmax=self.view_settings['Maximum']*self.axlim_settings['Zfactor'], 
+                                                midpoint=self.view_settings['Midpoint']*self.axlim_settings['Zfactor'])
                         
                         self.image = self.axes.pcolormesh(self.processed_data[0]*self.axlim_settings['Xfactor'], 
-                                                        self.processed_data[1]*self.axlim_settings['Yfactor'], 
-                                                        self.processed_data[2], 
+                                                        self.processed_data[1]*self.axlim_settings['Yfactor'],
+                                                        self.processed_data[2]*self.axlim_settings['Zfactor'], 
                                                         shading=self.settings['shading'], 
                                                         norm=norm, cmap=cmap,
                                                         rasterized=self.settings['rasterized'])
@@ -599,8 +602,8 @@ class BaseClassData:
 
     def reset_view_settings(self, overrule=False):
         if not self.view_settings['Locked'] or overrule:
-            minimum = np.min(self.processed_data[-1])
-            maximum = np.max(self.processed_data[-1])
+            minimum = np.min(self.processed_data[-1])*self.axlim_settings['Zfactor']
+            maximum = np.max(self.processed_data[-1])*self.axlim_settings['Zfactor']
             self.view_settings['Minimum'] = minimum
             self.view_settings['Maximum'] = maximum
             self.view_settings['Midpoint'] = 0.5*(minimum+maximum)
@@ -931,12 +934,12 @@ class MixedInternalData(BaseClassData):
                 cmap = cm.get_cmap(cmap_str, lut=int(self.dataset2d.settings['cmap levels']))
                 cmap.with_extremes(bad=self.dataset2d.settings['maskcolor'])
 
-                norm = MidpointNormalize(vmin=self.dataset2d.view_settings['Minimum'], 
-                                            vmax=self.dataset2d.view_settings['Maximum'], 
-                                            midpoint=self.dataset2d.view_settings['Midpoint'])
+                norm = MidpointNormalize(vmin=self.dataset2d.view_settings['Minimum']*self.axlim_settings['Zfactor'], 
+                                            vmax=self.dataset2d.view_settings['Maximum']*self.axlim_settings['Zfactor'], 
+                                            midpoint=self.dataset2d.view_settings['Midpoint']*self.axlim_settings['Zfactor'])
                 self.image = self.axes.pcolormesh(self.dataset2d.processed_data[0]*self.axlim_settings['Xfactor'], 
                                                     self.dataset2d.processed_data[1]*self.axlim_settings['Yfactor'], 
-                                                    self.dataset2d.processed_data[2], 
+                                                    self.dataset2d.processed_data[2]*self.axlim_settings['Zfactor'], 
                                                     shading=self.dataset2d.settings['shading'], 
                                                     norm=norm, cmap=cmap,
                                                     rasterized=self.dataset2d.settings['rasterized'])
@@ -992,9 +995,9 @@ class MixedInternalData(BaseClassData):
 
     def add_cbar_hist(self):
         self.hax=self.cbar.ax.inset_axes([-1.05, 0, 1, 1],picker=True)
-        counts, self.cbar_hist_bins = np.histogram(self.dataset2d.processed_data[-1],bins=int(self.settings['cmap levels']),
-                                                   range=(np.nanmin(self.dataset2d.processed_data[-1]), 
-                                                          np.nanmax(self.dataset2d.processed_data[-1])))
+        zdat=self.dataset2d.processed_data[-1]*self.axlim_settings['Zfactor']
+        counts, self.cbar_hist_bins = np.histogram(zdat,bins=int(self.settings['cmap levels']),
+                                                   range=(np.nanmin(zdat), np.nanmax(zdat)))
         midpoints = self.cbar_hist_bins[:-1] + np.diff(self.cbar_hist_bins)/2
         self.hax.fill_between(-counts, midpoints,0,color='mediumslateblue')
         self.haxfill=self.hax.fill_betweenx(np.linspace(self.view_settings['Minimum'], self.view_settings['Maximum'], 100), 

@@ -1978,19 +1978,18 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current_item = self.file_list.currentItem()
         if current_item:
             axlim_settings = current_item.data.axlim_settings
-            # setText() does not emit editingFinished, so the connections made in
-            # init_connections() can simply stay in place. Disconnecting here would
-            # destroy the slot that is currently running whenever this is called from
-            # axlim_setting_edited()/axis_scale_edited(), which segfaults PyQt.
             for line_edit, setting in zip([self.xmin_line_edit, self.xmax_line_edit,
                                            self.ymin_line_edit, self.ymax_line_edit,
                                            self.xscale_line_edit, self.yscale_line_edit,
                                            self.zscale_line_edit],
                                           ['Xmin', 'Xmax', 'Ymin', 'Ymax',
                                            'Xfactor', 'Yfactor', 'Zfactor']):
-                value = axlim_settings.get(setting)  # .get: sessions saved before
-                if value is None:                    # the factors existed lack them
-                    line_edit.setText('')
+                value = axlim_settings.get(setting)  # .get: to avoid KeyError if setting is missing from old sessions.
+                if value is None:
+                    if 'factor' in setting:
+                        line_edit.setText('1.0')
+                    else:
+                        line_edit.setText('')
                 else:
                     line_edit.setText(f'{value:.5g}')
 
@@ -2078,8 +2077,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.paste_plot_settings(which='old')
 
     def axis_scale_edited(self, axis):
-        # The error popup below steals focus, which makes the line edit emit
-        # editingFinished a second time; guard against re-entering.
         if getattr(self, '_axlim_edit_busy', False):
             return
         current_item = self.file_list.currentItem()

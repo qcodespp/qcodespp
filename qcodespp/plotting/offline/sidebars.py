@@ -1038,12 +1038,12 @@ class Sidebar1D(QtWidgets.QWidget):
     def draw_fits(self,line):
         try:
             fit_result=self.parent.plotted_lines[line]['fit']['fit_result']
-            x_forfit=self.parent.plotted_lines[line]['fit']['xdata']
-            y_fit=fit_result.best_fit
+            x_forfit=self.parent.plotted_lines[line]['fit']['xdata']*self.parent.axlim_settings['Xfactor']
+            y_fit=fit_result.best_fit*self.parent.axlim_settings['Yfactor']
             self.parent.axes.plot(x_forfit, y_fit, 'k--',
                 linewidth=self.parent.plotted_lines[line]['linewidth'])
             if self.parent.plotted_lines[line]['fit']['fit_uncertainty_checkstate'] == QtCore.Qt.Checked:
-                uncertainty = fit_result.eval_uncertainty()
+                uncertainty = fit_result.eval_uncertainty()*self.parent.axlim_settings['Yfactor']
                 self.parent.axes.fill_between(x_forfit, y_fit+uncertainty, y_fit-uncertainty,
                     alpha=0.2, color='grey', linewidth=0)
             if self.parent.plotted_lines[line]['fit']['fit_components_checkstate'] == QtCore.Qt.Checked:
@@ -1054,7 +1054,9 @@ class Sidebar1D(QtWidgets.QWidget):
                     selected_colormap = cm.get_cmap('viridis')
                 line_colors = selected_colormap(np.linspace(0.1,0.9,len(fit_components.keys())))
                 for i,key in enumerate(fit_components.keys()):
-                    self.parent.axes.plot(x_forfit, fit_components[key], '--', color=line_colors[i],alpha=0.75, linewidth=self.parent.plotted_lines[line]['linewidth'])
+                    self.parent.axes.plot(x_forfit, fit_components[key]*self.parent.axlim_settings['Yfactor'], 
+                                          '--', color=line_colors[i],alpha=0.75, 
+                                          linewidth=self.parent.plotted_lines[line]['linewidth'])
         except Exception as e:
             self.output_window.setText(f'Could not plot fit: {e}')
 
