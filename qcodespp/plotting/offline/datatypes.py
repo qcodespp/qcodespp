@@ -561,6 +561,7 @@ class BaseClassData:
                     self.apply_plot_settings()
                     self.apply_axlim_settings()
                     self.apply_axscale_settings()
+                    self.apply_view_settings()
 
                 if len(recorded_warnings) > 0:
                     return recorded_warnings

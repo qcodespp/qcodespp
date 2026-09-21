@@ -63,6 +63,7 @@ class LineCutWindow(QtWidgets.QWidget):
         self.init_layouts()
         self.set_main_layout()
         self.init_cuts_table()
+        self.update_factors()
         self.fit_type_changed()
         
     def init_widgets(self):
@@ -1014,9 +1015,19 @@ class LineCutWindow(QtWidgets.QWidget):
     def update_legend(self):
         self.parent.linecuts[self.orientation]['legend'] = self.legend_checkbox.isChecked()
         self.update()
-  
+
+    def update_factors(self):
+        if self.orientation in ['horizontal','vertical']:
+            self.xfactor = self.parent.axlim_settings['Xfactor'] if self.orientation == 'horizontal' else self.parent.axlim_settings['Yfactor']
+            self.yfactor = self.parent.axlim_settings['Zfactor']
+
+        else:
+            self.xfactor=1
+            self.yfactor=1
+
     def update(self):
         if self.running:
+            self.update_factors()
             self.draw_plot()
 
             fit_lines = self.get_checked_items(cuts_or_fits='fits')
@@ -1308,7 +1319,8 @@ class LineCutWindow(QtWidgets.QWidget):
             points= self.parent.linecuts[self.orientation]['lines'][line]['points']
             label = (f'({points[0][0]:.5g}, {points[0][1]:.5g}) : '
                     f'({points[1][0]:.5g}, {points[1][1]:.5g})')
-        self.axes.plot(x, y+offset, self.parent.linecuts[self.orientation]['linestyle'],
+
+        self.axes.plot(x*self.xfactor, y*self.yfactor+offset, self.parent.linecuts[self.orientation]['linestyle'],
                     linewidth=size,
                     markersize=size,
                     color=self.parent.linecuts[self.orientation]['lines'][line]['linecolor'],
@@ -1394,13 +1406,13 @@ class LineCutWindow(QtWidgets.QWidget):
         try:
             offset=self.parent.linecuts[self.orientation]['lines'][line]['offset']
             fit_result=self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_result']
-            x_forfit=self.parent.linecuts[self.orientation]['lines'][line]['fit']['xdata']
-            y_fit=fit_result.best_fit+offset
+            x_forfit=self.parent.linecuts[self.orientation]['lines'][line]['fit']['xdata']*self.xfactor
+            y_fit=fit_result.best_fit*self.yfactor+offset
             self.axes.plot(x_forfit, y_fit, 'k--',
                 linewidth=1.5)
             if self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_uncertainty_checkstate']==QtCore.Qt.Checked:
                 uncertainty=fit_result.eval_uncertainty()
-                self.axes.fill_between(x_forfit, y_fit-uncertainty, y_fit+uncertainty,
+                self.axes.fill_between(x_forfit, y_fit-uncertainty*self.yfactor, y_fit+uncertainty*self.yfactor,
                                         color='grey', alpha=0.5, linewidth=0)
             if self.parent.linecuts[self.orientation]['lines'][line]['fit']['fit_components_checkstate']==QtCore.Qt.Checked:
                 fit_components=fit_result.eval_components()
@@ -1410,7 +1422,7 @@ class LineCutWindow(QtWidgets.QWidget):
                     selected_colormap = get_cmap('viridis')
                 line_colors = selected_colormap(np.linspace(0.1,0.9,len(fit_components.keys())))
                 for i,key in enumerate(fit_components.keys()):
-                    self.axes.plot(x_forfit, fit_components[key]+offset, '--', color=line_colors[i],alpha=0.75, linewidth=1.5)
+                    self.axes.plot(x_forfit, fit_components[key]*self.yfactor+offset, '--', color=line_colors[i],alpha=0.75, linewidth=1.5)
         except Exception as e:
             self.output_window.setText(f'Could not plot fit: {e}')
         self.canvas.draw()

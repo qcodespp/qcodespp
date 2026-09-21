@@ -2093,9 +2093,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if new_value == 0:
                     raise ValueError('Axis scale factor cannot be zero')
                 axlim_settings[f'{axis}factor'] = new_value
-                self.show_current_axlim_settings()
+                # if axis == 'Z':
+                #     current_item.data.reset_view_settings(overrule=True)
                 text_box.clearFocus()
                 self.update_plots()
+                # self.show_current_axlim_settings()
+                # self.show_current_view_settings()
             except Exception as e:
                 self.log_error(f'Invalid axis scale:\n{type(e).__name__}: {e}', show_popup=True)
                 self.paste_axlim_settings(which='old')
