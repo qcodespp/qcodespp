@@ -11,8 +11,8 @@ from qcodes.validators import Enum, Numbers
 MIN_FREQ = 100e3
 MAX_FREQ = 18e9
 
-DATA_FORMATS = {"MLOG": {"names": ["mag", "phase"], 
-                         "labels": ["Log Magnitude", "Phase"], 
+DATA_FORMATS = {"MLOG": {"names": ["mag", "null"], 
+                         "labels": ["Log Magnitude", ""], 
                          "units": ["dB", "deg"]},
                 "PHAS": {"names": ["phase", "null"],
                          "labels": ["Phase",""],
