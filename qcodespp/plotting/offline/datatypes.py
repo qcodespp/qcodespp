@@ -5,7 +5,8 @@ import os
 import copy
 import warnings
 from matplotlib.widgets import Cursor
-from matplotlib import cm, rcParams
+from matplotlib import rcParams
+from matplotlib.pyplot import get_cmap
 from qcodespp.plotting.offline.helpers import MidpointNormalize
 from qcodespp.plotting.offline.sidebars import Sidebar1D
 
@@ -521,7 +522,7 @@ class BaseClassData:
                         cmap_str = self.view_settings['Colormap']
                         if self.view_settings['Reverse']:
                             cmap_str += '_r'
-                        cmap = cm.get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
+                        cmap = get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
                         cmap.with_extremes(bad=self.settings['maskcolor'])
 
                         norm = MidpointNormalize(vmin=self.view_settings['Minimum']*self.axlim_settings['Zfactor'], 
@@ -699,7 +700,7 @@ class BaseClassData:
         cmap_str = self.view_settings['Colormap']
         if self.view_settings['Reverse']:
             cmap_str += '_r'
-        cmap = cm.get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
+        cmap = get_cmap(cmap_str, lut=int(self.settings['cmap levels']))
         cmap.with_extremes(bad=self.settings['maskcolor'])
         if len(self.get_columns()) == 3:
             self.image.set_cmap(cmap)
@@ -931,7 +932,7 @@ class MixedInternalData(BaseClassData):
                 cmap_str = self.dataset2d.view_settings['Colormap']
                 if self.dataset2d.view_settings['Reverse']:
                     cmap_str += '_r'
-                cmap = cm.get_cmap(cmap_str, lut=int(self.dataset2d.settings['cmap levels']))
+                cmap = get_cmap(cmap_str, lut=int(self.dataset2d.settings['cmap levels']))
                 cmap.with_extremes(bad=self.dataset2d.settings['maskcolor'])
 
                 norm = MidpointNormalize(vmin=self.dataset2d.view_settings['Minimum']*self.axlim_settings['Zfactor'], 
