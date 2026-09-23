@@ -98,6 +98,12 @@ class BaseClassData:
         for setting in self.DEFAULT_PLOT_SETTINGS.keys():
             if setting not in self.settings.keys():
                 self.settings[setting] = self.DEFAULT_PLOT_SETTINGS[setting]
+        for setting in self.DEFAULT_VIEW_SETTINGS.keys():
+            if setting not in self.view_settings.keys():
+                self.view_settings[setting] = self.DEFAULT_VIEW_SETTINGS[setting]
+        for setting in self.DEFAULT_AXLIM_SETTINGS.keys():
+            if setting not in self.axlim_settings.keys():
+                self.axlim_settings[setting] = self.DEFAULT_AXLIM_SETTINGS[setting]
 
     def load_dat(self):
         try:

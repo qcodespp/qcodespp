@@ -597,7 +597,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                                 'extra_cols','dataset1d_type','dataset2d_type',
                                                 'dataset1d_plotted_lines','dataset2d_linecuts']:
                                     setattr(item.data,attr,value)
-                                    if attr == 'settings':
+                                    if attr in ['settings', 'view_settings', 'axlim_settings']:
                                         item.data.check_settings()
 
                                 elif attr=='is_current_item' and value:
@@ -1139,7 +1139,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 file_list=[attr_dict['filepath'] for attr_dict in data]
 
                 # Use the resolve_missing_files function to check for missing files. Ask the user if they want to quit loading the session
-                ret_mes = self.resolve_missing_files(file_list)
+                ret_mes = self.resolve_missing_files(file_list, session_filepath)
                 if ret_mes == 'cancel':
                     self.log_error('Session loading cancelled.', show_popup=True)
 
@@ -1204,7 +1204,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 f'{type(e).__name__}: {e}')
         self.set_window_title()
 
-    def resolve_missing_files(self, filenames):
+    def resolve_missing_files(self, filenames, session_filepath):
         resolved_files = []
         unresolved_files = []
         replacements = []
@@ -1212,6 +1212,12 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             fname = fname.replace('\\', '/')  # Ensure forward slashes
             if fname in ['internal_data', 'mixed_internal_data'] or os.path.exists(fname):
                 resolved_files.append(fname)
+                continue
+
+            session_dir = os.path.dirname(session_filepath)
+            candidate = os.path.join(session_dir, fname)
+            if os.path.exists(candidate):
+                resolved_files.append(candidate)
                 continue
 
             if len(replacements)>0:
