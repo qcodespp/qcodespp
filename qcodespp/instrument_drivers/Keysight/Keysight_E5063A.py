@@ -542,6 +542,8 @@ class Keysight_E5063A(VisaInstrument):
         # Deletes all traces, measurements, and windows.
         self.add_function("system_reset", call_cmd="SYST:PRES")
 
+        self.connect_message()
+
     def set_active_channel(self, channel_number: int):
         """Set the active channel for the instrument."""
         if channel_number not in [1, 2, 3, 4]:
