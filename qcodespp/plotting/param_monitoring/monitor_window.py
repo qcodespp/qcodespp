@@ -44,6 +44,7 @@ class MonitorWindow(QMainWindow):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self._update)
+        self._use_legend = True
         if start:
             self._start()
 
@@ -126,7 +127,8 @@ class MonitorWindow(QMainWindow):
                 self.ax.set_ylabel(self.ylabel)
         else:
             self.ax.set_ylabel('Param value(s) (arb units)')
-        self.ax.legend()
+        if self._use_legend:
+            self.ax.legend()
 
         bottom_layout = QVBoxLayout()
         input_layout = QHBoxLayout()
@@ -258,7 +260,8 @@ class MonitorWindow(QMainWindow):
 
         self.ax.relim()
         self.ax.autoscale_view()
-        self.ax.legend()
+        if self._use_legend:
+            self.ax.legend()
         self.canvas.draw()
 
     def _save_data(self, station):
