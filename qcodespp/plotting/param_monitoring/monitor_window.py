@@ -40,11 +40,11 @@ class MonitorWindow(QMainWindow):
         self.data = {key: [] for key in self.param_dict.keys()} #{param.name: deque(maxlen=maxlen) for param in params}
         self.prev_save_path = ''
         self.station = station
+        self._use_legend = True
         self._build_ui()
 
         self.timer = QTimer()
         self.timer.timeout.connect(self._update)
-        self._use_legend = True
         if start:
             self._start()
 
