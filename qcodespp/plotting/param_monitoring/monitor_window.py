@@ -129,6 +129,11 @@ class MonitorWindow(QMainWindow):
             self.ax.set_ylabel('Param value(s) (arb units)')
         if self._use_legend:
             self.ax.legend()
+        else:
+            try:
+                self.ax.get_legend().remove()
+            except:
+                pass
 
         bottom_layout = QVBoxLayout()
         input_layout = QHBoxLayout()
@@ -262,6 +267,11 @@ class MonitorWindow(QMainWindow):
         self.ax.autoscale_view()
         if self._use_legend:
             self.ax.legend()
+        else:
+            try:
+                self.ax.get_legend().remove()
+            except:
+                pass
         self.canvas.draw()
 
     def _save_data(self, station):
