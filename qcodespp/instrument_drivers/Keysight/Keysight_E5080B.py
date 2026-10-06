@@ -28,7 +28,7 @@ class E5080B_SNP(MultiParameter):
         self.names = ["frequency"]
         self.units = ["Hz"]
         self.labels = ["Frequency"]
-        param_type=self.parent.snp_format()
+        param_type=self.parent.ask("MMEM:STOR:TRAC:FORM:SNP?")
         if param_type == 'AUTO':
             self.parent.snp_format('DB')
             param_type='DB'
@@ -132,6 +132,8 @@ class Keysight_E5080B(VisaInstrument):
         min_freq = 100e3
         max_freq = 53e9
 
+        self.snp = self.add_parameter('snp', parameter_class=E5080B_SNP)
+
         # Set the units for returning S-parameters
         self.snp_format: Parameter = self.add_parameter(
             "snp_format",
@@ -140,8 +142,6 @@ class Keysight_E5080B(VisaInstrument):
             set_cmd=self._set_snp_format,
             vals=Enum("RI", "MA", "DB", "AUTO"),
         )
-
-        self.snp = self.add_parameter('snp', parameter_class=E5080B_SNP)
 
         # Sets the start frequency of the analyzer.
         self.start_freq: Parameter = self.add_parameter(
