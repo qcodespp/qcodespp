@@ -109,6 +109,42 @@ class Station(QStation):
         if add_variables is not None:
             self.auto_add(add_variables)
 
+    def add_component(
+        self,
+        component: MetadatableWithName,
+        name: str | None = None,
+        update_snapshot: bool = True,
+    ) -> str:
+        """
+        Record one component as part of this Station.
+
+        Args:
+            component: Components to add to the Station.
+            name: Name of the component.
+            update_snapshot: Immediately update the snapshot
+                of each component as it is added to the Station.
+
+        Returns:
+            str: The name assigned this component, which may have been changed
+                to make it unique among previously added components.
+
+        """
+        try:
+            if not (isinstance(component, Parameter) and component.snapshot_exclude):
+                component.snapshot(update="All" if update_snapshot else "Never")
+        except Exception:
+            pass
+        if name is None:
+            name = getattr(component, "name", f"component{len(self.components)}")
+        namestr = str(name)
+        if namestr in self.components:
+            raise RuntimeError(
+                f'Cannot add component "{namestr}", because a '
+                "component of that name is already registered to the station"
+            )
+        self.components[namestr] = component
+        return namestr
+
     def add_components(self,components):
         for component in components:
             self.add_component(component)
@@ -128,10 +164,11 @@ class Station(QStation):
         """
         print('Automatically adding components to Station...')
         for variable in variables.values():
-            if add_instruments and isinstance(variable,Instrument) and variable not in self.components.values():
-                self.add_component(variable,update_snapshot=update_snapshot)
-            elif add_parameters and isinstance(variable,ParameterBase) and variable not in self.components.values():
-                self.add_component(variable,update_snapshot=update_snapshot)
+            if variable is not None:
+                if add_instruments and isinstance(variable,Instrument) and variable not in self.components.values():
+                    self.add_component(variable,update_snapshot=update_snapshot)
+                elif add_parameters and isinstance(variable,Parameter) and variable not in self.components.values():
+                    self.add_component(variable,update_snapshot=update_snapshot)
 
         if add_instruments:
             inststring='Instruments in station:'
@@ -143,7 +180,7 @@ class Station(QStation):
         if add_parameters and 'parameters' in self.snapshot_base():
             paramstring='Parameters in station:'
             for component in self.components.values():
-                if isinstance(component,ParameterBase):
+                if isinstance(component,Parameter):
                     paramstring+=f' {component.full_name},'
             print(paramstring[:-1])
 
