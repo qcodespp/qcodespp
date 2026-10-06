@@ -4,17 +4,76 @@ from typing import Any
 import numpy as np
 from qcodes import validators as vals
 from qcodes.instrument import VisaInstrument, InstrumentChannel
-from qcodes.parameters import Parameter, create_on_off_val_mapping
+from qcodes.parameters import Parameter, MultiParameter, create_on_off_val_mapping
 from qcodes.validators import Enum, Numbers
 
+class E5080B_SNP(MultiParameter):
+    '''
+    Returns all S-parameters for both ports, and the frequencies.
+    '''
+    def __init__(self, name: str, instrument: VisaInstrument, **kwargs) -> None:
+        self.parent = instrument
+        self.set_names_labels_units()
+        shapes = tuple(() for _ in self.names)
+        self.unit = ''
+        super().__init__(name, names=self.names, shapes=shapes, units=self.units, labels = self.labels, instrument =instrument, **kwargs)
+
+    def get_raw(self):
+        self.parent.format_data("ASCii,0")  # recommended to avoid binary data parsing errors
+        raw = np.array(self.parent.ask(f"CALC:MEAS:DATA:SNP? 2").split(','), dtype=float)
+        dat_len = self.parent.points()
+        return raw.reshape(len(raw)//dat_len, dat_len)
+
+    def set_names_labels_units(self):
+        self.names = ["frequency"]
+        self.units = ["Hz"]
+        self.labels = ["Frequency"]
+        param_type=self.parent.snp_format()
+        if param_type == 'AUTO':
+            self.parent.snp_format('DB')
+            param_type='DB'
+            print(f"{self.parent.name}.snp_format was set to AUTO, which is incompatible with this driver. It has been set to DB.")
+        if param_type == 'RI':
+            for n in range(2):
+                for m in range(2):
+                    self.names.extend([f"S{m+1}{n+1}_real", f"S{m+1}{n+1}_imag"])
+                    self.labels.extend([f"S{m+1}{n+1} Real Part", f"S{m+1}{n+1} Imaginary Part"])
+                    self.units.extend(['', ''])
+        elif param_type == 'MA':
+            for n in range(2):
+                for m in range(2):
+                    self.names.extend([f"S{m+1}{n+1}_linmag", f"S{m+1}{n+1}_phase"])
+                    self.labels.extend([f"S{m+1}{n+1} Linear Magnitude", f"S{m+1}{n+1} Phase"])
+                    self.units.extend(['', 'deg'])
+        elif param_type == 'DB':
+            for n in range(2):
+                for m in range(2):
+                    self.names.extend([f"S{m+1}{n+1}_mag", f"S{m+1}{n+1}_phase"])
+                    self.labels.extend([f"S{m+1}{n+1} Magnitude", f"S{m+1}{n+1} Phase"])
+                    self.units.extend(['dB', 'deg'])
 
 class E5080B_Trace(InstrumentChannel):
 
     def __init__(self, parent: VisaInstrument, name: str, trace_num: int) -> None:
         super().__init__(parent, name)
         self.trace_num = trace_num
-        #incomplete and possibly dangerous to use in general
-        #Most of this assumes TDR is on, but a trace doesn't have to be TDR...
+        #incomplete
+
+        self.x: Parameter = self.add_parameter(
+            "x",
+            label="X Axis",
+            unit="",
+            get_cmd=self._get_x,
+        )
+
+        self.y: Parameter = self.add_parameter(
+            "y",
+            label="Y Axis",
+            unit="",
+            get_cmd=self._get_y,
+        )
+
+        #The below assumes TDR is on, but a trace doesn't have to be TDR...
         
         """TDR AND GATING"""
         self.tdr_active: Parameter = self.add_parameter(
@@ -50,10 +109,19 @@ class E5080B_Trace(InstrumentChannel):
             get_parser=float,
         )
 
+    def _get_x(self):
+        """return x axis values from this trace"""
+        return np.array(self.ask(f"CALC:MEAS{self.trace_num}:X:VAL?").split(','), dtype=float)
+    
+    def _get_y(self):
+        """Retrieve y data from this trace"""
+        return np.array(self.ask(f'CALC:MEAS{self.trace_num}:DATA:FDATA?').split(','), dtype=float)
 
 class Keysight_E5080B(VisaInstrument):
     """
-    Qcodes driver for the Keysight E5080B Vector Network Analyzer
+    Qcodes driver for the Keysight E5080B Vector Network Analyzer, assuming 2 ports only.
+
+    Note: this driver assumes only one channel used and is thus effectively a driver for channel 1.
     """
 
     def __init__(self, name: str, address: str, **kwargs: Any) -> None:
@@ -64,16 +132,16 @@ class Keysight_E5080B(VisaInstrument):
         min_freq = 100e3
         max_freq = 53e9
 
-        self.traces = [self.add_submodule(f"trace{i+1}", E5080B_Trace(self, f"trace{i+1}", i+1)) for i in range(2)]
-
         # Set the units for returning S-parameters
         self.snp_format: Parameter = self.add_parameter(
             "snp_format",
             label="SNP Format",
             get_cmd="MMEM:STOR:TRAC:FORM:SNP?",
-            set_cmd="MMEM:STOR:TRAC:FORM:SNP {}",
+            set_cmd=self._set_snp_format,
             vals=Enum("RI", "MA", "DB", "AUTO"),
         )
+
+        self.snp = self.add_parameter('snp', parameter_class=E5080B_SNP)
 
         # Sets the start frequency of the analyzer.
         self.start_freq: Parameter = self.add_parameter(
@@ -363,6 +431,26 @@ class Keysight_E5080B(VisaInstrument):
         # Deletes all traces, measurements, and windows.
         self.add_function("system_reset", call_cmd="SYST:PRES")
 
+        self.refresh_traces()
+
+        self.connect_message()
+
+    def refresh_traces(self):
+        trace_str = self.ask("CALC:PAR:CAT:EXT?").strip('"').split(',')
+        active_traces = {int(trace_str[i*2][-1]): trace_str[i*2+1] for i in range(len(trace_str)//2)}
+
+        for submodule in list(self.submodules.keys()):
+            if submodule.startswith("trace"):
+                self.submodules.pop(submodule)
+        self.traces = [self.add_submodule(f"trace{num}", E5080B_Trace(self, f"trace{num}", num)) for num in active_traces.keys()]
+
+
+    def _set_snp_format(self, value: str) -> None:
+        if value == 'AUTO':
+            raise ValueError("snp_format cannot be set to AUTO. Please choose RI, MA, or DB.")
+        self.write(f"MMEM:STOR:TRAC:FORM:SNP {value}")
+        self.snp.set_names_labels_units()  # Update the names, labels, and units based on the new format
+
     def get_data(self,sparam=None):
         """Retrieve the complex measurement data"""
         if sparam is not None:
@@ -370,21 +458,3 @@ class Keysight_E5080B(VisaInstrument):
         self.format_data("ASCii,0")  # recommended to avoid binary data parsing errors
         raw= np.array(self.ask("CALC:MEAS:DATA:SDAT?").split(','), dtype=float)
         return [raw[::2],raw[1::2]]
-
-    def get_x(self,trace=1):
-        """return x axis values from specified trace"""
-        #self.format_data("REAL,64")  # recommended to avoid frequency rounding errors
-        self.format_data("ASCii,0")
-        return np.array(self.ask(f"CALC:MEAS{trace}:X:VAL?").split(','), dtype=float)
-    
-    def get_y(self,trace=1):
-        """Retrieve y data from specified trace"""
-        self.format_data("ASCii,0")  # recommended to avoid binary data parsing errors
-        return np.array(self.ask(f'CALC:MEAS{trace}:DATA:FDATA?').split(','), dtype=float)
-
-    def get_snp(self,n=2):
-        """return all S-parameters for n ports"""
-        self.format_data("ASCii,0")  # recommended to avoid binary data parsing errors
-        raw=np.array(self.ask(f"CALC:MEAS:DATA:SNP? {n}").split(','), dtype=float)
-        dat_len=self.points()
-        return raw.reshape(len(raw)//dat_len, dat_len)
