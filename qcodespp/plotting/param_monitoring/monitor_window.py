@@ -10,7 +10,7 @@ from matplotlib.pyplot import get_cmap
 
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
                              QWidget, QPushButton, QSpinBox, QDoubleSpinBox, QLabel,
-                             QFileDialog, QTextEdit)
+                             QFileDialog, QTextEdit, QCheckBox)
 from PyQt5.QtGui import QImage
 from PyQt5.QtCore import QTimer
 
@@ -175,6 +175,10 @@ class MonitorWindow(QMainWindow):
         input_layout.addWidget(self.spin_maxlen)
 
         input_layout.addStretch()
+        self.legend_checkbox = QCheckBox('Legend')
+        self.legend_checkbox.setChecked(self._use_legend)
+        self.legend_checkbox.stateChanged.connect(self._on_legend_changed)
+        input_layout.addWidget(self.legend_checkbox)
         self.btn_autoscale = QPushButton('Autoscale')
         self.btn_autoscale.clicked.connect(self._autoscale)
         input_layout.addWidget(self.btn_autoscale)
@@ -198,6 +202,17 @@ class MonitorWindow(QMainWindow):
         self._update(maxlen=value)
         # self.times = deque(self.times, maxlen=value)
         # self.data = {name: deque(vals, maxlen=value) for name, vals in self.data.items()}
+
+    def _on_legend_changed(self, checked):
+        self._use_legend = checked
+        if self._use_legend:
+            self.ax.legend()
+        else:
+            try:
+                self.ax.get_legend().remove()
+            except:
+                pass
+        self.canvas.draw()
 
     def _start(self):
         self.t0 = time.time() - self.t0_cache
