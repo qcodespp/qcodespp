@@ -71,6 +71,8 @@ class TouchstoneData(BaseClassData):
         self.ports = []
 
         self.meta={'comment_lines': [], 'keyword_lines': {}}
+
+        self.dim = 2  # Touchstone files are always 2D
         
     def load_and_reshape_data(self,reload_data=False,reload_from_file=False,linefrompopup=None):
         if reload_from_file or self.loaded_data is None:
