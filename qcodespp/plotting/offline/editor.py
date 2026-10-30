@@ -335,6 +335,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.global_text_lineedit.editingFinished.connect(self.global_text_changed)
         self.stats_button.clicked.connect(self.show_stats)
         self.metadata_button.clicked.connect(self.show_metadata)
+
         self.settings_table.itemChanged.connect(self.plot_setting_edited)
         self.filters_table.itemChanged.connect(self.filters_table_edited)
         self.copy_settings_button.clicked.connect(self.copy_plot_settings)
@@ -963,7 +964,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                 item_dictionary['duplicate']=item.duplicate
                             if item == current_item:
                                 item_dictionary['is_current_item'] = True
-                            attributes=['label','settings','filters','view_settings','axlim_settings',
+                            attributes=['label','settings','label_locks','filters','view_settings','axlim_settings',
                                         'plot_type','dim','labels_changed','legend',
                                         'raw_data','processed_data']
                             if isinstance(item.data, InternalData):
@@ -1193,7 +1194,6 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         'This usually happens if a cloud service (e.g. OneDrive, Dropbox) tries to sync the temporary files '
                         'exactly when InSpectra Gadget tries to delete them. ')
                 self.log_error(message, show_popup=True)
-
             self.update_plots() # Necessary to ensure some settings are applied to the final plot.
             try:
                 if 'subplotpars' in numpy_file[-1]:
@@ -1932,8 +1932,13 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     combo.addItems(options)
                     combo.setCurrentText(str(value))
                     if editable:
-                        combo.activated[str].connect(
-                            lambda text, k=key: self.plot_setting_edited(setting_name=k))
+                        # 'activated[str]' is removed in Qt6; use textActivated where available.
+                        if hasattr(combo, 'textActivated'):
+                            combo.textActivated.connect(
+                                lambda text, k=key: self.plot_setting_edited(setting_name=k))
+                        else:
+                            combo.activated[str].connect(
+                                lambda text, k=key: self.plot_setting_edited(setting_name=k))
                         combo.lineEdit().editingFinished.connect(
                             lambda k=key: self.plot_setting_edited(setting_name=k))
                     else:
@@ -2270,6 +2275,7 @@ class Editor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if which == 'copied':
                 if self.copied_settings:
                     current_item.data.settings = self.copied_settings.copy()
+                    current_item.data.label_locks = {'x':True,'y':True,'c':True}
             elif which == 'default':
                 current_item.data.settings = current_item.data.DEFAULT_PLOT_SETTINGS.copy()
             elif which == 'old':

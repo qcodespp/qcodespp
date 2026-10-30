@@ -244,6 +244,7 @@ def loop2dUD(sweep_parameter,
                 start, stop, num, delay,
                 step_parameter,
                 step_start, step_stop, step_num, step_delay,
+                inter_step_delay=0,
                 sweep_type='linear',
                 step_type='linear',
                 step_action=None,
@@ -280,6 +281,8 @@ def loop2dUD(sweep_parameter,
         step_delay (float): the number of seconds to wait after setting a value before
             starting the inner loop.
 
+        inter_step_delay (float): the number of seconds to wait after completing the first inner loop
+
         step_action: an action (e.g. qcodes Task) to run at each point in the step loop AFTER 
             the step parameter has been set, but BEFORE the inner loop starts
 
@@ -315,10 +318,13 @@ def loop2dUD(sweep_parameter,
     else:
         loop_down=Loop(_parse_sweep_type(sweep_parameter, sweep_type)(stop,start,num=num,print_warning=False), delay).each(*Station.default.measure())
 
-    if step_action:
-        loop2d=Loop(_parse_sweep_type(step_parameter, step_type)(step_start,step_stop,num=step_num), step_delay).each(step_action,loop,loop_down)
+    if inter_step_delay==0:
+        each_actions=[loop,loop_down]
     else:
-        loop2d=Loop(_parse_sweep_type(step_parameter, step_type)(step_start,step_stop,num=step_num), step_delay).each(loop,loop_down)
+        each_actions=[loop,Wait(inter_step_delay),loop_down]
+    if step_action:
+        each_actions.insert(0, step_action)
+    loop2d=Loop(_parse_sweep_type(step_parameter, step_type)(step_start,step_stop,num=step_num), step_delay).each(*each_actions)
 
     start_text, stop_text, unit_text = _filename_text(start, stop, sweep_parameter)
     step_start_text, step_stop_text, step_unit_text = _filename_text(step_start, step_stop, step_parameter)
