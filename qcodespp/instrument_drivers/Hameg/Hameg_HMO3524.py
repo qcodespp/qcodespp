@@ -121,54 +121,27 @@ def _parse_measurement(response: str, name: str) -> float:
 
 class HMO3524_Waveform(MultiParameter):
     """
-    Waveform of an analog channel of the Hameg HMO3524: the time axis and the voltage.
-
-    Returns [time, voltage] when the instrument's trace_type is NORM, and
-    [time, voltage_min, voltage_max] when it is MINMAX (e.g. in envelope acquisition mode).
-    Only displayed waveforms can be read, so the channel must be switched on.
+    Time axis and voltage of an analog channel's waveform, from a single read of the waveform.
     """
 
     def __init__(self, name: str, instrument: "HMO3524_Channel", **kwargs: Any) -> None:
-        self.channel = instrument
-        self.unit = ""
-        self.set_names_labels_units()
+        n = instrument.channel_number
+        # Names include the channel, since Measure stores the data of a MultiParameter by name.
         super().__init__(
             name,
-            names=self.names,
-            shapes=self.shapes,
-            labels=self.labels,
-            units=self.units,
+            names=(f"ch{n}_time", f"ch{n}_voltage"),
+            shapes=((), ()),
+            labels=(f"Channel {n} Time", f"Channel {n} Voltage"),
+            units=("s", "V"),
             instrument=instrument,
             **kwargs,
         )
+        self.unit = ""
 
     def get_raw(self):
-        time, voltage = self.channel.root_instrument.get_waveform(self.channel.waveform_source)
-        if voltage.ndim == 2:  # MINMAX
-            return [time, voltage[0], voltage[1]]
-        return [time, voltage]
-
-    def set_names_labels_units(self, trace_type: str | None = None) -> None:
-        """
-        Update names, labels and units to match the trace type (NORM or MINMAX).
-        If trace_type is not given, the last known value of the instrument's trace_type is used.
-        """
-        if trace_type is None:
-            trace_type = self.channel.root_instrument.trace_type.get_latest()
-        prefix = self.channel.short_name
-        n = self.channel.channel_number
-        self.names = [f"{prefix}_time"]
-        self.labels = [f"Channel {n} Time"]
-        self.units = ["s"]
-        if trace_type == "MINMAX":
-            self.names += [f"{prefix}_voltage_min", f"{prefix}_voltage_max"]
-            self.labels += [f"Channel {n} Minimum Voltage", f"Channel {n} Maximum Voltage"]
-            self.units += ["V", "V"]
-        else:
-            self.names += [f"{prefix}_voltage"]
-            self.labels += [f"Channel {n} Voltage"]
-            self.units += ["V"]
-        self.shapes = tuple(() for _ in self.names)
+        channel = self.instrument
+        voltage = channel._get_voltage()
+        return [channel._time_axis(len(voltage)), voltage]
 
 
 class HMO3524_Channel(InstrumentChannel):
@@ -177,12 +150,12 @@ class HMO3524_Channel(InstrumentChannel):
 
     The waveform can be read as `waveform` (time and voltage together, e.g. for Measure), or as
     `time` and `voltage` separately (e.g. inside a Loop, or Measure(ch.voltage, setpoints=[ch.time])).
+    Only displayed waveforms can be read, so the channel must be switched on.
     """
 
     def __init__(self, parent: VisaInstrument, name: str, channel_number: int) -> None:
         super().__init__(parent, name)
         self.channel_number = channel_number
-        self.waveform_source = f"CH{channel_number}"
         cmd = f":CHAN{channel_number}"
 
         # Switches the channel on or off. Only displayed channels can be read out.
@@ -315,7 +288,7 @@ class HMO3524_Channel(InstrumentChannel):
             get_cmd=self._get_voltage,
             snapshot_value=False,
         )
-        """Voltage of the channel's waveform. Shape (N,), or (2, N) [min, max] if trace_type is MINMAX."""
+        """Voltage of the channel's waveform"""
 
         self.waveform: HMO3524_Waveform = self.add_parameter(
             "waveform",
@@ -323,15 +296,39 @@ class HMO3524_Channel(InstrumentChannel):
         )
         """Time and voltage of the channel's waveform"""
 
-    def _get_time(self) -> np.ndarray:
-        scope = self.root_instrument
-        scope.trace_source(self.waveform_source)
-        return scope._time_axis(scope.trace_points())
+    def _select_for_readout(self) -> None:
+        """
+        Select this channel's waveform for read out, in ASCII format (voltages as text).
+
+        Only displayed waveforms can be selected, and the instrument ignores the request otherwise,
+        so the selection is read back to avoid returning the data of another channel.
+        """
+        source = f"CH{self.channel_number}"
+        self.write(f":TRAC:SOUR {source}")
+        selected = _normalize_source(self.ask(":TRAC:SOUR?"))
+        if selected != source:
+            raise RuntimeError(
+                f"{self.full_name}: the instrument did not select {source} for read out (the selected "
+                f"source is {selected}). Only displayed waveforms can be read out; switch on the channel "
+                f"with {self.state.full_name}(True)."
+            )
+        self.write(":TRAC:FORM ASC")
 
     def _get_voltage(self) -> np.ndarray:
-        scope = self.root_instrument
-        scope.trace_source(self.waveform_source)
-        return scope._read_trace_data()
+        self._select_for_readout()
+        return np.array(self.ask(":TRAC:DATA?").strip().strip(",").split(","), dtype=float)
+
+    def _get_time(self) -> np.ndarray:
+        self._select_for_readout()
+        return self._time_axis(_parse_int(self.ask(":TRAC:POIN?")))
+
+    def _time_axis(self, num_points: int) -> np.ndarray:
+        """Time axis of the waveform selected for read out."""
+        x_increment = float(self.ask(":TRAC:XINC?"))
+        x_origin = float(self.ask(":TRAC:XOR?"))
+        # The manual gives t = n * XINC - XOR, but defines XOR as the time of the first point
+        # (e.g. -3 ms), so XOR is added here. The reference index XREF is always 0.
+        return x_origin + np.arange(num_points) * x_increment
 
 
 class HMO3524_LogicChannel(InstrumentChannel):
@@ -554,7 +551,6 @@ class Hameg_HMO3524(VisaInstrument):
         self.num_channels = num_channels
 
         analog_sources = [f"CH{n}" for n in range(1, num_channels + 1)]
-        zoom_sources = [f"ZCH{n}" for n in range(1, num_channels + 1)]
         reference_sources = [f"RE{n}" for n in range(1, NUM_REFERENCES + 1)]
         logic_sources = [f"D{n}" for n in range(NUM_LOGIC_CHANNELS)]
 
@@ -912,128 +908,20 @@ class Hameg_HMO3524(VisaInstrument):
         )
         """Instrument time"""
 
-        # WAVEFORM READOUT (TRACE)
+        # WAVEFORM READOUT
 
-        # Selects the waveform read out by the trace commands. Only displayed waveforms can be selected,
-        # so the selection is read back and an error is raised if the instrument did not accept it.
-        self.trace_source: Parameter = self.add_parameter(
-            "trace_source",
-            label="Trace Source",
-            get_cmd=":TRAC:SOUR?",
-            set_cmd=self._set_trace_source,
-            get_parser=_normalize_source,
-            vals=Enum(*analog_sources, *zoom_sources, *reference_sources),
-        )
-        """Waveform to read out"""
-
-        self.trace_source_catalog: Parameter = self.add_parameter(
-            "trace_source_catalog",
-            label="Available Trace Sources",
-            get_cmd=":TRAC:SOUR:CAT?",
-            get_parser=lambda response: [_normalize_source(s) for s in response.split(",") if s.strip()],
-        )
-        """List of waveforms available for read out"""
-
-        # Waveform data transfer format. ASC transfers voltages as text; BYTE and WORD transfer
-        # binary data, which is faster and is converted to voltages by this driver. The instrument's
-        # CSV format is not supported for read out by this driver.
-        self.trace_format: Parameter = self.add_parameter(
-            "trace_format",
-            label="Trace Format",
-            get_cmd=":TRAC:FORM?",
-            set_cmd=":TRAC:FORM {}",
-            get_parser=lambda response: "ASC" if response.strip().upper().startswith("ASC") else response.strip().upper(),
-            vals=Enum("ASC", "BYTE", "WORD"),
-        )
-        """Waveform transfer format"""
-
-        # Byte order for binary transfer.
-        self.trace_byte_order: Parameter = self.add_parameter(
-            "trace_byte_order",
-            label="Trace Byte Order",
-            get_cmd=":TRAC:BORD?",
-            set_cmd=":TRAC:BORD {}",
-            vals=Enum("LSBF", "MSBF"),
-        )
-        """Byte order for binary transfer"""
-
-        # Sets the number of points to read: DMAX (all sampled data shown on the display), MAX, DEF,
-        # or a number of points. Reading returns the number of points.
-        self.trace_points: Parameter = self.add_parameter(
-            "trace_points",
-            label="Trace Points",
+        # Sets the number of points read out per waveform, for all channels: DMAX (all sampled data
+        # shown on the display), MAX, DEF, or a number of points. Reading returns the number of points.
+        # Large numbers of points may need a longer VISA timeout.
+        self.waveform_points: Parameter = self.add_parameter(
+            "waveform_points",
+            label="Waveform Points",
             get_cmd=":TRAC:POIN?",
             set_cmd=":TRAC:POIN {}",
             get_parser=_parse_int,
             vals=MultiType(Enum("DMAX", "MAX", "DEF"), Ints(min_value=1)),
         )
-        """Number of waveform points to read"""
-
-        # NORM transfers one value per point. MINMAX transfers a minimum and a maximum per point,
-        # e.g. in envelope acquisition mode.
-        self.trace_type: Parameter = self.add_parameter(
-            "trace_type",
-            label="Trace Type",
-            get_cmd=self._get_trace_type,
-            set_cmd=self._set_trace_type,
-            vals=Enum("NORM", "MINMAX"),
-        )
-        """Waveform type"""
-
-        # Waveform scaling, for the selected trace_source.
-        # time = x_origin + (n - x_reference) * x_increment
-        # voltage = (data - y_reference) * y_increment + y_origin
-        self.trace_x_increment: Parameter = self.add_parameter(
-            "trace_x_increment",
-            label="Trace X Increment",
-            unit="s",
-            get_cmd=":TRAC:XINC?",
-            get_parser=_parse_float,
-        )
-        """Time between adjacent points"""
-
-        self.trace_x_origin: Parameter = self.add_parameter(
-            "trace_x_origin",
-            label="Trace X Origin",
-            unit="s",
-            get_cmd=":TRAC:XOR?",
-            get_parser=_parse_float,
-        )
-        """Time of the reference point"""
-
-        self.trace_x_reference: Parameter = self.add_parameter(
-            "trace_x_reference",
-            label="Trace X Reference",
-            get_cmd=":TRAC:XREF?",
-            get_parser=_parse_float,
-        )
-        """Index of the reference point"""
-
-        self.trace_y_increment: Parameter = self.add_parameter(
-            "trace_y_increment",
-            label="Trace Y Increment",
-            unit="V",
-            get_cmd=":TRAC:YINC?",
-            get_parser=_parse_float,
-        )
-        """Voltage per bit"""
-
-        self.trace_y_origin: Parameter = self.add_parameter(
-            "trace_y_origin",
-            label="Trace Y Origin",
-            unit="V",
-            get_cmd=":TRAC:YOR?",
-            get_parser=_parse_float,
-        )
-        """Voltage at the binary reference value"""
-
-        self.trace_y_reference: Parameter = self.add_parameter(
-            "trace_y_reference",
-            label="Trace Y Reference",
-            get_cmd=":TRAC:YREF?",
-            get_parser=_parse_float,
-        )
-        """Binary reference value"""
+        """Number of points read out per waveform"""
 
         # SUBMODULES
 
@@ -1082,84 +970,8 @@ class Hameg_HMO3524(VisaInstrument):
 
         self.connect_message()
 
-    def get_waveform(self, source: str = "CH1") -> tuple[np.ndarray, np.ndarray]:
-        """
-        Read a displayed waveform.
-
-        Args:
-            source: CH1..CH4, ZCH1..ZCH4 (zoomed waveform) or RE1..RE4 (reference waveform).
-
-        Returns:
-            (time, voltage). For trace_type NORM, voltage has shape (N,). For trace_type MINMAX
-            it has shape (2, N), with rows (minimum, maximum).
-        """
-        self.trace_source(source)
-        voltage = self._read_trace_data()
-        return self._time_axis(voltage.shape[-1]), voltage
-
     def save_screenshot(self, filename: str) -> None:
         """Save the screen content to a file, in the format set by hardcopy_format (BMP, GIF or PNG)."""
         data = self.visa_handle.query_binary_values(":HCOP:DATA?", datatype="s", container=bytes)
         with open(filename, "wb") as file:
             file.write(data)
-
-    def _set_trace_source(self, value: str) -> None:
-        self.write(f":TRAC:SOUR {value}")
-        selected = _normalize_source(self.ask(":TRAC:SOUR?"))
-        if selected != value:
-            raise RuntimeError(
-                f"{self.name} did not select {value} for read out (the selected source is {selected}). "
-                f"Only displayed waveforms can be read out; check that {value} is switched on."
-            )
-
-    def _get_trace_type(self) -> str:
-        value = "MINMAX" if self.ask(":TRAC:TYPE?").strip().upper().startswith("MIN") else "NORM"
-        self._update_waveform_names(value)
-        return value
-
-    def _set_trace_type(self, value: str) -> None:
-        self.write(f":TRAC:TYPE {value}")
-        self._update_waveform_names(value)
-
-    def _update_waveform_names(self, trace_type: str) -> None:
-        # Channels are created after trace_type, so self.channels may not exist yet.
-        for channel in getattr(self, "channels", {}).values():
-            channel.waveform.set_names_labels_units(trace_type)
-
-    def _read_trace_data(self) -> np.ndarray:
-        """Read the waveform data of the selected trace_source, in volts."""
-        data_format = self.trace_format.get_latest()
-        if data_format == "ASC":
-            response = self.ask(":TRAC:DATA?").strip().strip(",")
-            data = np.array(response.split(","), dtype=float)
-        elif data_format in ("BYTE", "WORD"):
-            # Binary data are sent as an IEEE block of unsigned 8 or 16 bit integers.
-            # The byte order of WORD data is assumed to follow trace_byte_order.
-            raw = self.visa_handle.query_binary_values(
-                ":TRAC:DATA?",
-                datatype="B" if data_format == "BYTE" else "H",
-                is_big_endian=self.trace_byte_order.get_latest() == "MSBF",
-                container=np.array,
-            )
-            y_increment = self.trace_y_increment()
-            y_origin = self.trace_y_origin()
-            y_reference = self.trace_y_reference()
-            data = (raw.astype(float) - y_reference) * y_increment + y_origin
-        else:
-            raise ValueError(
-                f"Cannot read waveform data in {data_format} format. Set trace_format to ASC, BYTE or WORD."
-            )
-
-        if self.trace_type.get_latest() == "MINMAX":
-            # Minimum and maximum of each point are sent one after the other.
-            data = data.reshape(-1, 2).T
-        return data
-
-    def _time_axis(self, num_points: int) -> np.ndarray:
-        """Time axis for num_points points of the selected trace_source."""
-        x_increment = self.trace_x_increment()
-        x_origin = self.trace_x_origin()
-        x_reference = self.trace_x_reference()
-        # The manual gives t = n * XINC - XOR, but defines XOR as the time of the reference point
-        # (e.g. -3 ms), so the time is computed relative to that point.
-        return x_origin + (np.arange(num_points) - x_reference) * x_increment
