@@ -434,8 +434,8 @@ class HMO3524_Measurement(InstrumentChannel):
 
     Each measurement has a waveform measurement (measurement_type, source, value) and a trigger
     signal measurement (trigger_type, trigger_value). The label and unit of value and
-    trigger_value follow the type set through the driver. A warning is issued if the instrument
-    reports that a value is not valid, e.g. because the signal exceeds the converter range.
+    trigger_value follow the selected type. A warning is issued if the instrument reports that
+    a value is not valid, e.g. because the signal exceeds the converter range.
     """
 
     def __init__(self, parent: VisaInstrument, name: str, measurement_number: int, sources: list[str]) -> None:
@@ -455,13 +455,11 @@ class HMO3524_Measurement(InstrumentChannel):
         )
         """Measured value. NaN if no valid value is available."""
 
-        # Sets the measurement function, see MEASUREMENT_TYPES. The instrument does not answer
-        # :MEAS:TRAC<n>:TYPE? (the query times out), so getting returns the last value set
-        # through the driver.
+        # Sets the measurement function, see MEASUREMENT_TYPES.
         self.measurement_type: Parameter = self.add_parameter(
             "measurement_type",
             label="Measurement Type",
-            get_cmd=None,
+            get_cmd=self._get_measurement_type,
             set_cmd=self._set_measurement_type,
             vals=Enum(*MEASUREMENT_TYPES),
         )
@@ -496,6 +494,15 @@ class HMO3524_Measurement(InstrumentChannel):
             vals=Enum(*TRIGGER_MEASUREMENT_TYPES),
         )
         """Trigger signal measurement function"""
+
+        # Query the types so that value and trigger_value get the right labels and units.
+        self.measurement_type()
+        self.trigger_type()
+
+    def _get_measurement_type(self) -> str:
+        value = self.ask(f":MEAS:TRAC{self.measurement_number}:TYPE?").strip().upper()
+        self._update_label_unit(self.value, MEASUREMENT_TYPES, value)
+        return value
 
     def _set_measurement_type(self, value: str) -> None:
         self.write(f":MEAS:TRAC{self.measurement_number}:TYPE {value}")
