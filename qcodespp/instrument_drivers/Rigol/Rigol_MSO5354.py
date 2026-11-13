@@ -177,11 +177,12 @@ class Rigol_MSO5354(VisaInstrument):
         self.sample_rate: Parameter = self.add_parameter(
             'sample_rate',
             label='Sample Rate',
-            set_cmd='ACQ:SRAT {}',
+            unit='Sa/s',
             get_cmd='ACQ:SRAT?',
-            set_parser=float,
             get_parser=float,
-            vals=Numbers(min_value=0)
+            docstring='Read only: the instrument has no command to set the sample rate. It follows from the memory '
+                      'depth and time scale, as sample rate = memory depth / (10 divisions x xscale). To set a '
+                      'sample rate, set memory_depth to a fixed value and xscale = memory depth / (10 x sample rate).'
         )
 
         self.anti_aliasing: Parameter = self.add_parameter(
