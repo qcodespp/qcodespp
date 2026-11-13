@@ -4,7 +4,7 @@ QCoDeS driver for the Hameg HMO3524 (and HMO3522) digital oscilloscope.
 Constructed from the HAMEG "SCPI Programmers Manual HMO3522 / 3524" (firmware 01.020 and later).
 
 Example:
-    scope = Hameg_HMO3524("scope", "TCPIP0::192.168.1.10::INSTR")
+    scope = Hameg_HMO3524("scope", "TCPIP0::192.168.1.12::50001::SOCKET")
     scope.ch1.state(True)
     scope.ch1.scale(0.1)            # 100 mV/div
     scope.timebase_scale(1e-6)      # 1 us/div
@@ -538,7 +538,9 @@ class Hameg_HMO3524(VisaInstrument):
 
     Args:
         name: Instrument name.
-        address: VISA resource address.
+        address: VISA resource address. The Ethernet interface is a raw socket, not VXI-11, so use
+            'TCPIP0::<ip address>::<port>::SOCKET' with the port set in the instrument's interface
+            settings (e.g. 50001), rather than 'TCPIP0::<ip address>::INSTR'.
         num_channels: Number of analog channels. If None, it is set from the model in *IDN?
             (2 for the HMO3522, otherwise 4).
     """
