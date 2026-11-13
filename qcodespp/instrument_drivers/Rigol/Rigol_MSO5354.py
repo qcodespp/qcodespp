@@ -1,0 +1,330 @@
+from typing import Any
+
+import numpy as np
+from qcodes.instrument import VisaInstrument, InstrumentChannel
+from qcodes.parameters import Parameter, create_on_off_val_mapping
+from qcodes.validators import Enum, Numbers, Ints
+
+_SOURCES=['CHAN1', 'CHAN2', 'CHAN3', 'CHAN4']
+_WAVEMODES=['NORM','MAX','RAW']
+_DATAFORMATS=['WORD','BYTE','ASC']
+_MDEPTHS=['AUTO','1k','10k','100k','1M','10M','25M','50M','100M','200M']
+_ACQTYPES=['NORM','AVER','PEAK','HRES']
+_TRIGTYPES=['EDGE','PULS','SLOP','VID','PATT','DUR',
+            'TIM','RUNT','WIND','DEL','SET','NEDG',
+            'RS232','IIC','SPI','CAN','FLEX','LIN','IIS','M1553']
+_TRIGCOUP=['AC','DC','LFR','HFR']
+_TRIGMODES=['AUTO','NORM', 'SING']
+_EDGESLOPES=['POS','NEG','RFALI']
+
+class Rigol_MSO5354_Channel(InstrumentChannel):
+    def __init__(self, parent: VisaInstrument, name: str, chan_num: int, **kwargs) -> None:
+        super().__init__(parent, name, **kwargs)
+        self.chan_num=chan_num
+
+        self.bandwidth_limit: Parameter = self.add_parameter(
+            'bandwidth_limit',
+            label='Bandwidth Limit',
+            set_cmd=f'CHAN{self.chan_num}:BWL {{}}',
+            get_cmd=f'CHAN{self.chan_num}:BWL?',
+            vals=Enum('20M','100M','200M','OFF')
+        )
+
+        self.coupling: Parameter = self.add_parameter(
+            'coupling',
+            label='Coupling',
+            set_cmd=f'CHAN{self.chan_num}:COUP {{}}',
+            get_cmd=f'CHAN{self.chan_num}:COUP?',
+            vals=Enum('AC','DC','GND')
+        )
+
+        self.enabled: Parameter = self.add_parameter(
+            'enabled',
+            label='Enabled',
+            set_cmd=f'CHAN{self.chan_num}:DISP {{}}',
+            get_cmd=f'CHAN{self.chan_num}:DISP?',
+            val_mapping=create_on_off_val_mapping(on_val=1, off_val=0)
+        )
+
+        self.invert: Parameter = self.add_parameter(
+            'invert',
+            label='Inverted',
+            set_cmd=f'CHAN{self.chan_num}:INV {{}}',
+            get_cmd=f'CHAN{self.chan_num}:INV?',
+            val_mapping=create_on_off_val_mapping(on_val=1, off_val=0)
+        )
+
+        self.yoffset: Parameter = self.add_parameter(
+            'yoffset',
+            label='Y Offset',
+            set_cmd=f'CHAN{self.chan_num}:OFF {{}}',
+            get_cmd=f'CHAN{self.chan_num}:OFF?',
+            vals=Numbers()
+        )
+
+        self.yposition: Parameter = self.add_parameter(
+            'yposition',
+            label='Y Position',
+            set_cmd=f'CHAN{self.chan_num}:POS {{}}',
+            get_cmd=f'CHAN{self.chan_num}:POS?',
+            vals=Numbers(min_value=-100, max_value=100)
+        )
+
+        self.yscale: Parameter = self.add_parameter(
+            'yscale',
+            label = 'Y Scale',
+            set_cmd=f'CHAN{self.chan_num}:SCAL {{}}',
+            get_cmd=f'CHAN{self.chan_num}:SCAL?',
+            vals=Numbers()
+        )
+
+        self.ydata: Parameter = self.add_parameter(
+            'ydata',
+            label=f'Ch{self.chan_num} Data',
+            unit='V',
+            get_cmd=self._get_data
+        )
+
+        self.xdata: Parameter = self.add_parameter(
+            'xdata',
+            label='X Data',
+            unit='s',
+            get_cmd=self.parent._get_xdata
+        )
+
+    def _get_data(self):
+        if not self.parent.source.cache()==f'CHAN{self.chan_num}':
+            self.parent.source(f'CHAN{self.chan_num}')
+        if not self.parent.data_format.cache()=='ASC':
+            self.parent.data_format('ASC')
+        raw=self.parent.ask(':WAV:DATA?').strip().strip('\n').strip(',').split(',')
+        return np.array(raw[1:],dtype=float)
+
+class Rigol_MSO5354(VisaInstrument):
+    def __init__(self, name: str, address: str, **kwargs: Any) -> None:
+        super().__init__(name, address, terminator="\n", **kwargs)
+
+        self.averages: Parameter = self.add_parameter(
+            'averages',
+            label='Averages',
+            get_cmd='ACQ:AVER?',
+            set_cmd='ACQ:AVER {}',
+            vals=Ints(min_value=2, max_value=65536)
+        )
+
+        self.memory_depth: Parameter = self.add_parameter(
+            'memory_depth',
+            label='Memory Depth',
+            get_cmd='ACQ:MDEP?',
+            set_cmd='ACQ:MDEP {}',
+            vals=Enum(*_MDEPTHS)
+        )
+
+        self.aquisition_type: Parameter = self.add_parameter(
+            'aquisition_type',
+            label='Acquisition type',
+            set_cmd = 'ACQ:TYPE {}',
+            get_cmd = 'ACQ:TYPE?',
+            vals=Enum(*_ACQTYPES)
+        )
+
+        self.sample_rate: Parameter = self.add_parameter(
+            'sample_rate',
+            label='Sample Rate',
+            set_cmd='ACQ:SRAT {}',
+            get_cmd='ACQ:SRAT?',
+            vals=Numbers(min_value=0)
+        )
+
+        self.anti_aliasing: Parameter = self.add_parameter(
+            'anti_aliasing',
+            label='Anti-Aliasing',
+            set_cmd='ACQ:AAL {}',
+            get_cmd='ACQ:AAL?',
+            val_mapping=create_on_off_val_mapping(on_val=1, off_val=0)
+        )
+
+        self.source: Parameter = self.add_parameter(
+            'source',
+            label='Source',
+            get_cmd='WAV:SOUR?',
+            set_cmd='WAV:SOUR {}',
+            vals=Enum(*_SOURCES)
+        )
+
+        self.waveform_mode: Parameter = self.add_parameter(
+            'waveform_mode',
+            label='Waveform Mode',
+            get_cmd='WAV:MODE?',
+            set_cmd='WAV:MODE {}',
+            vals=Enum(*_WAVEMODES)
+        )
+
+        self.data_format: Parameter = self.add_parameter(
+            'data_format',
+            label='Data format',
+            get_cmd='WAV:FORM?',
+            set_cmd='WAV:FORM {}',
+            vals=Enum(*_DATAFORMATS)
+        )
+
+        self.xscale: Parameter = self.add_parameter(
+            'xscale',
+            label='X Scale',
+            unit='s',
+            set_cmd='TIM:SCAL {}',
+            get_cmd='TIM:SCAL?',
+            vals=Numbers(min_value=1e-9,max_value=1000)
+        )
+
+        self.xoffset: Parameter = self.add_parameter(
+            'xoffset',
+            label='X offset',
+            unit='s',
+            set_cmd='TIM:OFFS {}',
+            get_cmd='TIM:OFFS?',
+            vals=Numbers()
+        )
+
+        # self.samples_per_div: Parameter = self.add_parameter(
+        #     'samples_per_div',
+        #     label='Samples per div',
+        #     unit='num samples',
+        #     set_cmd=
+
+        # )
+
+        self.xpoints: Parameter = self.add_parameter(
+            'xpoints',
+            label='X Points',
+            get_cmd='WAV:POINTS?',
+            set_cmd='WAV:POINTS {}',
+            get_parser=int,
+            set_parser=int,
+            vals=Ints()
+            )
+
+        self.xinc: Parameter = self.add_parameter(
+            'xinc',
+            label='X Increment',
+            unit='s',
+            get_cmd='WAV:XINC?',
+            get_parser=float,
+            vals=Numbers()
+        )
+
+        self.xorigin: Parameter = self.add_parameter(
+            'xorigin',
+            label='X Origin',
+            unit='s',
+            get_cmd='WAV:XINC?',
+            get_parser=float,
+            vals=Numbers()
+        )
+
+        self.xdata: Parameter = self.add_parameter(
+            'xdata',
+            label='X data',
+            unit='s',
+            get_cmd=self._get_xdata
+        )
+
+        self.autoscale_status: Parameter = self.add_parameter(
+            'autoscale_status',
+            label='Autoscale status',
+            set_cmd='SYST:AUT {}',
+            get_cmd='SYST:AUT?',
+            val_mapping=create_on_off_val_mapping(on_val=1, off_val=0)
+        )
+
+        self.trigger_type: Parameter = self.add_parameter(
+            'trigger_type',
+            label='Trigger type',
+            get_cmd='TRIG:MODE?',
+            set_cmd='TRIG:MODE {}',
+            vals=Enum(*_TRIGTYPES)
+        )
+
+        self.trigger_coupling: Parameter = self.add_parameter(
+            'trigger_coupling',
+            label='Trigger coupling',
+            set_cmd='TRIG:COUP {}',
+            get_cmd='TRIG:COUP?',
+            vals = Enum(*_TRIGCOUP)
+        )
+
+        self.trigger_status: Parameter = self.add_parameter(
+            'trigger_status',
+            label='Trigger status',
+            get_cmd='TRIG:STAT?')
+
+        self.trigger_mode: Parameter = self.add_parameter(
+            'trigger_mode',
+            label='Trigger mode',
+            get_cmd='TRIG:SWE?',
+            set_cmd='TRIG:SWE {}',
+            vals=Enum(*_TRIGMODES)
+        )
+
+        self.trigger_holdoff: Parameter = self.add_parameter(
+            'trigger_holdoff',
+            label='Trigger holdoff',
+            unit='s',
+            get_cmd = 'TRIG:HOLD?',
+            set_cmd = 'TRIG:HOLD {}',
+            vals = Numbers(min_value=8e-9, max_value = 10)
+        )
+
+        self.trigger_edge_source: Parameter = self.add_parameter(
+            'trigger_edge_source',
+            label='Trigger Edge Source',
+            set_cmd='TRIG:EDGE:SOUR {}',
+            get_cmd='TRIG:EDGE:SOUR?',
+        )
+
+        self.trigger_edge_slope: Parameter = self.add_parameter(
+            'trigger_edge_slope',
+            label='Trigger Edge Slope',
+            set_cmd='TRIG:EDGE:SLOP {}',
+            get_cmd='TRIG:EDGE:SLOP?',
+            vals=Enum('POS','NEG','RFAL')
+        )
+
+        self.trigger_edge_level: Parameter = self.add_parameter(
+            'trigger_edge_level',
+            label='Trigger edge level',
+            set_cmd='TRIG:EDGE:LEV {}',
+            get_cmd='TRIG:EDGE:LEV?',
+            vals=Numbers()
+        )
+
+        self.add_function('clear', call_cmd='CLE')
+
+        self.add_function('autoscale', call_cmd='AUT')
+
+        self.add_function('run', call_cmd='RUN')
+
+        self.add_function('stop', call_cmd='STOP')
+
+        self.add_function('single', call_cmd='SING')
+
+        self.add_function('force', call_cmd='TFOR')
+
+        self.add_function('cls', call_cmd = '*CLS')
+
+        self.add_function('opc', call_cmd='*OPC')
+
+        self.channels={}
+        for i in range(4):
+            chan=Rigol_MSO5354_Channel(self,f'ch{i+1}',i+1)
+            self.channels[i+1]=chan
+            self.add_submodule(f'ch{i+1}',chan)
+
+        self.connect_message()
+
+    def _get_xdata(self):
+        preamble=self.ask('WAV:PRE?').split(',')
+        origin=float(preamble[5])
+        increment=float(preamble[4])
+        points=int(preamble[2])
+        return [origin+i*increment for i in range(self.xpoints()-1)]
