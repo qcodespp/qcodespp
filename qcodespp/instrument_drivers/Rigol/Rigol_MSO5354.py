@@ -18,9 +18,9 @@ _TRIGMODES=['AUTO','NORM', 'SING']
 _EDGESLOPES=['POS','NEG','RFALI']
 
 # The number of points :WAV:DATA? returns is set by :WAV:STARt and :WAV:STOP, and STOP defaults to 1000. The
-# programming guide says the largest range per read depends on the memory depth and format, but gives no number;
-# 15625 is the ASCii limit Rigol documents for the DS1000Z. Longer waveforms are read in chunks of this size.
-_ASCII_POINTS_PER_READ=15625
+# programming guide says the largest range per read depends on the memory depth and format, but gives no numbers;
+# these are the limits Rigol documents for the DS1000Z. Longer waveforms are read in chunks of these sizes.
+_POINTS_PER_READ={'ASC':15625,'BYTE':250000}
 
 def _parse_ascii_data(response: str) -> np.ndarray:
     """Converts a :WAV:DATA? response in ASCii format to an array, removing the TMC header (#N followed by N digits)."""
@@ -109,23 +109,37 @@ class Rigol_MSO5354_Channel(InstrumentChannel):
 
     def _get_data(self):
         self.parent.source(f'CHAN{self.chan_num}')
-        self.parent.data_format('ASC')
+        data_format=self.parent.data_format()
+        if data_format not in _POINTS_PER_READ:
+            raise RuntimeError(f'{self.full_name}: reading data in {data_format} format is not supported. Set '
+                               f'{self.parent.data_format.full_name} to ASC or BYTE (WORD only carries the same '
+                               f'8 bits as BYTE, in twice the number of bytes).')
         num_points=self.parent._num_points()
         chunks=[]
         start=1
         # STOP is set before STARt so that STARt is never past STOP, which the instrument might reject.
         self.parent.write(':WAV:STAR 1')
         while start<=num_points:
-            self.parent.write(f':WAV:STOP {min(start+_ASCII_POINTS_PER_READ-1,num_points)}')
+            self.parent.write(f':WAV:STOP {min(start+_POINTS_PER_READ[data_format]-1,num_points)}')
             self.parent.write(f':WAV:STAR {start}')
-            chunk=_parse_ascii_data(self.parent.ask(':WAV:DATA?'))
+            if data_format=='ASC':
+                chunk=_parse_ascii_data(self.parent.ask(':WAV:DATA?'))
+            else:
+                chunk=self.parent.visa_handle.query_binary_values(':WAV:DATA?',datatype='B',container=np.array)
             if len(chunk)==0:
                 raise RuntimeError(f'{self.full_name}: no data returned for points {start} onwards '
                                    f'of {num_points}.')
             chunks.append(chunk)
             # Advance by the number of points actually returned, in case the instrument limits the range.
             start+=len(chunk)
-        return np.concatenate(chunks)
+        data=np.concatenate(chunks)
+        if data_format=='BYTE':
+            # Convert the 8-bit codes to volts with the formula Rigol gives for other series (e.g. DS1000Z);
+            # the MSO5000 guide does not state it.
+            preamble=self.parent.ask(':WAV:PRE?').split(',')
+            yincrement,yorigin,yreference=(float(value) for value in preamble[7:10])
+            data=(data-yorigin-yreference)*yincrement
+        return data
 
 class Rigol_MSO5354(VisaInstrument):
     def __init__(self, name: str, address: str, **kwargs: Any) -> None:
