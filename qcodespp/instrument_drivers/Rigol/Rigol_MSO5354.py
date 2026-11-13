@@ -163,7 +163,6 @@ class Rigol_MSO5354(VisaInstrument):
             label='Memory Depth',
             get_cmd='ACQ:MDEP?',
             set_cmd='ACQ:MDEP {}',
-            set_parser=int,
             vals=Enum(*_MDEPTHS)
         )
 
