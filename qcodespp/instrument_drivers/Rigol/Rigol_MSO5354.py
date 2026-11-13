@@ -17,6 +17,21 @@ _TRIGCOUP=['AC','DC','LFR','HFR']
 _TRIGMODES=['AUTO','NORM', 'SING']
 _EDGESLOPES=['POS','NEG','RFALI']
 
+# The number of points :WAV:DATA? returns is set by :WAV:STARt and :WAV:STOP, and STOP defaults to 1000. The
+# programming guide says the largest range per read depends on the memory depth and format, but gives no number;
+# 15625 is the ASCii limit Rigol documents for the DS1000Z. Longer waveforms are read in chunks of this size.
+_ASCII_POINTS_PER_READ=15625
+
+def _parse_ascii_data(response: str) -> np.ndarray:
+    """Converts a :WAV:DATA? response in ASCii format to an array, removing the TMC header (#N followed by N digits)."""
+    response=response.strip()
+    if response.startswith('#'):
+        response=response[2+int(response[1]):]
+    response=response.strip(',')
+    if not response:
+        return np.array([])
+    return np.array(response.split(','),dtype=float)
+
 class Rigol_MSO5354_Channel(InstrumentChannel):
     def __init__(self, parent: VisaInstrument, name: str, chan_num: int, **kwargs) -> None:
         super().__init__(parent, name, **kwargs)
@@ -93,12 +108,24 @@ class Rigol_MSO5354_Channel(InstrumentChannel):
         )
 
     def _get_data(self):
-        if not self.parent.source.cache()==f'CHAN{self.chan_num}':
-            self.parent.source(f'CHAN{self.chan_num}')
-        if not self.parent.data_format.cache()=='ASC':
-            self.parent.data_format('ASC')
-        raw=self.parent.ask(':WAV:DATA?').strip().strip('\n').strip(',').split(',')
-        return np.array(raw[1:],dtype=float)
+        self.parent.source(f'CHAN{self.chan_num}')
+        self.parent.data_format('ASC')
+        num_points=self.parent._num_points()
+        chunks=[]
+        start=1
+        # STOP is set before STARt so that STARt is never past STOP, which the instrument might reject.
+        self.parent.write(':WAV:STAR 1')
+        while start<=num_points:
+            self.parent.write(f':WAV:STOP {min(start+_ASCII_POINTS_PER_READ-1,num_points)}')
+            self.parent.write(f':WAV:STAR {start}')
+            chunk=_parse_ascii_data(self.parent.ask(':WAV:DATA?'))
+            if len(chunk)==0:
+                raise RuntimeError(f'{self.full_name}: no data returned for points {start} onwards '
+                                   f'of {num_points}.')
+            chunks.append(chunk)
+            # Advance by the number of points actually returned, in case the instrument limits the range.
+            start+=len(chunk)
+        return np.concatenate(chunks)
 
 class Rigol_MSO5354(VisaInstrument):
     def __init__(self, name: str, address: str, **kwargs: Any) -> None:
@@ -217,7 +244,7 @@ class Rigol_MSO5354(VisaInstrument):
             'xorigin',
             label='X Origin',
             unit='s',
-            get_cmd='WAV:XINC?',
+            get_cmd='WAV:XOR?',
             get_parser=float,
             vals=Numbers()
         )
@@ -326,5 +353,29 @@ class Rigol_MSO5354(VisaInstrument):
         preamble=self.ask('WAV:PRE?').split(',')
         origin=float(preamble[5])
         increment=float(preamble[4])
-        points=int(preamble[2])
-        return [origin+i*increment for i in range(self.xpoints()-1)]
+        return origin+np.arange(self._num_points())*increment
+
+    def _memory_depth(self) -> int:
+        """The number of points in the internal memory."""
+        mdep=self.ask('ACQ:MDEP?').strip()
+        if mdep.upper()=='AUTO':
+            # memory depth = sample rate x waveform length, and the screen is 10 divisions wide.
+            return int(round(float(self.ask('ACQ:SRAT?'))*float(self.ask('TIM:SCAL?'))*10))
+        multiplier={'k':1e3,'K':1e3,'M':1e6}.get(mdep[-1],1)
+        if multiplier!=1:
+            mdep=mdep[:-1]
+        return int(round(float(mdep)*multiplier))
+
+    def _num_points(self) -> int:
+        """The number of points to read for the current waveform mode."""
+        mode=self.waveform_mode()
+        stopped=self.trigger_status()=='STOP'
+        if mode=='RAW':
+            if not stopped:
+                raise RuntimeError(f'{self.name}: in RAW mode the internal memory is read, which the instrument only '
+                                   f'allows when stopped. Call {self.name}.stop() or {self.name}.single() first.')
+            return self._memory_depth()
+        if mode=='MAX' and stopped:
+            # MAX reads the internal memory when stopped, and the screen when running.
+            return self._memory_depth()
+        return 1000
