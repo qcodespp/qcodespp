@@ -74,6 +74,7 @@ class Rigol_MSO5354_Channel(InstrumentChannel):
             label='Y Offset',
             set_cmd=f'CHAN{self.chan_num}:OFF {{}}',
             get_cmd=f'CHAN{self.chan_num}:OFF?',
+            get_parser=float,
             vals=Numbers()
         )
 
@@ -82,6 +83,7 @@ class Rigol_MSO5354_Channel(InstrumentChannel):
             label='Y Position',
             set_cmd=f'CHAN{self.chan_num}:POS {{}}',
             get_cmd=f'CHAN{self.chan_num}:POS?',
+            get_parser=float,
             vals=Numbers(min_value=-100, max_value=100)
         )
 
@@ -90,6 +92,7 @@ class Rigol_MSO5354_Channel(InstrumentChannel):
             label = 'Y Scale',
             set_cmd=f'CHAN{self.chan_num}:SCAL {{}}',
             get_cmd=f'CHAN{self.chan_num}:SCAL?',
+            get_parser=float,
             vals=Numbers()
         )
 
@@ -150,6 +153,8 @@ class Rigol_MSO5354(VisaInstrument):
             label='Averages',
             get_cmd='ACQ:AVER?',
             set_cmd='ACQ:AVER {}',
+            set_parser=int,
+            get_parser=int,
             vals=Ints(min_value=2, max_value=65536)
         )
 
@@ -158,6 +163,7 @@ class Rigol_MSO5354(VisaInstrument):
             label='Memory Depth',
             get_cmd='ACQ:MDEP?',
             set_cmd='ACQ:MDEP {}',
+            set_parser=int,
             vals=Enum(*_MDEPTHS)
         )
 
@@ -174,6 +180,8 @@ class Rigol_MSO5354(VisaInstrument):
             label='Sample Rate',
             set_cmd='ACQ:SRAT {}',
             get_cmd='ACQ:SRAT?',
+            set_parser=float,
+            get_parser=float,
             vals=Numbers(min_value=0)
         )
 
@@ -215,6 +223,7 @@ class Rigol_MSO5354(VisaInstrument):
             unit='s',
             set_cmd='TIM:SCAL {}',
             get_cmd='TIM:SCAL?',
+            get_parser=float,
             vals=Numbers(min_value=1e-9,max_value=1000)
         )
 
@@ -224,6 +233,7 @@ class Rigol_MSO5354(VisaInstrument):
             unit='s',
             set_cmd='TIM:OFFS {}',
             get_cmd='TIM:OFFS?',
+            get_parser=float,
             vals=Numbers()
         )
 
